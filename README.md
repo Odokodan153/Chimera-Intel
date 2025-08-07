@@ -1,2 +1,2 @@
 # Chimera-Intel
-Chimera Intel is an advanced Open Source Intelligence (OSINT) platform designed for comprehensive corporate analysis.
+Chimera Intel is an advanced Open Source Intelligence (OSINT) platform designed for comprehensive corporate analysis. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate and fragmented data streams such as technical footprints, social media presence, reputational data, and corporate records into a single, unified, and actionable dossier.
