@@ -1,3 +1,7 @@
 typer[all]
 python-whois
 dnspython
+python-dotenv
+requests
+yfinance
+beautifulsoup4

@@ -1,5 +1,7 @@
 import typer
 from modules.footprint import footprint_app
+from modules.web_analyzer import web_app
+from modules.business_intel import business_app
 
 # Main Chimera Intel CLI Application
 app = typer.Typer(
@@ -9,11 +11,13 @@ app = typer.Typer(
 )
 
 # Create a 'scan' command group
-scan_app = typer.Typer()
-app.add_typer(scan_app, name="scan", help="Run offensive intelligence scans on a target.")
+scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
+app.add_typer(scan_app, name="scan")
 
-# Add the footprint commands to the 'scan' group
-scan_app.add_typer(footprint_app, name="footprint", help="Gathers basic digital footprint intelligence.")
+# Add all the command modules to the 'scan' group
+scan_app.add_typer(footprint_app, name="footprint", help="Gathers basic digital footprint (WHOIS, DNS, Subdomains).")
+scan_app.add_typer(web_app, name="web", help="Analyzes web-specific data (Tech Stack, Traffic).")
+scan_app.add_typer(business_app, name="business", help="Gathers business intelligence (Financials, News, Patents).")
 
 if __name__ == "__main__":
     app()
