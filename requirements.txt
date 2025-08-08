@@ -7,3 +7,7 @@ yfinance
 beautifulsoup4
 shodan
 psbdmp
+transformers
+torch
+scikit-learn
+google-generativeai
