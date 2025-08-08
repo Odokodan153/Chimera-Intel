@@ -3,7 +3,7 @@ from modules.footprint import footprint_app
 from modules.web_analyzer import web_app
 from modules.business_intel import business_app
 from modules.defensive import defensive_app
-from modules.ai_core import ai_app # Import the new AI app
+from modules.ai_core import ai_app
 
 # Main Chimera Intel CLI Application
 app = typer.Typer(
