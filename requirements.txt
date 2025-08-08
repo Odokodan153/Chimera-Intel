@@ -5,3 +5,5 @@ python-dotenv
 requests
 yfinance
 beautifulsoup4
+shodan
+psbdmp
