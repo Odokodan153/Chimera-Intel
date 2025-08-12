@@ -4,6 +4,11 @@ from modules.web_analyzer import web_app
 from modules.business_intel import business_app
 from modules.defensive import defensive_app
 from modules.ai_core import ai_app
+from modules.database import initialize_database # <-- NEW IMPORT
+
+# Initialize the database and table if they don't exist
+# This function will run once every time the `chimera` command is executed.
+initialize_database()
 
 # Main Chimera Intel CLI Application
 app = typer.Typer(

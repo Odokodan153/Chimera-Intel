@@ -5,9 +5,11 @@ import yfinance as yf
 from bs4 import BeautifulSoup
 from rich.panel import Panel
 from .utils import console, save_or_print_results
+from .database import save_scan_to_db
 
 def get_financials_yfinance(ticker_symbol: str) -> dict:
-    """Retrieves key financial data for a public company from Yahoo Finance.
+    """
+    Retrieves key financial data for a public company from Yahoo Finance.
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
@@ -17,7 +19,9 @@ def get_financials_yfinance(ticker_symbol: str) -> dict:
     """
     try:
         ticker = yf.Ticker(ticker_symbol)
+        # .info provides a large dictionary of company data
         info = ticker.info
+        # We select a few key metrics for a concise report.
         financials = {
             "companyName": info.get("longName"),
             "sector": info.get("sector"),
@@ -30,10 +34,11 @@ def get_financials_yfinance(ticker_symbol: str) -> dict:
         }
         return financials
     except Exception as e:
-        return {"error": f"Could not fetch data for ticker '{ticker_symbol}'. Error: {e}"}
+        return {"error": f"Could not fetch data for ticker '{ticker_symbol}'. It may be invalid or delisted. Error: {e}"}
 
 def get_news_gnews(query: str, api_key: str) -> dict:
-    """Retrieves news articles from the GNews API.
+    """
+    Retrieves news articles from the GNews API.
 
     Args:
         query (str): The search term (e.g., company name).
@@ -45,7 +50,8 @@ def get_news_gnews(query: str, api_key: str) -> dict:
     if not api_key:
         return {"error": "GNews API key not found."}
     
-    url = f"[https://gnews.io/api/v4/search?q=](https://gnews.io/api/v4/search?q=)\"{query}\"&lang=en&max=10&token={api_key}"
+    # The query is wrapped in quotes to search for the exact phrase
+    url = f"https://gnews.io/api/v4/search?q=\"{query}\"&lang=en&max=10&token={api_key}"
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -54,7 +60,8 @@ def get_news_gnews(query: str, api_key: str) -> dict:
         return {"error": f"An unexpected error occurred with GNews: {e}"}
 
 def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
-    """Scrapes the first few patent results from Google Patents.
+    """
+    Scrapes the first few patent results from Google Patents.
 
     Args:
         query (str): The search term (e.g., company name).
@@ -63,21 +70,25 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
     Returns:
         dict: A dictionary containing a list of patent titles and links, or an error.
     """
+    # Use a common user-agent to avoid being blocked
     headers = {"User-Agent": "Mozilla/5.0"}
-    url = f"[https://patents.google.com/?q=](https://patents.google.com/?q=)({query})&num=10"
+    url = f"https://patents.google.com/?q=({query})&num=10"
     patents = []
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
+        # Use BeautifulSoup to parse the HTML content of the page
         soup = BeautifulSoup(response.text, 'html.parser')
         
+        # NOTE: Selectors can change if Google updates their website structure.
+        # This selector is specific to the layout as of the time of writing.
         for result in soup.select('article.search-result', limit=num_patents):
             title_tag = result.select_one('h4.title')
             link_tag = result.select_one('a.abs-url')
             if title_tag and link_tag:
                 patents.append({
                     "title": title_tag.text.strip(),
-                    "link": "[https://patents.google.com](https://patents.google.com)" + link_tag['href']
+                    "link": "https://patents.google.com" + link_tag['href']
                 })
         return {"patents": patents}
     except Exception as e:
@@ -96,17 +107,17 @@ def run_business_intel(
     console.print(Panel(f"[bold blue]Starting Business Intelligence Scan for {company_name}[/bold blue]", title="Chimera Intel | Business", border_style="blue"))
     
     gnews_key = os.getenv("GNEWS_API_KEY")
-    results = {"company": company_name}
-
-    if ticker:
-        console.print(f" [cyan]>[/cyan] Fetching financial data for ticker: {ticker}...")
-        results["financials"] = get_financials_yfinance(ticker)
     
-    console.print(f" [cyan]>[/cyan] Fetching latest news...")
-    results["news"] = get_news_gnews(company_name, gnews_key)
-
-    console.print(f" [cyan]>[/cyan] Scraping Google for patents...")
-    results["patents"] = scrape_google_patents(company_name)
+    # Financials are only fetched if a ticker symbol is provided
+    financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
+    
+    results = {
+        "company": company_name,
+        "financials": financial_data,
+        "news": get_news_gnews(company_name, gnews_key),
+        "patents": scrape_google_patents(company_name)
+    }
 
     console.print("\n[bold green]Business Intelligence Scan Complete![/bold green]")
     save_or_print_results(results, output_file)
+    save_scan_to_db(target=company_name, module="business_intel", data=results)
