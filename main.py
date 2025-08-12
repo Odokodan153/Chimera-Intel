@@ -7,8 +7,10 @@ from modules.ai_core import ai_app
 from modules.database import initialize_database
 from modules.differ import diff_app
 from modules.forecaster import forecast_app
+from modules.strategist import strategy_app
 
-# Initialize the database and table if they don't exist
+# Initialize the database and table if they don't exist.
+# This function will run once every time the `chimera` command is executed.
 initialize_database()
 
 # Main Chimera Intel CLI Application
@@ -19,21 +21,26 @@ app = typer.Typer(
 )
 
 # --- Offensive Intelligence Command Group ---
+# This group contains all commands for gathering data on external targets.
 scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
 app.add_typer(scan_app, name="scan")
 scan_app.add_typer(footprint_app, name="footprint", help="Gathers basic digital footprint (WHOIS, DNS, Subdomains).")
 scan_app.add_typer(web_app, name="web", help="Analyzes web-specific data (Tech Stack, Traffic).")
-scan_app.add_typer(business_intel, name="business", help="Gathers business intelligence (Financials, News, Patents).")
+scan_app.add_typer(business_app, name="business", help="Gathers business intelligence (Financials, News, Patents).")
 
 # --- Defensive Intelligence Command Group ---
-app.add_yper(defensive_app, name="defensive", help="Run defensive counter-intelligence scans on your own assets.")
+# This group contains all commands for analyzing one's own assets.
+app.add_typer(defensive_app, name="defensive", help="Run defensive counter-intelligence scans on your own assets.")
 
-# --- AI Core Command Group ---
-app.add_typer(ai_app, name="ai", help="Run AI-powered analysis on collected data.")
-
-# --- Historical Analysis Command Group ---
-app.add_typer(diff_app, name="diff", help="Compare historical scans to detect changes.")
-app.add_typer(forecast_app, name="forecast", help="Analyzes historical data to forecast potential events.") 
+# --- AI & Analysis Command Group ---
+# This group organizes all commands that perform analysis rather than just data gathering.
+analysis_app = typer.Typer(help="Run AI-powered and historical analysis.")
+app.add_typer(analysis_app, name="analysis")
+# Add the sub-groups for different types of analysis
+analysis_app.add_typer(ai_app, name="core", help="Run basic AI analysis (sentiment, SWOT).")
+analysis_app.add_typer(diff_app, name="diff", help="Compare historical scans to detect changes.")
+analysis_app.add_typer(forecast_app, name="forecast", help="Analyzes historical data to forecast potential events.")
+analysis_app.add_typer(strategy_app, name="strategy", help="Generates a high-level strategic profile of a target.")
 
 
 if __name__ == "__main__":
