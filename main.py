@@ -5,7 +5,8 @@ from modules.business_intel import business_app
 from modules.defensive import defensive_app
 from modules.ai_core import ai_app
 from modules.database import initialize_database
-from modules.differ import diff_app 
+from modules.differ import diff_app
+from modules.forecaster import forecast_app
 
 # Initialize the database and table if they don't exist
 initialize_database()
@@ -22,16 +23,17 @@ scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
 app.add_typer(scan_app, name="scan")
 scan_app.add_typer(footprint_app, name="footprint", help="Gathers basic digital footprint (WHOIS, DNS, Subdomains).")
 scan_app.add_typer(web_app, name="web", help="Analyzes web-specific data (Tech Stack, Traffic).")
-scan_app.add_typer(business_app, name="business", help="Gathers business intelligence (Financials, News, Patents).")
+scan_app.add_typer(business_intel, name="business", help="Gathers business intelligence (Financials, News, Patents).")
 
 # --- Defensive Intelligence Command Group ---
-app.add_typer(defensive_app, name="defensive", help="Run defensive counter-intelligence scans on your own assets.")
+app.add_yper(defensive_app, name="defensive", help="Run defensive counter-intelligence scans on your own assets.")
 
 # --- AI Core Command Group ---
 app.add_typer(ai_app, name="ai", help="Run AI-powered analysis on collected data.")
 
 # --- Historical Analysis Command Group ---
-app.add_typer(diff_app, name="diff", help="Compare historical scans to detect changes.") # <-- ADD THIS LINE
+app.add_typer(diff_app, name="diff", help="Compare historical scans to detect changes.")
+app.add_typer(forecast_app, name="forecast", help="Analyzes historical data to forecast potential events.") 
 
 
 if __name__ == "__main__":
