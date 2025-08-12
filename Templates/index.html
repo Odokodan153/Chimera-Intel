@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chimera Intel Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 2rem; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        form { display: flex; gap: 1rem; margin-bottom: 2rem; }
+        input[type="text"] { flex-grow: 1; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        button { padding: 0.75rem 1.5rem; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        button:hover { background-color: #2980b9; }
+        .results { margin-top: 2rem; }
+        pre { background-color: #ecf0f1; padding: 1rem; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: "Courier New", Courier, monospace; }
+        .loader { text-align: center; font-size: 1.2rem; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔱 Chimera Intel Dashboard</h1>
+        <form action="/" method="post" id="scan-form">
+            <input type="text" name="domain" placeholder="Enter a domain to scan (e.g., google.com)" required>
+            <button type="submit">Run Footprint Scan</button>
+        </form>
+        <div id="results-container" class="results">
+            {% if results %}
+                <h2>Scan Results for: {{ results.domain }}</h2>
+                <pre>{{ results | tojson(indent=4) }}</pre>
+            {% endif %}
+            <div id="loader" class="loader" style="display: none;">
+                <p>Scan in progress... This may take a moment.</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('scan-form').addEventListener('submit', function() {
+            document.getElementById('loader').style.display = 'block';
+            if (document.querySelector('pre')) {
+                document.querySelector('pre').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

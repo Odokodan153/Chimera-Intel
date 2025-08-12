@@ -13,16 +13,16 @@ from .database import save_scan_to_db
 
 load_dotenv()
 
+# --- Synchronous Helper Functions ---
+# These do not perform network I/O and can remain synchronous.
 def is_valid_domain(domain: str) -> bool:
-    """Validates if the given string is a plausible domain name using regex."""
-    # This is a synchronous function as it performs no I/O.
+    """Validates if the given string is a plausible domain name."""
     if re.match(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$", domain):
         return True
     return False
 
 def get_whois_info(domain: str) -> dict:
     """Retrieves WHOIS information for a given domain."""
-    # This remains synchronous as the 'whois' library does not support asyncio.
     try:
         domain_info = whois.whois(domain)
         return dict(domain_info) if domain_info.domain_name else {"error": "No WHOIS record found."}
@@ -31,7 +31,6 @@ def get_whois_info(domain: str) -> dict:
 
 def get_dns_records(domain: str) -> dict:
     """Retrieves common DNS records for a given domain."""
-    # This remains synchronous as the 'dnspython' library does not support asyncio.
     dns_results = {}
     record_types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME']
     for record_type in record_types:
@@ -46,22 +45,10 @@ def get_dns_records(domain: str) -> dict:
             dns_results[record_type] = [f"Could not resolve {record_type}: {e}"]
     return dns_results
 
-# --- Asynchronous Subdomain Functions ---
-
+# --- Asynchronous Data Gathering Functions ---
 async def get_subdomains_virustotal(domain: str, api_key: str, client: httpx.AsyncClient) -> list:
-    """
-    Asynchronously retrieves subdomains from the VirusTotal API.
-
-    Args:
-        domain (str): The domain to query.
-        api_key (str): The VirusTotal API key.
-        client (httpx.AsyncClient): The HTTP client to use for the request.
-
-    Returns:
-        list: A list of subdomains found.
-    """
+    """Asynchronously retrieves subdomains from the VirusTotal API."""
     if not api_key:
-        console.print("[bold yellow]Warning:[/] VirusTotal API key not found. Skipping.")
         return []
     headers = {"x-apikey": api_key}
     url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
@@ -70,68 +57,46 @@ async def get_subdomains_virustotal(domain: str, api_key: str, client: httpx.Asy
         response.raise_for_status()
         data = response.json()
         return [item.get("id") for item in data.get("data", [])]
-    except Exception as e:
-        console.print(f"[bold red]Error (VirusTotal):[/] {e}")
+    except Exception:
         return []
 
 def get_subdomains_securitytrails(domain: str, api_key: str) -> list:
-    """
-    Retrieves subdomains from the SecurityTrails API.
-    NOTE: The 'securitytrails' library does not support asyncio, so this remains synchronous.
-    """
+    """Retrieves subdomains from the SecurityTrails API (synchronous library)."""
     if not api_key:
-        console.print("[bold yellow]Warning:[/] SecurityTrails API key not found. Skipping.")
         return []
     try:
         st = SecurityTrails(api_key)
         data = st.domain_subdomains(domain)
         return [f"{sub}.{domain}" for sub in data.get('subdomains', [])]
-    except Exception as e:
-        console.print(f"[bold red]Error (SecurityTrails):[/] {e}")
+    except Exception:
         return []
 
-# --- Typer CLI Application ---
+# --- NEW: Core Logic Function ---
+async def gather_footprint_data(domain: str) -> dict:
+    """
+    The core logic for gathering all footprint data. Reusable by any interface.
 
-footprint_app = typer.Typer()
+    Args:
+        domain (str): The target domain to scan.
 
-@footprint_app.command("run")
-async def run_footprint_scan(
-    domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
-):
-    """Gathers the basic digital footprint of a domain asynchronously."""
-    if not is_valid_domain(domain):
-        console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
-        raise typer.Exit(code=1)
-
-    console.print(Panel(f"[bold green]Starting Asynchronous Footprint Scan For:[/] [yellow]{domain}[/yellow]", title="Chimera Intel", border_style="blue"))
-    
+    Returns:
+        dict: A dictionary containing all the gathered footprint intelligence.
+    """
     vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
     st_api_key = os.getenv("SECURITYTRAILS_API_KEY")
     available_sources = sum(1 for key in [vt_api_key, st_api_key] if key)
 
-    # --- Run I/O-bound tasks concurrently ---
+    # Run I/O-bound tasks concurrently
     async with httpx.AsyncClient() as client:
-        console.print(" [cyan]>[/cyan] Fetching data from all sources concurrently...")
-        # Create a list of tasks to run in parallel
-        tasks = [
-            get_subdomains_virustotal(domain, vt_api_key, client),
-            # Add other async functions here in the future
-        ]
-        # asyncio.gather runs all awaitable objects in the tasks list concurrently.
-        results_from_tasks = await asyncio.gather(*tasks)
-        
-        # Unpack the results from the gathered tasks
-        vt_subdomains = results_from_tasks[0]
+        vt_task = get_subdomains_virustotal(domain, vt_api_key, client)
+        vt_subdomains = await vt_task
 
-    # --- Run synchronous tasks sequentially ---
-    console.print(" [cyan]>[/cyan] Fetching synchronous data...")
+    # Run synchronous tasks
     whois_data = get_whois_info(domain)
     dns_data = get_dns_records(domain)
-    st_subdomains = get_subdomains_securitytrails(domain, st_api_key) # This library is sync
+    st_subdomains = get_subdomains_securitytrails(domain, st_api_key)
 
-    # --- Aggregate and Score Subdomain Data ---
-    console.print(" [cyan]>[/cyan] Aggregating subdomain results...")
+    # Aggregate and Score Subdomain Data
     all_subdomains = {}
     for sub in vt_subdomains:
         all_subdomains.setdefault(sub, []).append("VirusTotal")
@@ -148,8 +113,8 @@ async def run_footprint_scan(
 
     subdomain_report = {"total_unique": len(scored_results), "results": scored_results}
 
-    # --- Structure Final Results ---
-    results = {
+    # Structure final results
+    return {
         "domain": domain,
         "footprint": {
             "whois_info": whois_data,
@@ -158,6 +123,24 @@ async def run_footprint_scan(
         }
     }
 
+# --- Typer CLI Application ---
+footprint_app = typer.Typer()
+
+@footprint_app.command("run")
+async def run_footprint_scan(
+    domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
+    output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
+):
+    """The CLI command, now a thin wrapper around the core logic."""
+    if not is_valid_domain(domain):
+        console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
+        raise typer.Exit(code=1)
+
+    console.print(Panel(f"[bold green]Starting Asynchronous Footprint Scan For:[/] [yellow]{domain}[/yellow]", title="Chimera Intel", border_style="blue"))
+    
+    # Call the core logic function to get the data
+    results = await gather_footprint_data(domain)
+    
     console.print("\n[bold green]Scan Complete![/bold green]")
     save_or_print_results(results, output_file)
     save_scan_to_db(target=domain, module="footprint", data=results)
