@@ -6,32 +6,19 @@ import os
 import requests
 from rich.panel import Panel
 from dotenv import load_dotenv
+from securitytrails import SecurityTrails
 from .utils import console, save_or_print_results
 
 load_dotenv()
 
 def is_valid_domain(domain: str) -> bool:
-    """Validates if the given string is a plausible domain name.
-
-    Args:
-        domain (str): The string to validate.
-
-    Returns:
-        bool: True if the string is a valid domain format, False otherwise.
-    """
+    """Validates if the given string is a plausible domain name."""
     if re.match(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$", domain):
         return True
     return False
 
 def get_whois_info(domain: str) -> dict:
-    """Retrieves WHOIS information for a given domain.
-
-    Args:
-        domain (str): The domain to query.
-
-    Returns:
-        dict: A dictionary containing the WHOIS data, or an error message.
-    """
+    """Retrieves WHOIS information for a given domain."""
     try:
         domain_info = whois.whois(domain)
         return dict(domain_info) if domain_info.domain_name else {"error": "No WHOIS record found."}
@@ -39,14 +26,7 @@ def get_whois_info(domain: str) -> dict:
         return {"error": f"An exception occurred during WHOIS lookup: {e}"}
 
 def get_dns_records(domain: str) -> dict:
-    """Retrieves common DNS records for a given domain.
-
-    Args:
-        domain (str): The domain to query.
-
-    Returns:
-        dict: A dictionary containing DNS records, or an error message.
-    """
+    """Retrieves common DNS records for a given domain."""
     dns_results = {}
     record_types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME']
     for record_type in record_types:
@@ -61,33 +41,42 @@ def get_dns_records(domain: str) -> dict:
             dns_results[record_type] = [f"Could not resolve {record_type}: {e}"]
     return dns_results
 
-def get_subdomains_virustotal(domain: str, api_key: str) -> dict:
-    """Retrieves subdomains from the VirusTotal API.
+# --- Subdomain Functions for Multiple Sources ---
 
-    Args:
-        domain (str): The domain to query.
-        api_key (str): The VirusTotal API key.
-
-    Returns:
-        dict: A dictionary containing subdomains, or an error message.
-    """
+def get_subdomains_virustotal(domain: str, api_key: str) -> list:
+    """Retrieves subdomains from the VirusTotal API. Returns a list of domains."""
     if not api_key:
-        return {"error": "VirusTotal API key not found."}
+        console.print("[bold yellow]Warning:[/] VirusTotal API key not found. Skipping.")
+        return []
     subdomains = []
     headers = {"x-apikey": api_key}
-    url = f"[https://www.virustotal.com/api/v3/domains/](https://www.virustotal.com/api/v3/domains/){domain}/subdomains?limit=100"
+    url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
         for item in data.get("data", []):
             subdomains.append(item.get("id"))
-        return {"subdomains": subdomains, "count": len(subdomains)}
-    except requests.exceptions.HTTPError as e:
-        return {"error": f"HTTP error occurred: {e}"}
+        return subdomains
     except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
+        console.print(f"[bold red]Error (VirusTotal):[/] {e}")
+        return []
 
+def get_subdomains_securitytrails(domain: str, api_key: str) -> list:
+    """Retrieves subdomains from the SecurityTrails API. Returns a list of domains."""
+    if not api_key:
+        console.print("[bold yellow]Warning:[/] SecurityTrails API key not found. Skipping.")
+        return []
+    try:
+        st = SecurityTrails(api_key)
+        data = st.domain_subdomains(domain)
+        # The API returns a list of FQDNs, so we append '.domain' to them
+        return [f"{sub}.{domain}" for sub in data.get('subdomains', [])]
+    except Exception as e:
+        console.print(f"[bold red]Error (SecurityTrails):[/] {e}")
+        return []
+
+# --- Typer CLI Application ---
 
 footprint_app = typer.Typer()
 
@@ -102,27 +91,60 @@ def run_footprint_scan(
         raise typer.Exit(code=1)
 
     console.print(Panel(f"[bold green]Starting Footprint Scan For:[/] [yellow]{domain}[/yellow]", title="Chimera Intel", border_style="blue"))
+    
+    # --- Get API Keys ---
     vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
+    st_api_key = os.getenv("SECURITYTRAILS_API_KEY")
+    available_sources = sum(1 for key in [vt_api_key, st_api_key] if key)
 
+    # --- Gather Basic Data ---
     console.print(" [cyan]>[/cyan] Fetching WHOIS data...")
     whois_data = get_whois_info(domain)
     
     console.print(" [cyan]>[/cyan] Fetching DNS records...")
     dns_data = get_dns_records(domain)
     
-    subdomain_data = {"error": "VirusTotal API key not found."}
-    if vt_api_key:
-        console.print(" [cyan]>[/cyan] Fetching subdomains from VirusTotal...")
-        subdomain_data = get_subdomains_virustotal(domain, vt_api_key)
-    else:
-        console.print("[bold yellow]Warning:[/] VIRUSTOTAL_API_KEY not found. Skipping subdomain scan.")
+    # --- Gather Subdomains from All Sources ---
+    console.print(" [cyan]>[/cyan] Fetching subdomains from all available sources...")
+    vt_subdomains = get_subdomains_virustotal(domain, vt_api_key)
+    st_subdomains = get_subdomains_securitytrails(domain, st_api_key)
 
+    # --- Aggregate and Score Subdomain Data ---
+    console.print(" [cyan]>[/cyan] Aggregating subdomain results and calculating confidence...")
+    all_subdomains = {}
+    # Populate the dictionary with sources
+    for sub in vt_subdomains:
+        all_subdomains.setdefault(sub, []).append("VirusTotal")
+    for sub in st_subdomains:
+        all_subdomains.setdefault(sub, []).append("SecurityTrails")
+    
+    scored_results = []
+    for sub, sources in all_subdomains.items():
+        num_found_sources = len(sources)
+        confidence = "LOW"
+        if num_found_sources == available_sources and available_sources > 0:
+            confidence = "HIGH"
+        elif num_found_sources > 1:
+            confidence = "MEDIUM"
+
+        scored_results.append({
+            "domain": sub,
+            "sources": sources,
+            "confidence": f"{confidence} ({num_found_sources}/{available_sources} sources)"
+        })
+
+    subdomain_report = {
+        "total_unique": len(scored_results),
+        "results": scored_results
+    }
+
+    # --- Structure the final results ---
     results = {
         "domain": domain,
         "footprint": {
             "whois_info": whois_data,
             "dns_records": dns_data,
-            "subdomains_virustotal": subdomain_data
+            "subdomains": subdomain_report
         }
     }
 
