@@ -4,10 +4,10 @@ from modules.web_analyzer import web_app
 from modules.business_intel import business_app
 from modules.defensive import defensive_app
 from modules.ai_core import ai_app
-from modules.database import initialize_database # <-- NEW IMPORT
+from modules.database import initialize_database
+from modules.differ import diff_app 
 
 # Initialize the database and table if they don't exist
-# This function will run once every time the `chimera` command is executed.
 initialize_database()
 
 # Main Chimera Intel CLI Application
@@ -29,6 +29,9 @@ app.add_typer(defensive_app, name="defensive", help="Run defensive counter-intel
 
 # --- AI Core Command Group ---
 app.add_typer(ai_app, name="ai", help="Run AI-powered analysis on collected data.")
+
+# --- Historical Analysis Command Group ---
+app.add_typer(diff_app, name="diff", help="Compare historical scans to detect changes.") # <-- ADD THIS LINE
 
 
 if __name__ == "__main__":

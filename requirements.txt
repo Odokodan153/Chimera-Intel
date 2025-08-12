@@ -12,3 +12,4 @@ torch
 scikit-learn
 google-generativeai
 securitytrails
+jsondiff
