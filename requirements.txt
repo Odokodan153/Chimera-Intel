@@ -16,3 +16,4 @@ jsondiff==2.0.0
 httpx==0.24.1
 reportlab==4.0.4
 flask==2.3.3
+pyvis==0.3.2

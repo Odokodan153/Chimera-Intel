@@ -43,7 +43,7 @@ analysis_app.add_typer(signal_app, name="signal", help="Analyzes a target's foot
 
 # --- Report Generation Command Group ---
 app.add_typer(report_app, name="report", help="Generate reports from saved scan data.")
-
+report_app.add_typer(graph_app, name="graph", help="Generate visual graph reports.")
 
 if __name__ == "__main__":
     app()
