@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from modules.defensive import check_hibp_breaches, find_typosquatting_dnstwist
+from chimera_intel.core.defensive import check_hibp_breaches, find_typosquatting_dnstwist
 
 class TestDefensive(unittest.TestCase):
 
-    @patch('modules.defensive.requests.get')
+    @patch('chimera_intel.core.defensive.requests.get')
     def test_check_hibp_breaches_found(self, mock_get):
         # Simulate finding breaches
         mock_response = MagicMock()
@@ -14,7 +14,7 @@ class TestDefensive(unittest.TestCase):
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertEqual(len(result["breaches"]), 1)
 
-    @patch('modules.defensive.requests.get')
+    @patch('chimera_intel.core.defensive.requests.get')
     def test_check_hibp_breaches_not_found(self, mock_get):
         # Simulate finding no breaches (404 status code)
         mock_response = MagicMock()
@@ -23,7 +23,7 @@ class TestDefensive(unittest.TestCase):
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertEqual(len(result["breaches"]), 0)
 
-    @patch('modules.defensive.subprocess.run')
+    @patch('chimera_intel.core.defensive.subprocess.run')
     def test_find_typosquatting_dnstwist_success(self, mock_run):
         # Simulate a successful dnstwist run
         mock_process = MagicMock()

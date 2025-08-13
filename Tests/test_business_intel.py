@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from modules.business_intel import get_financials_yfinance, get_news_gnews, scrape_google_patents
+from chimera_intel.core.business_intel import get_financials_yfinance, get_news_gnews, scrape_google_patents
 
 class TestBusinessIntel(unittest.TestCase):
 
-    @patch('modules.business_intel.yf.Ticker')
+    @patch('chimera_intel.core.business_intel.yf.Ticker')
     def test_get_financials_yfinance_success(self, mock_ticker):
         # Simulate a successful yfinance call
         mock_instance = mock_ticker.return_value
@@ -13,7 +13,7 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(result["companyName"], "Apple Inc.")
         self.assertEqual(result["marketCap"], 2000000000000)
 
-    @patch('modules.business_intel.requests.get')
+    @patch('chimera_intel.core.business_intel.requests.get')
     def test_get_news_gnews_success(self, mock_get):
         # Simulate a successful GNews API call
         mock_response = MagicMock()
@@ -23,7 +23,7 @@ class TestBusinessIntel(unittest.TestCase):
         result = get_news_gnews("Apple Inc.", "fake_api_key")
         self.assertEqual(len(result["articles"]), 1)
 
-    @patch('modules.business_intel.requests.get')
+    @patch('chimera_intel.core.business_intel.requests.get')
     def test_scrape_google_patents_success(self, mock_get):
         # Simulate a successful web scrape
         mock_html = """

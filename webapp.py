@@ -3,9 +3,9 @@ import asyncio
 import os
 
 # Import the necessary functions from our modules
-from modules.footprint import gather_footprint_data
-from modules.database import initialize_database
-from modules.grapher import generate_knowledge_graph
+from chimera_intel.core.footprint import gather_footprint_data
+from chimera_intel.core.database import initialize_database
+from chimera_intel.core.grapher import generate_knowledge_graph
 
 # Initialize the database just like in the main CLI app
 initialize_database()

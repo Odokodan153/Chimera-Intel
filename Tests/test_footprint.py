@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from modules.footprint import is_valid_domain, get_whois_info, get_dns_records, get_subdomains_virustotal
+from chimera_intel.core.footprint import is_valid_domain, get_whois_info, get_dns_records, get_subdomains_virustotal
 
 class TestFootprint(unittest.TestCase):
 
@@ -11,21 +11,21 @@ class TestFootprint(unittest.TestCase):
         self.assertFalse(is_valid_domain("google.c"))
         self.assertFalse(is_valid_domain("-google.com"))
 
-    @patch('modules.footprint.whois.whois')
+    @patch('chimera_intel.core.footprint.whois.whois')
     def test_get_whois_info_success(self, mock_whois):
         # Simulate a successful WHOIS lookup
         mock_whois.return_value = MagicMock(domain_name="google.com", registrar="MarkMonitor Inc.")
         result = get_whois_info("google.com")
         self.assertEqual(result.get('registrar'), "MarkMonitor Inc.")
 
-    @patch('modules.footprint.whois.whois')
+    @patch('chimera_intel.core.footprint.whois.whois')
     def test_get_whois_info_failure(self, mock_whois):
         # Simulate a failed WHOIS lookup (e.g., domain not found)
         mock_whois.return_value = MagicMock(domain_name=None)
         result = get_whois_info("nonexistentdomain123.com")
         self.assertIn("error", result)
 
-    @patch('modules.footprint.dns.resolver.resolve')
+    @patch('chimera_intel.core.footprint.dns.resolver.resolve')
     def test_get_dns_records_success(self, mock_resolve):
         # Simulate a successful DNS resolution
         mock_answer = MagicMock()
@@ -35,7 +35,7 @@ class TestFootprint(unittest.TestCase):
         self.assertIn("A", result)
         self.assertEqual(result["A"][0], "1.2.3.4")
 
-    @patch('modules.footprint.requests.get')
+    @patch('chimera_intel.core.footprint.requests.get')
     def test_get_subdomains_virustotal_success(self, mock_get):
         # Simulate a successful VirusTotal API call
         mock_response = MagicMock()

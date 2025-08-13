@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from modules.ai_core import analyze_sentiment, detect_traffic_anomalies
+from chimera_intel.core.ai_core import analyze_sentiment, detect_traffic_anomalies
 
 class TestAiCore(unittest.TestCase):
 
-    @patch('modules.ai_core.sentiment_analyzer')
+    @patch('chimera_intel.core.ai_core.sentiment_analyzer')
     def test_analyze_sentiment(self, mock_analyzer):
         # Simulate a sentiment analysis result
         mock_analyzer.return_value = [{'label': 'POSITIVE', 'score': 0.99}]

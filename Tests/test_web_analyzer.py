@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from modules.web_analyzer import get_tech_stack_builtwith, get_traffic_similarweb
+from chimera_intel.core.web_analyzer import get_tech_stack_builtwith, get_traffic_similarweb
 
 class TestWebAnalyzer(unittest.TestCase):
 
-    @patch('modules.web_analyzer.requests.get')
+    @patch('chimera_intel.core.web_analyzer.requests.get')
     def test_get_tech_stack_builtwith_success(self, mock_get):
         # Simulate a successful BuiltWith API call
         mock_response = MagicMock()
@@ -20,7 +20,7 @@ class TestWebAnalyzer(unittest.TestCase):
         self.assertIn("error", result)
         self.assertEqual(result["error"], "BuiltWith API key not found.")
 
-    @patch('modules.web_analyzer.requests.get')
+    @patch('chimera_intel.core.web_analyzer.requests.get')
     def test_get_traffic_similarweb_success(self, mock_get):
         # Simulate a successful Similarweb API call
         mock_response = MagicMock()

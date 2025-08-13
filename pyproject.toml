@@ -1,0 +1,58 @@
+# This section defines the tools needed to build your package.
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# This is the main section for your project's metadata.
+[project]
+name = "chimera-intel"
+version = "5.0.0"
+authors = [
+    { name = "Your Name", email = "you@example.com" },
+]
+description = "A modular OSINT platform for corporate intelligence and counter-intelligence, powered by an AI analysis core."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Topic :: Utilities",
+]
+# This list contains all the libraries your project needs to run.
+# It is the same as your requirements.txt file with pinned versions.
+dependencies = [
+    "typer[all]==0.9.0",
+    "python-whois==0.8.0",
+    "dnspython==2.4.2",
+    "python-dotenv==1.0.0",
+    "requests==2.31.0",
+    "yfinance==0.2.28",
+    "beautifulsoup4==4.12.2",
+    "shodan==1.28.0",
+    "psbdmp==0.3",
+    "transformers==4.33.1",
+    "torch==2.0.1",
+    "scikit-learn==1.3.0",
+    "google-generativeai==0.2.2",
+    "securitytrails==1.1.1",
+    "jsondiff==2.0.0",
+    "httpx==0.24.1",
+    "reportlab==4.0.4",
+    "flask==2.3.3",
+    "pyvis==0.3.2",
+    "PyYAML==6.0.1",
+    "feedparser==6.0.10",
+]
+
+# This is the most critical part for making your CLI work after installation.
+# It tells pip to create a command named 'chimera' that runs the 'app' object
+# from the 'cli.py' file inside your 'chimera_intel' package.
+[project.scripts]
+chimera = "chimera_intel.cli:app"
+
+# These are helpful links that will be displayed on the PyPI project page.
+[project.urls]
+"Homepage" = "https://github.com/your-username/chimera-intel"
+"Bug Tracker" = "https://github.com/your-username/chimera-intel/issues"
