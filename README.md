@@ -2,11 +2,9 @@
 
 A modular OSINT platform for comprehensive corporate intelligence and counter-intelligence, powered by an AI analysis core.
 
-[Image of a network graph with interconnected nodes]
-
 ## Overview
 
-Chimera Intel is a command-line tool designed to solve a critical business problem: information fragmentation. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams (technical footprints, financial records, web traffic, code leaks, and more) into a single, unified, and actionable dossier.
+Chimera Intel is a command-line tool designed to solve a critical business problem: information fragmentation. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams into a single, unified, and actionable dossier.
 
 It is built to serve two primary functions:
 * **Offensive Intelligence:** To gather a deep understanding of external entities like competitors or potential partners.
@@ -14,26 +12,26 @@ It is built to serve two primary functions:
 
 ## Features
 
-Chimera Intel is organized into three main modules, each with a suite of commands.
+Chimera Intel is organized into several command groups, each with a suite of features.
 
-###  SCAN (Offensive Intelligence)
--   `scan footprint`: Gathers WHOIS, DNS, and Subdomain information.
--   `scan web`: Analyzes a website's technology stack (BuiltWith) and traffic estimates (Similarweb).
--   `scan business`: Retrieves public financial data (Yahoo Finance), news articles (GNews), and patent filings.
+### SCAN (Offensive Intelligence)
+* `scan footprint`: Gathers WHOIS, DNS, and Subdomain information.
+* `scan web`: Analyzes a website's technology stack and traffic estimates.
+* `scan business`: Retrieves public financial data, news articles, and patent filings.
 
 ### DEFENSIVE (Counter-Intelligence)
--   `defensive breaches`: Checks for domain-related email breaches via HIBP.
--   `defensive leaks`: Scans GitHub for potential secret leaks.
--   `defensive typosquat`: Detects potential phishing domains with dnstwist.
--   `defensive surface`: Analyzes public-facing assets using Shodan.
--   `defensive pastebin`: Searches Pastebin dumps for specific keywords.
--   `defensive ssllabs`: Performs an in-depth SSL/TLS server test.
--   `defensive mobsf`: Analyzes Android `.apk` files using a local MobSF instance.
+* `defensive breaches`: Checks for domain-related email breaches via HIBP.
+* `defensive leaks`: Scans GitHub for potential secret leaks.
+* `defensive typosquat`: Detects potential phishing domains.
+* `defensive surface`: Analyzes public-facing assets using Shodan.
+* ...and more.
 
-### AI (Analysis Core)
--   `ai sentiment`: Analyzes the sentiment of a news headline or text using a local transformer model.
--   `ai swot`: Automatically generates a SWOT analysis from collected data using the Google Gemini Pro API.
--   `ai anomaly`: Detects anomalies in numerical data series using Scikit-learn.
+### ANALYSIS (AI & Historical Core)
+* `analysis core sentiment`: Analyzes the sentiment of a news headline or text.
+* `analysis core swot`: Automatically generates a SWOT analysis from collected data.
+* `analysis diff`: Compares historical scans to detect changes over time.
+* `analysis forecast`: Forecasts potential future events based on historical data.
+* `analysis strategy`: Generates a high-level strategic profile of a target.
 
 ## Setup & Installation
 
@@ -43,30 +41,34 @@ Chimera Intel is organized into three main modules, each with a suite of command
     cd chimera-intel
     ```
 
-2.  **Create a virtual environment and install dependencies:**
+2.  **Set up API Keys:**
+    -   Create a `.env` file in the root directory (you can copy `.env.example`).
+    -   Open the `.env` file and add your secret API keys from the various services used.
+
+3.  **Install the package:**
+    This project uses modern Python packaging. The recommended way to install it is using `pip` in "editable" mode within a virtual environment. This installs the `chimera` command globally within your environment.
+
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    pip install -r requirements.txt
+    pip install -e .
     ```
-
-3.  **Set up API Keys:**
-    -   Create a `.env` file in the root directory.
-    -   Open the `.env` file and add your API keys from the various services used (VirusTotal, Shodan, Google AI, HIBP, GitHub, etc.).
 
 ## Usage Examples
 
+Once installed, you can run the tool from anywhere using the `chimera` command.
+
 ```bash
 # Get help for any command
-python main.py scan --help
-python main.py defensive --help
+chimera --help
+chimera scan --help
 
 # Run a basic footprint scan on a domain and save the output
-python main.py scan footprint google.com --output google_footprint.json
+chimera scan footprint google.com --output google_footprint.json
 
 # Check your own company's domain for data breaches
-python main.py defensive breaches mycompany.com
+chimera defensive breaches mycompany.com
 
 # Generate a SWOT analysis from a previously saved scan
-python main.py scan business "Microsoft" --ticker MSFT -o microsoft.json
-python main.py ai swot microsoft.json
+chimera scan business "Microsoft" --ticker MSFT -o microsoft.json
+chimera analysis core swot microsoft.json

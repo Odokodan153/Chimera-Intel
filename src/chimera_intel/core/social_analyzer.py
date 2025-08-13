@@ -5,15 +5,19 @@ from bs4 import BeautifulSoup
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from .utils import save_or_print_results
-from .database import save_scan_to_db
+# --- CORRECTED Absolute Imports ---
+from chimera_intel.core.utils import save_or_print_results
+from chimera_intel.core.database import save_scan_to_db
 
 console = Console()
 
 # --- AI Model Initialization ---
+# This block will try to import the necessary libraries and initialize the AI model.
+# If the libraries are not installed, it will set the classifier to None and handle it gracefully.
 try:
     from transformers import pipeline
-    # This is a powerful model that can classify text into categories you provide on the fly.
+    # This is a powerful model that can classify text into categories you provide on the fly,
+    # without needing to be pre-trained on them.
     classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 except ImportError:
     classifier = None
@@ -41,12 +45,13 @@ def discover_rss_feed(domain: str) -> str | None:
                 rss_link = soup.find("link", {"type": "application/rss+xml"})
                 if rss_link and rss_link.has_attr('href'):
                     feed_url = rss_link['href']
-                    # Ensure the URL is absolute
-                    if not feed_url.startswith(('http:', 'https 이동:' 'https:')):
+                    # Ensure the URL is absolute by joining it with the base URL if necessary
+                    if not feed_url.startswith(('http:', 'https:')):
                         from urllib.parse import urljoin
                         feed_url = urljoin(url, feed_url)
                     return feed_url
         except requests.RequestException:
+            # Silently ignore connection errors and try the next URL
             continue
     return None
 
@@ -65,12 +70,14 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> dict:
         return {"error": "The 'transformers' or 'torch' library is not installed."}
         
     try:
+        # Use the feedparser library to parse the RSS feed
         feed = feedparser.parse(feed_url)
         posts_analysis = []
         
         # Define the strategic categories we want to classify posts into.
         candidate_labels = ["Product Launch", "Financial Results", "Partnerships", "Hiring / Careers", "Company Culture", "Technical Update"]
 
+        # Analyze the most recent posts, up to the num_posts limit
         for entry in feed.entries[:num_posts]:
             title = entry.get("title", "No Title")
             link = entry.get("link", "#")
