@@ -2,17 +2,13 @@ import typer
 import whois
 import dns.resolver
 import re
-import os
 import asyncio
 import httpx
 from rich.panel import Panel
-from dotenv import load_dotenv
 from securitytrails import SecurityTrails
 from .utils import console, save_or_print_results
 from .database import save_scan_to_db
-from .config_loader import CONFIG # Import the loaded config
-
-load_dotenv()
+from .config_loader import CONFIG, API_KEYS # Import the centralized config and keys
 
 # --- Synchronous Helper Functions ---
 def is_valid_domain(domain: str) -> bool:
@@ -76,8 +72,9 @@ def get_subdomains_securitytrails(domain: str, api_key: str) -> list:
 # --- Core Logic Function ---
 async def gather_footprint_data(domain: str) -> dict:
     """The core logic for gathering all footprint data. Reusable by any interface."""
-    vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
-    st_api_key = os.getenv("SECURITYTRAILS_API_KEY")
+    # IMPROVEMENT: Get keys from the centralized API_KEYS dictionary
+    vt_api_key = API_KEYS.get("virustotal")
+    st_api_key = API_KEYS.get("securitytrails")
     available_sources = sum(1 for key in [vt_api_key, st_api_key] if key)
 
     async with httpx.AsyncClient() as client:

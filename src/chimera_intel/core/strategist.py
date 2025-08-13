@@ -78,9 +78,11 @@ def run_strategy_analysis(
     console.print(f" [dim]>[/dim] [dim]Aggregating historical data for '{target}'...[/dim]")
     aggregated_data = get_aggregated_data_for_target(target)
     
+    # IMPROVEMENT: Check if data was found and print a clear message if not.
     if not aggregated_data:
-        # If no data is found in the database, exit gracefully.
-        raise typer.Exit()
+        console.print(f"[bold red]Error:[/] No historical data found for target '{target}'.")
+        console.print("Please run scans first (e.g., 'chimera scan footprint <target>') to gather data.")
+        raise typer.Exit(code=1)
         
     # Step 2: Send the aggregated data to the AI for analysis
     console.print(f" [dim]>[/dim] [dim]Submitting data to AI strategist for analysis...[/dim]")

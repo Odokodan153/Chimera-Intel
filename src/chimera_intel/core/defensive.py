@@ -9,6 +9,7 @@ from rich.panel import Panel
 from rich.progress import Progress
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
+from chimera_intel.core.config_loader import API_KEYS # Import the centralized keys
 
 # --- Data Gathering Functions for Defensive Intelligence ---
 
@@ -24,7 +25,7 @@ def check_hibp_breaches(domain: str, api_key: str) -> dict:
         dict: A dictionary containing a list of breaches, or an error message.
     """
     if not api_key:
-        return {"error": "HIBP API key not found in .env file."}
+        return {"error": "HIBP API key not found. Check your .env file."}
     url = f"https://haveibeenpwned.com/api/v3/breacheddomain/{domain}"
     headers = {"hibp-api-key": api_key, "user-agent": "Chimera-Intel-Tool"}
     try:
@@ -48,7 +49,7 @@ def search_github_leaks(query: str, api_key: str) -> dict:
         dict: A dictionary containing the search results, or an error message.
     """
     if not api_key:
-        return {"error": "GitHub Personal Access Token not found in .env file."}
+        return {"error": "GitHub Personal Access Token not found. Check your .env file."}
     url = f"https://api.github.com/search/code?q={query}"
     headers = {"Authorization": f"token {api_key}"}
     try:
@@ -99,7 +100,7 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> dict:
         dict: A dictionary of discovered hosts, or an error message.
     """
     if not api_key:
-        return {"error": "Shodan API key not found in .env file."}
+        return {"error": "Shodan API key not found. Check your .env file."}
     try:
         api = shodan.Shodan(api_key)
         results = api.search(query, limit=100)
@@ -236,7 +237,7 @@ def run_breach_check(
 ):
     """Checks your domain against the Have I Been Pwned database."""
     console.print(Panel(f"[bold red]Checking for Breaches at {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
-    api_key = os.getenv("HIBP_API_KEY")
+    api_key = API_KEYS.get("hibp")
     results = check_hibp_breaches(domain, api_key)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=domain, module="defensive_breaches", data=results)
@@ -248,7 +249,7 @@ def run_leaks_check(
 ):
     """Searches GitHub for potential code and secret leaks."""
     console.print(Panel(f"[bold red]Searching GitHub for leaks: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
-    api_key = os.getenv("GITHUB_PAT")
+    api_key = API_KEYS.get("github")
     results = search_github_leaks(query, api_key)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=query, module="defensive_leaks", data=results)
@@ -271,7 +272,7 @@ def run_surface_check(
 ):
     """Analyzes your public attack surface using Shodan."""
     console.print(Panel(f"[bold red]Analyzing Attack Surface with Shodan: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
-    api_key = os.getenv("SHODAN_API_KEY")
+    api_key = API_KEYS.get("shodan")
     results = analyze_attack_surface_shodan(query, api_key)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=query, module="defensive_surface", data=results)
@@ -301,12 +302,12 @@ def run_ssllabs_check(
 @defensive_app.command("mobsf")
 def run_mobsf_scan(
     apk_file: str = typer.Option(..., "--apk-file", help="Path to the .apk file to be analyzed."),
-    mobsf_url: str = typer.Option("http://1227.0.0.1:8000", help="URL of your running MobSF instance."),
+    mobsf_url: str = typer.Option("http://127.0.0.1:8000", help="URL of your running MobSF instance."),
     output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
 ):
     """Analyzes an Android .apk file using a local MobSF instance."""
     console.print(Panel(f"[bold red]Analyzing mobile app: {apk_file}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
-    api_key = os.getenv("MOBSF_API_KEY")
+    api_key = API_KEYS.get("mobsf")
     if not api_key:
         console.print("[bold red]Error:[/] MOBSF_API_KEY not found in .env file.")
         raise typer.Exit(code=1)

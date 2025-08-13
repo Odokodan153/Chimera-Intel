@@ -2,25 +2,42 @@
 .git/
 .gitignore
 
-# Python
+# Python cache and environments
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 .Python
 .env
 .venv
 env/
 venv/
 
-# IDE
-.idea/
-.vscode/
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
 
-# Other
-.dockerignore
-Dockerfile
-README.md
+# Database file
 chimera_intel.db
+
+# Output files - These should not be part of the image
 *.json
 *.pdf
+*.html
+
+# Documentation
+*.md
+
+# IDE and OS specific files
+.idea/
+.vscode/
+.DS_Store
+
+# Test reports
+.coverage
+htmlcov/
+
+# Docker specific files
+.dockerignore
+Dockerfile

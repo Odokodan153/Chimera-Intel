@@ -1,11 +1,11 @@
 import typer
-import os
 import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
 from rich.panel import Panel
 from .utils import console, save_or_print_results
 from .database import save_scan_to_db
+from .config_loader import API_KEYS # Import the centralized keys
 
 def get_financials_yfinance(ticker_symbol: str) -> dict:
     """
@@ -48,16 +48,18 @@ def get_news_gnews(query: str, api_key: str) -> dict:
         dict: The API response containing news articles, or an error message.
     """
     if not api_key:
-        return {"error": "GNews API key not found."}
+        return {"error": "GNews API key not found. Check your .env file."}
     
     # The query is wrapped in quotes to search for the exact phrase
     url = f"https://gnews.io/api/v4/search?q=\"{query}\"&lang=en&max=10&token={api_key}"
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=20)
         response.raise_for_status()
         return response.json()
-    except Exception as e:
-        return {"error": f"An unexpected error occurred with GNews: {e}"}
+    except requests.exceptions.HTTPError as e:
+        return {"error": f"GNews API returned an HTTP error: {e.response.status_code}"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"A network error occurred with GNews: {e}"}
 
 def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
     """
@@ -75,7 +77,7 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
     url = f"https://patents.google.com/?q=({query})&num=10"
     patents = []
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
         # Use BeautifulSoup to parse the HTML content of the page
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -90,9 +92,16 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
                     "title": title_tag.text.strip(),
                     "link": "https://patents.google.com" + link_tag['href']
                 })
+            else:
+                # This helps debug if Google changes its HTML structure
+                console.print("[bold yellow]Warning:[/] Could not parse a patent result, HTML structure may have changed.")
+
         return {"patents": patents}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to scrape Google Patents due to a network error: {e}"}
     except Exception as e:
-        return {"error": f"Failed to scrape Google Patents: {e}"}
+        # Catch other potential errors, e.g., during soup parsing
+        return {"error": f"An unexpected error occurred while scraping Google Patents: {e}"}
 
 
 business_app = typer.Typer()
@@ -106,7 +115,8 @@ def run_business_intel(
     """Gathers business intelligence: financials, news, and patents."""
     console.print(Panel(f"[bold blue]Starting Business Intelligence Scan for {company_name}[/bold blue]", title="Chimera Intel | Business", border_style="blue"))
     
-    gnews_key = os.getenv("GNEWS_API_KEY")
+    # IMPROVEMENT: Get key from the centralized API_KEYS dictionary
+    gnews_key = API_KEYS.get("gnews")
     
     # Financials are only fetched if a ticker symbol is provided
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
