@@ -9,10 +9,9 @@ from modules.differ import diff_app
 from modules.forecaster import forecast_app
 from modules.strategist import strategy_app
 from modules.signal_analyzer import signal_app
-from modules.reporter import report_app
+from modules.reporter import report_app, graph_app
 
 # Initialize the database and table if they don't exist.
-# This function will run once every time the `chimera` command is executed.
 initialize_database()
 
 # Main Chimera Intel CLI Application
@@ -42,8 +41,11 @@ analysis_app.add_typer(strategy_app, name="strategy", help="Generates a high-lev
 analysis_app.add_typer(signal_app, name="signal", help="Analyzes a target's footprint for strategic signals.")
 
 # --- Report Generation Command Group ---
-app.add_typer(report_app, name="report", help="Generate reports from saved scan data.")
-report_app.add_typer(graph_app, name="graph", help="Generate visual graph reports.")
+report_app_group = typer.Typer(help="Generate reports from saved scan data.")
+app.add_typer(report_app_group, name="report")
+report_app_group.add_typer(report_app, name="pdf", help="Generate a PDF report.")
+report_app_group.add_typer(graph_app, name="graph", help="Generate a visual graph report.")
+
 
 if __name__ == "__main__":
     app()

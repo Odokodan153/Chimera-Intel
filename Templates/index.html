@@ -15,30 +15,71 @@
         .results { margin-top: 2rem; }
         pre { background-color: #ecf0f1; padding: 1rem; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: "Courier New", Courier, monospace; }
         .loader { text-align: center; font-size: 1.2rem; color: #7f8c8d; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .graph-link { display: inline-block; margin-bottom: 1rem; padding: 0.5rem 1rem; background-color: #2ecc71; color: white; text-decoration: none; border-radius: 4px; }
+        .graph-link:hover { background-color: #27ae60; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔱 Chimera Intel Dashboard</h1>
-        <form action="/" method="post" id="scan-form">
+        <form id="scan-form">
             <input type="text" name="domain" placeholder="Enter a domain to scan (e.g., google.com)" required>
             <button type="submit">Run Footprint Scan</button>
         </form>
         <div id="results-container" class="results">
-            {% if results %}
-                <h2>Scan Results for: {{ results.domain }}</h2>
-                <pre>{{ results | tojson(indent=4) }}</pre>
-            {% endif %}
             <div id="loader" class="loader" style="display: none;">
                 <p>Scan in progress... This may take a moment.</p>
             </div>
+            <div id="output"></div>
         </div>
     </div>
     <script>
-        document.getElementById('scan-form').addEventListener('submit', function() {
-            document.getElementById('loader').style.display = 'block';
-            if (document.querySelector('pre')) {
-                document.querySelector('pre').style.display = 'none';
+        document.getElementById('scan-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent the default form submission (page reload)
+            
+            const form = event.target;
+            const domain = new FormData(form).get('domain');
+            const loader = document.getElementById('loader');
+            const outputDiv = document.getElementById('output');
+            
+            // Show the loader and clear any previous results
+            loader.style.display = 'block';
+            outputDiv.innerHTML = '';
+            
+            try {
+                // Use the modern Fetch API to send the request to our backend
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ domain: domain }),
+                });
+                
+                const results = await response.json();
+                
+                // Build the HTML to display the results
+                let content = '';
+                if (results.error) {
+                    content = `<p class="error">Error: ${results.error}</p>`;
+                } else {
+                    // Check if the backend provided a URL for the graph
+                    let graphLink = '';
+                    if (results.graph_url) {
+                        graphLink = `<a href="${results.graph_url}" target="_blank" class="graph-link">View Interactive Graph</a>`;
+                    }
+                    content = `<h2>Scan Results for: ${domain}</h2>
+                               ${graphLink}
+                               <pre>${JSON.stringify(results, null, 4)}</pre>`;
+                }
+                outputDiv.innerHTML = content;
+                
+            } catch (error) {
+                outputDiv.innerHTML = `<p class="error">A network or server error occurred: ${error}</p>`;
+            } finally {
+                // Always hide the loader when the process is finished
+                loader.style.display = 'none';
             }
         });
     </script>

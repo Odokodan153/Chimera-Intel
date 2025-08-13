@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 from securitytrails import SecurityTrails
 from .utils import console, save_or_print_results
 from .database import save_scan_to_db
+from .config_loader import CONFIG # Import the loaded config
 
 load_dotenv()
 
 # --- Synchronous Helper Functions ---
-# These do not perform network I/O and can remain synchronous.
 def is_valid_domain(domain: str) -> bool:
     """Validates if the given string is a plausible domain name."""
     if re.match(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$", domain):
@@ -32,7 +32,9 @@ def get_whois_info(domain: str) -> dict:
 def get_dns_records(domain: str) -> dict:
     """Retrieves common DNS records for a given domain."""
     dns_results = {}
-    record_types = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME']
+    # Load the record types to query from the config file, with a default list as a fallback.
+    record_types = CONFIG.get("modules", {}).get("footprint", {}).get("dns_records_to_query", ['A', 'MX'])
+    
     for record_type in record_types:
         try:
             answers = dns.resolver.resolve(domain, record_type)
@@ -71,32 +73,21 @@ def get_subdomains_securitytrails(domain: str, api_key: str) -> list:
     except Exception:
         return []
 
-# --- NEW: Core Logic Function ---
+# --- Core Logic Function ---
 async def gather_footprint_data(domain: str) -> dict:
-    """
-    The core logic for gathering all footprint data. Reusable by any interface.
-
-    Args:
-        domain (str): The target domain to scan.
-
-    Returns:
-        dict: A dictionary containing all the gathered footprint intelligence.
-    """
+    """The core logic for gathering all footprint data. Reusable by any interface."""
     vt_api_key = os.getenv("VIRUSTOTAL_API_KEY")
     st_api_key = os.getenv("SECURITYTRAILS_API_KEY")
     available_sources = sum(1 for key in [vt_api_key, st_api_key] if key)
 
-    # Run I/O-bound tasks concurrently
     async with httpx.AsyncClient() as client:
         vt_task = get_subdomains_virustotal(domain, vt_api_key, client)
         vt_subdomains = await vt_task
 
-    # Run synchronous tasks
     whois_data = get_whois_info(domain)
     dns_data = get_dns_records(domain)
     st_subdomains = get_subdomains_securitytrails(domain, st_api_key)
 
-    # Aggregate and Score Subdomain Data
     all_subdomains = {}
     for sub in vt_subdomains:
         all_subdomains.setdefault(sub, []).append("VirusTotal")
@@ -113,7 +104,6 @@ async def gather_footprint_data(domain: str) -> dict:
 
     subdomain_report = {"total_unique": len(scored_results), "results": scored_results}
 
-    # Structure final results
     return {
         "domain": domain,
         "footprint": {
@@ -138,7 +128,6 @@ async def run_footprint_scan(
 
     console.print(Panel(f"[bold green]Starting Asynchronous Footprint Scan For:[/] [yellow]{domain}[/yellow]", title="Chimera Intel", border_style="blue"))
     
-    # Call the core logic function to get the data
     results = await gather_footprint_data(domain)
     
     console.print("\n[bold green]Scan Complete![/bold green]")

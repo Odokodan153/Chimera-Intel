@@ -1,0 +1,38 @@
+# Chimera Intel - Application Configuration
+
+# Global settings for network requests
+network:
+  timeout: 20.0 # Default timeout for all HTTP requests in seconds
+
+# Configuration for specific modules
+modules:
+  footprint:
+    # Define which DNS record types to query
+    dns_records_to_query:
+      - A
+      - AAAA
+      - MX
+      - TXT
+      - NS
+      - CNAME
+  
+  web_analyzer:
+    # Add settings for web analysis here in the future
+    placeholder: true
+
+# Settings for report generation
+reporting:
+  graph:
+    # Pyvis graph physics settings
+    # For more options: https://pyvis.readthedocs.io/en/latest/documentation.html#pyvis.network.Network.set_options
+    physics_options: |
+      var options = {
+        "physics": {
+          "barnesHut": {
+            "gravitationalConstant": -40000,
+            "centralGravity": 0.4,
+            "springLength": 180
+          },
+          "minVelocity": 0.75
+        }
+      }

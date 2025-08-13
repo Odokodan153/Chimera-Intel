@@ -5,6 +5,7 @@ import httpx
 from rich.panel import Panel
 from .utils import console, save_or_print_results
 from .database import save_scan_to_db
+from .config_loader import CONFIG # Import the loaded config
 
 # --- Asynchronous Data Gathering Functions ---
 
@@ -78,7 +79,10 @@ async def run_web_analysis(
     similarweb_key = os.getenv("SIMILARWEB_API_KEY")
     available_tech_sources = sum(1 for key in [builtwith_key, wappalyzer_key] if key)
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    # Load the network timeout from the config file, with a default of 20 seconds
+    network_timeout = CONFIG.get("network", {}).get("timeout", 20.0)
+
+    async with httpx.AsyncClient(timeout=network_timeout) as client:
         console.print(" [cyan]>[/cyan] Fetching web data from all sources concurrently...")
         tasks = [
             get_tech_stack_builtwith(domain, builtwith_key, client),

@@ -4,6 +4,8 @@ from rich.console import Console
 from rich.panel import Panel
 from pyvis.network import Network
 import os
+# This import allows us to use the settings from config.yaml
+from .config_loader import CONFIG
 
 console = Console()
 
@@ -17,7 +19,7 @@ def generate_knowledge_graph(json_data: dict, output_path: str):
     """
     try:
         # Initialize the Pyvis network graph
-        net = Network(height="800px", width="100%", bgcolor="#222222", font_color="white", notebook=False, directed=True)
+        net = Network(height="900px", width="100%", bgcolor="#222222", font_color="white", notebook=False, directed=True)
 
         # --- Central Node (The Target) ---
         target = json_data.get('domain') or json_data.get('company', 'Unknown Target')
@@ -35,8 +37,8 @@ def generate_knowledge_graph(json_data: dict, output_path: str):
                         net.add_edge(target, subdomain)
             # Add IP addresses from DNS A records
             if 'dns_records' in footprint_data and 'A' in footprint_data['dns_records']:
-                for ip in footprint_data['dns_records']['A']:
-                    if "Error" not in ip:
+                for ip in footprint_data['dns_records'].get('A', []):
+                    if "Error" not in str(ip):
                         net.add_node(ip, label=ip, color="#feca57", size=20, shape="triangle", title="IP Address")
                         net.add_edge(target, ip)
 
@@ -51,19 +53,9 @@ def generate_knowledge_graph(json_data: dict, output_path: str):
                         net.add_node(tech, label=tech, color="#576574", size=12, shape="square", title="Technology")
                         net.add_edge(target, tech)
         
-        # Configure physics for a better layout
-        net.set_options("""
-        var options = {
-          "physics": {
-            "barnesHut": {
-              "gravitationalConstant": -30000,
-              "centralGravity": 0.3,
-              "springLength": 150
-            },
-            "minVelocity": 0.75
-          }
-        }
-        """)
+        # CORRECT CHANGE: Load the physics options from the config file
+        physics_options = CONFIG.get("reporting", {}).get("graph", {}).get("physics_options", "")
+        net.set_options(physics_options)
 
         # Generate the HTML file
         net.save_graph(output_path)
@@ -81,7 +73,7 @@ graph_app = typer.Typer()
 @graph_app.command("create")
 def create_knowledge_graph(
     json_file: str = typer.Argument(..., help="Path to the JSON scan result file."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Path to save the HTML graph. Defaults to '<target>.html'.")
+    output_file: str = typer.Option(None, "--output", "-o", help="Path to save the HTML graph. Defaults to '<target>_graph.html'.")
 ):
     """
     Creates an interactive knowledge graph from a saved JSON scan file.
@@ -92,11 +84,8 @@ def create_knowledge_graph(
     try:
         with open(json_file, 'r') as f:
             data = json.load(f)
-    except FileNotFoundError:
-        console.print(f"[bold red]Error:[/] Input file not found at '{json_file}'")
-        raise typer.Exit(code=1)
-    except json.JSONDecodeError:
-        console.print(f"[bold red]Error:[/] Invalid JSON in file '{json_file}'")
+    except Exception as e:
+        console.print(f"[bold red]Error reading file:[/] {e}")
         raise typer.Exit(code=1)
 
     # Determine the output path
