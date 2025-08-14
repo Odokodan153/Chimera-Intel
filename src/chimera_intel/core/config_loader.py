@@ -1,26 +1,18 @@
 import yaml
-import os
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, ValidationError
 from typing import Optional
 from rich.console import Console
 
-# This module handles loading all configurations from both the .env file (for secrets)
-# and the config.yaml file (for application settings).
+# --- CORRECTED Absolute Imports ---
+# CHANGE: Import the Pydantic models for the config file
+from .schemas import AppConfig
 
 console = Console()
 
-# --- Pydantic Model for API Keys ---
+# ... (ApiKeys class remains unchanged) ...
 class ApiKeys(BaseSettings):
-    """
-    Loads all required API keys from environment variables found in a .env file.
-
-    This class uses pydantic-settings to automatically read, validate, and type-cast
-    environment variables. It provides a single, reliable object for accessing secrets
-    throughout the application. The `alias` in the `Field` function maps the
-    environment variable name (e.g., VIRUSTOTAL_API_KEY) to the class attribute
-    (e.g., virustotal_api_key).
-    """
+    """Loads all required API keys from environment variables found in a .env file."""
     # Offensive Intelligence Keys
     virustotal_api_key: Optional[str] = Field(None, alias="VIRUSTOTAL_API_KEY")
     builtwith_api_key: Optional[str] = Field(None, alias="BUILTWITH_API_KEY")
@@ -40,38 +32,39 @@ class ApiKeys(BaseSettings):
     
     class Config:
         """Pydantic-settings configuration."""
-        # Tell pydantic-settings to look for a .env file in the root directory.
         env_file = ".env"
         env_file_encoding = "utf-8"
 
-def load_config_from_yaml() -> dict:
-    """
-    Loads the application configuration from the 'config.yaml' file.
 
-    If the file is not found, it returns a default configuration structure to allow
-    the application to run with baseline settings.
+def load_config_from_yaml() -> AppConfig:
+    """
+    Loads and validates the application configuration from 'config.yaml' using a Pydantic model.
+
+    If the file is not found, it returns a default AppConfig instance. If the file
+    is malformed, it reports an error and exits.
 
     Returns:
-        dict: A dictionary containing the application's configuration.
+        AppConfig: A validated Pydantic object representing the application's configuration.
     """
     try:
         with open("config.yaml", 'r') as f:
-            config = yaml.safe_load(f)
-        return config if isinstance(config, dict) else {}
+            config_data = yaml.safe_load(f)
+        # --- CHANGE: Validate the loaded dict against the AppConfig model ---
+        return AppConfig(**config_data)
     except FileNotFoundError:
         console.print("[bold yellow]Warning:[/] config.yaml not found. Using default settings.")
-        # Return a default structure if the file is missing
-        return {
-            "network": {"timeout": 20.0},
-            "modules": {"footprint": {"dns_records_to_query": ["A", "MX"]}}
-        }
+        # Return a default instance of the config model
+        return AppConfig.model_validate({})
+    # --- CHANGE: Catch validation errors from Pydantic ---
+    except ValidationError as e:
+        console.print(f"[bold red]Error in config.yaml:[/] Invalid configuration. {e}")
+        exit(1) # Exit the program because the config is broken
     except Exception as e:
         console.print(f"[bold red]Error loading config.yaml:[/] {e}")
-        return {}
+        exit(1)
+
 
 # --- Single Source of Truth ---
-# The configurations are loaded once when this module is first imported.
-# Any other module can now simply `from .config_loader import CONFIG, API_KEYS`
-# to get access to all validated configurations and secrets.
+# The CONFIG variable is now a type-safe Pydantic object.
 CONFIG = load_config_from_yaml()
 API_KEYS = ApiKeys()

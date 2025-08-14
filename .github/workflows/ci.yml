@@ -1,0 +1,64 @@
+# The name of your workflow, which will appear in the "Actions" tab on GitHub
+name: Python Quality Assurance
+
+# --- When the workflow should run ---
+on:
+  # Run on every push to the 'main' or 'master' branch
+  push:
+    branches: [ "main", "master" ]
+  # Also run on every pull request that targets 'main' or 'master'
+  pull_request:
+    branches: [ "main", "master" ]
+
+# --- What the workflow does ---
+jobs:
+  # A single job in this workflow, we'll call it 'build'
+  build:
+    # Use the latest version of Ubuntu Linux to run the job
+    runs-on: ubuntu-latest
+
+    # --- Steps for the job ---
+    # A sequence of tasks to be executed
+    steps:
+    # 1. Check out your code
+    # This step downloads your repository's code into the runner.
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    # 2. Set up Python
+    # This step installs a specific version of Python.
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    # 3. Install dependencies
+    # This step installs all your project's dependencies from pyproject.toml
+    # and the tools needed for quality checks.
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Install quality tools
+        pip install ruff black mypy pytest
+        # Install your project in editable mode
+        pip install -e .
+
+    # 4. Lint with Ruff
+    # Ruff is a very fast linter that checks for common errors and style issues.
+    - name: Lint with Ruff
+      run: ruff check .
+
+    # 5. Check formatting with Black
+    # This command checks if the code is formatted according to the Black style guide.
+    - name: Check formatting with Black
+      run: black --check .
+
+    # 6. Type check with Mypy
+    # This command checks for type errors in your code.
+    - name: Type check with Mypy
+      run: mypy src/
+
+    # 7. Run tests with Pytest
+    # This command discovers and runs all your unit tests.
+    - name: Run tests with Pytest
+      run: pytest

@@ -7,7 +7,8 @@ import os
 from typing import Dict, Any
 
 # --- CORRECTED Absolute Imports ---
-from .config_loader import CONFIG, console
+from .config_loader import CONFIG
+from .utils import console
 
 def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> None:
     """
@@ -16,14 +17,12 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
     This function uses the pyvis library to build a network graph. It parses the
     input JSON data, creating nodes for the main target, subdomains, IP addresses,
     and technologies, and then connects them with edges. The final graph is
-    saved as a self-contained HTML file.
 
     Args:
         json_data (Dict[str, Any]): The loaded JSON data from a scan.
         output_path (str): The path to save the generated HTML file.
     """
     try:
-        # Initialize the Pyvis network graph with a dark theme and physics settings
         net = Network(height="900px", width="100%", bgcolor="#222222", font_color="white", notebook=False, directed=True)
 
         # --- Central Node (The Target) ---
@@ -32,13 +31,11 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
 
         # --- Footprint Module Data ---
         footprint_data = json_data.get('footprint', {})
-        # Add subdomains as nodes
         for sub_item in footprint_data.get('subdomains', {}).get('results', []):
             subdomain = sub_item.get('domain')
             if subdomain:
                 net.add_node(subdomain, label=subdomain, color="#1e90ff", size=15, shape="dot", title="Subdomain")
                 net.add_edge(target, subdomain)
-        # Add IP addresses from DNS A records
         for ip in footprint_data.get('dns_records', {}).get('A', []):
             if "Error" not in str(ip):
                 net.add_node(ip, label=ip, color="#feca57", size=20, shape="triangle", title="IP Address")
@@ -46,18 +43,19 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
 
         # --- Web Analyzer Module Data ---
         web_data = json_data.get('web_analysis', {})
-        # Add technologies as nodes
         for tech_item in web_data.get('tech_stack', {}).get('results', []):
             tech = tech_item.get('technology')
             if tech:
                 net.add_node(tech, label=tech, color="#576574", size=12, shape="square", title="Technology")
                 net.add_edge(target, tech)
         
-        # Load the physics options from the config file
-        physics_options = CONFIG.get("reporting", {}).get("graph", {}).get("physics_options", "")
-        net.set_options(physics_options)
+        # --- CHANGE: Access the config via attributes instead of dictionary keys ---
+        # This part of the config is not yet modeled in Pydantic, so we access it as a dict.
+        # A future improvement would be to model 'reporting' in schemas.py as well.
+        physics_options = CONFIG.model_dump().get("reporting", {}).get("graph", {}).get("physics_options", "")
+        if physics_options:
+            net.set_options(physics_options)
 
-        # Generate the HTML file
         net.save_graph(output_path)
         console.print(f"[bold green]Successfully generated interactive graph at:[/] {os.path.abspath(output_path)}")
         console.print("   [dim]Open this HTML file in your browser to explore.[/dim]")
@@ -79,7 +77,6 @@ def create_knowledge_graph(
     """
     console.print(Panel(f"[bold green]Generating Knowledge Graph from:[/] {json_file}", title="Chimera Intel | Grapher", border_style="green"))
 
-    # Load the JSON data
     try:
         with open(json_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -87,12 +84,10 @@ def create_knowledge_graph(
         console.print(f"[bold red]Error reading file:[/] {e}")
         raise typer.Exit(code=1)
 
-    # Determine the output path
     if not output_file:
         target_name = data.get('domain') or data.get('company', 'graph')
         output_path = f"{target_name.replace('.', '_')}_graph.html"
     else:
         output_path = output_file
 
-    # Generate the graph
     generate_knowledge_graph(data, output_path)
