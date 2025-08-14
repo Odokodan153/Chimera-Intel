@@ -2,20 +2,27 @@ import typer
 import asyncio
 import httpx
 from rich.panel import Panel
-from .utils import console, save_or_print_results
-from .database import save_scan_to_db
-from .config_loader import CONFIG, API_KEYS # Import the centralized config and keys
+
+# --- CORRECTED Absolute Imports ---
+# CHANGE: is_valid_domain is now imported from the central utils module.
+from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
+from chimera_intel.core.database import save_scan_to_db
+from chimera_intel.core.config_loader import CONFIG, API_KEYS
+from chimera_intel.core.schemas import WebAnalysisResult, WebAnalysisData, TechStackReport, ScoredResult
+from chimera_intel.core.http_client import async_client # Import the centralized async client
 
 # --- Asynchronous Data Gathering Functions ---
 
-async def get_tech_stack_builtwith(domain: str, api_key: str, client: httpx.AsyncClient) -> list:
-    """Asynchronously retrieves website technology stack from the BuiltWith API."""
+async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
+    """
+    Asynchronously retrieves website technology stack from the BuiltWith API.
+    """
     if not api_key:
-        # This warning is now less critical as the main function will handle it.
+        console.print("[bold yellow]Warning:[/] BuiltWith API key not found. Skipping.")
         return []
     url = f"https://api.builtwith.com/v21/api.json?KEY={api_key}&LOOKUP={domain}"
     try:
-        response = await client.get(url)
+        response = await async_client.get(url)
         response.raise_for_status()
         data = response.json()
         technologies = []
@@ -25,21 +32,21 @@ async def get_tech_stack_builtwith(domain: str, api_key: str, client: httpx.Asyn
                     for tech in path.get("Technologies", []):
                         technologies.append(tech.get("Name"))
         return list(set(technologies))
-    except httpx.HTTPStatusError as e:
-        console.print(f"[bold red]Error (BuiltWith):[/] API returned status {e.response.status_code}")
-        return []
     except Exception as e:
         console.print(f"[bold red]Error (BuiltWith):[/] {e}")
         return []
 
-async def get_tech_stack_wappalyzer(domain: str, api_key: str, client: httpx.AsyncClient) -> list:
-    """Asynchronously retrieves website technology stack from the Wappalyzer API."""
+async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
+    """
+    Asynchronously retrieves website technology stack from the Wappalyzer API.
+    """
     if not api_key:
+        console.print("[bold yellow]Warning:[/] Wappalyzer API key not found. Skipping.")
         return []
     url = f"https://api.wappalyzer.com/v2/lookup/?urls=https://{domain}"
     headers = {"x-api-key": api_key}
     try:
-        response = await client.get(url, headers=headers)
+        response = await async_client.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
         technologies = []
@@ -47,26 +54,66 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str, client: httpx.Asy
             for tech_info in data[0].get("technologies", []):
                 technologies.append(tech_info.get("name"))
         return list(set(technologies))
-    except httpx.HTTPStatusError as e:
-        console.print(f"[bold red]Error (Wappalyzer):[/] API returned status {e.response.status_code}")
-        return []
     except Exception as e:
         console.print(f"[bold red]Error (Wappalyzer):[/] {e}")
         return []
 
-async def get_traffic_similarweb(domain: str, api_key: str, client: httpx.AsyncClient) -> dict:
-    """Asynchronously retrieves estimated website traffic from the Similarweb API."""
+async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
+    """
+    Asynchronously retrieves estimated website traffic from the Similarweb API.
+    """
     if not api_key:
-        return {"error": "Similarweb API key not found. Check your .env file."}
+        return {"error": "Similarweb API key not found."}
     url = f"https://api.similarweb.com/v1/website/{domain}/total-traffic-and-engagement/visits?api_key={api_key}&granularity=monthly&main_domain_only=false"
     try:
-        response = await client.get(url)
+        response = await async_client.get(url)
         response.raise_for_status()
         return response.json()
-    except httpx.HTTPStatusError as e:
-        return {"error": f"Similarweb API returned status {e.response.status_code}. The domain might not have enough traffic."}
     except Exception as e:
         return {"error": f"An unexpected error occurred with Similarweb: {e}"}
+
+# --- Core Logic Function ---
+async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
+    """
+    The core logic for gathering all web analysis data.
+    """
+    builtwith_key = API_KEYS.builtwith_api_key
+    wappalyzer_key = API_KEYS.wappalyzer_api_key
+    similarweb_key = API_KEYS.similarweb_api_key
+    available_tech_sources = sum(1 for key in [builtwith_key, wappalyzer_key] if key)
+
+    tasks = [
+        get_tech_stack_builtwith(domain, builtwith_key),
+        get_tech_stack_wappalyzer(domain, wappalyzer_key),
+        get_traffic_similarweb(domain, similarweb_key)
+    ]
+    builtwith_tech, wappalyzer_tech, traffic_info = await asyncio.gather(*tasks)
+
+    all_tech = {}
+    for tech in builtwith_tech:
+        all_tech.setdefault(tech, []).append("BuiltWith")
+    for tech in wappalyzer_tech:
+        all_tech.setdefault(tech, []).append("Wappalyzer")
+
+    scored_tech_results = []
+    for tech, sources in sorted(all_tech.items()):
+        num_found_sources = len(sources)
+        confidence = "LOW"
+        if available_tech_sources > 1 and num_found_sources == available_tech_sources:
+            confidence = "HIGH"
+        
+        scored_tech_results.append(
+            ScoredResult(technology=tech, sources=sources, confidence=f"{confidence} ({num_found_sources}/{available_tech_sources} sources)")
+        )
+
+    tech_stack_report = TechStackReport(total_unique=len(scored_tech_results), results=scored_tech_results)
+    
+    web_analysis_data = WebAnalysisData(
+        tech_stack=tech_stack_report,
+        traffic_info=traffic_info
+    )
+
+    return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
 
 # --- Typer CLI Application ---
 
@@ -78,59 +125,16 @@ async def run_web_analysis(
     output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
 ):
     """Analyzes web-specific data asynchronously."""
+    # Add the validation check at the beginning of the command function.
+    if not is_valid_domain(domain):
+        console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
+        raise typer.Exit(code=1)
+
     console.print(Panel(f"[bold blue]Starting Asynchronous Web Analysis for {domain}[/bold blue]", title="Chimera Intel | Web", border_style="blue"))
     
-    # IMPROVEMENT: Get keys from the centralized API_KEYS dictionary
-    builtwith_key = API_KEYS.get("builtwith")
-    wappalyzer_key = API_KEYS.get("wappalyzer")
-    similarweb_key = API_KEYS.get("similarweb")
-    
-    # Print warnings if keys are missing
-    if not builtwith_key:
-        console.print("[bold yellow]Warning:[/] BuiltWith API key not found. Skipping.")
-    if not wappalyzer_key:
-        console.print("[bold yellow]Warning:[/] Wappalyzer API key not found. Skipping.")
-        
-    available_tech_sources = sum(1 for key in [builtwith_key, wappalyzer_key] if key)
-
-    # Load the network timeout from the config file, with a default of 20 seconds
-    network_timeout = CONFIG.get("network", {}).get("timeout", 20.0)
-
-    async with httpx.AsyncClient(timeout=network_timeout) as client:
-        console.print(" [cyan]>[/cyan] Fetching web data from all sources concurrently...")
-        tasks = [
-            get_tech_stack_builtwith(domain, builtwith_key, client),
-            get_tech_stack_wappalyzer(domain, wappalyzer_key, client),
-            get_traffic_similarweb(domain, similarweb_key, client)
-        ]
-        builtwith_tech, wappalyzer_tech, traffic_info = await asyncio.gather(*tasks)
-
-    console.print(" [cyan]>[/cyan] Aggregating tech stack results...")
-    all_tech = {}
-    for tech in builtwith_tech:
-        all_tech.setdefault(tech, []).append("BuiltWith")
-    for tech in wappalyzer_tech:
-        all_tech.setdefault(tech, []).append("Wappalyzer")
-
-    scored_tech_results = []
-    for tech, sources in sorted(all_tech.items()):
-        num_found_sources = len(sources)
-        confidence = "LOW"
-        # Only set confidence to HIGH if there are at least 2 sources and the tech is found in all of them
-        if available_tech_sources > 1 and num_found_sources == available_tech_sources:
-            confidence = "HIGH"
-        scored_tech_results.append({"technology": tech, "sources": sources, "confidence": f"{confidence} ({num_found_sources}/{available_tech_sources} sources)"})
-
-    tech_stack_report = {"total_unique": len(scored_tech_results), "results": scored_tech_results}
-
-    results = {
-        "domain": domain,
-        "web_analysis": {
-            "tech_stack": tech_stack_report,
-            "traffic_info": traffic_info,
-        }
-    }
+    results_model = await gather_web_analysis_data(domain)
+    results_dict = results_model.model_dump()
     
     console.print("\n[bold green]Web Analysis Complete![/bold green]")
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=domain, module="web_analyzer", data=results)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(target=domain, module="web_analyzer", data=results_dict)

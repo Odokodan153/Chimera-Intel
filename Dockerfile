@@ -17,7 +17,6 @@ COPY --from=builder /app/dnstwist /app/dnstwist
 
 # Copy the ENTIRE project context (src/, pyproject.toml, etc.) into the container.
 COPY . .
-
 # Install the project using pip. This command reads pyproject.toml,
 # installs all Python dependencies, and sets up the 'chimera' command.
 RUN pip install .
@@ -25,7 +24,9 @@ RUN pip install .
 # Set the environment PATH to include our installed tools so the OS can find them.
 ENV PATH="/usr/local/bin:/app/dnstwist:$PATH"
 
-# Set the entrypoint to our installed command-line script.
-ENTRYPOINT ["chimera"]
-# If no arguments are provided, run the help command by default.
-CMD ["--help"]
+# Expose the port the web server will run on
+EXPOSE 8000
+
+# The command to run the web application using the Uvicorn production server.
+# This will be the default action when the container starts.
+CMD ["uvicorn", "chimera_intel.webapp.main:app", "--host", "0.0.0.0", "--port", "8000"]

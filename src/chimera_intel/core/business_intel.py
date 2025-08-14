@@ -1,15 +1,19 @@
 import typer
-import requests
 import yfinance as yf
 from bs4 import BeautifulSoup
 from rich.panel import Panel
-from .utils import console, save_or_print_results
-from .database import save_scan_to_db
-from .config_loader import API_KEYS # Import the centralized keys
+
+# --- CORRECTED Absolute Imports ---
+from chimera_intel.core.utils import console, save_or_print_results
+from chimera_intel.core.database import save_scan_to_db
+from chimera_intel.core.config_loader import API_KEYS
+# --- CHANGE: Import the centralized synchronous client ---
+from chimera_intel.core.http_client import sync_client 
 
 def get_financials_yfinance(ticker_symbol: str) -> dict:
     """
     Retrieves key financial data for a public company from Yahoo Finance.
+    (Note: yfinance uses its own internal http client, so this function is not refactored.)
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
@@ -19,7 +23,6 @@ def get_financials_yfinance(ticker_symbol: str) -> dict:
     """
     try:
         ticker = yf.Ticker(ticker_symbol)
-        # .info provides a large dictionary of company data
         info = ticker.info
         # We select a few key metrics for a concise report.
         financials = {
@@ -29,16 +32,14 @@ def get_financials_yfinance(ticker_symbol: str) -> dict:
             "trailingPE": info.get("trailingPE"),
             "forwardPE": info.get("forwardPE"),
             "dividendYield": info.get("dividendYield"),
-            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
-            "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow"),
         }
         return financials
     except Exception as e:
-        return {"error": f"Could not fetch data for ticker '{ticker_symbol}'. It may be invalid or delisted. Error: {e}"}
+        return {"error": f"Could not fetch data for ticker '{ticker_symbol}'. It may be invalid. Error: {e}"}
 
 def get_news_gnews(query: str, api_key: str) -> dict:
     """
-    Retrieves news articles from the GNews API.
+    Retrieves news articles from the GNews API using the resilient central client.
 
     Args:
         query (str): The search term (e.g., company name).
@@ -48,22 +49,20 @@ def get_news_gnews(query: str, api_key: str) -> dict:
         dict: The API response containing news articles, or an error message.
     """
     if not api_key:
-        return {"error": "GNews API key not found. Check your .env file."}
+        return {"error": "GNews API key not found."}
     
-    # The query is wrapped in quotes to search for the exact phrase
     url = f"https://gnews.io/api/v4/search?q=\"{query}\"&lang=en&max=10&token={api_key}"
     try:
-        response = requests.get(url, timeout=20)
+        # --- CHANGE: Use the global sync_client which has timeouts and retries built-in ---
+        response = sync_client.get(url)
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.HTTPError as e:
-        return {"error": f"GNews API returned an HTTP error: {e.response.status_code}"}
-    except requests.exceptions.RequestException as e:
-        return {"error": f"A network error occurred with GNews: {e}"}
+    except Exception as e:
+        return {"error": f"An unexpected error occurred with GNews: {e}"}
 
 def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
     """
-    Scrapes the first few patent results from Google Patents.
+    Scrapes the first few patent results from Google Patents using the resilient central client.
 
     Args:
         query (str): The search term (e.g., company name).
@@ -72,18 +71,15 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
     Returns:
         dict: A dictionary containing a list of patent titles and links, or an error.
     """
-    # Use a common user-agent to avoid being blocked
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0"} # Scrapers often need a user-agent
     url = f"https://patents.google.com/?q=({query})&num=10"
     patents = []
     try:
-        response = requests.get(url, headers=headers, timeout=20)
+        # --- CHANGE: Use the global sync_client for the scraping request ---
+        response = sync_client.get(url, headers=headers)
         response.raise_for_status()
-        # Use BeautifulSoup to parse the HTML content of the page
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # NOTE: Selectors can change if Google updates their website structure.
-        # This selector is specific to the layout as of the time of writing.
         for result in soup.select('article.search-result', limit=num_patents):
             title_tag = result.select_one('h4.title')
             link_tag = result.select_one('a.abs-url')
@@ -92,17 +88,12 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> dict:
                     "title": title_tag.text.strip(),
                     "link": "https://patents.google.com" + link_tag['href']
                 })
-            else:
-                # This helps debug if Google changes its HTML structure
-                console.print("[bold yellow]Warning:[/] Could not parse a patent result, HTML structure may have changed.")
-
         return {"patents": patents}
-    except requests.exceptions.RequestException as e:
-        return {"error": f"Failed to scrape Google Patents due to a network error: {e}"}
     except Exception as e:
-        # Catch other potential errors, e.g., during soup parsing
-        return {"error": f"An unexpected error occurred while scraping Google Patents: {e}"}
+        return {"error": f"Failed to scrape Google Patents: {e}"}
 
+
+# --- Typer CLI Application ---
 
 business_app = typer.Typer()
 
@@ -115,8 +106,8 @@ def run_business_intel(
     """Gathers business intelligence: financials, news, and patents."""
     console.print(Panel(f"[bold blue]Starting Business Intelligence Scan for {company_name}[/bold blue]", title="Chimera Intel | Business", border_style="blue"))
     
-    # IMPROVEMENT: Get key from the centralized API_KEYS dictionary
-    gnews_key = API_KEYS.get("gnews")
+    # Get API key from the centralized Pydantic settings object
+    gnews_key = API_KEYS.gnews_api_key
     
     # Financials are only fetched if a ticker symbol is provided
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"

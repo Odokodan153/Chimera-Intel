@@ -13,7 +13,8 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(result["companyName"], "Apple Inc.")
         self.assertEqual(result["marketCap"], 2000000000000)
 
-    @patch('chimera_intel.core.business_intel.requests.get')
+    # --- CHANGE: Patch the central sync_client instead of the local requests ---
+    @patch('chimera_intel.core.http_client.sync_client.get')
     def test_get_news_gnews_success(self, mock_get):
         # Simulate a successful GNews API call
         mock_response = MagicMock()
@@ -23,7 +24,8 @@ class TestBusinessIntel(unittest.TestCase):
         result = get_news_gnews("Apple Inc.", "fake_api_key")
         self.assertEqual(len(result["articles"]), 1)
 
-    @patch('chimera_intel.core.business_intel.requests.get')
+    # --- CHANGE: Patch the central sync_client instead of the local requests ---
+    @patch('chimera_intel.core.http_client.sync_client.get')
     def test_scrape_google_patents_success(self, mock_get):
         # Simulate a successful web scrape
         mock_html = """

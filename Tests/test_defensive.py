@@ -4,7 +4,8 @@ from chimera_intel.core.defensive import check_hibp_breaches, find_typosquatting
 
 class TestDefensive(unittest.TestCase):
 
-    @patch('chimera_intel.core.defensive.requests.get')
+    # --- CHANGE: Patch the central sync_client instead of the local requests ---
+    @patch('chimera_intel.core.http_client.sync_client.get')
     def test_check_hibp_breaches_found(self, mock_get):
         # Simulate finding breaches
         mock_response = MagicMock()
@@ -14,7 +15,8 @@ class TestDefensive(unittest.TestCase):
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertEqual(len(result["breaches"]), 1)
 
-    @patch('chimera_intel.core.defensive.requests.get')
+    # --- CHANGE: Patch the central sync_client instead of the local requests ---
+    @patch('chimera_intel.core.http_client.sync_client.get')
     def test_check_hibp_breaches_not_found(self, mock_get):
         # Simulate finding no breaches (404 status code)
         mock_response = MagicMock()

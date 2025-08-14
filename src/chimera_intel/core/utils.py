@@ -1,4 +1,5 @@
 import json
+import re
 from rich.console import Console
 from rich.json import JSON
 
@@ -35,3 +36,11 @@ def save_or_print_results(data: dict, output_file: str | None):
         # If no output file is specified, print the formatted JSON to the console.
         # The rich.json.JSON object handles syntax highlighting automatically.
         console.print(JSON(json_str))
+
+def is_valid_domain(domain: str) -> bool:
+    """Validates if the given string is a plausible domain name."""
+    # This regex is a common pattern for domain validation. It checks for a basic structure
+    # of characters, hyphens, and dots, ending with a TLD of 2-6 letters.
+    if domain and re.match(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$", domain):
+        return True
+    return False

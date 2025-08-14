@@ -44,6 +44,11 @@ dependencies = [
     "pyvis==0.3.2",
     "PyYAML==6.0.1",
     "feedparser==6.0.10",
+    "fastapi==0.103.1",   
+    "uvicorn[standard]==0.23.2", 
+    "jinja2==3.1.2",
+    "pydantic==2.4.2",
+    "pydantic-settings==2.0.3"
 ]
 
 # This is the most critical part for making your CLI work after installation.
