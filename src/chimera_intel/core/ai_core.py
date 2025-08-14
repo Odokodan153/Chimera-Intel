@@ -3,8 +3,13 @@ import json
 import google.generativeai as genai
 from rich.panel import Panel
 from rich.markdown import Markdown
+from typing import List
+
+# --- CORRECTED Absolute Imports ---
 from .utils import console, save_or_print_results
-from .config_loader import API_KEYS # Import the centralized keys
+from .config_loader import API_KEYS
+# --- CHANGE: Import the Pydantic models for AI Core results ---
+from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
 
 # --- AI Model Initializations ---
 try:
@@ -19,34 +24,37 @@ try:
 except ImportError:
     IsolationForest = None
 
-def analyze_sentiment(text: str) -> dict:
-    """Analyzes the sentiment of a given text using a local transformer model.
+def analyze_sentiment(text: str) -> SentimentAnalysisResult:
+    """
+    Analyzes the sentiment of a given text using a local transformer model.
 
     Args:
         text (str): The text to analyze.
 
     Returns:
-        dict: A dictionary containing the sentiment label and score, or an error.
+        SentimentAnalysisResult: A Pydantic model containing the sentiment label, score, or an error.
     """
     if not sentiment_analyzer:
-        return {"error": "'transformers' or 'torch' not installed. Please run 'pip install transformers torch'."}
+        return SentimentAnalysisResult(label="ERROR", score=0.0, error="'transformers' or 'torch' not installed.")
     try:
-        return sentiment_analyzer(text)[0]
+        result = sentiment_analyzer(text)[0]
+        return SentimentAnalysisResult(label=result['label'], score=result['score'])
     except Exception as e:
-        return {"error": f"Sentiment analysis error: {e}"}
+        return SentimentAnalysisResult(label="ERROR", score=0.0, error=f"Sentiment analysis error: {e}")
 
-def generate_swot_from_data(json_data_str: str, api_key: str) -> str:
-    """Uses a Generative AI model (Gemini Pro) to create a SWOT analysis.
+def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisResult:
+    """
+    Uses a Generative AI model (Gemini Pro) to create a SWOT analysis from OSINT data.
 
     Args:
         json_data_str (str): A string containing the JSON OSINT data.
         api_key (str): The Google AI API key.
 
     Returns:
-        str: A markdown-formatted SWOT analysis, or an error message.
+        SWOTAnalysisResult: A Pydantic model containing the markdown-formatted SWOT analysis, or an error.
     """
     if not api_key:
-        return "Error: GOOGLE_API_KEY not found. Check your .env file."
+        return SWOTAnalysisResult(analysis_text="", error="GOOGLE_API_KEY not found in .env file.")
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-pro')
     prompt = f"""Based on the following OSINT data, perform a SWOT analysis. 
@@ -54,33 +62,35 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> str:
     OSINT Data: {json_data_str}"""
     try:
         response = model.generate_content(prompt)
-        return response.text
+        return SWOTAnalysisResult(analysis_text=response.text)
     except Exception as e:
-        return f"Google AI API error: {e}"
+        return SWOTAnalysisResult(analysis_text="", error=f"Google AI API error: {e}")
 
-def detect_traffic_anomalies(traffic_data: list) -> dict:
-    """Uses Isolation Forest to detect anomalies in a time series of website traffic.
+def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResult:
+    """
+    Uses Isolation Forest to detect anomalies in a time series of numerical data.
 
     Args:
-        traffic_data (list): A list of numbers (e.g., monthly visits).
+        traffic_data (List[float]): A list of numbers (e.g., monthly website visits).
 
     Returns:
-        dict: A dictionary containing the original data and detected anomalies, or an error.
+        AnomalyDetectionResult: A Pydantic model containing the original data, detected anomalies, or an error.
     """
-    if not IsolationForest:
-        return {"error": "'scikit-learn' or 'numpy' not installed. Please run 'pip install scikit-learn numpy'."}
+    if not IsolationForest or not np:
+        return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=[], error="'scikit-learn' or 'numpy' not installed.")
     if not all(isinstance(x, (int, float)) for x in traffic_data):
-        return {"error": "Invalid input. Please provide a list of numbers."}
+        return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=[], error="Invalid input. Please provide a list of numbers.")
     try:
         data_array = np.array(traffic_data).reshape(-1, 1)
         clf = IsolationForest(contamination='auto', random_state=42)
         predictions = clf.fit_predict(data_array)
         anomalies = [traffic_data[i] for i, pred in enumerate(predictions) if pred == -1]
-        return {"data_points": traffic_data, "detected_anomalies": anomalies}
+        return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=anomalies)
     except Exception as e:
-        return {"error": f"Anomaly detection error: {e}"}
+        return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=[], error=f"Anomaly detection error: {e}")
 
 
+# --- Typer CLI Application ---
 ai_app = typer.Typer()
 
 @ai_app.command("sentiment")
@@ -88,18 +98,21 @@ def run_sentiment_analysis(text: str):
     """Analyzes the sentiment of a piece of text."""
     console.print(Panel(f"[bold magenta]Analyzing Sentiment For:[/] '{text[:100]}...'", title="AI Core | Sentiment"))
     result = analyze_sentiment(text)
-    save_or_print_results(result, None)
+    save_or_print_results(result.model_dump(), None)
 
 @ai_app.command("swot")
 def run_swot_analysis(input_file: str):
     """Generates a SWOT analysis from a JSON data file."""
     console.print(Panel(f"[bold magenta]Generating SWOT Analysis from:[/] {input_file}", title="AI Core | SWOT"))
-    # IMPROVEMENT: Get key from the centralized API_KEYS dictionary
-    api_key = API_KEYS.get("google_ai")
+    api_key = API_KEYS.google_api_key
     try:
-        with open(input_file, 'r') as f: data_str = f.read()
-        swot_markdown = generate_swot_from_data(data_str, api_key)
-        console.print(Markdown(swot_markdown))
+        with open(input_file, 'r') as f:
+            data_str = f.read()
+        swot_result = generate_swot_from_data(data_str, api_key)
+        if swot_result.error:
+            console.print(f"[bold red]Error:[/] {swot_result.error}")
+        else:
+            console.print(Markdown(swot_result.analysis_text))
     except FileNotFoundError:
         console.print(f"[bold red]Error: Input file not found at {input_file}[/bold red]")
     except Exception as e:
@@ -111,11 +124,10 @@ def run_anomaly_detection(data_points: str):
     """Detects anomalies in a numerical dataset (e.g., '100,110,250,90')."""
     console.print(Panel("[bold magenta]Detecting Anomalies in Dataset[/bold magenta]", title="AI Core | Anomaly"))
     try:
-        # Remove any potential whitespace and filter out empty strings
-        numeric_data = [int(p.strip()) for p in data_points.split(',') if p.strip()]
+        numeric_data = [float(p.strip()) for p in data_points.split(',') if p.strip()]
         if not numeric_data:
             raise ValueError("No valid numbers provided.")
         result = detect_traffic_anomalies(numeric_data)
-        save_or_print_results(result, None)
+        save_or_print_results(result.model_dump(), None)
     except ValueError:
         console.print("[bold red]Error: Please provide a valid comma-separated list of numbers.[/bold red]")

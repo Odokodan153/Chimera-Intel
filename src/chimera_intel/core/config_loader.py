@@ -5,17 +5,21 @@ from pydantic import Field
 from typing import Optional
 from rich.console import Console
 
-# This module is now self-contained and handles loading all configurations.
+# This module handles loading all configurations from both the .env file (for secrets)
+# and the config.yaml file (for application settings).
 
-# Initialize a console for any potential warnings or errors
 console = Console()
 
 # --- Pydantic Model for API Keys ---
-# This class uses pydantic-settings to automatically read variables from your .env file.
-# It provides type hints and default values, ensuring your keys are loaded correctly.
 class ApiKeys(BaseSettings):
     """
-    Loads all required API keys from environment variables (.env file).
+    Loads all required API keys from environment variables found in a .env file.
+
+    This class uses pydantic-settings to automatically read, validate, and type-cast
+    environment variables. It provides a single, reliable object for accessing secrets
+    throughout the application. The `alias` in the `Field` function maps the
+    environment variable name (e.g., VIRUSTOTAL_API_KEY) to the class attribute
+    (e.g., virustotal_api_key).
     """
     # Offensive Intelligence Keys
     virustotal_api_key: Optional[str] = Field(None, alias="VIRUSTOTAL_API_KEY")
@@ -35,14 +39,17 @@ class ApiKeys(BaseSettings):
     google_api_key: Optional[str] = Field(None, alias="GOOGLE_API_KEY")
     
     class Config:
-        # Tell pydantic-settings to look for a .env file
+        """Pydantic-settings configuration."""
+        # Tell pydantic-settings to look for a .env file in the root directory.
         env_file = ".env"
         env_file_encoding = "utf-8"
 
 def load_config_from_yaml() -> dict:
     """
-    Loads the application configuration from config.yaml.
-    This function will be updated later to use Pydantic models as well.
+    Loads the application configuration from the 'config.yaml' file.
+
+    If the file is not found, it returns a default configuration structure to allow
+    the application to run with baseline settings.
 
     Returns:
         dict: A dictionary containing the application's configuration.
@@ -50,7 +57,7 @@ def load_config_from_yaml() -> dict:
     try:
         with open("config.yaml", 'r') as f:
             config = yaml.safe_load(f)
-        return config
+        return config if isinstance(config, dict) else {}
     except FileNotFoundError:
         console.print("[bold yellow]Warning:[/] config.yaml not found. Using default settings.")
         # Return a default structure if the file is missing
@@ -63,7 +70,7 @@ def load_config_from_yaml() -> dict:
         return {}
 
 # --- Single Source of Truth ---
-# Load the configurations once when the module is first imported.
+# The configurations are loaded once when this module is first imported.
 # Any other module can now simply `from .config_loader import CONFIG, API_KEYS`
 # to get access to all validated configurations and secrets.
 CONFIG = load_config_from_yaml()

@@ -4,11 +4,15 @@ import json
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from .database import DB_FILE
+from typing import List, Dict, Any
 
-console = Console()
+# --- CORRECTED Absolute Imports ---
+from .database import DB_FILE, console
+# --- CHANGE: Import the new Pydantic models ---
+from .schemas import Prediction, ForecastResult
 
-def get_all_scans_for_target(target: str, module: str) -> list[dict]:
+
+def get_all_scans_for_target(target: str, module: str) -> List[Dict[str, Any]]:
     """
     Retrieves all historical scans for a specific target and module.
 
@@ -17,7 +21,7 @@ def get_all_scans_for_target(target: str, module: str) -> list[dict]:
         module (str): The name of the module to retrieve scans for (e.g., 'business_intel').
 
     Returns:
-        list[dict]: A list of all historical scan data as dictionaries.
+        List[Dict[str, Any]]: A list of all historical scan data as dictionaries, ordered by date.
     """
     try:
         conn = sqlite3.connect(DB_FILE)
@@ -34,60 +38,59 @@ def get_all_scans_for_target(target: str, module: str) -> list[dict]:
         console.print(f"[bold red]Database Error:[/bold red] Could not fetch all historical scans: {e}")
         return []
 
-def run_prediction_rules(historical_data: list, module: str) -> list[str]:
+def run_prediction_rules(historical_data: List[Dict[str, Any]], module: str) -> ForecastResult:
     """
     Applies a set of simple, rule-based heuristics to historical data to find signals.
+
+    This function compares the last two scans to identify significant changes that could
+    be predictive of future events.
 
     Args:
         historical_data (list[dict]): A list of scan results, ordered from oldest to newest.
         module (str): The name of the module being analyzed.
 
     Returns:
-        list[str]: A list of strings, where each string is a potential insight or prediction.
+        ForecastResult: A Pydantic model containing a list of predictions or notes.
     """
-    predictions = []
+    predictions: List[Prediction] = []
     
     if len(historical_data) < 2:
-        return ["Not enough historical data to make predictions. Need at least 2 scans."]
+        return ForecastResult(predictions=[], notes="Not enough historical data to make predictions. Need at least 2 scans.")
 
+    latest_scan = historical_data[-1]
+    previous_scan = historical_data[-2]
+    
     # --- Rule Set for the 'business_intel' module ---
     if module == "business_intel":
-        latest_scan = historical_data[-1]
-        previous_scan = historical_data[-2]
-        
-        # Rule 1: Check for a surge in news articles
-        latest_news_count = latest_scan.get("news", {}).get("totalArticles", 0)
-        previous_news_count = previous_scan.get("news", {}).get("totalArticles", 0)
+        latest_news_count = latest_scan.get("business_intel", {}).get("news", {}).get("totalArticles", 0)
+        previous_news_count = previous_scan.get("business_intel", {}).get("news", {}).get("totalArticles", 0)
         if latest_news_count > previous_news_count * 2 and latest_news_count > 5:
-            predictions.append("[bold yellow]High News Volume:[/bold yellow] A significant increase in news coverage detected. This may indicate a major event (product launch, PR crisis, M&A activity).")
+            predictions.append(Prediction(signal="[bold yellow]High News Volume[/bold yellow]", details="A significant increase in news coverage detected. This may indicate a major event (product launch, PR crisis, M&A activity)."))
 
-        # Rule 2: Check for new patents (simple check if new patents exist in latest scan)
-        latest_patents = {p['title'] for p in latest_scan.get("patents", {}).get("patents", [])}
-        previous_patents = {p['title'] for p in previous_scan.get("patents", {}).get("patents", [])}
+        latest_patents = {p['title'] for p in latest_scan.get("business_intel", {}).get("patents", {}).get("patents", [])}
+        previous_patents = {p['title'] for p in previous_scan.get("business_intel", {}).get("patents", {}).get("patents", [])}
         new_patents = latest_patents - previous_patents
         if new_patents:
-            predictions.append(f"[bold green]Innovation Signal:[/bold green] {len(new_patents)} new patent(s) detected, suggesting R&D activity. Example: '{list(new_patents)[0]}'")
+            predictions.append(Prediction(signal="[bold green]Innovation Signal[/bold green]", details=f"{len(new_patents)} new patent(s) detected, suggesting R&D activity. Example: '{list(new_patents)[0]}'"))
 
     # --- Rule Set for the 'web_analyzer' module ---
     if module == "web_analyzer":
         latest_tech = {t['technology'] for t in latest_scan.get("web_analysis", {}).get("tech_stack", {}).get("results", [])}
         previous_tech = {t['technology'] for t in previous_scan.get("web_analysis", {}).get("tech_stack", {}).get("results", [])}
         
-        # Rule 3: Check for newly added marketing technology
         added_tech = latest_tech - previous_tech
         marketing_tech_keywords = ["HubSpot", "Marketo", "Salesforce", "Analytics", "CRM"]
         new_marketing_tech = [t for t in added_tech if any(keyword in t for keyword in marketing_tech_keywords)]
         if new_marketing_tech:
-            predictions.append(f"[bold green]Marketing Expansion Signal:[/bold green] New marketing-related technology detected ({', '.join(new_marketing_tech)}). This could indicate a new marketing campaign or strategy.")
+            predictions.append(Prediction(signal="[bold green]Marketing Expansion Signal[/bold green]", details=f"New marketing-related technology detected ({', '.join(new_marketing_tech)}). This could indicate a new marketing campaign or strategy."))
 
     if not predictions:
-        predictions.append("No strong predictive signals detected based on the current rule set.")
+        return ForecastResult(predictions=[], notes="No strong predictive signals detected based on the current rule set.")
         
-    return predictions
+    return ForecastResult(predictions=predictions)
 
 
 # --- Typer CLI Application ---
-
 forecast_app = typer.Typer()
 
 @forecast_app.command("run")
@@ -100,17 +103,17 @@ def run_forecast_analysis(
     """
     console.print(Panel(f"[bold green]Forecasting Potential Events For:[/] {target} (Module: {module})", title="Chimera Intel | Predictive Analysis", border_style="green"))
 
-    # Step 1: Get all historical data for the target
     history = get_all_scans_for_target(target, module)
-
-    # Step 2: Run the data through our prediction rules
-    predictions = run_prediction_rules(history, module)
+    forecast_result = run_prediction_rules(history, module)
     
-    # Step 3: Display the results in a clean table
     table = Table(title="Predictive Signals Detected")
-    table.add_column("Insight / Forecast", style="cyan", no_wrap=False)
+    table.add_column("Signal Type", style="cyan", no_wrap=False)
+    table.add_column("Details / Forecast", style="white", no_wrap=False)
     
-    for pred in predictions:
-        table.add_row(pred)
+    if forecast_result.predictions:
+        for pred in forecast_result.predictions:
+            table.add_row(pred.signal, pred.details)
+    elif forecast_result.notes:
+        table.add_row("Info", forecast_result.notes)
         
     console.print(table)

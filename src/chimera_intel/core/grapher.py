@@ -4,21 +4,26 @@ from rich.console import Console
 from rich.panel import Panel
 from pyvis.network import Network
 import os
-# This import allows us to use the settings from config.yaml
-from .config_loader import CONFIG
+from typing import Dict, Any
 
-console = Console()
+# --- CORRECTED Absolute Imports ---
+from .config_loader import CONFIG, console
 
-def generate_knowledge_graph(json_data: dict, output_path: str):
+def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> None:
     """
     Generates an interactive HTML knowledge graph from a JSON scan result.
 
+    This function uses the pyvis library to build a network graph. It parses the
+    input JSON data, creating nodes for the main target, subdomains, IP addresses,
+    and technologies, and then connects them with edges. The final graph is
+    saved as a self-contained HTML file.
+
     Args:
-        json_data (dict): The loaded JSON data from a scan.
+        json_data (Dict[str, Any]): The loaded JSON data from a scan.
         output_path (str): The path to save the generated HTML file.
     """
     try:
-        # Initialize the Pyvis network graph
+        # Initialize the Pyvis network graph with a dark theme and physics settings
         net = Network(height="900px", width="100%", bgcolor="#222222", font_color="white", notebook=False, directed=True)
 
         # --- Central Node (The Target) ---
@@ -26,34 +31,29 @@ def generate_knowledge_graph(json_data: dict, output_path: str):
         net.add_node(target, label=target, color="#ff4757", size=30, shape="dot", title="Main Target")
 
         # --- Footprint Module Data ---
-        if 'footprint' in json_data:
-            footprint_data = json_data['footprint']
-            # Add subdomains as nodes
-            if 'subdomains' in footprint_data and 'results' in footprint_data['subdomains']:
-                for sub_item in footprint_data['subdomains']['results']:
-                    subdomain = sub_item.get('domain')
-                    if subdomain:
-                        net.add_node(subdomain, label=subdomain, color="#1e90ff", size=15, shape="dot", title="Subdomain")
-                        net.add_edge(target, subdomain)
-            # Add IP addresses from DNS A records
-            if 'dns_records' in footprint_data and 'A' in footprint_data['dns_records']:
-                for ip in footprint_data['dns_records'].get('A', []):
-                    if "Error" not in str(ip):
-                        net.add_node(ip, label=ip, color="#feca57", size=20, shape="triangle", title="IP Address")
-                        net.add_edge(target, ip)
+        footprint_data = json_data.get('footprint', {})
+        # Add subdomains as nodes
+        for sub_item in footprint_data.get('subdomains', {}).get('results', []):
+            subdomain = sub_item.get('domain')
+            if subdomain:
+                net.add_node(subdomain, label=subdomain, color="#1e90ff", size=15, shape="dot", title="Subdomain")
+                net.add_edge(target, subdomain)
+        # Add IP addresses from DNS A records
+        for ip in footprint_data.get('dns_records', {}).get('A', []):
+            if "Error" not in str(ip):
+                net.add_node(ip, label=ip, color="#feca57", size=20, shape="triangle", title="IP Address")
+                net.add_edge(target, ip)
 
         # --- Web Analyzer Module Data ---
-        if 'web_analysis' in json_data:
-            web_data = json_data['web_analysis']
-            # Add technologies as nodes
-            if 'tech_stack' in web_data and 'results' in web_data['tech_stack']:
-                for tech_item in web_data['tech_stack']['results']:
-                    tech = tech_item.get('technology')
-                    if tech:
-                        net.add_node(tech, label=tech, color="#576574", size=12, shape="square", title="Technology")
-                        net.add_edge(target, tech)
+        web_data = json_data.get('web_analysis', {})
+        # Add technologies as nodes
+        for tech_item in web_data.get('tech_stack', {}).get('results', []):
+            tech = tech_item.get('technology')
+            if tech:
+                net.add_node(tech, label=tech, color="#576574", size=12, shape="square", title="Technology")
+                net.add_edge(target, tech)
         
-        # CORRECT CHANGE: Load the physics options from the config file
+        # Load the physics options from the config file
         physics_options = CONFIG.get("reporting", {}).get("graph", {}).get("physics_options", "")
         net.set_options(physics_options)
 
@@ -67,7 +67,6 @@ def generate_knowledge_graph(json_data: dict, output_path: str):
 
 
 # --- Typer CLI Application ---
-
 graph_app = typer.Typer()
 
 @graph_app.command("create")
@@ -82,7 +81,7 @@ def create_knowledge_graph(
 
     # Load the JSON data
     try:
-        with open(json_file, 'r') as f:
+        with open(json_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except Exception as e:
         console.print(f"[bold red]Error reading file:[/] {e}")

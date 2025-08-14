@@ -13,10 +13,15 @@ from chimera_intel.core.utils import console, save_or_print_results, is_valid_do
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
+# Import Pydantic models for type-safe results
+from chimera_intel.core.schemas import (
+    HIBPResult, GitHubLeaksResult, TyposquatResult
+)
+
 
 # --- Data Gathering Functions for Defensive Intelligence ---
 
-def check_hibp_breaches(domain: str, api_key: str) -> Dict[str, Any]:
+def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
     """
     Checks a domain against the Have I Been Pwned (HIBP) database for data breaches.
 
@@ -25,22 +30,22 @@ def check_hibp_breaches(domain: str, api_key: str) -> Dict[str, Any]:
         api_key (str): The HIBP API key.
 
     Returns:
-        Dict[str, Any]: A dictionary containing a list of breaches, or an error message.
+        HIBPResult: A Pydantic model containing a list of breaches, or an error message.
     """
     if not api_key:
-        return {"error": "HIBP API key not found. Check your .env file."}
+        return HIBPResult(error="HIBP API key not found. Check your .env file.")
     url = f"https://haveibeenpwned.com/api/v3/breacheddomain/{domain}"
     headers = {"hibp-api-key": api_key, "user-agent": "Chimera-Intel-Tool"}
     try:
         response = sync_client.get(url, headers=headers)
         if response.status_code == 404:
-            return {"breaches": [], "message": "No breaches found for this domain."}
+            return HIBPResult(breaches=[], message="No breaches found for this domain.")
         response.raise_for_status()
-        return {"breaches": response.json()}
+        return HIBPResult(breaches=response.json())
     except Exception as e:
-        return {"error": f"An error occurred with HIBP API: {e}"}
+        return HIBPResult(error=f"An error occurred with HIBP API: {e}")
 
-def search_github_leaks(query: str, api_key: str) -> Dict[str, Any]:
+def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
     """
     Searches GitHub for potential secret leaks related to a query.
 
@@ -49,22 +54,24 @@ def search_github_leaks(query: str, api_key: str) -> Dict[str, Any]:
         api_key (str): The GitHub Personal Access Token (PAT).
 
     Returns:
-        Dict[str, Any]: A dictionary containing the search results, or an error message.
+        GitHubLeaksResult: A Pydantic model containing the search results, or an error.
     """
     if not api_key:
-        return {"error": "GitHub Personal Access Token not found. Check your .env file."}
+        return GitHubLeaksResult(error="GitHub Personal Access Token not found. Check your .env file.")
     url = f"https://api.github.com/search/code?q={query}"
     headers = {"Authorization": f"token {api_key}"}
     try:
         response = sync_client.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
-        items = [{"url": item.get("html_url"), "repository": item.get("repository", {}).get("full_name")} for item in data.get("items", [])]
-        return {"total_count": data.get("total_count"), "items": items}
+        return GitHubLeaksResult(
+            total_count=data.get("total_count"),
+            items=data.get("items", [])
+        )
     except Exception as e:
-        return {"error": f"An error occurred with GitHub search: {e}"}
+        return GitHubLeaksResult(error=f"An error occurred with GitHub search: {e}")
 
-def find_typosquatting_dnstwist(domain: str) -> Dict[str, Any]:
+def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
     """
     Securely uses the dnstwist command-line tool to find potential typosquatting domains.
 
@@ -72,7 +79,7 @@ def find_typosquatting_dnstwist(domain: str) -> Dict[str, Any]:
         domain (str): The domain to check for typosquatting variations.
 
     Returns:
-        Dict[str, Any]: A dictionary of the dnstwist JSON output, or an error message.
+        TyposquatResult: A Pydantic model of the dnstwist JSON output, or an error.
     """
     try:
         command = ["dnstwist", "--json", domain]
@@ -80,13 +87,11 @@ def find_typosquatting_dnstwist(domain: str) -> Dict[str, Any]:
             command,
             capture_output=True, text=True, check=True, timeout=120
         )
-        return json.loads(process.stdout)
+        return TyposquatResult(results=json.loads(process.stdout))
     except FileNotFoundError:
-        return {"error": "dnstwist command not found. Please ensure it is installed and in your system's PATH."}
-    except subprocess.CalledProcessError as e:
-        return {"error": f"dnstwist returned an error: {e.stderr}"}
+        return TyposquatResult(error="dnstwist command not found. Please ensure it is installed.")
     except Exception as e:
-        return {"error": f"An unexpected error occurred while running dnstwist: {e}"}
+        return TyposquatResult(error=f"An unexpected error occurred: {e}")
 
 def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
     """
@@ -137,6 +142,8 @@ def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
 def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
     """
     Performs an in-depth SSL/TLS analysis using the SSL Labs API.
+
+    This function initiates a scan and then polls the API until the report is ready.
 
     Args:
         host (str): The hostname to scan (e.g., 'google.com').
@@ -236,8 +243,8 @@ def run_breach_check(
     console.print(Panel(f"[bold red]Checking for Breaches at {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
     api_key = API_KEYS.hibp_api_key
     results = check_hibp_breaches(domain, api_key)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=domain, module="defensive_breaches", data=results)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(target=domain, module="defensive_breaches", data=results.model_dump())
 
 @defensive_app.command("leaks")
 def run_leaks_check(
@@ -248,8 +255,8 @@ def run_leaks_check(
     console.print(Panel(f"[bold red]Searching GitHub for leaks: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
     api_key = API_KEYS.github_pat
     results = search_github_leaks(query, api_key)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=query, module="defensive_leaks", data=results)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(target=query, module="defensive_leaks", data=results.model_dump())
 
 @defensive_app.command("typosquat")
 def run_typosquat_check(
@@ -263,8 +270,8 @@ def run_typosquat_check(
 
     console.print(Panel(f"[bold red]Checking for Typosquatting Domains for {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
     results = find_typosquatting_dnstwist(domain)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=domain, module="defensive_typosquat", data=results)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(target=domain, module="defensive_typosquat", data=results.model_dump())
 
 @defensive_app.command("surface")
 def run_surface_check(
