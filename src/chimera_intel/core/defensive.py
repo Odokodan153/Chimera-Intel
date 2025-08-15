@@ -134,9 +134,9 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
         logger.error("An error occurred with Shodan for query '%s': %s", query, e)
         return {"error": f"An error occurred with Shodan: {e}"}
 
-def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
+def search_pastes_api(query: str) -> Dict[str, Any]:
     """
-    Securely searches Pastebin dumps for a specific query using the psbdmp tool.
+    Searches for pastes containing a specific query using the paste.ee API.
 
     Args:
         query (str): The keyword or domain to search for.
@@ -144,27 +144,25 @@ def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary of found pastes, or an error message.
     """
-    # --- SECURITY FIX: Prevent argument injection ---
-    if query.strip().startswith("-"):
-        logger.warning("Potential argument injection attempt blocked. Query: '%s'", query)
-        return {"error": "Invalid query format: Input cannot start with a dash (-)."}
-
+    url = "https://api.paste.ee/v1/pastes"
+    params = {"query": query, "per_page": 20}
+    
     try:
-        command = ["psbdmp", "-q", query, "-j"]
-        process = subprocess.run(
-            command,
-            capture_output=True, text=True, check=True, timeout=60
-        )
-        pastes = [json.loads(line) for line in process.stdout.strip().split('\n') if line]
+        response = sync_client.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        pastes = [
+            {"id": p.get("id"), "link": p.get("link"), "description": p.get("description")}
+            for p in data.get("pastes", [])
+        ]
         return {"pastes": pastes, "count": len(pastes)}
-    except FileNotFoundError:
-        logger.error("The 'psbdmp' command was not found. It may not be installed.")
-        return {"error": "psbdmp command not found. Please ensure it is installed (`pip install psbdmp`)."}
-    except subprocess.CalledProcessError:
-        return {"pastes": [], "message": "No results found."}
-    except Exception as e:
-        logger.critical("An unexpected error occurred while running psbdmp: %s", e)
-        return {"error": f"An unexpected error occurred while running psbdmp: {e}"}
+    except HTTPStatusError as e:
+        logger.error("HTTP error searching pastes for query '%s': %s", query, e)
+        return {"error": f"HTTP error occurred: {e.response.status_code}"}
+    except RequestError as e:
+        logger.error("Network error searching pastes for query '%s': %s", query, e)
+        return {"error": f"A network error occurred: {e}"}
 
 def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
     """
@@ -302,9 +300,9 @@ def run_surface_check(query: str, output_file: str = None):
 
 @defensive_app.command("pastebin")
 def run_pastebin_check(query: str, output_file: str = None):
-    """Searches Pastebin dumps using psbdmp."""
-    logger.info("Starting Pastebin dump search for query: '%s'", query)
-    results = search_pastebin_psbdmp(query)
+    """Searches public pastes for a query using the paste.ee API."""
+    logger.info("Starting public paste search for query: '%s'", query)
+    results = search_pastes_api(query)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=query, module="defensive_pastebin", data=results)
 
@@ -324,7 +322,7 @@ def run_ssllabs_check(domain: str, output_file: str = None):
 @defensive_app.command("mobsf")
 def run_mobsf_scan(
     apk_file: str = typer.Option(..., "--apk-file", help="Path to the .apk file to be analyzed."),
-    mobsf_url: str = typer.Option("http://127.0.0.1:8000", help="URL of your running MobSF instance."),
+    mobsf_url: str = typer.Option("http://122.0.0.1:8000", help="URL of your running MobSF instance."),
     output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
 ):
     """Analyzes an Android .apk file using a local MobSF instance."""
