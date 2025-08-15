@@ -58,7 +58,7 @@ jobs:
     - name: Type check with Mypy
       run: mypy src/
 
-    # 7. Run tests with Pytest
-    # This command discovers and runs all your unit tests.
-    - name: Run tests with Pytest
-      run: pytest
+    # 7. Run tests with Pytest and check coverage
+    # This command now also measures code coverage and fails if it's below 85%.
+    - name: Run tests and check coverage
+      run: pytest --cov=src/chimera_intel --cov-report=term-missing --cov-fail-under=85

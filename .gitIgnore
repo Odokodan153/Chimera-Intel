@@ -31,3 +31,19 @@ chimera_intel.db
 # Test reports
 .coverage
 htmlcov/
+*.pyc
+*.pyo
+*.pyd
+.Python
+develop-eggs/
+downloads/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
