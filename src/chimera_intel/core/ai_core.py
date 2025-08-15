@@ -4,25 +4,31 @@ import google.generativeai as genai
 from rich.panel import Panel
 from rich.markdown import Markdown
 from typing import List
+import logging
 
 # --- CORRECTED Absolute Imports ---
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-# --- CHANGE: Import the Pydantic models for AI Core results ---
 from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 try:
     from transformers import pipeline
     sentiment_analyzer = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
-except ImportError:
+except (ImportError, OSError):
     sentiment_analyzer = None
+    logger.warning("Could not import 'transformers' or load model. Sentiment analysis will be unavailable.")
 
 try:
     import numpy as np
     from sklearn.ensemble import IsolationForest
 except ImportError:
     IsolationForest = None
+    np = None
+    logger.warning("Could not import 'scikit-learn' or 'numpy'. Anomaly detection will be unavailable.")
 
 def analyze_sentiment(text: str) -> SentimentAnalysisResult:
     """
@@ -40,6 +46,7 @@ def analyze_sentiment(text: str) -> SentimentAnalysisResult:
         result = sentiment_analyzer(text)[0]
         return SentimentAnalysisResult(label=result['label'], score=result['score'])
     except Exception as e:
+        logger.error("Sentiment analysis failed for text '%s...': %s", text[:50], e)
         return SentimentAnalysisResult(label="ERROR", score=0.0, error=f"Sentiment analysis error: {e}")
 
 def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisResult:
@@ -64,6 +71,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
         response = model.generate_content(prompt)
         return SWOTAnalysisResult(analysis_text=response.text)
     except Exception as e:
+        logger.error("Google AI API error during SWOT generation: %s", e)
         return SWOTAnalysisResult(analysis_text="", error=f"Google AI API error: {e}")
 
 def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResult:
@@ -87,6 +95,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
         anomalies = [traffic_data[i] for i, pred in enumerate(predictions) if pred == -1]
         return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=anomalies)
     except Exception as e:
+        logger.error("Anomaly detection failed: %s", e)
         return AnomalyDetectionResult(data_points=traffic_data, detected_anomalies=[], error=f"Anomaly detection error: {e}")
 
 
@@ -96,38 +105,38 @@ ai_app = typer.Typer()
 @ai_app.command("sentiment")
 def run_sentiment_analysis(text: str):
     """Analyzes the sentiment of a piece of text."""
-    console.print(Panel(f"[bold magenta]Analyzing Sentiment For:[/] '{text[:100]}...'", title="AI Core | Sentiment"))
+    logger.info("Running sentiment analysis.")
     result = analyze_sentiment(text)
     save_or_print_results(result.model_dump(), None)
 
 @ai_app.command("swot")
 def run_swot_analysis(input_file: str):
     """Generates a SWOT analysis from a JSON data file."""
-    console.print(Panel(f"[bold magenta]Generating SWOT Analysis from:[/] {input_file}", title="AI Core | SWOT"))
+    logger.info("Generating SWOT analysis from file: %s", input_file)
     api_key = API_KEYS.google_api_key
     try:
         with open(input_file, 'r') as f:
             data_str = f.read()
         swot_result = generate_swot_from_data(data_str, api_key)
         if swot_result.error:
-            console.print(f"[bold red]Error:[/] {swot_result.error}")
+            logger.error("SWOT analysis failed: %s", swot_result.error)
         else:
             console.print(Markdown(swot_result.analysis_text))
     except FileNotFoundError:
-        console.print(f"[bold red]Error: Input file not found at {input_file}[/bold red]")
+        logger.error("Input file not found for SWOT analysis: %s", input_file)
     except Exception as e:
-        console.print(f"[bold red]Error reading or processing file: {e}[/bold red]")
+        logger.error("Error reading or processing file for SWOT analysis: %s", e)
 
 
 @ai_app.command("anomaly")
 def run_anomaly_detection(data_points: str):
     """Detects anomalies in a numerical dataset (e.g., '100,110,250,90')."""
-    console.print(Panel("[bold magenta]Detecting Anomalies in Dataset[/bold magenta]", title="AI Core | Anomaly"))
+    logger.info("Running anomaly detection.")
     try:
         numeric_data = [float(p.strip()) for p in data_points.split(',') if p.strip()]
         if not numeric_data:
             raise ValueError("No valid numbers provided.")
         result = detect_traffic_anomalies(numeric_data)
         save_or_print_results(result.model_dump(), None)
-    except ValueError:
-        console.print("[bold red]Error: Please provide a valid comma-separated list of numbers.[/bold red]")
+    except ValueError as e:
+        logger.error("Invalid data points for anomaly detection: %s. Error: %s", data_points, e)

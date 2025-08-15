@@ -7,6 +7,8 @@ import time
 from rich.panel import Panel
 from rich.progress import Progress
 from typing import Dict, Any
+import logging
+from httpx import RequestError, HTTPStatusError
 
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -17,6 +19,9 @@ from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import (
     HIBPResult, GitHubLeaksResult, TyposquatResult
 )
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 
 # --- Data Gathering Functions for Defensive Intelligence ---
@@ -42,8 +47,13 @@ def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
             return HIBPResult(breaches=[], message="No breaches found for this domain.")
         response.raise_for_status()
         return HIBPResult(breaches=response.json())
-    except Exception as e:
-        return HIBPResult(error=f"An error occurred with HIBP API: {e}")
+    except HTTPStatusError as e:
+        logger.error("HTTP error checking HIBP for '%s': %s", domain, e)
+        return HIBPResult(error=f"HTTP error occurred: {e.response.status_code}")
+    except RequestError as e:
+        logger.error("Network error checking HIBP for '%s': %s", domain, e)
+        return HIBPResult(error=f"A network error occurred: {e}")
+
 
 def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
     """
@@ -57,7 +67,7 @@ def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
         GitHubLeaksResult: A Pydantic model containing the search results, or an error.
     """
     if not api_key:
-        return GitHubLeaksResult(error="GitHub Personal Access Token not found. Check your .env file.")
+        return GitHubLeaksResult(error="GitHub Personal Access Token not found.")
     url = f"https://api.github.com/search/code?q={query}"
     headers = {"Authorization": f"token {api_key}"}
     try:
@@ -68,8 +78,12 @@ def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
             total_count=data.get("total_count"),
             items=data.get("items", [])
         )
-    except Exception as e:
-        return GitHubLeaksResult(error=f"An error occurred with GitHub search: {e}")
+    except HTTPStatusError as e:
+        logger.error("HTTP error searching GitHub for query '%s': %s", query, e)
+        return GitHubLeaksResult(error=f"HTTP error occurred: {e.response.status_code}")
+    except RequestError as e:
+        logger.error("Network error searching GitHub for query '%s': %s", query, e)
+        return GitHubLeaksResult(error=f"A network error occurred: {e}")
 
 def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
     """
@@ -89,8 +103,13 @@ def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
         )
         return TyposquatResult(results=json.loads(process.stdout))
     except FileNotFoundError:
+        logger.error("The 'dnstwist' command was not found. It may not be installed.")
         return TyposquatResult(error="dnstwist command not found. Please ensure it is installed.")
+    except subprocess.CalledProcessError as e:
+        logger.error("dnstwist returned an error for domain '%s': %s", domain, e.stderr)
+        return TyposquatResult(error=f"dnstwist returned an error: {e.stderr}")
     except Exception as e:
+        logger.critical("An unexpected error occurred while running dnstwist: %s", e)
         return TyposquatResult(error=f"An unexpected error occurred: {e}")
 
 def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
@@ -112,6 +131,7 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
         hosts = [{"ip": s.get('ip_str'), "port": s.get('port'), "org": s.get('org'), "hostnames": s.get('hostnames'), "data": s.get('data', '').strip()} for s in results.get('matches', [])]
         return {"total_results": results.get('total', 0), "hosts": hosts}
     except Exception as e:
+        logger.error("An error occurred with Shodan for query '%s': %s", query, e)
         return {"error": f"An error occurred with Shodan: {e}"}
 
 def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
@@ -124,6 +144,11 @@ def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary of found pastes, or an error message.
     """
+    # --- SECURITY FIX: Prevent argument injection ---
+    if query.strip().startswith("-"):
+        logger.warning("Potential argument injection attempt blocked. Query: '%s'", query)
+        return {"error": "Invalid query format: Input cannot start with a dash (-)."}
+
     try:
         command = ["psbdmp", "-q", query, "-j"]
         process = subprocess.run(
@@ -133,17 +158,17 @@ def search_pastebin_psbdmp(query: str) -> Dict[str, Any]:
         pastes = [json.loads(line) for line in process.stdout.strip().split('\n') if line]
         return {"pastes": pastes, "count": len(pastes)}
     except FileNotFoundError:
+        logger.error("The 'psbdmp' command was not found. It may not be installed.")
         return {"error": "psbdmp command not found. Please ensure it is installed (`pip install psbdmp`)."}
     except subprocess.CalledProcessError:
         return {"pastes": [], "message": "No results found."}
     except Exception as e:
+        logger.critical("An unexpected error occurred while running psbdmp: %s", e)
         return {"error": f"An unexpected error occurred while running psbdmp: {e}"}
 
 def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
     """
     Performs an in-depth SSL/TLS analysis using the SSL Labs API.
-
-    This function initiates a scan and then polls the API until the report is ready.
 
     Args:
         host (str): The hostname to scan (e.g., 'google.com').
@@ -164,12 +189,12 @@ def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
         """Polls for the scan results."""
         payload = {'host': hostname, 'all': 'done'}
         while True:
+            time.sleep(15)
             response = sync_client.get(api_url + "analyze", params=payload)
             response.raise_for_status()
             data = response.json()
             if data['status'] in ('READY', 'ERROR'):
                 return data
-            time.sleep(15)
     
     try:
         with Progress() as progress:
@@ -184,7 +209,8 @@ def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
             progress.update(task, completed=100, description="[green]Scan complete!")
 
         return final_data
-    except Exception as e:
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("An error occurred with SSL Labs API for host '%s': %s", host, e)
         return {"error": f"An error occurred with SSL Labs API: {e}"}
 
 def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str, Any]:
@@ -200,6 +226,7 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
         Dict[str, Any]: The full JSON report from MobSF, or an error message.
     """
     if not os.path.exists(file_path):
+        logger.error("APK file not found at path: %s", file_path)
         return {"error": f"File not found at path: {file_path}"}
     if not mobsf_url or not api_key:
         return {"error": "MobSF URL and API Key are required."}
@@ -207,23 +234,21 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
     headers = {'Authorization': api_key}
     
     try:
-        console.print(" [cyan]>[/cyan] Uploading APK to MobSF...")
         with open(file_path, 'rb') as f:
             files = {'file': (os.path.basename(file_path), f)}
             upload_response = sync_client.post(f"{mobsf_url}/api/v1/upload", headers=headers, files=files)
             upload_response.raise_for_status()
         upload_data = upload_response.json()
         
-        console.print(" [cyan]>[/cyan] Starting MobSF scan...")
         scan_response = sync_client.post(f"{mobsf_url}/api/v1/scan", headers=headers, data=upload_data)
         scan_response.raise_for_status()
         
-        console.print(" [cyan]>[/cyan] Fetching MobSF JSON report...")
         report_response = sync_client.post(f"{mobsf_url}/api/v1/report_json", headers=headers, data=upload_data)
         report_response.raise_for_status()
         
         return report_response.json()
-    except Exception as e:
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("An error occurred with MobSF API: %s", e)
         return {"error": f"An error occurred with MobSF API: {e}"}
 
 
@@ -231,82 +256,67 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
 defensive_app = typer.Typer()
 
 @defensive_app.command("breaches")
-def run_breach_check(
-    domain: str = typer.Argument(..., help="Your company's domain to check for breaches."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_breach_check(domain: str, output_file: str = None):
     """Checks your domain against the Have I Been Pwned database."""
     if not is_valid_domain(domain):
+        logger.warning("Invalid domain format provided to 'breaches' command: %s", domain)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
 
-    console.print(Panel(f"[bold red]Checking for Breaches at {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting HIBP breach check for %s", domain)
     api_key = API_KEYS.hibp_api_key
     results = check_hibp_breaches(domain, api_key)
     save_or_print_results(results.model_dump(), output_file)
     save_scan_to_db(target=domain, module="defensive_breaches", data=results.model_dump())
 
 @defensive_app.command("leaks")
-def run_leaks_check(
-    query: str = typer.Argument(..., help="Search query, e.g., 'yourcompany.com password'"),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_leaks_check(query: str, output_file: str = None):
     """Searches GitHub for potential code and secret leaks."""
-    console.print(Panel(f"[bold red]Searching GitHub for leaks: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting GitHub leaks search for query: '%s'", query)
     api_key = API_KEYS.github_pat
     results = search_github_leaks(query, api_key)
     save_or_print_results(results.model_dump(), output_file)
     save_scan_to_db(target=query, module="defensive_leaks", data=results.model_dump())
 
 @defensive_app.command("typosquat")
-def run_typosquat_check(
-    domain: str = typer.Argument(..., help="Your company's domain to check for typosquatting."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_typosquat_check(domain: str, output_file: str = None):
     """Finds potential phishing domains similar to yours using dnstwist."""
     if not is_valid_domain(domain):
+        logger.warning("Invalid domain format provided to 'typosquat' command: %s", domain)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
 
-    console.print(Panel(f"[bold red]Checking for Typosquatting Domains for {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting typosquatting check for %s", domain)
     results = find_typosquatting_dnstwist(domain)
     save_or_print_results(results.model_dump(), output_file)
     save_scan_to_db(target=domain, module="defensive_typosquat", data=results.model_dump())
 
 @defensive_app.command("surface")
-def run_surface_check(
-    query: str = typer.Argument(..., help="Shodan search query, e.g., 'org:\"My Company\"'"),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_surface_check(query: str, output_file: str = None):
     """Analyzes your public attack surface using Shodan."""
-    console.print(Panel(f"[bold red]Analyzing Attack Surface with Shodan: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting Shodan surface scan for query: '%s'", query)
     api_key = API_KEYS.shodan_api_key
     results = analyze_attack_surface_shodan(query, api_key)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=query, module="defensive_surface", data=results)
 
 @defensive_app.command("pastebin")
-def run_pastebin_check(
-    query: str = typer.Argument(..., help="Keyword or domain to search for in Pastebin dumps."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_pastebin_check(query: str, output_file: str = None):
     """Searches Pastebin dumps using psbdmp."""
-    console.print(Panel(f"[bold red]Searching Pastebin for: '{query}'[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting Pastebin dump search for query: '%s'", query)
     results = search_pastebin_psbdmp(query)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=query, module="defensive_pastebin", data=results)
 
 @defensive_app.command("ssllabs")
-def run_ssllabs_check(
-    domain: str = typer.Argument(..., help="The domain to run an SSL Labs analysis on."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
-):
+def run_ssllabs_check(domain: str, output_file: str = None):
     """Performs an in-depth SSL/TLS analysis via SSL Labs."""
     if not is_valid_domain(domain):
+        logger.warning("Invalid domain format provided to 'ssllabs' command: %s", domain)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
-
-    console.print(Panel(f"[bold red]Starting full SSL/TLS analysis for {domain}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    
+    logger.info("Starting SSL Labs scan for %s", domain)
     results = analyze_ssl_ssllabs(domain)
     save_or_print_results(results, output_file)
     save_scan_to_db(target=domain, module="defensive_ssllabs", data=results)
@@ -318,10 +328,10 @@ def run_mobsf_scan(
     output_file: str = typer.Option(None, "--output", "-o", help="Save results to a JSON file.")
 ):
     """Analyzes an Android .apk file using a local MobSF instance."""
-    console.print(Panel(f"[bold red]Analyzing mobile app: {apk_file}[/bold red]", title="Chimera Intel | Defensive", border_style="red"))
+    logger.info("Starting MobSF scan for APK file: %s", apk_file)
     api_key = API_KEYS.mobsf_api_key
     if not api_key:
-        console.print("[bold red]Error:[/] MOBSF_API_KEY not found in .env file.")
+        logger.error("MOBSF_API_KEY not found in .env file.")
         raise typer.Exit(code=1)
     
     results = analyze_apk_mobsf(apk_file, mobsf_url, api_key)

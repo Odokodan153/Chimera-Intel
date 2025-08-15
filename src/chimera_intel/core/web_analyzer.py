@@ -1,24 +1,34 @@
 import typer
 import asyncio
-import httpx
+from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
+import logging
 
 # --- CORRECTED Absolute Imports ---
-# CHANGE: is_valid_domain is now imported from the central utils module.
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import CONFIG, API_KEYS
 from chimera_intel.core.schemas import WebAnalysisResult, WebAnalysisData, TechStackReport, ScoredResult
-from chimera_intel.core.http_client import async_client # Import the centralized async client
+from chimera_intel.core.http_client import async_client
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 # --- Asynchronous Data Gathering Functions ---
 
 async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
     """
     Asynchronously retrieves website technology stack from the BuiltWith API.
+
+    Args:
+        domain (str): The domain to analyze.
+        api_key (str): The BuiltWith API key.
+
+    Returns:
+        list: A list of unique technology names found.
     """
     if not api_key:
-        console.print("[bold yellow]Warning:[/] BuiltWith API key not found. Skipping.")
+        logger.warning("BuiltWith API key not found. Skipping.")
         return []
     url = f"https://api.builtwith.com/v21/api.json?KEY={api_key}&LOOKUP={domain}"
     try:
@@ -32,16 +42,23 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
                     for tech in path.get("Technologies", []):
                         technologies.append(tech.get("Name"))
         return list(set(technologies))
-    except Exception as e:
-        console.print(f"[bold red]Error (BuiltWith):[/] {e}")
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("Error fetching tech stack from BuiltWith for '%s': %s", domain, e)
         return []
 
 async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
     """
     Asynchronously retrieves website technology stack from the Wappalyzer API.
+
+    Args:
+        domain (str): The domain to analyze.
+        api_key (str): The Wappalyzer API key.
+
+    Returns:
+        list: A list of unique technology names found.
     """
     if not api_key:
-        console.print("[bold yellow]Warning:[/] Wappalyzer API key not found. Skipping.")
+        logger.warning("Wappalyzer API key not found. Skipping.")
         return []
     url = f"https://api.wappalyzer.com/v2/lookup/?urls=https://{domain}"
     headers = {"x-api-key": api_key}
@@ -54,13 +71,20 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
             for tech_info in data[0].get("technologies", []):
                 technologies.append(tech_info.get("name"))
         return list(set(technologies))
-    except Exception as e:
-        console.print(f"[bold red]Error (Wappalyzer):[/] {e}")
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("Error fetching tech stack from Wappalyzer for '%s': %s", domain, e)
         return []
 
 async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
     """
     Asynchronously retrieves estimated website traffic from the Similarweb API.
+
+    Args:
+        domain (str): The domain to analyze.
+        api_key (str): The Similarweb API key.
+
+    Returns:
+        dict: The API response containing traffic data, or an error.
     """
     if not api_key:
         return {"error": "Similarweb API key not found."}
@@ -69,13 +93,20 @@ async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
         response = await async_client.get(url)
         response.raise_for_status()
         return response.json()
-    except Exception as e:
-        return {"error": f"An unexpected error occurred with Similarweb: {e}"}
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("Error fetching traffic data from Similarweb for '%s': %s", domain, e)
+        return {"error": f"An error occurred with Similarweb: {e}"}
 
 # --- Core Logic Function ---
 async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     """
     The core logic for gathering all web analysis data.
+
+    Args:
+        domain (str): The domain to perform the web analysis on.
+
+    Returns:
+        WebAnalysisResult: A Pydantic model containing all gathered web analysis data.
     """
     builtwith_key = API_KEYS.builtwith_api_key
     wappalyzer_key = API_KEYS.wappalyzer_api_key
@@ -95,16 +126,14 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     for tech in wappalyzer_tech:
         all_tech.setdefault(tech, []).append("Wappalyzer")
 
-    scored_tech_results = []
-    for tech, sources in sorted(all_tech.items()):
-        num_found_sources = len(sources)
-        confidence = "LOW"
-        if available_tech_sources > 1 and num_found_sources == available_tech_sources:
-            confidence = "HIGH"
-        
-        scored_tech_results.append(
-            ScoredResult(technology=tech, sources=sources, confidence=f"{confidence} ({num_found_sources}/{available_tech_sources} sources)")
+    scored_tech_results = [
+        ScoredResult(
+            technology=tech,
+            sources=sources,
+            confidence=f"{'HIGH' if available_tech_sources > 1 and len(sources) == available_tech_sources else 'LOW'} ({len(sources)}/{available_tech_sources} sources)"
         )
+        for tech, sources in sorted(all_tech.items())
+    ]
 
     tech_stack_report = TechStackReport(total_unique=len(scored_tech_results), results=scored_tech_results)
     
@@ -125,16 +154,16 @@ async def run_web_analysis(
     output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
 ):
     """Analyzes web-specific data asynchronously."""
-    # Add the validation check at the beginning of the command function.
     if not is_valid_domain(domain):
+        logger.warning("Invalid domain format provided to 'web' command: %s", domain)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
 
-    console.print(Panel(f"[bold blue]Starting Asynchronous Web Analysis for {domain}[/bold blue]", title="Chimera Intel | Web", border_style="blue"))
+    logger.info("Starting asynchronous web analysis for %s", domain)
     
     results_model = await gather_web_analysis_data(domain)
     results_dict = results_model.model_dump()
     
-    console.print("\n[bold green]Web Analysis Complete![/bold green]")
+    logger.info("Web analysis complete for %s", domain)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="web_analyzer", data=results_dict)

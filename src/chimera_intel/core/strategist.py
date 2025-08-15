@@ -1,24 +1,23 @@
 import typer
 import json
 import google.generativeai as genai
-from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+import logging
 
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
-# --- CHANGE: Import the new Pydantic model ---
 from chimera_intel.core.schemas import StrategicProfileResult
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 
 def generate_strategic_profile(aggregated_data: dict, api_key: str) -> StrategicProfileResult:
     """
     Uses a Generative AI model (Google Gemini Pro) to create a high-level strategic profile.
-
-    This function constructs a detailed prompt for the AI, including a role, context (the
-    aggregated OSINT data), and a strict set of instructions for the output format.
 
     Args:
         aggregated_data (dict): The combined OSINT data for the target.
@@ -55,9 +54,9 @@ def generate_strategic_profile(aggregated_data: dict, api_key: str) -> Strategic
     
     try:
         response = model.generate_content(prompt)
-        # --- CHANGE: Return a validated Pydantic model instance ---
         return StrategicProfileResult(profile_text=response.text)
     except Exception as e:
+        logger.error("An error occurred with the Google AI API during strategy generation: %s", e)
         return StrategicProfileResult(error=f"An error occurred with the Google AI API: {e}")
 
 
@@ -72,24 +71,21 @@ def run_strategy_analysis(
     """
     Generates an AI-powered strategic profile of a competitor by aggregating all known data.
     """
-    console.print(Panel(f"[bold cyan]Generating Strategic Profile For:[/] {target}", title="Chimera Intel | Strategy Mapper", border_style="cyan"))
+    logger.info("Generating strategic profile for target: %s", target)
 
-    console.print(f" [dim]>[/dim] [dim]Aggregating historical data for '{target}'...[/dim]")
     aggregated_data = get_aggregated_data_for_target(target)
     
     if not aggregated_data:
-        console.print(f"[bold red]Error:[/] No historical data found for target '{target}'.")
-        console.print("Please run scans first (e.g., 'chimera scan footprint <target>') to gather data.")
+        # The get_aggregated_data_for_target function already logs a warning.
         raise typer.Exit(code=1)
         
-    console.print(f" [dim]>[/dim] [dim]Submitting data to AI strategist for analysis...[/dim]")
+    logger.info("Submitting aggregated data to AI strategist for analysis.")
     api_key = API_KEYS.google_api_key
-    # The result is now a Pydantic model
     strategic_result = generate_strategic_profile(aggregated_data, api_key)
     
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
-        console.print(f"[bold red]Error:[/] {strategic_result.error}")
+        logger.error("Failed to generate strategic profile: %s", strategic_result.error)
     else:
         # Display the AI-generated markdown as rich text in the console
         console.print(Markdown(strategic_result.profile_text or "No analysis generated."))

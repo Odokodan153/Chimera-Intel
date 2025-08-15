@@ -1,24 +1,27 @@
 import typer
 from bs4 import BeautifulSoup
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from typing import List
+import logging
+from httpx import RequestError, HTTPStatusError
 
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.utils import is_valid_domain, console
-# --- CHANGE: Import the new Pydantic models ---
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
 
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 # Define keywords that might signal strategic intent in different areas.
 SIGNAL_KEYWORDS = {
     "Marketing & Sales": ["HubSpot", "Marketo", "Salesforce", "CRM", "Pardot", "Drift"],
     "Technology & Engineering": ["Kubernetes", "Terraform", "AWS Lambda", "Go", "Rust", "Microservices", "Data Scientist"],
     "Expansion & Growth": ["Country Manager", "International", "Logistics", "Supply Chain", "New Market"],
-    "HR & Culture": ["Head of People", "Culture", "Chief Happiness Officer"]
+    "HR & Culture": ["Head of People", "Culture", "Chief Happiness Officer"],
+    "Financial Strategy": ["investment", "acquisition", "funding round", "merger", "ipo", "financial results"]
 }
 
 def scrape_job_postings(domain: str) -> JobPostingsResult:
@@ -50,9 +53,9 @@ def scrape_job_postings(domain: str) -> JobPostingsResult:
                 # If we found jobs on the first successful URL, we can stop.
                 if job_titles:
                     return JobPostingsResult(job_postings=list(set(job_titles)))
-        except Exception:
-            # Ignore connection errors and try the next URL
-            continue
+        except (HTTPStatusError, RequestError) as e:
+            logger.warning("Could not scrape job postings from %s: %s", url, e)
+            continue # Try the next URL
             
     return JobPostingsResult(job_postings=list(set(job_titles)))
 
@@ -118,28 +121,26 @@ def run_signal_analysis(
     based on a predefined set of keywords and rules.
     """
     if not is_valid_domain(target):
+        logger.warning("Invalid domain format provided to 'signal' command: %s", target)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{target}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
 
-    console.print(Panel(f"[bold yellow]Analyzing Strategic Signals For:[/] {target}", title="Chimera Intel | Signal Analysis", border_style="yellow"))
+    logger.info("Analyzing strategic signals for: %s", target)
 
-    console.print(f" [dim]>[/dim] [dim]Aggregating historical data for '{target}'...[/dim]")
     aggregated_data = get_aggregated_data_for_target(target)
     
     if not aggregated_data:
-        # The get_aggregated_data_for_target function already prints a warning.
         raise typer.Exit()
     
-    console.print(f" [dim]>[/dim] [dim]Performing a live scrape for job postings...[/dim]")
-    # The result is a Pydantic model, convert it to a dict to merge it.
+    logger.info("Performing a live scrape for job postings for %s.", target)
     job_results = scrape_job_postings(target)
     aggregated_data["job_postings"] = job_results.model_dump()
         
-    console.print(f" [dim]>[/dim] [dim]Analyzing data for strategic signals...[/dim]")
+    logger.info("Analyzing data for strategic signals.")
     detected_signals = analyze_signals(aggregated_data)
     
     if not detected_signals:
-        console.print("\n[bold green]No strong strategic signals detected based on the current rule set.[/bold green]")
+        logger.info("No strong strategic signals detected for %s based on the current rule set.", target)
         raise typer.Exit()
 
     table = Table(title=f"Potential Strategic Signals Detected for {target}")

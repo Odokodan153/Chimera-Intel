@@ -1,14 +1,18 @@
 import typer
 import json
-from rich.console import Console
 from rich.panel import Panel
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from typing import Dict, Any
+import logging
 
-console = Console()
+# --- CORRECTED Absolute Imports ---
+from .utils import console
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
     """
@@ -35,21 +39,17 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
         story.append(Spacer(1, 0.5 * inch))
 
         # --- Report Content ---
-        # Iterate through the main keys of the JSON file (e.g., 'footprint', 'web_analysis')
         for module_name, module_data in json_data.items():
             if isinstance(module_data, dict):
                 story.append(Paragraph(module_name.replace('_', ' ').title(), styles['h2']))
                 
                 for section_name, section_data in module_data.items():
-                    # Skip non-data sections
                     if not isinstance(section_data, dict):
                         continue
                         
                     story.append(Paragraph(section_name.replace('_', ' ').title(), styles['h3']))
                     
-                    # Create a table for the key-value data
                     table_data = []
-                    # Handle special case for scored results (like subdomains/tech)
                     if 'results' in section_data and isinstance(section_data['results'], list):
                         table_data = [["Item", "Confidence", "Sources"]]
                         for item in section_data['results']:
@@ -71,7 +71,6 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
                             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
                             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                            ('WORDWRAP', (0, 0), (-1, -1), 'CJK')
                         ]))
                         story.append(t)
                     
@@ -79,10 +78,10 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
 
         # Build the PDF
         doc.build(story)
-        console.print(f"[bold green]Successfully generated PDF report at:[/] {output_path}")
+        logger.info("Successfully generated PDF report at: %s", output_path)
 
     except Exception as e:
-        console.print(f"[bold red]PDF Generation Error:[/bold red] {e}")
+        logger.error("An error occurred during PDF generation: %s", e)
 
 
 # --- Typer CLI Application ---
@@ -97,17 +96,16 @@ def create_pdf_report(
     """
     Creates a PDF report from a saved JSON scan file.
     """
-    console.print(Panel(f"[bold blue]Generating PDF Report from:[/] {json_file}", title="Chimera Intel | Reporter", border_style="blue"))
+    logger.info("Generating PDF report from: %s", json_file)
 
-    # Load the JSON data from the input file
     try:
         with open(json_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
     except FileNotFoundError:
-        console.print(f"[bold red]Error:[/] Input file not found at '{json_file}'")
+        logger.error("Input file for PDF report not found at '%s'", json_file)
         raise typer.Exit(code=1)
     except json.JSONDecodeError:
-        console.print(f"[bold red]Error:[/] Invalid JSON in file '{json_file}'")
+        logger.error("Invalid JSON in file '%s'", json_file)
         raise typer.Exit(code=1)
 
     # Determine the output path

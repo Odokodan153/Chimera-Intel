@@ -32,6 +32,9 @@ from chimera_intel.core.signal_analyzer import signal_app
 from chimera_intel.core.reporter import report_app
 from chimera_intel.core.grapher import graph_app
 from chimera_intel.core.social_analyzer import social_app
+from chimera_intel.core.vulnerability_scanner import vulnerability_app
+from chimera_intel.core.social_osint import social_osint_app
+from chimera_intel.core.dark_web_osint import dark_web_app
 
 
 # --- Main Application Definition ---
@@ -54,17 +57,18 @@ scan_app.add_typer(footprint_app, name="footprint", help="Gathers basic digital 
 scan_app.add_typer(web_app, name="web", help="Analyzes web-specific data (Tech Stack, Traffic).")
 scan_app.add_typer(business_app, name="business", help="Gathers business intelligence (Financials, News, Patents).")
 scan_app.add_typer(social_app, name="social", help="Analyzes content from a target's RSS feed.")
+scan_app.add_typer(social_osint_app, name="profiles", help="Finds social media profiles by username.")
 
 # 2. 'defensive' command group for internal security and counter-intelligence.
-app.add_typer(defensive_app, name="defensive", help="Run defensive scans on your own assets.")
+defensive_group_app = typer.Typer(help="Run defensive and vulnerability scans on your own assets.")
+app.add_typer(defensive_group_app, name="defensive")
+defensive_group_app.add_typer(defensive_app, name="checks", help="Run standard defensive checks (breaches, leaks, etc.).")
+defensive_group_app.add_typer(vulnerability_app, name="vuln", help="Run vulnerability scans on discovered assets.")
+defensive_group_app.add_typer(dark_web_app, name="darkweb", help="Searches the dark web for leaked data.")
+
 
 # 3. 'analysis' command group for AI-powered and historical data analysis.
 analysis_app = typer.Typer(help="Run AI-powered and historical analysis.")
-app.add_typer(analysis_app, name="analysis")
-analysis_app.add_typer(ai_app, name="core", help="Run basic AI analysis (Sentiment, SWOT).")
-analysis_app.add_typer(diff_app, name="diff", help="Compare two historical scans to detect changes.")
-analysis_app.add_typer(forecast_app, name="forecast", help="Forecasts potential future events from historical data.")
-analysis_a_app = typer.Typer(help="Run AI-powered and historical analysis.")
 app.add_typer(analysis_app, name="analysis")
 analysis_app.add_typer(ai_app, name="core", help="Run basic AI analysis (Sentiment, SWOT).")
 analysis_app.add_typer(diff_app, name="diff", help="Compare two historical scans to detect changes.")

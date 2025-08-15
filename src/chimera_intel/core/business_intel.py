@@ -2,8 +2,8 @@ import typer
 import yfinance as yf
 from bs4 import BeautifulSoup
 from rich.panel import Panel
-# Import specific exception classes for better error handling
 from httpx import RequestError, HTTPStatusError
+import logging
 
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results
@@ -15,24 +15,23 @@ from chimera_intel.core.schemas import (
     Financials, GNewsResult, PatentResult, BusinessIntelData, BusinessIntelResult
 )
 
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
+
+
 def get_financials_yfinance(ticker_symbol: str) -> Financials:
     """
     Retrieves key financial data for a public company from Yahoo Finance.
-
-    This function uses the 'yfinance' library to fetch financial metrics for a
-    given stock market ticker symbol.
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
 
     Returns:
-        Financials: A Pydantic model containing key financial metrics, or an error message
-                    if the lookup fails.
+        Financials: A Pydantic model containing key financial metrics, or an error message.
     """
     try:
         ticker = yf.Ticker(ticker_symbol)
         info = ticker.info
-        # Check if the returned info is empty or incomplete, which indicates a bad ticker
         if not info or info.get('trailingPE') is None:
              raise ValueError("Incomplete data received from yfinance API.")
              
@@ -44,9 +43,14 @@ def get_financials_yfinance(ticker_symbol: str) -> Financials:
             forwardPE=info.get("forwardPE"),
             dividendYield=info.get("dividendYield"),
         )
-    # Catch specific errors related to bad data or invalid tickers
+    # Catch specific, expected errors related to bad data or invalid tickers
     except (ValueError, KeyError) as e:
-        return Financials(error=f"Could not fetch or parse data for ticker '{ticker_symbol}'. It may be invalid or delisted. Error: {e}")
+        logger.warning("Could not fetch or parse data for ticker '%s': %s", ticker_symbol, e)
+        return Financials(error=f"Could not fetch data for ticker '{ticker_symbol}'. It may be invalid or delisted.")
+    # --- CHANGE: Add a fallback for any other unexpected errors ---
+    except Exception as e:
+        logger.critical("An unexpected error occurred in get_financials_yfinance for ticker '%s': %s", ticker_symbol, e)
+        return Financials(error=f"An unexpected error occurred: {e}")
 
 def get_news_gnews(query: str, api_key: str) -> GNewsResult:
     """
@@ -65,17 +69,16 @@ def get_news_gnews(query: str, api_key: str) -> GNewsResult:
     url = f"https://gnews.io/api/v4/search?q=\"{query}\"&lang=en&max=10&token={api_key}"
     try:
         response = sync_client.get(url)
-        # Raise an exception for HTTP error codes (4xx or 5xx)
         response.raise_for_status()
         return GNewsResult(**response.json())
-    # Handle specific HTTP errors like 401 Unauthorized or 503 Service Unavailable
     except HTTPStatusError as e:
-        return GNewsResult(error=f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
-    # Handle network-level errors like DNS failure or connection refused
+        logger.error("HTTP error fetching news for query '%s': %s", query, e)
+        return GNewsResult(error=f"HTTP error occurred: {e.response.status_code}")
     except RequestError as e:
+        logger.error("Network error fetching news for query '%s': %s", query, e)
         return GNewsResult(error=f"A network error occurred: {e}")
     except Exception as e:
-        # A general fallback for any other unexpected errors
+        logger.critical("An unexpected error occurred in get_news_gnews for query '%s': %s", query, e)
         return GNewsResult(error=f"An unexpected error occurred: {e}")
 
 def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
@@ -87,7 +90,7 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
         num_patents (int): The maximum number of patents to return.
 
     Returns:
-        PatentResult: A Pydantic model containing a list of patent titles and links, or an error.
+        PatentResult: A Pydantic model containing a list of patents, or an error.
     """
     headers = {"User-Agent": "Mozilla/5.0"}
     url = f"https://patents.google.com/?q=({query})&num=10"
@@ -103,10 +106,14 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
         ]
         return PatentResult(patents=patents)
     except HTTPStatusError as e:
+        logger.error("HTTP error scraping patents for query '%s': %s", query, e)
         return PatentResult(error=f"HTTP error scraping patents: {e.response.status_code}")
     except RequestError as e:
+        logger.error("Network error scraping patents for query '%s': %s", query, e)
         return PatentResult(error=f"Network error scraping patents: {e}")
+    # --- CHANGE: Add a fallback for any other unexpected errors ---
     except Exception as e:
+        logger.critical("An unexpected error occurred while scraping patents for query '%s': %s", query, e)
         return PatentResult(error=f"An unexpected error occurred while scraping patents: {e}")
 
 
@@ -115,14 +122,14 @@ business_app = typer.Typer()
 
 @business_app.command("run")
 def run_business_intel(
-    company_name: str = typer.Argument(..., help="The full name of the target company for news/patents."),
-    ticker: str = typer.Option(None, help="The stock market ticker for financial data (e.g., AAPL for Apple)."),
+    company_name: str = typer.Argument(..., help="The full name of the target company."),
+    ticker: str = typer.Option(None, help="The stock market ticker for financial data."),
     output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
 ):
     """
     Gathers business intelligence: financials, news, and patents for a target company.
     """
-    console.print(Panel(f"[bold blue]Starting Business Intelligence Scan for {company_name}[/bold blue]", title="Chimera Intel | Business", border_style="blue"))
+    logger.info("Starting business intelligence scan for %s (Ticker: %s)", company_name, ticker or "N/A")
     
     gnews_key = API_KEYS.gnews_api_key
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
@@ -134,9 +141,8 @@ def run_business_intel(
     )
 
     results_model = BusinessIntelResult(company=company_name, business_intel=intel_data)
-    # Use exclude_none=True to keep the JSON output clean from empty optional fields
     results_dict = results_model.model_dump(exclude_none=True)
 
-    console.print("\n[bold green]Business Intelligence Scan Complete![/bold green]")
+    logger.info("Business intelligence scan complete for %s", company_name)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=company_name, module="business_intel", data=results_dict)

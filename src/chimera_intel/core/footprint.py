@@ -2,10 +2,13 @@ import typer
 import whois
 import dns.resolver
 import asyncio
+import re
 from rich.panel import Panel
 from dotenv import load_dotenv
 from securitytrails import SecurityTrails
 from typing import Dict, Any, List
+import logging
+from httpx import RequestError, HTTPStatusError
 
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -13,6 +16,9 @@ from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import CONFIG, API_KEYS
 from chimera_intel.core.schemas import FootprintResult, FootprintData, SubdomainReport, ScoredResult
 from chimera_intel.core.http_client import async_client
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -31,8 +37,9 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
     """
     try:
         domain_info = whois.whois(domain)
-        return dict(domain_info) if domain_info.domain_name else {"error": "No WHOIS record found."}
+        return dict(domain_info) if domain_info and domain_info.domain_name else {"error": "No WHOIS record found."}
     except Exception as e:
+        logger.error("An exception occurred during WHOIS lookup for '%s': %s", domain, e)
         return {"error": f"An exception occurred during WHOIS lookup: {e}"}
 
 def get_dns_records(domain: str) -> Dict[str, Any]:
@@ -47,7 +54,6 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
                         values are lists of records, or an error message.
     """
     dns_results: Dict[str, Any] = {}
-    # --- CHANGE: Access the config via attributes instead of dictionary keys ---
     record_types = CONFIG.modules.footprint.dns_records_to_query
     for record_type in record_types:
         try:
@@ -56,8 +62,10 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
         except dns.resolver.NoAnswer:
             dns_results[record_type] = None
         except dns.resolver.NXDOMAIN:
+            logger.warning("DNS query failed for '%s' because the domain does not exist (NXDOMAIN).", domain)
             return {"error": f"Domain does not exist (NXDOMAIN): {domain}"}
         except Exception as e:
+            logger.error("Could not resolve DNS record type '%s' for domain '%s': %s", record_type, domain, e)
             dns_results[record_type] = [f"Could not resolve {record_type}: {e}"]
     return dns_results
 
@@ -83,8 +91,8 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
         response.raise_for_status()
         data = response.json()
         return [item.get("id") for item in data.get("data", [])]
-    except Exception as e:
-        console.print(f"[bold red]Error (VirusTotal):[/] {e}")
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("Error fetching subdomains from VirusTotal for '%s': %s", domain, e)
         return []
 
 def get_subdomains_securitytrails(domain: str, api_key: str) -> List[str]:
@@ -105,7 +113,39 @@ def get_subdomains_securitytrails(domain: str, api_key: str) -> List[str]:
         data = st.domain_subdomains(domain)
         return [f"{sub}.{domain}" for sub in data.get('subdomains', [])]
     except Exception as e:
-        console.print(f"[bold red]Error (SecurityTrails):[/] {e}")
+        logger.error("Error fetching subdomains from SecurityTrails for '%s': %s", domain, e)
+        return []
+
+async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
+    """
+    Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
+    try:
+        home_response = await async_client.get("https://dnsdumpster.com/")
+        home_response.raise_for_status()
+        
+        csrf_token = home_response.cookies.get("csrftoken")
+        if not csrf_token:
+            logger.warning("Could not retrieve CSRF token from DNSDumpster.")
+            return []
+
+        post_data = {"csrfmiddlewaretoken": csrf_token, "targetip": domain, "user": "free"}
+        headers = {"Referer": "https://dnsdumpster.com/"}
+        
+        results_response = await async_client.post("https://dnsdumpster.com/", data=post_data, headers=headers)
+        results_response.raise_for_status()
+
+        subdomains = re.findall(r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r')<br>', results_response.text)
+        return list(set(subdomains))
+        
+    except (HTTPStatusError, RequestError) as e:
+        logger.error("Error scraping DNSDumpster for '%s': %s", domain, e)
         return []
 
 # --- Core Logic Function ---
@@ -113,10 +153,6 @@ def get_subdomains_securitytrails(domain: str, api_key: str) -> List[str]:
 async def gather_footprint_data(domain: str) -> FootprintResult:
     """
     The core logic for gathering all footprint data asynchronously.
-
-    This function orchestrates the calls to various services (WHOIS, DNS, VirusTotal,
-    SecurityTrails), aggregates the results, scores them, and returns a single,
-    structured Pydantic model.
 
     Args:
         domain (str): The target domain for the footprint scan.
@@ -126,27 +162,31 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     """
     vt_api_key = API_KEYS.virustotal_api_key
     st_api_key = API_KEYS.securitytrails_api_key
-    available_sources = sum(1 for key in [vt_api_key, st_api_key] if key)
+    available_sources = sum(1 for key in [vt_api_key, st_api_key] if key) + 1 # +1 for DNSDumpster
 
-    # Run async and sync tasks
-    vt_subdomains = await get_subdomains_virustotal(domain, vt_api_key)
+    tasks = [
+        get_subdomains_virustotal(domain, vt_api_key),
+        get_subdomains_dnsdumpster(domain)
+    ]
+    vt_subdomains, dd_subdomains = await asyncio.gather(*tasks)
+
     whois_data = get_whois_info(domain)
     dns_data = get_dns_records(domain)
     st_subdomains = get_subdomains_securitytrails(domain, st_api_key)
 
     all_subdomains: Dict[str, List[str]] = {}
-    for sub in vt_subdomains:
-        all_subdomains.setdefault(sub, []).append("VirusTotal")
-    for sub in st_subdomains:
-        all_subdomains.setdefault(sub, []).append("SecurityTrails")
+    for sub in vt_subdomains: all_subdomains.setdefault(sub, []).append("VirusTotal")
+    for sub in st_subdomains: all_subdomains.setdefault(sub, []).append("SecurityTrails")
+    for sub in dd_subdomains: all_subdomains.setdefault(sub, []).append("DNSDumpster")
     
-    scored_results = []
-    for sub, sources in sorted(all_subdomains.items()):
-        num_found_sources = len(sources)
-        confidence = "HIGH" if available_sources > 1 and num_found_sources == available_sources else "LOW"
-        scored_results.append(
-            ScoredResult(domain=sub, sources=sources, confidence=f"{confidence} ({num_found_sources}/{available_sources} sources)")
+    scored_results = [
+        ScoredResult(
+            domain=sub,
+            sources=sources,
+            confidence=f"{'HIGH' if len(sources) > 1 else 'LOW'} ({len(sources)}/{available_sources} sources)"
         )
+        for sub, sources in sorted(all_subdomains.items())
+    ]
 
     subdomain_report = SubdomainReport(total_unique=len(scored_results), results=scored_results)
     footprint_data = FootprintData(
@@ -168,14 +208,15 @@ async def run_footprint_scan(
     Gathers basic digital footprint information for a domain.
     """
     if not is_valid_domain(domain):
+        logger.warning("Invalid domain format provided to 'footprint' command: %s", domain)
         console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
         raise typer.Exit(code=1)
 
-    console.print(Panel(f"[bold green]Starting Asynchronous Footprint Scan For:[/] [yellow]{domain}[/yellow]", title="Chimera Intel | Footprint", border_style="blue"))
+    logger.info("Starting asynchronous footprint scan for %s", domain)
     
     results_model = await gather_footprint_data(domain)
     results_dict = results_model.model_dump()
     
-    console.print("\n[bold green]Scan Complete![/bold green]")
+    logger.info("Footprint scan complete for %s", domain)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="footprint", data=results_dict)

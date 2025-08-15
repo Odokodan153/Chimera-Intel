@@ -240,3 +240,52 @@ class ForecastResult(BaseModel):
     """Model for the list of all forecasts for a target."""
     predictions: List[Prediction]
     notes: Optional[str] = None # For messages like "Not enough data"
+
+# --- Vulnerability Scanner Models ---
+
+class PortDetail(BaseModel):
+    """Model for details about a single open port."""
+    port: int
+    state: str
+    service: str
+    product: Optional[str] = None
+    version: Optional[str] = None
+
+class HostScanResult(BaseModel):
+    """Model for the full Nmap scan results for a single host."""
+    host: str
+    state: str
+    open_ports: List[PortDetail]
+
+class VulnerabilityScanResult(BaseModel):
+    """The main, top-level result model for a vulnerability scan."""
+    target_domain: str
+    scanned_hosts: List[HostScanResult]
+    error: Optional[str] = None
+
+# --- Social Media OSINT Models ---
+
+class SocialProfile(BaseModel):
+    """Model for a single social media profile found."""
+    name: str
+    url: str
+
+class SocialOSINTResult(BaseModel):
+    """The main, top-level result model for a social media OSINT scan."""
+    username: str
+    found_profiles: List[SocialProfile]
+    error: Optional[str] = None
+
+# --- Dark Web OSINT Models ---
+
+class DarkWebResult(BaseModel):
+    """Model for a single search result from a dark web search engine."""
+    title: str
+    url: str
+    description: Optional[str] = None
+
+class DarkWebScanResult(BaseModel):
+    """The main, top-level result model for a dark web scan."""
+    query: str
+    found_results: List[DarkWebResult]
+    error: Optional[str] = None

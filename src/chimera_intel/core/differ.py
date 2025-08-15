@@ -1,16 +1,21 @@
 import typer
 import sqlite3
 import json
-from rich.console import Console
 from rich.panel import Panel
 from rich.pretty import pprint
 from jsondiff import diff
 from typing import Tuple, Optional, Dict, Any
+import logging
 
 # --- CORRECTED Absolute Imports ---
 from .database import DB_FILE, console
-# --- CHANGE: Import the new Pydantic models ---
 from .schemas import FormattedDiff, DiffResult
+# --- CHANGE: Import the notification function and API keys ---
+from .utils import send_slack_notification
+from .config_loader import API_KEYS
+
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
 
 
 def get_last_two_scans(target: str, module: str) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
@@ -27,7 +32,7 @@ def get_last_two_scans(target: str, module: str) -> Tuple[Optional[Dict[str, Any
         enough scans are found.
     """
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(DB_FILE, timeout=10.0)
         cursor = conn.cursor()
         
         cursor.execute(
@@ -45,8 +50,11 @@ def get_last_two_scans(target: str, module: str) -> Tuple[Optional[Dict[str, Any
         
         return latest_scan, previous_scan
         
+    except sqlite3.Error as e:
+        logger.error("Database error fetching last two scans for '%s': %s", target, e)
+        return None, None
     except Exception as e:
-        console.print(f"[bold red]Database Error:[/bold red] Could not fetch historical scans: {e}")
+        logger.critical("Unexpected error fetching last two scans for '%s': %s", target, e)
         return None, None
 
 def format_diff_simple(diff_result: dict) -> FormattedDiff:
@@ -64,7 +72,6 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         "added": [],
         "removed": []
     }
-    # jsondiff uses special sentinel values, which we can import and check against.
     from jsondiff import ADD, DELETE
     
     for key, value in diff_result.items():
@@ -82,30 +89,29 @@ diff_app = typer.Typer()
 
 @diff_app.command("run")
 def run_diff_analysis(
-    target: str = typer.Argument(..., help="The target whose history you want to compare (e.g., 'google.com')."),
+    target: str = typer.Argument(..., help="The target whose history you want to compare."),
     module: str = typer.Argument(..., help="The specific scan module to compare (e.g., 'footprint').")
 ):
     """
-    Compares the last two scans of a target to detect changes.
+    Compares the last two scans of a target to detect changes and sends a notification.
     """
-    console.print(Panel(f"[bold yellow]Detecting Changes For:[/] {target} (Module: {module})", title="Chimera Intel | Change Detection", border_style="yellow"))
+    logger.info("Starting change detection for target '%s' in module '%s'", target, module)
 
     latest, previous = get_last_two_scans(target, module)
     
     if not latest or not previous:
-        console.print(f"[bold yellow]Warning:[/] Not enough historical data. Found 0 or 1 scan(s) for '{target}' in module '{module}'. Need at least 2 to compare.")
+        logger.warning("Not enough historical data to compare for '%s' in module '%s'. Found 0 or 1 scans.", target, module)
         raise typer.Exit()
         
-    # The 'symmetric' syntax provides a clear before/after view.
-    # `dump=True` makes it JSON-serializable.
     raw_difference = diff(previous, latest, syntax='symmetric', dump=True)
     difference_json = json.loads(raw_difference)
 
     if not difference_json:
-        console.print("\n[bold green]No changes detected between the last two scans.[/bold green]")
+        logger.info("No changes detected between the last two scans for '%s' in module '%s'.", target, module)
         raise typer.Exit()
 
-    # --- CHANGE: Structure the final result using the Pydantic model ---
+    logger.info("Changes detected for '%s' in module '%s'.", target, module)
+    
     formatted_changes = format_diff_simple(difference_json)
     full_result = DiffResult(
         comparison_summary=formatted_changes,
@@ -113,9 +119,18 @@ def run_diff_analysis(
     )
 
     console.print("\n[bold]Comparison Results:[/bold]")
-    # Using rich's pretty print for a nice visual output of the raw JSON changes
     pprint(full_result.raw_diff)
-    
-    # You could optionally print the simplified summary as well:
-    # console.print("\n[bold]Simplified Summary:[/bold]")
-    # pprint(full_result.comparison_summary.model_dump())
+
+    # --- Send Slack Notification ---
+    slack_url = API_KEYS.slack_webhook_url
+    if slack_url:
+        added_count = len(full_result.comparison_summary.added)
+        removed_count = len(full_result.comparison_summary.removed)
+        message = (
+            f"🔔 *Chimera Intel Change Alert* 🔔\n\n"
+            f"Detected changes for target *{target}* in module *{module}*:\n"
+            f"  - `Added`: {added_count} items\n"
+            f"  - `Removed`: {removed_count} items\n\n"
+            f"Please review the latest scan for details."
+        )
+        send_slack_notification(slack_url, message)

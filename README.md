@@ -72,3 +72,37 @@ chimera defensive breaches mycompany.com
 # Generate a SWOT analysis from a previously saved scan
 chimera scan business "Microsoft" --ticker MSFT -o microsoft.json
 chimera analysis core swot microsoft.json
+
+### Data Flow Diagram
+
+The following diagram illustrates the typical data flow for a `scan` command.
+
+```mermaid
+graph TD
+    subgraph User Interface
+        A[User runs 'chimera scan footprint google.com'] --> B{CLI Entrypoint (cli.py)};
+    end
+
+    subgraph Core Logic
+        B --> C[Footprint Module (footprint.py)];
+        C --> D{gather_footprint_data()};
+        D -- Calls --> E[External APIs (VirusTotal, etc.)];
+        D -- Calls --> F[Local Libraries (whois, dnspython)];
+        E --> G[Pydantic Models (schemas.py)];
+        F --> G;
+        G --> H[Aggregated FootprintResult];
+    end
+
+    subgraph Output & Persistence
+        H --> I[Utils (utils.py)];
+        I -- Output File? --> J{Save to JSON};
+        I -- No Output File --> K[Print to Console];
+        H --> L[Database Module (database.py)];
+        L --> M[Save to chimera_intel.db];
+    end
+
+    subgraph Analysis (Later Stage)
+        M --> N[Analysis Modules (strategist.py, differ.py)];
+        N --> O[AI Models / Historical Comparison];
+        O --> P[Final Report/Analysis];
+    end

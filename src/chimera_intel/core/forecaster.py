@@ -5,12 +5,16 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from typing import List, Dict, Any
+import logging
 
 # --- CORRECTED Absolute Imports ---
-from .database import DB_FILE, console
-# --- CHANGE: Import the new Pydantic models ---
+from .database import DB_FILE
 from .schemas import Prediction, ForecastResult
 
+# Get a logger instance for this specific file
+logger = logging.getLogger(__name__)
+# We still need the console for rich table output
+console = Console()
 
 def get_all_scans_for_target(target: str, module: str) -> List[Dict[str, Any]]:
     """
@@ -24,7 +28,7 @@ def get_all_scans_for_target(target: str, module: str) -> List[Dict[str, Any]]:
         List[Dict[str, Any]]: A list of all historical scan data as dictionaries, ordered by date.
     """
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(DB_FILE, timeout=10.0)
         cursor = conn.cursor()
         cursor.execute(
             "SELECT scan_data FROM scans WHERE target = ? AND module = ? ORDER BY timestamp ASC",
@@ -32,10 +36,12 @@ def get_all_scans_for_target(target: str, module: str) -> List[Dict[str, Any]]:
         )
         records = cursor.fetchall()
         conn.close()
-        # Parse the JSON string from each record into a dictionary
         return [json.loads(rec[0]) for rec in records]
+    except sqlite3.Error as e:
+        logger.error("Database error fetching all scans for '%s': %s", target, e)
+        return []
     except Exception as e:
-        console.print(f"[bold red]Database Error:[/bold red] Could not fetch all historical scans: {e}")
+        logger.critical("Unexpected error fetching all scans for '%s': %s", target, e)
         return []
 
 def run_prediction_rules(historical_data: List[Dict[str, Any]], module: str) -> ForecastResult:
@@ -101,7 +107,7 @@ def run_forecast_analysis(
     """
     Analyzes historical data to forecast potential future events.
     """
-    console.print(Panel(f"[bold green]Forecasting Potential Events For:[/] {target} (Module: {module})", title="Chimera Intel | Predictive Analysis", border_style="green"))
+    logger.info("Starting forecast analysis for target '%s' in module '%s'", target, module)
 
     history = get_all_scans_for_target(target, module)
     forecast_result = run_prediction_rules(history, module)
@@ -114,6 +120,7 @@ def run_forecast_analysis(
         for pred in forecast_result.predictions:
             table.add_row(pred.signal, pred.details)
     elif forecast_result.notes:
+        logger.info("No predictive signals found for '%s', notes: %s", target, forecast_result.notes)
         table.add_row("Info", forecast_result.notes)
         
     console.print(table)
