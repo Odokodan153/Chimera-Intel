@@ -6,7 +6,7 @@ import shodan
 import time
 from rich.panel import Panel
 from rich.progress import Progress
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -16,6 +16,7 @@ from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import HIBPResult, GitHubLeaksResult, TyposquatResult
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -190,16 +191,16 @@ def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
     """
     api_url = "https://api.ssllabs.com/api/v3/"
 
-    def start_scan(hostname):
+    def start_scan(hostname: str) -> Dict[str, Any]:
         """Initiates a new scan."""
-        payload = {"host": hostname, "startNew": "on", "all": "done"}
+        payload: Dict[str, Any] = {"host": hostname, "startNew": "on", "all": "done"}
         response = sync_client.get(api_url + "analyze", params=payload)
         response.raise_for_status()
         return response.json()
 
-    def poll_scan(hostname):
+    def poll_scan(hostname: str) -> Dict[str, Any]:
         """Polls for the scan results."""
-        payload = {"host": hostname, "all": "done"}
+        payload: Dict[str, Any] = {"host": hostname, "all": "done"}
         while True:
             time.sleep(15)
             response = sync_client.get(api_url + "analyze", params=payload)
@@ -277,11 +278,12 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
 
 # --- Typer CLI Application ---
 
+
 defensive_app = typer.Typer()
 
 
 @defensive_app.command("breaches")
-def run_breach_check(domain: str, output_file: str = None):
+def run_breach_check(domain: str, output_file: Optional[str] = None):
     """Checks your domain against the Have I Been Pwned database."""
     if not is_valid_domain(domain):
         logger.warning(
@@ -297,25 +299,29 @@ def run_breach_check(domain: str, output_file: str = None):
         raise typer.Exit(code=1)
     logger.info("Starting HIBP breach check for %s", domain)
     api_key = API_KEYS.hibp_api_key
-    results = check_hibp_breaches(domain, api_key)
-    save_or_print_results(results.model_dump(), output_file)
-    save_scan_to_db(
-        target=domain, module="defensive_breaches", data=results.model_dump()
-    )
+    if api_key:
+        results = check_hibp_breaches(domain, api_key)
+        save_or_print_results(results.model_dump(), output_file)
+        save_scan_to_db(
+            target=domain, module="defensive_breaches", data=results.model_dump()
+        )
 
 
 @defensive_app.command("leaks")
-def run_leaks_check(query: str, output_file: str = None):
+def run_leaks_check(query: str, output_file: Optional[str] = None):
     """Searches GitHub for potential code and secret leaks."""
     logger.info("Starting GitHub leaks search for query: '%s'", query)
     api_key = API_KEYS.github_pat
-    results = search_github_leaks(query, api_key)
-    save_or_print_results(results.model_dump(), output_file)
-    save_scan_to_db(target=query, module="defensive_leaks", data=results.model_dump())
+    if api_key:
+        results = search_github_leaks(query, api_key)
+        save_or_print_results(results.model_dump(), output_file)
+        save_scan_to_db(
+            target=query, module="defensive_leaks", data=results.model_dump()
+        )
 
 
 @defensive_app.command("typosquat")
-def run_typosquat_check(domain: str, output_file: str = None):
+def run_typosquat_check(domain: str, output_file: Optional[str] = None):
     """Finds potential phishing domains similar to yours using dnstwist."""
     if not is_valid_domain(domain):
         logger.warning(
@@ -338,17 +344,18 @@ def run_typosquat_check(domain: str, output_file: str = None):
 
 
 @defensive_app.command("surface")
-def run_surface_check(query: str, output_file: str = None):
+def run_surface_check(query: str, output_file: Optional[str] = None):
     """Analyzes your public attack surface using Shodan."""
     logger.info("Starting Shodan surface scan for query: '%s'", query)
     api_key = API_KEYS.shodan_api_key
-    results = analyze_attack_surface_shodan(query, api_key)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=query, module="defensive_surface", data=results)
+    if api_key:
+        results = analyze_attack_surface_shodan(query, api_key)
+        save_or_print_results(results, output_file)
+        save_scan_to_db(target=query, module="defensive_surface", data=results)
 
 
 @defensive_app.command("pastebin")
-def run_pastebin_check(query: str, output_file: str = None):
+def run_pastebin_check(query: str, output_file: Optional[str] = None):
     """Searches public pastes for a query using the paste.ee API."""
     logger.info("Starting public paste search for query: '%s'", query)
     results = search_pastes_api(query)
@@ -357,7 +364,7 @@ def run_pastebin_check(query: str, output_file: str = None):
 
 
 @defensive_app.command("ssllabs")
-def run_ssllabs_check(domain: str, output_file: str = None):
+def run_ssllabs_check(domain: str, output_file: Optional[str] = None):
     """Performs an in-depth SSL/TLS analysis via SSL Labs."""
     if not is_valid_domain(domain):
         logger.warning(
@@ -383,9 +390,9 @@ def run_mobsf_scan(
         ..., "--apk-file", help="Path to the .apk file to be analyzed."
     ),
     mobsf_url: str = typer.Option(
-        "http://122.0.0.1:8000", help="URL of your running MobSF instance."
+        "http://127.0.0.1:8000", help="URL of your running MobSF instance."
     ),
-    output_file: str = typer.Option(
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):

@@ -3,6 +3,7 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
+from typing import Dict, List
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
@@ -128,13 +129,25 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     available_tech_sources = sum(1 for key in [builtwith_key, wappalyzer_key] if key)
 
     tasks = [
-        get_tech_stack_builtwith(domain, builtwith_key),
-        get_tech_stack_wappalyzer(domain, wappalyzer_key),
-        get_traffic_similarweb(domain, similarweb_key),
+        (
+            get_tech_stack_builtwith(domain, builtwith_key)
+            if builtwith_key
+            else asyncio.sleep(0, result=[])
+        ),
+        (
+            get_tech_stack_wappalyzer(domain, wappalyzer_key)
+            if wappalyzer_key
+            else asyncio.sleep(0, result=[])
+        ),
+        (
+            get_traffic_similarweb(domain, similarweb_key)
+            if similarweb_key
+            else asyncio.sleep(0, result={})
+        ),
     ]
     builtwith_tech, wappalyzer_tech, traffic_info = await asyncio.gather(*tasks)
 
-    all_tech = {}
+    all_tech: Dict[str, List[str]] = {}
     for tech in builtwith_tech:
         all_tech.setdefault(tech, []).append("BuiltWith")
     for tech in wappalyzer_tech:
@@ -153,7 +166,8 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     )
 
     web_analysis_data = WebAnalysisData(
-        tech_stack=tech_stack_report, traffic_info=traffic_info
+        tech_stack=tech_stack_report,
+        traffic_info=traffic_info if isinstance(traffic_info, dict) else {},
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)

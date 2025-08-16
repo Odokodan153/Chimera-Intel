@@ -3,14 +3,15 @@ import sqlite3
 import json
 from rich.pretty import pprint
 from jsondiff import diff
-from typing import Tuple, Optional, Dict, Any
-import logging
+from typing import Tuple, Optional, Dict, Any, List
 from .database import DB_FILE, console
 from .schemas import FormattedDiff, DiffResult
 from .utils import send_slack_notification
 from .config_loader import API_KEYS
+import logging
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,6 @@ def get_last_two_scans(
 def format_diff_simple(diff_result: dict) -> FormattedDiff:
     """
     Simplifies the output from jsondiff into a more human-readable format.
-    This is a basic formatter focusing on simple additions and deletions.
 
     Args:
         diff_result (dict): The raw diff output from the jsondiff library.
@@ -68,7 +68,9 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
     Returns:
         FormattedDiff: A Pydantic model showing added and removed items.
     """
-    changes = {"added": [], "removed": []}
+    # --- CHANGE: Add type annotation for 'changes' dictionary ---
+
+    changes: Dict[str, List[str]] = {"added": [], "removed": []}
     from jsondiff import ADD, DELETE
 
     for key, value in diff_result.items():
@@ -82,6 +84,7 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
 
 
 # --- Typer CLI Application ---
+
 
 diff_app = typer.Typer()
 

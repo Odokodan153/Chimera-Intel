@@ -6,7 +6,7 @@ import re
 import shodan
 from rich.panel import Panel
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -221,7 +221,7 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
     if not api_key:
         return []
 
-    def search():
+    def search() -> List[str]:
         try:
             api = shodan.Shodan(api_key)
             query = f"hostname:.{domain}"
@@ -259,11 +259,19 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
 
     tasks = [
-        get_subdomains_virustotal(domain, vt_api_key),
+        (
+            get_subdomains_virustotal(domain, vt_api_key)
+            if vt_api_key
+            else asyncio.sleep(0, result=[])
+        ),
         get_subdomains_dnsdumpster(domain),
         get_subdomains_threatminer(domain),
         get_subdomains_urlscan(domain),
-        get_subdomains_shodan(domain, shodan_api_key),
+        (
+            get_subdomains_shodan(domain, shodan_api_key)
+            if shodan_api_key
+            else asyncio.sleep(0, result=[])
+        ),
     ]
     vt, dd, tm, us, sh = await asyncio.gather(*tasks)
 
@@ -301,14 +309,13 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
 # --- Typer CLI Application ---
 
-
 footprint_app = typer.Typer()
 
 
 @footprint_app.command("run")
 async def run_footprint_scan(
     domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
-    output_file: str = typer.Option(
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
