@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # --- AI Model Initializations ---
 
 try:
-    from transformers import pipeline
+    from transformers import pipeline # type: ignore
 
     sentiment_analyzer = pipeline(
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"

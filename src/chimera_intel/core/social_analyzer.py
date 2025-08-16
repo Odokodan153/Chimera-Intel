@@ -1,196 +1,110 @@
 import typer
-import feedparser
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-from rich.panel import Panel
-from typing import List, Optional
+import json
+import google.generativeai as genai  # type: ignore
+from rich.markdown import Markdown
 import logging
-from httpx import RequestError, HTTPStatusError
-
-# --- CORRECTED Absolute Imports ---
-
-from chimera_intel.core.utils import save_or_print_results, is_valid_domain, console
-from chimera_intel.core.database import save_scan_to_db
-from chimera_intel.core.http_client import sync_client
-
-# Import the Pydantic models for type-safe results
-
-from chimera_intel.core.schemas import (
-    SocialContentAnalysis,
-    SocialAnalysisResult,
-    AnalyzedPost,
-)
+from chimera_intel.core.database import get_aggregated_data_for_target
+from chimera_intel.core.config_loader import API_KEYS
+from chimera_intel.core.utils import console
+from chimera_intel.core.schemas import StrategicProfileResult
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
-# --- AI Model Initialization ---
 
-try:
-    from transformers import pipeline
-
-    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-except (ImportError, OSError):
-    classifier = None
-# --- Core Functions ---
-
-
-def discover_rss_feed(domain: str) -> Optional[str]:
+def generate_strategic_profile(
+    aggregated_data: dict, api_key: str
+) -> StrategicProfileResult:
     """
-    Tries to automatically discover the RSS feed URL from a domain's homepage or sitemap.
+    Uses a Generative AI model (Google Gemini Pro) to create a high-level strategic profile.
 
     Args:
-        domain (str): The domain to search for an RSS feed.
+        aggregated_data (dict): The combined OSINT data for the target.
+        api_key (str): The Google AI API key for authentication.
 
     Returns:
-        Optional[str]: The full URL of the discovered RSS feed if found, otherwise None.
+        StrategicProfileResult: A Pydantic model containing the AI-generated markdown
+                                analysis or an error message.
     """
-    base_url = f"https://www.{domain}"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    if not api_key:
+        return StrategicProfileResult(error="GOOGLE_API_KEY not found in .env file.")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")
+
+    data_str = json.dumps(aggregated_data, indent=2, default=str)
+
+    prompt = f"""
+    As an expert business intelligence analyst, your task is to synthesize the following OSINT data into a high-level strategic profile of the target company.
+    Focus on deducing their likely strategies based ONLY on the provided data.
+
+    OSINT DATA:
+    ```json
+    {data_str}
+    ```
+
+    Based on the data, provide a concise analysis covering the following points. Present the entire output in Markdown format.
+    
+    1.  **Marketing & Sales Strategy:** Based on their web technologies, traffic sources, and news, what is their likely go-to-market strategy? Are they targeting consumers (B2C) or businesses (B2B)?
+    2.  **Technology & Innovation Strategy:** Based on their tech stack and patents, are they a technology leader, a fast follower, or lagging in their industry? What are their R&D priorities?
+    3.  **Expansion & Growth Strategy:** Are there any signals (e.g., in news, financials) that suggest they are planning to expand into new markets, launch new products, or are in a phase of aggressive growth?
+    4.  **Overall Summary:** Provide a concluding paragraph summarizing their likely strategic position in the market.
+    """
 
     try:
-        response = sync_client.get(base_url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, "html.parser")
-            rss_link = soup.find("link", {"type": "application/rss+xml"})
-            if rss_link and rss_link.has_attr("href"):
-                return urljoin(base_url, rss_link["href"])
-    except (HTTPStatusError, RequestError) as e:
-        logger.warning(
-            "Could not fetch homepage for RSS discovery on '%s': %s", domain, e
-        )
-        pass  # Silently ignore and try the next method
-    sitemap_url = urljoin(base_url, "/sitemap.xml")
-    try:
-        response = sync_client.get(sitemap_url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, "xml")
-            for loc in soup.find_all("loc"):
-                url_text = loc.text.lower()
-                if "rss" in url_text or "feed" in url_text:
-                    return loc.text
-    except (HTTPStatusError, RequestError) as e:
-        logger.warning(
-            "Could not fetch sitemap for RSS discovery on '%s': %s", domain, e
-        )
-        pass
-    return None
-
-
-def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnalysis:
-    """
-    Parses an RSS feed and analyzes the content of the latest posts using a zero-shot AI model.
-
-    Args:
-        feed_url (str): The URL of the RSS feed to analyze.
-        num_posts (int): The number of recent posts to analyze. Defaults to 5.
-
-    Returns:
-        SocialContentAnalysis: A Pydantic model containing the analysis results or an error.
-    """
-    if not classifier:
-        return SocialContentAnalysis(
-            feed_title="N/A",
-            posts=[],
-            error="AI analysis skipped. 'transformers' not installed.",
-        )
-    try:
-        feed = feedparser.parse(feed_url)
-        if feed.bozo:
-            logger.warning(
-                "The RSS feed at %s might be malformed. Analysis may be incomplete.",
-                feed_url,
-            )
-        posts_analysis: List[AnalyzedPost] = []
-        candidate_labels = [
-            "Product Launch",
-            "Financial Results",
-            "Partnerships",
-            "Hiring / Careers",
-            "Company Culture",
-            "Technical Update",
-            "Security Advisory",
-        ]
-
-        for entry in feed.entries[:num_posts]:
-            title = entry.get("title", "No Title")
-            content_to_analyze = entry.get("summary", "")
-            if hasattr(entry, "content"):
-                content_to_analyze = entry.content[0].value
-            clean_content = BeautifulSoup(content_to_analyze, "html.parser").get_text(
-                separator=" ", strip=True
-            )
-            classification = classifier(
-                f"{title}. {clean_content[:512]}", candidate_labels
-            )
-
-            posts_analysis.append(
-                AnalyzedPost(
-                    title=title,
-                    link=entry.get("link", "#"),
-                    top_category=classification["labels"][0],
-                    confidence=f"{classification['scores'][0]:.2%}",
-                )
-            )
-        return SocialContentAnalysis(
-            feed_title=feed.feed.get("title", "Unknown Feed"), posts=posts_analysis
-        )
+        response = model.generate_content(prompt)
+        return StrategicProfileResult(profile_text=response.text)
     except Exception as e:
-        logger.error("Failed to parse or analyze the feed at %s: %s", feed_url, e)
-        return SocialContentAnalysis(
-            feed_title="N/A",
-            posts=[],
-            error=f"Failed to parse or analyze the feed: {e}",
+        logger.error(
+            "An error occurred with the Google AI API during strategy generation: %s", e
+        )
+        return StrategicProfileResult(
+            error=f"An error occurred with the Google AI API: {e}"
         )
 
 
 # --- Typer CLI Application ---
 
-social_app = typer.Typer()
+
+strategy_app = typer.Typer()
 
 
-@social_app.command("run")
-def run_social_analysis(
-    domain: str = typer.Argument(
-        ..., help="The target domain to find and analyze a blog/RSS feed for."
-    ),
-    output_file: str = typer.Option(
-        None, "--output", "-o", help="Save the results to a JSON file."
-    ),
+@strategy_app.command("run")
+def run_strategy_analysis(
+    target: str = typer.Argument(
+        ..., help="The target company to analyze (must have historical data)."
+    )
 ):
     """
-    Finds and analyzes the content of a target's RSS feed for strategic topics.
+    Generates an AI-powered strategic profile of a competitor by aggregating all known data.
     """
-    if not is_valid_domain(domain):
-        logger.warning("Invalid domain format provided to 'social' command: %s", domain)
-        console.print(
-            Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
-                title="Error",
-                border_style="red",
-            )
+    logger.info("Generating strategic profile for target: %s", target)
+
+    aggregated_data = get_aggregated_data_for_target(target)
+
+    if not aggregated_data:
+        # The get_aggregated_data_for_target function already logs a warning.
+
+        raise typer.Exit(code=1)
+    logger.info("Submitting aggregated data to AI strategist for analysis.")
+    api_key = API_KEYS.google_api_key
+
+    # Check if the API key exists before making the call
+
+    if not api_key:
+        logger.error(
+            "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
         )
         raise typer.Exit(code=1)
-    if not classifier:
-        logger.warning("AI libraries not found. AI content analysis will be skipped.")
-    logger.info("Starting social content analysis for %s", domain)
+    strategic_result = generate_strategic_profile(aggregated_data, api_key)
 
-    feed_url = discover_rss_feed(domain)
+    console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
+    if strategic_result.error:
+        logger.error("Failed to generate strategic profile: %s", strategic_result.error)
+    else:
+        # Display the AI-generated markdown as rich text in the console
 
-    if not feed_url:
-        logger.error("Could not automatically discover an RSS feed for %s.", domain)
-        raise typer.Exit(code=1)
-    logger.info("Feed found: %s", feed_url)
-
-    analysis_results = analyze_feed_content(feed_url)
-
-    results_model = SocialAnalysisResult(
-        domain=domain, social_content_analysis=analysis_results
-    )
-
-    results_dict = results_model.model_dump()
-
-    logger.info("Social content analysis complete for %s", domain)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="social_analyzer", data=results_dict)
+        console.print(
+            Markdown(strategic_result.profile_text or "No analysis generated.")
+        )

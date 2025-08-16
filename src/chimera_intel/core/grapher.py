@@ -1,6 +1,6 @@
 import typer
 import json
-from pyvis.network import Network
+from pyvis.network import Network # type: ignore
 import os
 from typing import Dict, Any
 import logging

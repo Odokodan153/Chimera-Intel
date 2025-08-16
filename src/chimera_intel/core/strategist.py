@@ -1,6 +1,6 @@
 import typer
 import json
-import google.generativeai as genai
+import google.generativeai as genai # type: ignore
 from rich.markdown import Markdown
 import logging
 from chimera_intel.core.database import get_aggregated_data_for_target

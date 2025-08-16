@@ -7,6 +7,7 @@ from .schemas import AppConfig
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,5 +83,6 @@ def load_config_from_yaml() -> AppConfig:
 # Any other module can now simply `from .config_loader import CONFIG, API_KEYS`
 # to get access to all validated configurations and secrets.
 
+
 CONFIG = load_config_from_yaml()
-API_KEYS = ApiKeys()
+API_KEYS = ApiKeys()  # type: ignore[call-arg]
