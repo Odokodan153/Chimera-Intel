@@ -9,8 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import Dict, Any
 import logging
-from chimera_intel.core.logger_config import setup_logging
-from chimera_intel.core.database import initialize_database
 from chimera_intel.core.footprint import gather_footprint_data
 from chimera_intel.core.web_analyzer import gather_web_analysis_data
 from chimera_intel.core.business_intel import run_business_intel

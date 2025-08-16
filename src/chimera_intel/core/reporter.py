@@ -6,7 +6,6 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from typing import Dict, Any
 import logging
-from .utils import console
 
 # Get a logger instance for this specific file
 logger = logging.getLogger(__name__)
