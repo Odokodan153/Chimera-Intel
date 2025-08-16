@@ -26,7 +26,6 @@ class ApiKeys(BaseSettings):
     wappalyzer_api_key: Optional[str] = Field(None, alias="WAPPALYZER_API_KEY")
     similarweb_api_key: Optional[str] = Field(None, alias="SIMILARWEB_API_KEY")
     gnews_api_key: Optional[str] = Field(None, alias="GNEWS_API_KEY")
-    securitytrails_api_key: Optional[str] = Field(None, alias="SECURITYTRAILS_API_KEY")
     
     # Defensive Counter-Intelligence Keys
     hibp_api_key: Optional[str] = Field(None, alias="HIBP_API_KEY")

@@ -37,7 +37,6 @@ dependencies = [
     "torch==2.0.1",
     "scikit-learn==1.3.0",
     "google-generativeai==0.2.2",
-    { git = "https://github.com/secops4thewin/securitytrails-python.git", rev = "f3f9a0b" },
     "jsondiff==2.0.0",
     "httpx==0.24.1",
     "reportlab==4.0.4",

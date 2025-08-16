@@ -3,9 +3,9 @@ import whois
 import dns.resolver
 import asyncio
 import re
+import shodan
 from rich.panel import Panel
 from dotenv import load_dotenv
-from securitytrails import SecurityTrails
 from typing import Dict, Any, List
 import logging
 from httpx import RequestError, HTTPStatusError
@@ -17,10 +17,7 @@ from chimera_intel.core.config_loader import CONFIG, API_KEYS
 from chimera_intel.core.schemas import FootprintResult, FootprintData, SubdomainReport, ScoredResult
 from chimera_intel.core.http_client import async_client
 
-# Get a logger instance for this specific file
 logger = logging.getLogger(__name__)
-
-# Load environment variables from the .env file
 load_dotenv()
 
 # --- Synchronous Helper Functions ---
@@ -73,7 +70,7 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
 
 async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
     """
-    Asynchronously retrieves subdomains from the VirusTotal API using the central client.
+    Asynchronously retrieves subdomains from the VirusTotal API.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -95,27 +92,6 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
         logger.error("Error fetching subdomains from VirusTotal for '%s': %s", domain, e)
         return []
 
-def get_subdomains_securitytrails(domain: str, api_key: str) -> List[str]:
-    """
-    Retrieves subdomains from the SecurityTrails API (synchronous library).
-
-    Args:
-        domain (str): The domain to query for subdomains.
-        api_key (str): The SecurityTrails API key.
-
-    Returns:
-        List[str]: A list of subdomain strings found.
-    """
-    if not api_key:
-        return []
-    try:
-        st = SecurityTrails(api_key)
-        data = st.domain_subdomains(domain)
-        return [f"{sub}.{domain}" for sub in data.get('subdomains', [])]
-    except Exception as e:
-        logger.error("Error fetching subdomains from SecurityTrails for '%s': %s", domain, e)
-        return []
-
 async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
     """
     Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.
@@ -129,7 +105,6 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
     try:
         home_response = await async_client.get("https://dnsdumpster.com/")
         home_response.raise_for_status()
-        
         csrf_token = home_response.cookies.get("csrftoken")
         if not csrf_token:
             logger.warning("Could not retrieve CSRF token from DNSDumpster.")
@@ -137,16 +112,82 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
 
         post_data = {"csrfmiddlewaretoken": csrf_token, "targetip": domain, "user": "free"}
         headers = {"Referer": "https://dnsdumpster.com/"}
-        
         results_response = await async_client.post("https://dnsdumpster.com/", data=post_data, headers=headers)
         results_response.raise_for_status()
 
         subdomains = re.findall(r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r')<br>', results_response.text)
         return list(set(subdomains))
-        
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error scraping DNSDumpster for '%s': %s", domain, e)
         return []
+
+async def get_subdomains_threatminer(domain: str) -> List[str]:
+    """
+    Asynchronously retrieves subdomains from the ThreatMiner API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
+    url = f"https://api.threatminer.org/v2/domain.php?q={domain}&rt=5"
+    try:
+        response = await async_client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("status_code") == "200":
+            return data.get("results", [])
+        return []
+    except (RequestError, HTTPStatusError) as e:
+        logger.error("Error fetching subdomains from ThreatMiner for '%s': %s", domain, e)
+        return []
+
+async def get_subdomains_urlscan(domain: str) -> List[str]:
+    """
+    Asynchronously retrieves subdomains from the URLScan.io API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
+    url = f"https://urlscan.io/api/v1/search/?q=domain:{domain}"
+    try:
+        response = await async_client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        subdomains = {result['page']['domain'] for result in data.get('results', []) if 'page' in result and 'domain' in result['page']}
+        return list(subdomains)
+    except (RequestError, HTTPStatusError) as e:
+        logger.error("Error fetching subdomains from URLScan.io for '%s': %s", domain, e)
+        return []
+
+async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
+    """
+    Asynchronously retrieves subdomains from the Shodan API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+        api_key (str): The Shodan API key.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
+    if not api_key:
+        return []
+    def search():
+        try:
+            api = shodan.Shodan(api_key)
+            query = f"hostname:.{domain}"
+            result = api.search(query, limit=500)
+            hostnames = {host['hostnames'][0] for host in result['matches'] if host.get('hostnames')}
+            return list(hostnames)
+        except Exception as e:
+            logger.error("Error fetching subdomains from Shodan for '%s': %s", domain, e)
+            return []
+    return await asyncio.to_thread(search)
 
 # --- Core Logic Function ---
 
@@ -161,23 +202,27 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         FootprintResult: A Pydantic model containing all the gathered and processed data.
     """
     vt_api_key = API_KEYS.virustotal_api_key
-    st_api_key = API_KEYS.securitytrails_api_key
-    available_sources = sum(1 for key in [vt_api_key, st_api_key] if key) + 1 # +1 for DNSDumpster
+    shodan_api_key = API_KEYS.shodan_api_key
+    available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
 
     tasks = [
         get_subdomains_virustotal(domain, vt_api_key),
-        get_subdomains_dnsdumpster(domain)
+        get_subdomains_dnsdumpster(domain),
+        get_subdomains_threatminer(domain),
+        get_subdomains_urlscan(domain),
+        get_subdomains_shodan(domain, shodan_api_key)
     ]
-    vt_subdomains, dd_subdomains = await asyncio.gather(*tasks)
+    vt, dd, tm, us, sh = await asyncio.gather(*tasks)
 
     whois_data = get_whois_info(domain)
     dns_data = get_dns_records(domain)
-    st_subdomains = get_subdomains_securitytrails(domain, st_api_key)
 
     all_subdomains: Dict[str, List[str]] = {}
-    for sub in vt_subdomains: all_subdomains.setdefault(sub, []).append("VirusTotal")
-    for sub in st_subdomains: all_subdomains.setdefault(sub, []).append("SecurityTrails")
-    for sub in dd_subdomains: all_subdomains.setdefault(sub, []).append("DNSDumpster")
+    for sub in vt: all_subdomains.setdefault(sub, []).append("VirusTotal")
+    for sub in dd: all_subdomains.setdefault(sub, []).append("DNSDumpster")
+    for sub in tm: all_subdomains.setdefault(sub, []).append("ThreatMiner")
+    for sub in us: all_subdomains.setdefault(sub, []).append("URLScan.io")
+    for sub in sh: all_subdomains.setdefault(sub, []).append("Shodan")
     
     scored_results = [
         ScoredResult(
