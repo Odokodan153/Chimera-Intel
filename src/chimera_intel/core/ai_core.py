@@ -1,7 +1,7 @@
 import typer
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
-from typing import List, Optional
+from typing import List
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
