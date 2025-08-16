@@ -1,7 +1,6 @@
 """
 Main FastAPI application for the Chimera Intel web dashboard.
 """
-
 import os
 import asyncio
 from fastapi import FastAPI, Request
@@ -10,17 +9,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from typing import Dict, Any
 import logging
-
-# --- Application Setup ---
 from chimera_intel.core.logger_config import setup_logging
-setup_logging()
 from chimera_intel.core.database import initialize_database
-initialize_database()
-
-# --- CHANGE: Import the core logic functions for all scannable modules ---
 from chimera_intel.core.footprint import gather_footprint_data
 from chimera_intel.core.web_analyzer import gather_web_analysis_data
-from chimera_intel.core.business_intel import run_business_intel # Note: This one is sync
+from chimera_intel.core.business_intel import run_business_intel
 from chimera_intel.core.grapher import generate_knowledge_graph
 from chimera_intel.core.utils import is_valid_domain
 

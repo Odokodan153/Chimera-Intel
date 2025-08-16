@@ -1,14 +1,11 @@
 import typer
 import json
-from rich.panel import Panel
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from typing import Dict, Any
 import logging
-
-# --- CORRECTED Absolute Imports ---
 from .utils import console
 
 # Get a logger instance for this specific file

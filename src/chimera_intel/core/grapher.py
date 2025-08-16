@@ -1,12 +1,9 @@
 import typer
 import json
-from rich.panel import Panel
 from pyvis.network import Network
 import os
 from typing import Dict, Any
 import logging
-
-# --- CORRECTED Absolute Imports ---
 from .config_loader import CONFIG
 from .utils import console
 

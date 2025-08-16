@@ -1,11 +1,8 @@
 import typer
 import json
 import google.generativeai as genai
-from rich.panel import Panel
 from rich.markdown import Markdown
 import logging
-
-# --- CORRECTED Absolute Imports ---
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console

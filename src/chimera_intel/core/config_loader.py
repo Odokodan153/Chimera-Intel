@@ -2,7 +2,6 @@ import yaml
 from pydantic_settings import BaseSettings
 from pydantic import Field, ValidationError
 from typing import Optional
-from rich.console import Console
 import logging
 
 # --- CORRECTED Absolute Imports ---

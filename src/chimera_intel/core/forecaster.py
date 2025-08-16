@@ -2,12 +2,9 @@ import typer
 import sqlite3
 import json
 from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 from typing import List, Dict, Any
 import logging
-
-# --- CORRECTED Absolute Imports ---
 from .database import DB_FILE
 from .schemas import Prediction, ForecastResult
 

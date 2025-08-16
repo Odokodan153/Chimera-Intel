@@ -1,7 +1,6 @@
 import typer
 import sqlite3
 import json
-from rich.panel import Panel
 from rich.pretty import pprint
 from jsondiff import diff
 from typing import Tuple, Optional, Dict, Any

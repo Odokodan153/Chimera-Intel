@@ -1,7 +1,5 @@
 import typer
-import json
 import google.generativeai as genai
-from rich.panel import Panel
 from rich.markdown import Markdown
 from typing import List
 import logging

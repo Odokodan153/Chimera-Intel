@@ -7,7 +7,7 @@ import logging
 # --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
-from chimera_intel.core.config_loader import CONFIG, API_KEYS
+from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.schemas import WebAnalysisResult, WebAnalysisData, TechStackReport, ScoredResult
 from chimera_intel.core.http_client import async_client
 

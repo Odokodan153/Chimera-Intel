@@ -7,11 +7,8 @@ from the various core modules. It also initializes the logging system and databa
 """
 
 import typer
-
-# --- Application Setup ---
-# Initialize the logging system before anything else happens.
 from chimera_intel.core.logger_config import setup_logging
-# --- Import individual Typer applications from core modules ---
+from chimera_intel.core.database import initialize_database
 from chimera_intel.core.footprint import footprint_app
 from chimera_intel.core.web_analyzer import web_app
 from chimera_intel.core.business_intel import business_app
@@ -27,7 +24,6 @@ from chimera_intel.core.social_analyzer import social_app
 from chimera_intel.core.vulnerability_scanner import vulnerability_app
 from chimera_intel.core.social_osint import social_osint_app
 from chimera_intel.core.dark_web_osint import dark_web_app
-from chimera_intel.core.database import initialize_database
 
 setup_logging()
 

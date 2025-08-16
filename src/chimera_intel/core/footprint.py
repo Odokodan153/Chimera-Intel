@@ -218,11 +218,16 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     dns_data = get_dns_records(domain)
 
     all_subdomains: Dict[str, List[str]] = {}
-    for sub in vt: all_subdomains.setdefault(sub, []).append("VirusTotal")
-    for sub in dd: all_subdomains.setdefault(sub, []).append("DNSDumpster")
-    for sub in tm: all_subdomains.setdefault(sub, []).append("ThreatMiner")
-    for sub in us: all_subdomains.setdefault(sub, []).append("URLScan.io")
-    for sub in sh: all_subdomains.setdefault(sub, []).append("Shodan")
+    for sub in vt:
+        all_subdomains.setdefault(sub, []).append("VirusTotal")
+    for sub in dd:
+        all_subdomains.setdefault(sub, []).append("DNSDumpster")
+    for sub in tm:
+        all_subdomains.setdefault(sub, []).append("ThreatMiner")
+    for sub in us:
+        all_subdomains.setdefault(sub, []).append("URLScan.io")
+    for sub in sh:
+        all_subdomains.setdefault(sub, []).append("Shodan")
     
     scored_results = [
         ScoredResult(
