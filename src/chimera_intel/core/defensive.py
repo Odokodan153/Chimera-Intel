@@ -2,11 +2,11 @@ import typer
 import os
 import json
 import subprocess
-import shodan
+import shodan  # type: ignore
 import time
 from rich.panel import Panel
 from rich.progress import Progress
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -16,7 +16,6 @@ from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import HIBPResult, GitHubLeaksResult, TyposquatResult
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +154,7 @@ def search_pastes_api(query: str) -> Dict[str, Any]:
         Dict[str, Any]: A dictionary of found pastes, or an error message.
     """
     url = "https://api.paste.ee/v1/pastes"
-    params = {"query": query, "per_page": 20}
+    params: Dict[str, Union[str, int]] = {"query": query, "per_page": 20}
 
     try:
         response = sync_client.get(url, params=params)
@@ -278,13 +277,18 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
 
 # --- Typer CLI Application ---
 
-
 defensive_app = typer.Typer()
 
 
 @defensive_app.command("breaches")
 def run_breach_check(domain: str, output_file: Optional[str] = None):
-    """Checks your domain against the Have I Been Pwned database."""
+    """
+    Checks your domain against the Have I Been Pwned database.
+
+    Args:
+        domain (str): The domain to check.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'breaches' command: %s", domain
@@ -309,7 +313,13 @@ def run_breach_check(domain: str, output_file: Optional[str] = None):
 
 @defensive_app.command("leaks")
 def run_leaks_check(query: str, output_file: Optional[str] = None):
-    """Searches GitHub for potential code and secret leaks."""
+    """
+    Searches GitHub for potential code and secret leaks.
+
+    Args:
+        query (str): The search query.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     logger.info("Starting GitHub leaks search for query: '%s'", query)
     api_key = API_KEYS.github_pat
     if api_key:
@@ -322,7 +332,13 @@ def run_leaks_check(query: str, output_file: Optional[str] = None):
 
 @defensive_app.command("typosquat")
 def run_typosquat_check(domain: str, output_file: Optional[str] = None):
-    """Finds potential phishing domains similar to yours using dnstwist."""
+    """
+    Finds potential phishing domains similar to yours using dnstwist.
+
+    Args:
+        domain (str): The domain to check.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'typosquat' command: %s", domain
@@ -345,7 +361,13 @@ def run_typosquat_check(domain: str, output_file: Optional[str] = None):
 
 @defensive_app.command("surface")
 def run_surface_check(query: str, output_file: Optional[str] = None):
-    """Analyzes your public attack surface using Shodan."""
+    """
+    Analyzes your public attack surface using Shodan.
+
+    Args:
+        query (str): The Shodan query.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     logger.info("Starting Shodan surface scan for query: '%s'", query)
     api_key = API_KEYS.shodan_api_key
     if api_key:
@@ -356,7 +378,13 @@ def run_surface_check(query: str, output_file: Optional[str] = None):
 
 @defensive_app.command("pastebin")
 def run_pastebin_check(query: str, output_file: Optional[str] = None):
-    """Searches public pastes for a query using the paste.ee API."""
+    """
+    Searches public pastes for a query using the paste.ee API.
+
+    Args:
+        query (str): The search query.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     logger.info("Starting public paste search for query: '%s'", query)
     results = search_pastes_api(query)
     save_or_print_results(results, output_file)
@@ -365,7 +393,13 @@ def run_pastebin_check(query: str, output_file: Optional[str] = None):
 
 @defensive_app.command("ssllabs")
 def run_ssllabs_check(domain: str, output_file: Optional[str] = None):
-    """Performs an in-depth SSL/TLS analysis via SSL Labs."""
+    """
+    Performs an in-depth SSL/TLS analysis via SSL Labs.
+
+    Args:
+        domain (str): The domain to scan.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'ssllabs' command: %s", domain
@@ -396,7 +430,14 @@ def run_mobsf_scan(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """Analyzes an Android .apk file using a local MobSF instance."""
+    """
+    Analyzes an Android .apk file using a local MobSF instance.
+
+    Args:
+        apk_file (str): Path to the .apk file.
+        mobsf_url (str): URL of the MobSF instance.
+        output_file (str): Optional path to save the results to a JSON file.
+    """
     logger.info("Starting MobSF scan for APK file: %s", apk_file)
     api_key = API_KEYS.mobsf_api_key
     if not api_key:

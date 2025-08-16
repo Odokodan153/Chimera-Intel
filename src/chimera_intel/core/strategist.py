@@ -10,7 +10,6 @@ from chimera_intel.core.schemas import StrategicProfileResult
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +65,6 @@ def generate_strategic_profile(
 
 # --- Typer CLI Application ---
 
-
 strategy_app = typer.Typer()
 
 
@@ -78,25 +76,30 @@ def run_strategy_analysis(
 ):
     """
     Generates an AI-powered strategic profile of a competitor by aggregating all known data.
+
+    Args:
+        target (str): The target company to analyze.
     """
     logger.info("Generating strategic profile for target: %s", target)
 
     aggregated_data = get_aggregated_data_for_target(target)
 
     if not aggregated_data:
-        # The get_aggregated_data_for_target function already logs a warning.
-
         raise typer.Exit(code=1)
     logger.info("Submitting aggregated data to AI strategist for analysis.")
     api_key = API_KEYS.google_api_key
+
+    if not api_key:
+        logger.error(
+            "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
+        )
+        raise typer.Exit(code=1)
     strategic_result = generate_strategic_profile(aggregated_data, api_key)
 
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
         logger.error("Failed to generate strategic profile: %s", strategic_result.error)
     else:
-        # Display the AI-generated markdown as rich text in the console
-
         console.print(
             Markdown(strategic_result.profile_text or "No analysis generated.")
         )

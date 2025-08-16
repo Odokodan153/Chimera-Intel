@@ -1,7 +1,7 @@
 import typer
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
-from typing import List
+from typing import List, Optional
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
@@ -9,14 +9,13 @@ from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetecti
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
 
 try:
-    from transformers import pipeline  # type: ignore
+    from transformers import pipeline
 
     sentiment_analyzer = pipeline(
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
@@ -28,7 +27,7 @@ except (ImportError, OSError):
     )
 try:
     import numpy as np
-    from sklearn.ensemble import IsolationForest
+    from sklearn.ensemble import IsolationForest  # type: ignore
 except ImportError:
     IsolationForest = None
     np = None
@@ -138,7 +137,12 @@ ai_app = typer.Typer()
 
 @ai_app.command("sentiment")
 def run_sentiment_analysis(text: str):
-    """Analyzes the sentiment of a piece of text."""
+    """
+    Analyzes the sentiment of a piece of text.
+
+    Args:
+        text (str): The input text for sentiment analysis.
+    """
     logger.info("Running sentiment analysis.")
     result = analyze_sentiment(text)
     save_or_print_results(result.model_dump(), None)
@@ -146,9 +150,19 @@ def run_sentiment_analysis(text: str):
 
 @ai_app.command("swot")
 def run_swot_analysis(input_file: str):
-    """Generates a SWOT analysis from a JSON data file."""
+    """
+    Generates a SWOT analysis from a JSON data file.
+
+    Args:
+        input_file (str): The path to the JSON file containing OSINT data.
+    """
     logger.info("Generating SWOT analysis from file: %s", input_file)
     api_key = API_KEYS.google_api_key
+    if not api_key:
+        logger.error(
+            "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
+        )
+        raise typer.Exit(code=1)
     try:
         with open(input_file, "r") as f:
             data_str = f.read()
@@ -165,7 +179,12 @@ def run_swot_analysis(input_file: str):
 
 @ai_app.command("anomaly")
 def run_anomaly_detection(data_points: str):
-    """Detects anomalies in a numerical dataset (e.g., '100,110,250,90')."""
+    """
+    Detects anomalies in a numerical dataset (e.g., '100,110,250,90').
+
+    Args:
+        data_points (str): A comma-separated string of numbers.
+    """
     logger.info("Running anomaly detection.")
     try:
         numeric_data = [float(p.strip()) for p in data_points.split(",") if p.strip()]

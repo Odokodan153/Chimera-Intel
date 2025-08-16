@@ -2,7 +2,7 @@ import typer
 import sqlite3
 import json
 from rich.pretty import pprint
-from jsondiff import diff
+from jsondiff import diff  # type: ignore
 from typing import Tuple, Optional, Dict, Any, List
 from .database import DB_FILE, console
 from .schemas import FormattedDiff, DiffResult
@@ -11,7 +11,6 @@ from .config_loader import API_KEYS
 import logging
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +67,6 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
     Returns:
         FormattedDiff: A Pydantic model showing added and removed items.
     """
-    # --- CHANGE: Add type annotation for 'changes' dictionary ---
-
     changes: Dict[str, List[str]] = {"added": [], "removed": []}
     from jsondiff import ADD, DELETE
 
@@ -85,7 +82,6 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
 
 # --- Typer CLI Application ---
 
-
 diff_app = typer.Typer()
 
 
@@ -100,6 +96,10 @@ def run_diff_analysis(
 ):
     """
     Compares the last two scans of a target to detect changes and sends a notification.
+
+    Args:
+        target (str): The target whose history you want to compare.
+        module (str): The specific scan module to compare (e.g., 'footprint').
     """
     logger.info(
         "Starting change detection for target '%s' in module '%s'", target, module

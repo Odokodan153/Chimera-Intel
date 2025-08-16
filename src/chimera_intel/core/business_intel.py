@@ -1,5 +1,5 @@
 import typer
-import yfinance as yf
+import yfinance as yf  # type: ignore
 from bs4 import BeautifulSoup
 from httpx import RequestError, HTTPStatusError
 import logging
@@ -10,6 +10,7 @@ from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
+    Patent,
     PatentResult,
     BusinessIntelData,
     BusinessIntelResult,
@@ -43,8 +44,6 @@ def get_financials_yfinance(ticker_symbol: str) -> Financials:
             forwardPE=info.get("forwardPE"),
             dividendYield=info.get("dividendYield"),
         )
-    # Catch specific, expected errors related to bad data or invalid tickers
-
     except (ValueError, KeyError) as e:
         logger.warning(
             "Could not fetch or parse data for ticker '%s': %s", ticker_symbol, e
@@ -52,8 +51,6 @@ def get_financials_yfinance(ticker_symbol: str) -> Financials:
         return Financials(
             error=f"Could not fetch data for ticker '{ticker_symbol}'. It may be invalid or delisted."
         )
-    # --- CHANGE: Add a fallback for any other unexpected errors ---
-
     except Exception as e:
         logger.critical(
             "An unexpected error occurred in get_financials_yfinance for ticker '%s': %s",
@@ -114,16 +111,21 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
-        patents = [
-            {
-                "title": title_tag.text.strip(),
-                "link": "https://patents.google.com" + link_tag["href"],
-            }
-            for result in soup.select("article.search-result", limit=num_patents)
-            if (title_tag := result.select_one("h4.title"))
-            and (link_tag := result.select_one("a.abs-url"))
-        ]
-        return PatentResult(patents=patents)
+        patents_list: list[Patent] = []
+        for result in soup.select("article.search-result", limit=num_patents):
+            title_tag = result.select_one("h4.title")
+            link_tag = result.select_one("a.abs-url")
+
+            if title_tag and link_tag:
+                href = link_tag.get("href")
+                if isinstance(href, str):
+                    patents_list.append(
+                        Patent(
+                            title=title_tag.text.strip(),
+                            link="https://patents.google.com" + href,
+                        )
+                    )
+        return PatentResult(patents=patents_list)
     except HTTPStatusError as e:
         logger.error("HTTP error scraping patents for query '%s': %s", query, e)
         return PatentResult(
@@ -132,8 +134,6 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
     except RequestError as e:
         logger.error("Network error scraping patents for query '%s': %s", query, e)
         return PatentResult(error=f"Network error scraping patents: {e}")
-    # --- CHANGE: Add a fallback for any other unexpected errors ---
-
     except Exception as e:
         logger.critical(
             "An unexpected error occurred while scraping patents for query '%s': %s",
@@ -146,6 +146,7 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
 
 
 # --- Typer CLI Application ---
+
 
 business_app = typer.Typer()
 
@@ -164,6 +165,11 @@ def run_business_intel(
 ):
     """
     Gathers business intelligence: financials, news, and patents for a target company.
+
+    Args:
+        company_name (str): The full name of the target company.
+        ticker (str): The stock market ticker for financial data.
+        output_file (str): Optional path to save the results to a JSON file.
     """
     logger.info(
         "Starting business intelligence scan for %s (Ticker: %s)",
@@ -174,9 +180,14 @@ def run_business_intel(
     gnews_key = API_KEYS.gnews_api_key
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
 
+    if not gnews_key:
+        logger.warning("GNews API key not found. Skipping news gathering.")
+        news_data = GNewsResult(error="GNews API key not configured.")
+    else:
+        news_data = get_news_gnews(company_name, gnews_key)
     intel_data = BusinessIntelData(
         financials=financial_data,
-        news=get_news_gnews(company_name, gnews_key),
+        news=news_data,
         patents=scrape_google_patents(company_name),
     )
 

@@ -1,9 +1,9 @@
 import typer
-import whois
+import whois  # type: ignore
 import dns.resolver
 import asyncio
 import re
-import shodan
+import shodan  # type: ignore
 from rich.panel import Panel
 from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional
@@ -321,6 +321,10 @@ async def run_footprint_scan(
 ):
     """
     Gathers basic digital footprint information for a domain.
+
+    Args:
+        domain (str): The target domain, e.g., 'google.com'.
+        output_file (str): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning(

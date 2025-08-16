@@ -2,7 +2,7 @@ import typer
 import asyncio
 import logging
 from typing import List
-from httpx_socks import AsyncProxyTransport
+from httpx_socks import AsyncProxyTransport  # type: ignore
 from bs4 import BeautifulSoup
 import httpx
 from .schemas import DarkWebResult, DarkWebScanResult
@@ -72,6 +72,7 @@ async def search_dark_web(query: str) -> DarkWebScanResult:
 
 # --- Typer CLI Application ---
 
+
 dark_web_app = typer.Typer()
 
 
@@ -87,6 +88,10 @@ async def run_dark_web_search(
     """
     Searches for a query on the dark web via the Ahmia search engine.
     REQUIRES TOR BROWSER TO BE RUNNING.
+
+    Args:
+        query (str): The search query, e.g., 'mycompany leaked data'.
+        output_file (str): Optional path to save the results to a JSON file.
     """
     results_model = await search_dark_web(query)
 

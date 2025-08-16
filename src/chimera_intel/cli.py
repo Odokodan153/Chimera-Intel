@@ -29,10 +29,12 @@ setup_logging()
 
 # Initialize the database to ensure the schema is ready.
 
+
 initialize_database()
 
 # --- Main Application Definition ---
 # This is the top-level Typer application.
+
 
 app = typer.Typer(
     name="Chimera Intel",
@@ -46,6 +48,7 @@ app = typer.Typer(
 # creating a hierarchical CLI structure like 'chimera <group> <command>'.
 
 # 1. 'scan' command group for offensive intelligence gathering.
+
 
 scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
 app.add_typer(scan_app, name="scan")
@@ -71,6 +74,7 @@ scan_app.add_typer(
 
 # 2. 'defensive' command group for internal security and counter-intelligence.
 
+
 defensive_group_app = typer.Typer(
     help="Run defensive and vulnerability scans on your own assets."
 )
@@ -89,6 +93,7 @@ defensive_group_app.add_typer(
 
 
 # 3. 'analysis' command group for AI-powered and historical data analysis.
+
 
 analysis_app = typer.Typer(help="Run AI-powered and historical analysis.")
 app.add_typer(analysis_app, name="analysis")
@@ -114,6 +119,7 @@ analysis_app.add_typer(
 
 
 # 4. 'report' command group for generating output files from saved data.
+
 
 report_app_group = typer.Typer(help="Generate reports from saved JSON scan data.")
 app.add_typer(report_app_group, name="report")
