@@ -11,15 +11,7 @@ import typer
 # --- Application Setup ---
 # Initialize the logging system before anything else happens.
 from chimera_intel.core.logger_config import setup_logging
-setup_logging()
-
-# Initialize the database to ensure the schema is ready.
-from chimera_intel.core.database import initialize_database
-initialize_database()
-
 # --- Import individual Typer applications from core modules ---
-# Each of these imported '..._app' variables is a self-contained Typer application
-# that defines a group of related commands (e.g., 'scan footprint', 'defensive breaches').
 from chimera_intel.core.footprint import footprint_app
 from chimera_intel.core.web_analyzer import web_app
 from chimera_intel.core.business_intel import business_app
@@ -35,7 +27,12 @@ from chimera_intel.core.social_analyzer import social_app
 from chimera_intel.core.vulnerability_scanner import vulnerability_app
 from chimera_intel.core.social_osint import social_osint_app
 from chimera_intel.core.dark_web_osint import dark_web_app
+from chimera_intel.core.database import initialize_database
 
+setup_logging()
+
+# Initialize the database to ensure the schema is ready.
+initialize_database()
 
 # --- Main Application Definition ---
 # This is the top-level Typer application.

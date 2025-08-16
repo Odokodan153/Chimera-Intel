@@ -4,8 +4,7 @@ import logging
 from typing import List
 from httpx_socks import AsyncProxyTransport
 from bs4 import BeautifulSoup
-
-# --- CORRECTED Absolute Imports ---
+import httpx
 from .schemas import DarkWebResult, DarkWebScanResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db

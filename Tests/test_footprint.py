@@ -7,8 +7,8 @@ to isolate functions from the network and ensure tests are fast and deterministi
 """
 
 import unittest
+from unittest.mock import patch, MagicMock
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
 
 # Use the absolute import path for the package structure
 from chimera_intel.core.footprint import is_valid_domain, get_whois_info, get_dns_records, get_subdomains_virustotal
@@ -70,4 +70,23 @@ class TestFootprint(unittest.TestCase):
         # --- Simulate a successful API response ---
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock() # Mock the check for HTTP errors
-        mock_response.json
+        mock_response.json.return_value = {
+            "data": [{"id": "sub1.google.com"}, {"id": "sub2.google.com"}]
+        }
+        
+        # Configure the mock 'get' method to be an async function that returns our simulated response.
+        async def async_magic():
+            return mock_response
+        
+        mock_async_get.return_value = async_magic()
+
+        # --- Run the async function ---
+        result = asyncio.run(get_subdomains_virustotal("google.com", "fake_api_key"))
+
+        # --- Assert against the actual returned list ---
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertIn("sub1.google.com", result)
+
+if __name__ == '__main__':
+    unittest.main()

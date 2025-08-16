@@ -9,10 +9,10 @@ live network conditions.
 
 import unittest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 # Use the absolute import path for the package structure
-from chimera_intel.core.web_analyzer import get_tech_stack_builtwith, get_tech_stack_wappalyzer, get_traffic_similarweb
+from chimera_intel.core.web_analyzer import get_tech_stack_builtwith, get_traffic_similarweb
 
 class TestWebAnalyzer(unittest.TestCase):
     """Test cases for web analysis functions."""
@@ -37,7 +37,12 @@ class TestWebAnalyzer(unittest.TestCase):
                 }
             }]
         }
-        mock_async_get.return_value = mock_response
+        
+        # Configure the mock 'get' method to be an async function that returns our simulated response.
+        async def async_magic():
+            return mock_response
+            
+        mock_async_get.return_value = async_magic()
 
         # --- Run the async function ---
         result = asyncio.run(get_tech_stack_builtwith("example.com", "fake_api_key"))
@@ -69,7 +74,11 @@ class TestWebAnalyzer(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"visits": "some_traffic_data"}
-        mock_async_get.return_value = mock_response
+
+        async def async_magic():
+            return mock_response
+
+        mock_async_get.return_value = async_magic()
 
         # --- Run the async function ---
         result = asyncio.run(get_traffic_similarweb("example.com", "fake_api_key"))

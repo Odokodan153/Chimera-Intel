@@ -2,7 +2,7 @@ import sqlite3
 import json
 import datetime
 from rich.console import Console
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 console = Console()
 DB_FILE = "chimera_intel.db"

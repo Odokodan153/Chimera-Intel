@@ -1,12 +1,11 @@
 import typer
 import yfinance as yf
 from bs4 import BeautifulSoup
-from rich.panel import Panel
 from httpx import RequestError, HTTPStatusError
 import logging
 
 # --- CORRECTED Absolute Imports ---
-from chimera_intel.core.utils import console, save_or_print_results
+from chimera_intel.core.utils import save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
@@ -14,7 +13,6 @@ from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import (
     Financials, GNewsResult, PatentResult, BusinessIntelData, BusinessIntelResult
 )
-
 # Get a logger instance for this specific file
 logger = logging.getLogger(__name__)
 

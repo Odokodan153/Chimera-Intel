@@ -8,7 +8,7 @@ require loading large models or making external API calls.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from chimera_intel.core.ai_core import analyze_sentiment, detect_traffic_anomalies
 
 class TestAiCore(unittest.TestCase):
