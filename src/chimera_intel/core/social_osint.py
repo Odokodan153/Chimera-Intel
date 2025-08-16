@@ -2,7 +2,8 @@
 # Sherlock is a powerful library, but it's designed for command-line use.
 # We need to import its core components and adapt them for our library.
 
-from sherlock.sherlock import sherlock, sites # type: ignore
+
+from sherlock.sherlock import sherlock, sites  # type: ignore
 from .schemas import SocialProfile, SocialOSINTResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db
@@ -42,6 +43,7 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
 
 # --- Typer CLI Application ---
+
 
 social_osint_app = typer.Typer()
 

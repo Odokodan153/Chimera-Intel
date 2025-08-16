@@ -1,6 +1,13 @@
 import typer
 import json
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Flowable
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    Flowable,
+)
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
@@ -8,6 +15,7 @@ from typing import Dict, Any, List
 import logging
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +36,7 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
         doc = SimpleDocTemplate(output_path)
         styles = getSampleStyleSheet()
         # Correct the type hint for the story list to accept all Flowable elements
+
         story: List[Flowable] = []
 
         # --- Title Page ---

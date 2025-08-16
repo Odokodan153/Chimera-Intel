@@ -9,12 +9,14 @@ from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetecti
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
+
 try:
-    from transformers import pipeline # type: ignore
+    from transformers import pipeline  # type: ignore
 
     sentiment_analyzer = pipeline(
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
@@ -129,6 +131,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
 
 
 # --- Typer CLI Application ---
+
 
 ai_app = typer.Typer()
 

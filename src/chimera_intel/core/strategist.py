@@ -1,6 +1,6 @@
 import typer
 import json
-import google.generativeai as genai # type: ignore
+import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
 import logging
 from chimera_intel.core.database import get_aggregated_data_for_target
@@ -9,6 +9,7 @@ from chimera_intel.core.utils import console
 from chimera_intel.core.schemas import StrategicProfileResult
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 import typer
 import json
-from pyvis.network import Network # type: ignore
+from pyvis.network import Network  # type: ignore
 import os
 from typing import Dict, Any
 import logging
@@ -8,6 +8,7 @@ from .config_loader import CONFIG
 from .utils import console
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
 
 
 # --- Typer CLI Application ---
+
 
 graph_app = typer.Typer()
 
