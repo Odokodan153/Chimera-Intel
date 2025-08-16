@@ -348,6 +348,7 @@ class HostScanResult(BaseModel):
     host: str
     state: str
     open_ports: List[PortDetail]
+    error: Optional[str] = None
 
 
 class VulnerabilityScanResult(BaseModel):

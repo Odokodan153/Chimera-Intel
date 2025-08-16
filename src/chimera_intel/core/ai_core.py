@@ -1,7 +1,7 @@
 import typer
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
-from typing import List
+from typing import List, Optional, Any
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    from transformers import pipeline
+    from transformers import pipeline  # type: ignore
 
     sentiment_analyzer = pipeline(
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
@@ -29,8 +29,10 @@ try:
     import numpy as np
     from sklearn.ensemble import IsolationForest  # type: ignore
 except ImportError:
-    IsolationForest = None
-    np = None
+    # Explicitly type hint to allow for None value
+
+    IsolationForest: Optional[Any] = None
+    np: Optional[Any] = None
     logger.warning(
         "Could not import 'scikit-learn' or 'numpy'. Anomaly detection will be unavailable."
     )
