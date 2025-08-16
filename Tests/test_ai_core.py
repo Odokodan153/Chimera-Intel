@@ -11,10 +11,11 @@ import unittest
 from unittest.mock import patch
 from chimera_intel.core.ai_core import analyze_sentiment, detect_traffic_anomalies
 
+
 class TestAiCore(unittest.TestCase):
     """Test cases for core AI analysis functions."""
 
-    @patch('chimera_intel.core.ai_core.sentiment_analyzer')
+    @patch("chimera_intel.core.ai_core.sentiment_analyzer")
     def test_analyze_sentiment(self, mock_analyzer):
         """
         Tests the sentiment analysis function with a mocked transformer model.
@@ -23,9 +24,10 @@ class TestAiCore(unittest.TestCase):
         pipeline to verify that the wrapper function correctly processes it.
         """
         # Simulate a sentiment analysis result
-        mock_analyzer.return_value = [{'label': 'POSITIVE', 'score': 0.99}]
+
+        mock_analyzer.return_value = [{"label": "POSITIVE", "score": 0.99}]
         result = analyze_sentiment("This is great!")
-        self.assertEqual(result.label, 'POSITIVE')
+        self.assertEqual(result.label, "POSITIVE")
 
     def test_detect_traffic_anomalies(self):
         """
@@ -36,10 +38,12 @@ class TestAiCore(unittest.TestCase):
         ensure the Isolation Forest model identifies it correctly.
         """
         # An obvious anomaly (500) is added to the data.
+
         traffic_data = [100.0, 105.0, 110.0, 102.0, 108.0, 500.0, 98.0, 112.0]
         result = detect_traffic_anomalies(traffic_data)
         self.assertIn(500.0, result.detected_anomalies)
         self.assertNotIn(100.0, result.detected_anomalies)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

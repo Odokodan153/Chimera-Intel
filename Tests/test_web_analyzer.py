@@ -12,12 +12,17 @@ import asyncio
 from unittest.mock import patch, MagicMock
 
 # Use the absolute import path for the package structure
-from chimera_intel.core.web_analyzer import get_tech_stack_builtwith, get_traffic_similarweb
+
+from chimera_intel.core.web_analyzer import (
+    get_tech_stack_builtwith,
+    get_traffic_similarweb,
+)
+
 
 class TestWebAnalyzer(unittest.TestCase):
     """Test cases for web analysis functions."""
 
-    @patch('chimera_intel.core.web_analyzer.async_client.get')
+    @patch("chimera_intel.core.web_analyzer.async_client.get")
     def test_get_tech_stack_builtwith_success(self, mock_async_get):
         """
         Tests a successful async call to the BuiltWith API.
@@ -26,28 +31,34 @@ class TestWebAnalyzer(unittest.TestCase):
         API response containing a list of web technologies.
         """
         # --- Simulate a successful API response ---
+
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
-            "Results": [{
-                "Result": {
-                    "Paths": [{
-                        "Technologies": [{"Name": "Nginx"}, {"Name": "React"}]
-                    }]
+            "Results": [
+                {
+                    "Result": {
+                        "Paths": [
+                            {"Technologies": [{"Name": "Nginx"}, {"Name": "React"}]}
+                        ]
+                    }
                 }
-            }]
+            ]
         }
-        
+
         # Configure the mock 'get' method to be an async function that returns our simulated response.
+
         async def async_magic():
             return mock_response
-            
+
         mock_async_get.return_value = async_magic()
 
         # --- Run the async function ---
+
         result = asyncio.run(get_tech_stack_builtwith("example.com", "fake_api_key"))
 
         # --- Assert against the actual returned list ---
+
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertIn("Nginx", result)
@@ -60,9 +71,9 @@ class TestWebAnalyzer(unittest.TestCase):
         attempt a network call when no API key is provided.
         """
         result = asyncio.run(get_tech_stack_builtwith("example.com", None))
-        self.assertEqual(result, []) # It should return an empty list
+        self.assertEqual(result, [])  # It should return an empty list
 
-    @patch('chimera_intel.core.web_analyzer.async_client.get')
+    @patch("chimera_intel.core.web_analyzer.async_client.get")
     def test_get_traffic_similarweb_success(self, mock_async_get):
         """
         Tests a successful async call to the Similarweb API.
@@ -71,6 +82,7 @@ class TestWebAnalyzer(unittest.TestCase):
         API response containing website traffic data.
         """
         # --- Simulate a successful API response ---
+
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"visits": "some_traffic_data"}
@@ -81,10 +93,13 @@ class TestWebAnalyzer(unittest.TestCase):
         mock_async_get.return_value = async_magic()
 
         # --- Run the async function ---
+
         result = asyncio.run(get_traffic_similarweb("example.com", "fake_api_key"))
 
         # --- Assert the structure of the returned dictionary ---
+
         self.assertIn("visits", result)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

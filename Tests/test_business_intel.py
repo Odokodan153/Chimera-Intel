@@ -9,12 +9,17 @@ ensuring the tests are fast and reliable.
 
 import unittest
 from unittest.mock import patch, MagicMock
-from chimera_intel.core.business_intel import get_financials_yfinance, get_news_gnews, scrape_google_patents
+from chimera_intel.core.business_intel import (
+    get_financials_yfinance,
+    get_news_gnews,
+    scrape_google_patents,
+)
+
 
 class TestBusinessIntel(unittest.TestCase):
     """Test cases for business intelligence gathering functions."""
 
-    @patch('chimera_intel.core.business_intel.yf.Ticker')
+    @patch("chimera_intel.core.business_intel.yf.Ticker")
     def test_get_financials_yfinance_success(self, mock_ticker):
         """
         Tests a successful financial data lookup using the yfinance library.
@@ -23,6 +28,7 @@ class TestBusinessIntel(unittest.TestCase):
         without making a real call to Yahoo Finance.
         """
         # Simulate a successful yfinance call
+
         mock_instance = mock_ticker.return_value
         mock_instance.info = {"longName": "Apple Inc.", "marketCap": 2000000000000}
 
@@ -30,7 +36,7 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(result.companyName, "Apple Inc.")
         self.assertEqual(result.marketCap, 2000000000000)
 
-    @patch('chimera_intel.core.http_client.sync_client.get')
+    @patch("chimera_intel.core.http_client.sync_client.get")
     def test_get_news_gnews_success(self, mock_get):
         """
         Tests a successful news retrieval from the GNews API.
@@ -39,15 +45,26 @@ class TestBusinessIntel(unittest.TestCase):
         successful API response with a sample news article.
         """
         # Simulate a successful GNews API call
+
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"totalArticles": 1, "articles": [{"title": "Test News", "description": "A test", "url": "http://test.com", "source": {"name": "test"}}]}
+        mock_response.json.return_value = {
+            "totalArticles": 1,
+            "articles": [
+                {
+                    "title": "Test News",
+                    "description": "A test",
+                    "url": "http://test.com",
+                    "source": {"name": "test"},
+                }
+            ],
+        }
         mock_get.return_value = mock_response
 
         result = get_news_gnews("Apple Inc.", "fake_api_key")
         self.assertEqual(len(result.articles), 1)
 
-    @patch('chimera_intel.core.http_client.sync_client.get')
+    @patch("chimera_intel.core.http_client.sync_client.get")
     def test_scrape_google_patents_success(self, mock_get):
         """
         Tests a successful web scrape of Google Patents.
@@ -56,6 +73,7 @@ class TestBusinessIntel(unittest.TestCase):
         sample HTML snippet, simulating a successful scrape of the patents page.
         """
         # Simulate a successful web scrape
+
         mock_html = """
         <article class="search-result">
             <a class="abs-url" href="/patent/US123/en"></a>
@@ -71,5 +89,6 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(len(result.patents), 1)
         self.assertEqual(result.patents[0].title, "Test Patent Title")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

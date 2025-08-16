@@ -9,18 +9,22 @@ from dotenv import load_dotenv
 from typing import Dict, Any, List
 import logging
 from httpx import RequestError, HTTPStatusError
-
-# --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import CONFIG, API_KEYS
-from chimera_intel.core.schemas import FootprintResult, FootprintData, SubdomainReport, ScoredResult
+from chimera_intel.core.schemas import (
+    FootprintResult,
+    FootprintData,
+    SubdomainReport,
+    ScoredResult,
+)
 from chimera_intel.core.http_client import async_client
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Synchronous Helper Functions ---
+
 
 def get_whois_info(domain: str) -> Dict[str, Any]:
     """
@@ -34,10 +38,17 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
     """
     try:
         domain_info = whois.whois(domain)
-        return dict(domain_info) if domain_info and domain_info.domain_name else {"error": "No WHOIS record found."}
+        return (
+            dict(domain_info)
+            if domain_info and domain_info.domain_name
+            else {"error": "No WHOIS record found."}
+        )
     except Exception as e:
-        logger.error("An exception occurred during WHOIS lookup for '%s': %s", domain, e)
+        logger.error(
+            "An exception occurred during WHOIS lookup for '%s': %s", domain, e
+        )
         return {"error": f"An exception occurred during WHOIS lookup: {e}"}
+
 
 def get_dns_records(domain: str) -> Dict[str, Any]:
     """
@@ -59,14 +70,24 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
         except dns.resolver.NoAnswer:
             dns_results[record_type] = None
         except dns.resolver.NXDOMAIN:
-            logger.warning("DNS query failed for '%s' because the domain does not exist (NXDOMAIN).", domain)
+            logger.warning(
+                "DNS query failed for '%s' because the domain does not exist (NXDOMAIN).",
+                domain,
+            )
             return {"error": f"Domain does not exist (NXDOMAIN): {domain}"}
         except Exception as e:
-            logger.error("Could not resolve DNS record type '%s' for domain '%s': %s", record_type, domain, e)
+            logger.error(
+                "Could not resolve DNS record type '%s' for domain '%s': %s",
+                record_type,
+                domain,
+                e,
+            )
             dns_results[record_type] = [f"Could not resolve {record_type}: {e}"]
     return dns_results
 
+
 # --- Asynchronous Data Gathering Functions ---
+
 
 async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
     """
@@ -89,8 +110,11 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
         data = response.json()
         return [item.get("id") for item in data.get("data", [])]
     except (HTTPStatusError, RequestError) as e:
-        logger.error("Error fetching subdomains from VirusTotal for '%s': %s", domain, e)
+        logger.error(
+            "Error fetching subdomains from VirusTotal for '%s': %s", domain, e
+        )
         return []
+
 
 async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
     """
@@ -109,17 +133,26 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
         if not csrf_token:
             logger.warning("Could not retrieve CSRF token from DNSDumpster.")
             return []
-
-        post_data = {"csrfmiddlewaretoken": csrf_token, "targetip": domain, "user": "free"}
+        post_data = {
+            "csrfmiddlewaretoken": csrf_token,
+            "targetip": domain,
+            "user": "free",
+        }
         headers = {"Referer": "https://dnsdumpster.com/"}
-        results_response = await async_client.post("https://dnsdumpster.com/", data=post_data, headers=headers)
+        results_response = await async_client.post(
+            "https://dnsdumpster.com/", data=post_data, headers=headers
+        )
         results_response.raise_for_status()
 
-        subdomains = re.findall(r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r')<br>', results_response.text)
+        subdomains = re.findall(
+            r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r")<br>",
+            results_response.text,
+        )
         return list(set(subdomains))
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error scraping DNSDumpster for '%s': %s", domain, e)
         return []
+
 
 async def get_subdomains_threatminer(domain: str) -> List[str]:
     """
@@ -140,8 +173,11 @@ async def get_subdomains_threatminer(domain: str) -> List[str]:
             return data.get("results", [])
         return []
     except (RequestError, HTTPStatusError) as e:
-        logger.error("Error fetching subdomains from ThreatMiner for '%s': %s", domain, e)
+        logger.error(
+            "Error fetching subdomains from ThreatMiner for '%s': %s", domain, e
+        )
         return []
+
 
 async def get_subdomains_urlscan(domain: str) -> List[str]:
     """
@@ -158,11 +194,18 @@ async def get_subdomains_urlscan(domain: str) -> List[str]:
         response = await async_client.get(url)
         response.raise_for_status()
         data = response.json()
-        subdomains = {result['page']['domain'] for result in data.get('results', []) if 'page' in result and 'domain' in result['page']}
+        subdomains = {
+            result["page"]["domain"]
+            for result in data.get("results", [])
+            if "page" in result and "domain" in result["page"]
+        }
         return list(subdomains)
     except (RequestError, HTTPStatusError) as e:
-        logger.error("Error fetching subdomains from URLScan.io for '%s': %s", domain, e)
+        logger.error(
+            "Error fetching subdomains from URLScan.io for '%s': %s", domain, e
+        )
         return []
+
 
 async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
     """
@@ -177,19 +220,29 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
     """
     if not api_key:
         return []
+
     def search():
         try:
             api = shodan.Shodan(api_key)
             query = f"hostname:.{domain}"
             result = api.search(query, limit=500)
-            hostnames = {host['hostnames'][0] for host in result['matches'] if host.get('hostnames')}
+            hostnames = {
+                host["hostnames"][0]
+                for host in result["matches"]
+                if host.get("hostnames")
+            }
             return list(hostnames)
         except Exception as e:
-            logger.error("Error fetching subdomains from Shodan for '%s': %s", domain, e)
+            logger.error(
+                "Error fetching subdomains from Shodan for '%s': %s", domain, e
+            )
             return []
+
     return await asyncio.to_thread(search)
 
+
 # --- Core Logic Function ---
+
 
 async def gather_footprint_data(domain: str) -> FootprintResult:
     """
@@ -210,7 +263,7 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         get_subdomains_dnsdumpster(domain),
         get_subdomains_threatminer(domain),
         get_subdomains_urlscan(domain),
-        get_subdomains_shodan(domain, shodan_api_key)
+        get_subdomains_shodan(domain, shodan_api_key),
     ]
     vt, dd, tm, us, sh = await asyncio.gather(*tasks)
 
@@ -228,45 +281,57 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         all_subdomains.setdefault(sub, []).append("URLScan.io")
     for sub in sh:
         all_subdomains.setdefault(sub, []).append("Shodan")
-    
     scored_results = [
         ScoredResult(
             domain=sub,
             sources=sources,
-            confidence=f"{'HIGH' if len(sources) > 1 else 'LOW'} ({len(sources)}/{available_sources} sources)"
+            confidence=f"{'HIGH' if len(sources) > 1 else 'LOW'} ({len(sources)}/{available_sources} sources)",
         )
         for sub, sources in sorted(all_subdomains.items())
     ]
 
-    subdomain_report = SubdomainReport(total_unique=len(scored_results), results=scored_results)
+    subdomain_report = SubdomainReport(
+        total_unique=len(scored_results), results=scored_results
+    )
     footprint_data = FootprintData(
-        whois_info=whois_data,
-        dns_records=dns_data,
-        subdomains=subdomain_report
+        whois_info=whois_data, dns_records=dns_data, subdomains=subdomain_report
     )
     return FootprintResult(domain=domain, footprint=footprint_data)
 
+
 # --- Typer CLI Application ---
+
+
 footprint_app = typer.Typer()
+
 
 @footprint_app.command("run")
 async def run_footprint_scan(
     domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Save the results to a JSON file."
+    ),
 ):
     """
     Gathers basic digital footprint information for a domain.
     """
     if not is_valid_domain(domain):
-        logger.warning("Invalid domain format provided to 'footprint' command: %s", domain)
-        console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
+        logger.warning(
+            "Invalid domain format provided to 'footprint' command: %s", domain
+        )
+        console.print(
+            Panel(
+                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                title="Error",
+                border_style="red",
+            )
+        )
         raise typer.Exit(code=1)
-
     logger.info("Starting asynchronous footprint scan for %s", domain)
-    
+
     results_model = await gather_footprint_data(domain)
     results_dict = results_model.model_dump()
-    
+
     logger.info("Footprint scan complete for %s", domain)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="footprint", data=results_dict)
