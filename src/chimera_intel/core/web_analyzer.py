@@ -3,18 +3,23 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-
-# --- CORRECTED Absolute Imports ---
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.schemas import WebAnalysisResult, WebAnalysisData, TechStackReport, ScoredResult
+from chimera_intel.core.schemas import (
+    WebAnalysisResult,
+    WebAnalysisData,
+    TechStackReport,
+    ScoredResult,
+)
 from chimera_intel.core.http_client import async_client
 
 # Get a logger instance for this specific file
+
 logger = logging.getLogger(__name__)
 
 # --- Asynchronous Data Gathering Functions ---
+
 
 async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
     """
@@ -46,6 +51,7 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
         logger.error("Error fetching tech stack from BuiltWith for '%s': %s", domain, e)
         return []
 
+
 async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
     """
     Asynchronously retrieves website technology stack from the Wappalyzer API.
@@ -72,8 +78,11 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
                 technologies.append(tech_info.get("name"))
         return list(set(technologies))
     except (HTTPStatusError, RequestError) as e:
-        logger.error("Error fetching tech stack from Wappalyzer for '%s': %s", domain, e)
+        logger.error(
+            "Error fetching tech stack from Wappalyzer for '%s': %s", domain, e
+        )
         return []
+
 
 async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
     """
@@ -94,10 +103,15 @@ async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
         response.raise_for_status()
         return response.json()
     except (HTTPStatusError, RequestError) as e:
-        logger.error("Error fetching traffic data from Similarweb for '%s': %s", domain, e)
+        logger.error(
+            "Error fetching traffic data from Similarweb for '%s': %s", domain, e
+        )
         return {"error": f"An error occurred with Similarweb: {e}"}
 
+
 # --- Core Logic Function ---
+
+
 async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     """
     The core logic for gathering all web analysis data.
@@ -116,7 +130,7 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     tasks = [
         get_tech_stack_builtwith(domain, builtwith_key),
         get_tech_stack_wappalyzer(domain, wappalyzer_key),
-        get_traffic_similarweb(domain, similarweb_key)
+        get_traffic_similarweb(domain, similarweb_key),
     ]
     builtwith_tech, wappalyzer_tech, traffic_info = await asyncio.gather(*tasks)
 
@@ -125,45 +139,55 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         all_tech.setdefault(tech, []).append("BuiltWith")
     for tech in wappalyzer_tech:
         all_tech.setdefault(tech, []).append("Wappalyzer")
-
     scored_tech_results = [
         ScoredResult(
             technology=tech,
             sources=sources,
-            confidence=f"{'HIGH' if available_tech_sources > 1 and len(sources) == available_tech_sources else 'LOW'} ({len(sources)}/{available_tech_sources} sources)"
+            confidence=f"{'HIGH' if available_tech_sources > 1 and len(sources) == available_tech_sources else 'LOW'} ({len(sources)}/{available_tech_sources} sources)",
         )
         for tech, sources in sorted(all_tech.items())
     ]
 
-    tech_stack_report = TechStackReport(total_unique=len(scored_tech_results), results=scored_tech_results)
-    
+    tech_stack_report = TechStackReport(
+        total_unique=len(scored_tech_results), results=scored_tech_results
+    )
+
     web_analysis_data = WebAnalysisData(
-        tech_stack=tech_stack_report,
-        traffic_info=traffic_info
+        tech_stack=tech_stack_report, traffic_info=traffic_info
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
 
+
 # --- Typer CLI Application ---
 
+
 web_app = typer.Typer()
+
 
 @web_app.command("run")
 async def run_web_analysis(
     domain: str = typer.Argument(..., help="The target domain to analyze."),
-    output_file: str = typer.Option(None, "--output", "-o", help="Save the results to a JSON file.")
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Save the results to a JSON file."
+    ),
 ):
     """Analyzes web-specific data asynchronously."""
     if not is_valid_domain(domain):
         logger.warning("Invalid domain format provided to 'web' command: %s", domain)
-        console.print(Panel(f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.", title="Error", border_style="red"))
+        console.print(
+            Panel(
+                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                title="Error",
+                border_style="red",
+            )
+        )
         raise typer.Exit(code=1)
-
     logger.info("Starting asynchronous web analysis for %s", domain)
-    
+
     results_model = await gather_web_analysis_data(domain)
     results_dict = results_model.model_dump()
-    
+
     logger.info("Web analysis complete for %s", domain)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="web_analyzer", data=results_dict)
