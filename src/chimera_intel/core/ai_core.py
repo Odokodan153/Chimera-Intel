@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
+# Define variables before the try block
+
+sentiment_analyzer: Optional[Any] = None
+IsolationForest: Optional[Any] = None
+np: Optional[Any] = None
 
 try:
     from transformers import pipeline  # type: ignore
@@ -21,18 +26,18 @@ try:
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
     )
 except (ImportError, OSError):
-    sentiment_analyzer = None
     logger.warning(
         "Could not import 'transformers' or load model. Sentiment analysis will be unavailable."
     )
 try:
-    import numpy as np
-    from sklearn.ensemble import IsolationForest  # type: ignore
-except ImportError:
-    # Explicitly type hint to allow for None value
+    import numpy
+    from sklearn.ensemble import IsolationForest as SklearnIsolationForest  # type: ignore
 
-    IsolationForest: Optional[Any] = None
-    np: Optional[Any] = None
+    # Assign the imported modules/classes to our variables
+
+    np = numpy
+    IsolationForest = SklearnIsolationForest
+except ImportError:
     logger.warning(
         "Could not import 'scikit-learn' or 'numpy'. Anomaly detection will be unavailable."
     )
