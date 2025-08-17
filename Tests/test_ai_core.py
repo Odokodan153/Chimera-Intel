@@ -33,7 +33,6 @@ class TestAiCore(unittest.TestCase):
         mock_analyzer.side_effect = Exception("Model loading failed")
         result = analyze_sentiment("Some text")
         self.assertEqual(result.label, "ERROR")
-        self.assertIsNotNone(result.error)
         self.assertIn("Model loading failed", result.error)
 
     def test_analyze_sentiment_no_model(self):
@@ -43,20 +42,27 @@ class TestAiCore(unittest.TestCase):
             self.assertEqual(result.label, "ERROR")
             self.assertIn("not installed", result.error)
 
-    @patch("chimera_intel.core.ai_core.genai.GenerativeModel")
-    def test_generate_swot_from_data_success(self, mock_genai_model: MagicMock):
+    # FIX: Patched the entire 'genai' module instead of an attribute on it.
+
+    @patch("chimera_intel.core.ai_core.genai")
+    def test_generate_swot_from_data_success(self, mock_genai: MagicMock):
         """Tests a successful SWOT analysis generation."""
-        mock_model_instance = mock_genai_model.return_value
+        # Configure the mock object that the patch provides
+
+        mock_model_instance = mock_genai.GenerativeModel.return_value
         mock_model_instance.generate_content.return_value.text = "## SWOT Analysis"
 
         result = generate_swot_from_data('{"key": "value"}', "fake_google_key")
         self.assertEqual(result.analysis_text, "## SWOT Analysis")
         self.assertIsNone(result.error)
+        # Verify that configure was called
 
-    @patch("chimera_intel.core.ai_core.genai.GenerativeModel")
-    def test_generate_swot_from_data_api_error(self, mock_genai_model: MagicMock):
+        mock_genai.configure.assert_called_with(api_key="fake_google_key")
+
+    @patch("chimera_intel.core.ai_core.genai")
+    def test_generate_swot_from_data_api_error(self, mock_genai: MagicMock):
         """Tests SWOT generation when the Google AI API returns an error."""
-        mock_model_instance = mock_genai_model.return_value
+        mock_model_instance = mock_genai.GenerativeModel.return_value
         mock_model_instance.generate_content.side_effect = Exception(
             "API limit reached"
         )
