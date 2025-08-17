@@ -1,9 +1,5 @@
-import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock, AsyncMock
-
-# You need to import 'app' from your CLI file
-
+from unittest.mock import patch, AsyncMock
 from chimera_intel.cli import app
 
 runner = CliRunner()
