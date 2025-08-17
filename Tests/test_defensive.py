@@ -10,6 +10,7 @@ are reliable and do not depend on network access.
 import unittest
 from unittest.mock import patch, MagicMock
 import subprocess
+from httpx import RequestError
 from chimera_intel.core.defensive import (
     check_hibp_breaches,
     find_typosquatting_dnstwist,
@@ -93,6 +94,8 @@ class TestDefensive(unittest.TestCase):
 
         mock_process = MagicMock()
         mock_process.stdout = '[{"fuzzer": "Original", "domain-name": "examp1e.com"}]'
+        # Setting check=True in the function call will make this mock pass without an error
+
         mock_run.return_value = mock_process
 
         result = find_typosquatting_dnstwist("example.com")
@@ -104,16 +107,14 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_api_error(self, mock_get: MagicMock):
         """
-        Tests the HIBP check during an API error (e.g., 500).
+        Tests the HIBP check during an API error.
 
         Args:
             mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
-        mock_response = MagicMock()
-        # Simulate an HTTP error by having raise_for_status throw an exception
+        # Simulate a more realistic network error
 
-        mock_response.raise_for_status.side_effect = Exception("Server Error")
-        mock_get.return_value = mock_response
+        mock_get.side_effect = RequestError("Network connection failed")
 
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)

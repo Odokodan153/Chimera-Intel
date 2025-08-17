@@ -50,6 +50,9 @@ def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
     except RequestError as e:
         logger.error("Network error checking HIBP for '%s': %s", domain, e)
         return HIBPResult(error=f"A network error occurred: {e}")
+    except Exception as e:
+        logger.error("An unexpected error occurred checking HIBP for '%s': %s", domain, e)
+        return HIBPResult(error=f"An unexpected error occurred: {e}")
 
 
 def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:

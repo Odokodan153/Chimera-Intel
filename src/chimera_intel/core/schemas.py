@@ -261,7 +261,7 @@ class SWOTAnalysisResult(BaseModel):
 class AnomalyDetectionResult(BaseModel):
     """Model for the result of a traffic anomaly detection."""
 
-    data_points: List[float]
+    data_points: List[Any]
     detected_anomalies: List[float]
     error: Optional[str] = None
 

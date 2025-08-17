@@ -1,72 +1,114 @@
+"""
+Tests for the main Command-Line Interface (CLI) of the Chimera Intel application.
+
+This test suite uses Typer's CliRunner to simulate command-line inputs and verify
+that the application behaves as expected, including correct command routing,
+parameter validation, and output.
+"""
+
+import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from chimera_intel.cli import app
+
+# Create a runner instance to invoke commands
 
 runner = CliRunner()
 
-# --- Tests for basic commands ---
+# --- Tests for basic app functionality ---
 
 
 def test_main_app_help():
-    """Tests if the main --help command works."""
+    """Tests if the main --help command works and displays commands."""
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Usage: main [OPTIONS] COMMAND [ARGS]..." in result.stdout
+    # Check that the main command groups are listed in the help output
+
     assert "scan" in result.stdout
     assert "defensive" in result.stdout
+    assert "analysis" in result.stdout
+    assert "report" in result.stdout
 
 
-# --- Tests for the 'scan' group ---
+# --- Tests for the 'scan' command group ---
+
+# The patch path must point to where the function is DEFINED.
 
 
-@patch("chimera_intel.cli.gather_footprint_data", new_callable=AsyncMock)
-def test_scan_footprint_success(mock_gather_footprint):
-    """Tests a successful 'scan footprint' command."""
-    # We simulate that the function returns an empty Pydantic model to avoid real requests
+@patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
+def test_scan_footprint_success(mock_gather_footprint: AsyncMock):
+    """
+    Tests a successful 'scan footprint run' command.
+
+    Args:
+        mock_gather_footprint (AsyncMock): A mock for the async data gathering function.
+    """
+    # Simulate a successful return from the core logic function
 
     mock_gather_footprint.return_value.model_dump.return_value = {
         "domain": "example.com",
         "footprint": {},
     }
 
+    # The command path must match the structure in cli.py: scan -> footprint -> run
+
     result = runner.invoke(app, ["scan", "footprint", "run", "example.com"])
+
     assert result.exit_code == 0
     assert "Footprint scan complete for example.com" in result.stdout
 
 
 def test_scan_footprint_invalid_domain():
-    """Tests 'scan footprint' with an invalid domain."""
+    """Tests the 'scan footprint run' command with an invalid domain."""
     result = runner.invoke(app, ["scan", "footprint", "run", "invalid-domain"])
+    # The command should exit with a non-zero code for an error
+
     assert result.exit_code == 1
     assert "is not a valid domain format" in result.stdout
 
 
-# --- Tests for the 'defensive' group ---
+# --- Tests for the 'defensive' command group ---
 
 
 @patch("chimera_intel.core.defensive.check_hibp_breaches")
-@patch("chimera_intel.core.config_loader.API_KEYS")
-def test_defensive_breaches_success(mock_api_keys, mock_check_hibp):
-    """Tests a successful 'defensive breaches' command."""
-    # Simulate the presence of an API key
+def test_defensive_breaches_success(mock_check_hibp: MagicMock):
+    """
+    Tests a successful 'defensive checks breaches' command.
 
-    mock_api_keys.hibp_api_key = "fake_key"
+    Args:
+        mock_check_hibp (MagicMock): A mock for the HIBP check function.
+    """
     # Simulate that the function returns a Pydantic model
 
     mock_check_hibp.return_value.model_dump.return_value = {"breaches": []}
 
-    result = runner.invoke(app, ["defensive", "breaches", "mycompany.com"])
+    # Use a context manager to temporarily set the API key for this test
+
+    with patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", "fake_key"):
+        # The command path must match the structure: defensive -> checks -> breaches
+
+        result = runner.invoke(
+            app, ["defensive", "checks", "breaches", "mycompany.com"]
+        )
+        assert result.exit_code == 0
+        assert "Starting HIBP breach check for mycompany.com" in result.stdout
+
+
+@patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", None)
+def test_defensive_breaches_no_api_key(mock_api_key_none: MagicMock):
+    """
+    Tests 'defensive checks breaches' when the API key is missing.
+
+    Args:
+        mock_api_key_none (MagicMock): A mock to ensure the API key is None.
+    """
+    # The command path must match the structure: defensive -> checks -> breaches
+
+    result = runner.invoke(app, ["defensive", "checks", "breaches", "mycompany.com"])
+
+    # The command should exit gracefully without an error
+
     assert result.exit_code == 0
-    assert "Starting HIBP breach check for mycompany.com" in result.stdout
+    # It should not attempt to run the check, so this text should be missing
 
-
-def test_defensive_breaches_no_api_key():
-    """Tests 'defensive breaches' without an API key."""
-    # Here we don't mock the API key, so it will be None
-    # The test should pass because the function will simply not execute the core logic
-
-    result = runner.invoke(app, ["defensive", "breaches", "mycompany.com"])
-    assert result.exit_code == 0
-    # Check that there is no output, as the key check stops execution
-
-    assert "Successfully saved" not in result.stdout
+    assert "Starting HIBP breach check" not in result.stdout

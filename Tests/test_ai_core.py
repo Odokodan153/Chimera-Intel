@@ -70,6 +70,9 @@ class TestAiCore(unittest.TestCase):
         result = detect_traffic_anomalies(invalid_data)
         self.assertEqual(result.detected_anomalies, [])
         self.assertIn("Invalid input", result.error)
+        # Check that the original invalid data is returned
+
+        self.assertEqual(result.data_points, invalid_data)
 
     def test_detect_traffic_anomalies_no_sklearn(self):
         """
