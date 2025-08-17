@@ -95,7 +95,7 @@ def test_defensive_breaches_success(mock_check_hibp: MagicMock):
 
 
 @patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", None)
-def test_defensive_breaches_no_api_key(mock_api_key_none: MagicMock):
+def test_defensive_breaches_no_api_key():
     """
     Tests 'defensive checks breaches' when the API key is missing.
 
