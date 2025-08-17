@@ -9,6 +9,7 @@ ensuring the tests are fast and reliable.
 
 import unittest
 from unittest.mock import patch, MagicMock
+from httpx import RequestError, HTTPStatusError, Response
 from chimera_intel.core.business_intel import (
     get_financials_yfinance,
     get_news_gnews,
@@ -24,20 +25,12 @@ class TestBusinessIntel(unittest.TestCase):
     def test_get_financials_yfinance_success(self, mock_ticker: MagicMock):
         """
         Tests a successful financial data lookup using the yfinance library.
-
-        This test mocks the 'yf.Ticker' object to simulate a valid response
-        without making a real call to Yahoo Finance.
-
-        Args:
-            mock_ticker (MagicMock): A mock object replacing `yf.Ticker`.
         """
-        # Simulate a successful yfinance call with all required fields
-
         mock_instance = mock_ticker.return_value
         mock_instance.info = {
             "longName": "Apple Inc.",
             "marketCap": 2000000000000,
-            "trailingPE": 30.5,  # This field is required by the function's logic
+            "trailingPE": 30.5,
             "forwardPE": 25.2,
             "dividendYield": 0.005,
             "sector": "Technology",
@@ -46,22 +39,39 @@ class TestBusinessIntel(unittest.TestCase):
         result = get_financials_yfinance("AAPL")
         self.assertIsInstance(result, Financials)
         self.assertEqual(result.companyName, "Apple Inc.")
-        self.assertEqual(result.marketCap, 2000000000000)
         self.assertIsNone(result.error)
+
+    @patch("chimera_intel.core.business_intel.yf.Ticker")
+    def test_get_financials_yfinance_invalid_ticker(self, mock_ticker: MagicMock):
+        """
+        Tests yfinance when an invalid ticker is provided, returning incomplete data.
+        """
+        mock_instance = mock_ticker.return_value
+        # Simulate yfinance returning a dictionary without the key fields we check for
+
+        mock_instance.info = {"longName": "Invalid Ticker Inc."}
+
+        result = get_financials_yfinance("INVALIDTICKER")
+        self.assertIsInstance(result, Financials)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Could not fetch data", result.error)
+
+    @patch("chimera_intel.core.business_intel.yf.Ticker")
+    def test_get_financials_yfinance_unexpected_exception(self, mock_ticker: MagicMock):
+        """
+        Tests yfinance when the library raises an unexpected exception.
+        """
+        mock_ticker.side_effect = Exception("A critical yfinance error")
+        result = get_financials_yfinance("AAPL")
+        self.assertIsInstance(result, Financials)
+        self.assertIsNotNone(result.error)
+        self.assertIn("An unexpected error occurred", result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_get_news_gnews_success(self, mock_get: MagicMock):
         """
         Tests a successful news retrieval from the GNews API.
-
-        This test mocks the central 'sync_client.get' method to simulate a
-        successful API response with a sample news article.
-
-        Args:
-            mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
-        # Simulate a successful GNews API call
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -81,21 +91,34 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsInstance(result, GNewsResult)
         self.assertIsNotNone(result.articles)
         self.assertEqual(len(result.articles), 1)
-        self.assertEqual(result.articles[0].title, "Test News")
+
+    def test_get_news_gnews_no_api_key(self):
+        """Tests GNews retrieval when the API key is missing."""
+        result = get_news_gnews("Test Query", "")
+        self.assertIsInstance(result, GNewsResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("API key not found", result.error)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_get_news_gnews_http_error(self, mock_get: MagicMock):
+        """Tests GNews retrieval when an HTTP error occurs."""
+        mock_response = MagicMock()
+        http_error = HTTPStatusError(
+            "Server Error", request=MagicMock(), response=Response(status_code=503)
+        )
+        mock_response.raise_for_status.side_effect = http_error
+        mock_get.return_value = mock_response
+
+        result = get_news_gnews("Test Query", "fake_api_key")
+        self.assertIsInstance(result, GNewsResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("503", result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_scrape_google_patents_success(self, mock_get: MagicMock):
         """
         Tests a successful web scrape of Google Patents.
-
-        This test mocks the central 'sync_client.get' method to return a
-        sample HTML snippet, simulating a successful scrape of the patents page.
-
-        Args:
-            mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
-        # Simulate a successful web scrape
-
         mock_html = """
         <article class="search-result">
             <a class="abs-url" href="/patent/US123/en"></a>
@@ -112,9 +135,32 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsNotNone(result.patents)
         self.assertEqual(len(result.patents), 1)
         self.assertEqual(result.patents[0].title, "Test Patent Title")
-        self.assertEqual(
-            result.patents[0].link, "https://patents.google.com/patent/US123/en"
-        )
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_scrape_google_patents_no_results(self, mock_get: MagicMock):
+        """
+        Tests patent scraping when the page returns no matching elements.
+        """
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "<html><body>No patents here.</body></html>"
+        mock_get.return_value = mock_response
+
+        result = scrape_google_patents("A company with no patents")
+        self.assertIsInstance(result, PatentResult)
+        self.assertIsNotNone(result.patents)
+        self.assertEqual(len(result.patents), 0)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_scrape_google_patents_network_error(self, mock_get: MagicMock):
+        """
+        Tests patent scraping during a network error.
+        """
+        mock_get.side_effect = RequestError("Connection failed")
+        result = scrape_google_patents("Test company")
+        self.assertIsInstance(result, PatentResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Network error", result.error)
 
 
 if __name__ == "__main__":

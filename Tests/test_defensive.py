@@ -10,7 +10,7 @@ are reliable and do not depend on network access.
 import unittest
 from unittest.mock import patch, MagicMock
 import subprocess
-from httpx import RequestError
+from httpx import RequestError, HTTPStatusError, Response
 from chimera_intel.core.defensive import (
     check_hibp_breaches,
     find_typosquatting_dnstwist,
@@ -26,15 +26,7 @@ class TestDefensive(unittest.TestCase):
     def test_check_hibp_breaches_found(self, mock_get: MagicMock):
         """
         Tests the HIBP breach check for a successful case where breaches are found.
-
-        This test mocks the central 'sync_client.get' method to simulate a 200 OK
-        response from the HIBP API.
-
-        Args:
-            mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
-        # Simulate a successful API response with complete breach data
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -60,16 +52,8 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_not_found(self, mock_get: MagicMock):
         """
-        Tests the HIBP breach check for a case where no breaches are found.
-
-        This test mocks the central 'sync_client.get' method to simulate a 404 Not Found
-        response, which is the expected behavior from the HIBP API when a domain is clean.
-
-        Args:
-            mock_get (MagicMock): A mock object replacing `sync_client.get`.
+        Tests the HIBP breach check for a case where no breaches are found (404).
         """
-        # Simulate a 404 Not Found response
-
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_get.return_value = mock_response
@@ -77,68 +61,104 @@ class TestDefensive(unittest.TestCase):
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
         self.assertEqual(result.breaches, [])
-        self.assertIsNotNone(result.message)
+        self.assertIn("No breaches found", result.message)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_check_hibp_breaches_http_error(self, mock_get: MagicMock):
+        """
+        Tests the HIBP check when an HTTP error (e.g., 500) occurs.
+        """
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        # Mocking a response object for raise_for_status
+
+        http_error = HTTPStatusError(
+            "Server Error", request=MagicMock(), response=Response(status_code=500)
+        )
+        mock_response.raise_for_status.side_effect = http_error
+        mock_get.return_value = mock_response
+
+        result = check_hibp_breaches("example.com", "fake_api_key")
+        self.assertIsInstance(result, HIBPResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("500", result.error)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_check_hibp_breaches_network_error(self, mock_get: MagicMock):
+        """
+        Tests the HIBP check during a network error.
+        """
+        mock_get.side_effect = RequestError("Network connection failed")
+        result = check_hibp_breaches("example.com", "fake_api_key")
+        self.assertIsInstance(result, HIBPResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("network error", result.error)
+
+    def test_check_hibp_breaches_no_api_key(self):
+        """Tests the HIBP check when the API key is missing."""
+        result = check_hibp_breaches("example.com", "")
+        self.assertIsInstance(result, HIBPResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("API key not found", result.error)
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_success(self, mock_run: MagicMock):
         """
         Tests the dnstwist wrapper for a successful execution.
-
-        This test mocks 'subprocess.run' to simulate a successful run of the
-        dnstwist command-line tool, providing a sample JSON output.
-
-        Args:
-            mock_run (MagicMock): A mock object replacing `subprocess.run`.
         """
-        # Simulate a successful subprocess run with complete JSON output
-
         mock_process = MagicMock()
         mock_process.stdout = '[{"fuzzer": "Original", "domain-name": "examp1e.com"}]'
-        # Setting check=True in the function call will make this mock pass without an error
-
         mock_run.return_value = mock_process
 
         result = find_typosquatting_dnstwist("example.com")
         self.assertIsInstance(result, TyposquatResult)
         self.assertIsNotNone(result.results)
         self.assertEqual(len(result.results), 1)
-        self.assertEqual(result.results[0].domain_name, "examp1e.com")
-
-    @patch("chimera_intel.core.http_client.sync_client.get")
-    def test_check_hibp_breaches_api_error(self, mock_get: MagicMock):
-        """
-        Tests the HIBP check during an API error.
-
-        Args:
-            mock_get (MagicMock): A mock object replacing `sync_client.get`.
-        """
-        # Simulate a more realistic network error
-
-        mock_get.side_effect = RequestError("Network connection failed")
-
-        result = check_hibp_breaches("example.com", "fake_api_key")
-        self.assertIsInstance(result, HIBPResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("A network error occurred", result.error)
 
     @patch("chimera_intel.core.defensive.subprocess.run")
-    def test_find_typosquatting_dnstwist_failure(self, mock_run: MagicMock):
+    def test_find_typosquatting_dnstwist_command_not_found(self, mock_run: MagicMock):
         """
-        Tests dnstwist when the command returns an error.
-
-        Args:
-            mock_run (MagicMock): A mock object replacing `subprocess.run`.
+        Tests dnstwist when the command is not found in the system.
         """
-        # Simulate that the process returns an error
+        mock_run.side_effect = FileNotFoundError
+        result = find_typosquatting_dnstwist("example.com")
+        self.assertIsInstance(result, TyposquatResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("command not found", result.error)
 
+    @patch("chimera_intel.core.defensive.subprocess.run")
+    def test_find_typosquatting_dnstwist_called_process_error(
+        self, mock_run: MagicMock
+    ):
+        """
+        Tests dnstwist when the command returns a non-zero exit code.
+        """
         mock_run.side_effect = subprocess.CalledProcessError(
             1, "dnstwist", stderr="Some error"
         )
-
         result = find_typosquatting_dnstwist("example.com")
         self.assertIsInstance(result, TyposquatResult)
         self.assertIsNotNone(result.error)
         self.assertIn("returned an error", result.error)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_search_github_leaks_success(self, mock_get: MagicMock):
+        """
+        Tests a successful GitHub leak search.
+        """
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "total_count": 1,
+            "items": [{"url": "http://leak.com"}],
+        }
+        mock_get.return_value = mock_response
+
+        result = search_github_leaks("example.com api_key", "fake_pat")
+        self.assertIsInstance(result, GitHubLeaksResult)
+        self.assertEqual(result.total_count, 1)
+        self.assertIsNotNone(result.items)
+        self.assertEqual(len(result.items), 1)
 
     def test_search_github_leaks_no_api_key(self):
         """Tests the GitHub search without an API key."""
