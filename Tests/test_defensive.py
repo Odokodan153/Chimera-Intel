@@ -67,11 +67,8 @@ class TestDefensive(unittest.TestCase):
 
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
-        # In Pydantic v2, if a field has a default value (like Optional[List] = None),
-        # it might not be present in the model dump if it's None.
-        # It's better to check for the absence of an error and the presence of a message.
 
-        self.assertIsNone(result.breaches)  # Or check for the message
+        self.assertEqual(result.breaches, [])
         self.assertIsNotNone(result.message)
 
     @patch("chimera_intel.core.defensive.subprocess.run")
@@ -88,9 +85,9 @@ class TestDefensive(unittest.TestCase):
         # Add the required 'fuzzer' field to the mock data
 
         mock_process.stdout = '[{"fuzzer": "Original", "domain-name": "examp1e.com"}]'
-        mock_process.check_returncode.return_value = (
-            None  # Simulate successful execution
-        )
+        # Simulate successful execution by not raising an exception
+        # The 'check=True' in the original code will handle this.
+
         mock_run.return_value = mock_process
 
         result = find_typosquatting_dnstwist("example.com")
