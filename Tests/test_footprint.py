@@ -11,9 +11,8 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import asyncio
 
 # Use the absolute import path for the package structure
-
+from chimera_intel.core.utils import is_valid_domain
 from chimera_intel.core.footprint import (
-    is_valid_domain,
     get_whois_info,
     get_dns_records,
     get_subdomains_virustotal,

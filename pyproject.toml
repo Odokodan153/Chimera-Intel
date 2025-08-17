@@ -27,6 +27,7 @@ classifiers = [
 # It is the modern equivalent of a requirements.txt file.
 dependencies = [
     "typer[all]==0.12.3",
+    "click==8.1.7",
     "python-whois==0.8.0",
     "dnspython==2.4.2",
     "python-dotenv==1.0.0",
