@@ -9,7 +9,7 @@ live network conditions.
 
 import unittest
 import asyncio
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 # Use the absolute import path for the package structure
 
@@ -22,7 +22,7 @@ from chimera_intel.core.web_analyzer import (
 class TestWebAnalyzer(unittest.TestCase):
     """Test cases for web analysis functions."""
 
-    @patch("chimera_intel.core.web_analyzer.async_client.get")
+    @patch("chimera_intel.core.web_analyzer.async_client.get", new_callable=AsyncMock)
     def test_get_tech_stack_builtwith_success(self, mock_async_get):
         """
         Tests a successful async call to the BuiltWith API.
@@ -33,7 +33,7 @@ class TestWebAnalyzer(unittest.TestCase):
         # --- Simulate a successful API response ---
 
         mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "Results": [
                 {
@@ -45,13 +45,9 @@ class TestWebAnalyzer(unittest.TestCase):
                 }
             ]
         }
+        # Configure the AsyncMock to return our simulated response
 
-        # Configure the mock 'get' method to be an async function that returns our simulated response.
-
-        async def async_magic():
-            return mock_response
-
-        mock_async_get.return_value = async_magic()
+        mock_async_get.return_value = mock_response
 
         # --- Run the async function ---
 
@@ -70,10 +66,10 @@ class TestWebAnalyzer(unittest.TestCase):
         This test ensures that the function returns an empty list and does not
         attempt a network call when no API key is provided.
         """
-        result = asyncio.run(get_tech_stack_builtwith("example.com", None))
+        result = asyncio.run(get_tech_stack_builtwith("example.com", ""))
         self.assertEqual(result, [])  # It should return an empty list
 
-    @patch("chimera_intel.core.web_analyzer.async_client.get")
+    @patch("chimera_intel.core.web_analyzer.async_client.get", new_callable=AsyncMock)
     def test_get_traffic_similarweb_success(self, mock_async_get):
         """
         Tests a successful async call to the Similarweb API.
@@ -84,13 +80,12 @@ class TestWebAnalyzer(unittest.TestCase):
         # --- Simulate a successful API response ---
 
         mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"visits": "some_traffic_data"}
 
-        async def async_magic():
-            return mock_response
+        # Configure the AsyncMock to return our simulated response
 
-        mock_async_get.return_value = async_magic()
+        mock_async_get.return_value = mock_response
 
         # --- Run the async function ---
 

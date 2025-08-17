@@ -7,7 +7,7 @@ to isolate functions from the network and ensure tests are fast and deterministi
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import asyncio
 
 # Use the absolute import path for the package structure
@@ -38,11 +38,12 @@ class TestFootprint(unittest.TestCase):
         """
         Tests a successful WHOIS lookup by mocking the 'whois' library call.
         """
-        # Simulate a successful WHOIS lookup with a valid response object
+        # Simulate a successful WHOIS lookup by returning a dictionary
 
-        mock_whois.return_value = MagicMock(
-            domain_name="google.com", registrar="MarkMonitor Inc."
-        )
+        mock_whois.return_value = {
+            "domain_name": ["google.com", "GOOGLE.COM"],
+            "registrar": "MarkMonitor Inc.",
+        }
         result = get_whois_info("google.com")
         self.assertEqual(result.get("registrar"), "MarkMonitor Inc.")
 
@@ -51,9 +52,9 @@ class TestFootprint(unittest.TestCase):
         """
         Tests a failed WHOIS lookup where the domain is not found.
         """
-        # Simulate a failed WHOIS lookup where the response object has no domain_name
+        # Simulate a failed WHOIS lookup where the response is None
 
-        mock_whois.return_value = MagicMock(domain_name=None)
+        mock_whois.return_value = None
         result = get_whois_info("nonexistentdomain123.com")
         self.assertIn("error", result)
 
@@ -71,7 +72,7 @@ class TestFootprint(unittest.TestCase):
         self.assertIn("A", result)
         self.assertEqual(result["A"][0], "1.2.3.4")
 
-    @patch("chimera_intel.core.footprint.async_client.get")
+    @patch("chimera_intel.core.http_client.async_client.get", new_callable=AsyncMock)
     def test_get_subdomains_virustotal_success(self, mock_async_get):
         """
         Tests a successful async call to the VirusTotal API.
@@ -82,17 +83,13 @@ class TestFootprint(unittest.TestCase):
         # --- Simulate a successful API response ---
 
         mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()  # Mock the check for HTTP errors
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "data": [{"id": "sub1.google.com"}, {"id": "sub2.google.com"}]
         }
+        # Configure the AsyncMock to return our simulated response
 
-        # Configure the mock 'get' method to be an async function that returns our simulated response.
-
-        async def async_magic():
-            return mock_response
-
-        mock_async_get.return_value = async_magic()
+        mock_async_get.return_value = mock_response
 
         # --- Run the async function ---
 

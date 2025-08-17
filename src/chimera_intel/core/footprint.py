@@ -38,11 +38,11 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
     """
     try:
         domain_info = whois.whois(domain)
-        return (
-            dict(domain_info)
-            if domain_info and domain_info.domain_name
-            else {"error": "No WHOIS record found."}
-        )
+
+        if domain_info and domain_info.get("domain_name"):
+            return dict(domain_info)
+        else:
+            return {"error": "No WHOIS record found."}
     except Exception as e:
         logger.error(
             "An exception occurred during WHOIS lookup for '%s': %s", domain, e
@@ -308,6 +308,7 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
 
 # --- Typer CLI Application ---
+
 
 footprint_app = typer.Typer()
 

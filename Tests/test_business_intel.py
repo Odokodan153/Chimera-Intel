@@ -14,6 +14,7 @@ from chimera_intel.core.business_intel import (
     get_news_gnews,
     scrape_google_patents,
 )
+from chimera_intel.core.schemas import Financials, GNewsResult, PatentResult
 
 
 class TestBusinessIntel(unittest.TestCase):
@@ -27,14 +28,23 @@ class TestBusinessIntel(unittest.TestCase):
         This test mocks the 'yf.Ticker' object to simulate a valid response
         without making a real call to Yahoo Finance.
         """
-        # Simulate a successful yfinance call
+        # Simulate a successful yfinance call with all required fields
 
         mock_instance = mock_ticker.return_value
-        mock_instance.info = {"longName": "Apple Inc.", "marketCap": 2000000000000}
+        mock_instance.info = {
+            "longName": "Apple Inc.",
+            "marketCap": 2000000000000,
+            "trailingPE": 30.5,  # This field is required by the function's logic
+            "forwardPE": 25.2,
+            "dividendYield": 0.005,
+            "sector": "Technology",
+        }
 
         result = get_financials_yfinance("AAPL")
+        self.assertIsInstance(result, Financials)
         self.assertEqual(result.companyName, "Apple Inc.")
         self.assertEqual(result.marketCap, 2000000000000)
+        self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_get_news_gnews_success(self, mock_get):
@@ -53,16 +63,19 @@ class TestBusinessIntel(unittest.TestCase):
             "articles": [
                 {
                     "title": "Test News",
-                    "description": "A test",
-                    "url": "http://test.com",
-                    "source": {"name": "test"},
+                    "description": "A test description.",
+                    "url": "http://test.com/news",
+                    "source": {"name": "Test Source"},
                 }
             ],
         }
         mock_get.return_value = mock_response
 
         result = get_news_gnews("Apple Inc.", "fake_api_key")
+        self.assertIsInstance(result, GNewsResult)
+        self.assertIsNotNone(result.articles)
         self.assertEqual(len(result.articles), 1)
+        self.assertEqual(result.articles[0].title, "Test News")
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_scrape_google_patents_success(self, mock_get):
@@ -86,8 +99,13 @@ class TestBusinessIntel(unittest.TestCase):
         mock_get.return_value = mock_response
 
         result = scrape_google_patents("Apple Inc.")
+        self.assertIsInstance(result, PatentResult)
+        self.assertIsNotNone(result.patents)
         self.assertEqual(len(result.patents), 1)
         self.assertEqual(result.patents[0].title, "Test Patent Title")
+        self.assertEqual(
+            result.patents[0].link, "https://patents.google.com/patent/US123/en"
+        )
 
 
 if __name__ == "__main__":
