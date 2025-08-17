@@ -17,6 +17,7 @@ from chimera_intel.core.schemas import HIBPResult, GitHubLeaksResult, TyposquatR
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +52,9 @@ def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
         logger.error("Network error checking HIBP for '%s': %s", domain, e)
         return HIBPResult(error=f"A network error occurred: {e}")
     except Exception as e:
-        logger.error("An unexpected error occurred checking HIBP for '%s': %s", domain, e)
+        logger.error(
+            "An unexpected error occurred checking HIBP for '%s': %s", domain, e
+        )
         return HIBPResult(error=f"An unexpected error occurred: {e}")
 
 
@@ -279,6 +282,7 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
 
 
 # --- Typer CLI Application ---
+
 
 defensive_app = typer.Typer()
 
