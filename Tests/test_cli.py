@@ -42,12 +42,20 @@ def test_scan_footprint_success(mock_gather_footprint: AsyncMock):
     Args:
         mock_gather_footprint (AsyncMock): A mock for the async data gathering function.
     """
-    # Simulate a successful return from the core logic function
+    # 1. Create a mock object to simulate the Pydantic model (the result of await)
 
-    mock_gather_footprint.return_value.model_dump.return_value = {
+    mock_result_model = MagicMock()
+
+    # 2. Configure its .model_dump() method to return the test data
+
+    mock_result_model.model_dump.return_value = {
         "domain": "example.com",
         "footprint": {},
     }
+
+    # 3. Set the AsyncMock to return this mock object upon execution
+
+    mock_gather_footprint.return_value = mock_result_model
 
     # The command path must match the structure in cli.py: scan -> footprint -> run
 
