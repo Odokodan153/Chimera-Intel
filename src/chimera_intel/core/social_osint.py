@@ -10,6 +10,7 @@ from .database import save_scan_to_db
 import typer
 import logging
 from typing import List
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ social_osint_app = typer.Typer()
 
 
 @social_osint_app.command("run")
-async def run_social_osint_scan(
+def run_social_osint_scan(
     username: str = typer.Argument(..., help="The username to search for."),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -62,7 +63,7 @@ async def run_social_osint_scan(
         username (str): The username to search for.
         output_file (str): Optional path to save the results to a JSON file.
     """
-    results_model = await find_social_profiles(username)
+    results_model = asyncio.run(find_social_profiles(username))
 
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)

@@ -17,6 +17,7 @@ from chimera_intel.core.http_client import async_client
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 # --- Asynchronous Data Gathering Functions ---
@@ -180,7 +181,7 @@ web_app = typer.Typer()
 
 
 @web_app.command("run")
-async def run_web_analysis(
+def run_web_analysis(
     domain: str = typer.Argument(..., help="The target domain to analyze."),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
@@ -199,7 +200,7 @@ async def run_web_analysis(
         raise typer.Exit(code=1)
     logger.info("Starting asynchronous web analysis for %s", domain)
 
-    results_model = await gather_web_analysis_data(domain)
+    results_model = asyncio.run(gather_web_analysis_data(domain))
     results_dict = results_model.model_dump()
 
     logger.info("Web analysis complete for %s", domain)

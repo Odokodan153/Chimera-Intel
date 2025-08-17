@@ -314,7 +314,7 @@ footprint_app = typer.Typer()
 
 
 @footprint_app.command("run")
-async def run_footprint_scan(
+def run_footprint_scan(
     domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
@@ -341,7 +341,7 @@ async def run_footprint_scan(
         raise typer.Exit(code=1)
     logger.info("Starting asynchronous footprint scan for %s", domain)
 
-    results_model = await gather_footprint_data(domain)
+    results_model = asyncio.run(gather_footprint_data(domain))
     results_dict = results_model.model_dump()
 
     logger.info("Footprint scan complete for %s", domain)

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Ahmia's .onion address. This can only be accessed via the Tor network.
 
+
 AHMIA_URL = (
     "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion/search/"
 )
@@ -77,7 +78,7 @@ dark_web_app = typer.Typer()
 
 
 @dark_web_app.command("search")
-async def run_dark_web_search(
+def run_dark_web_search(
     query: str = typer.Argument(
         ..., help="The search query, e.g., 'mycompany leaked data'"
     ),
@@ -93,7 +94,7 @@ async def run_dark_web_search(
         query (str): The search query, e.g., 'mycompany leaked data'.
         output_file (str): Optional path to save the results to a JSON file.
     """
-    results_model = await search_dark_web(query)
+    results_model = asyncio.run(search_dark_web(query))
 
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
