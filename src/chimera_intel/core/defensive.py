@@ -308,9 +308,9 @@ def run_breach_check(domain: str, output_file: Optional[str] = None):
             )
         )
         raise typer.Exit(code=1)
-    logger.info("Starting HIBP breach check for %s", domain)
     api_key = API_KEYS.hibp_api_key
     if api_key:
+        logger.info("Starting HIBP breach check for %s", domain)
         results = check_hibp_breaches(domain, api_key)
         save_or_print_results(results.model_dump(), output_file)
         save_scan_to_db(
