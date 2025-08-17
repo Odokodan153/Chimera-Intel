@@ -3,8 +3,7 @@
 # We need to import its core components and adapt them for our library.
 
 
-from sherlock.sherlock import sherlock  # type: ignore
-from sherlock import sites  # type: ignore
+from sherlock import sherlock, SitesInformation  # type: ignore
 from .schemas import SocialProfile, SocialOSINTResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db
@@ -29,7 +28,7 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
     # Initialize Sherlock's site data
 
-    site_data = sites.SitesInformation(None)
+    site_data = SitesInformation(None)
 
     # Sherlock's main function is async, so we await it.
     # We pass the username and a list of sites to search.
