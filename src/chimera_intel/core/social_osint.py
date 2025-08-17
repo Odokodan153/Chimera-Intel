@@ -3,7 +3,7 @@
 # We need to import its core components and adapt them for our library.
 
 
-from sherlock.sherlock import sherlock, sites  # type: ignore
+from sherlock import sherlock, sites  # type: ignore
 from .schemas import SocialProfile, SocialOSINTResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db
@@ -57,6 +57,10 @@ async def run_social_osint_scan(
 ):
     """
     Searches for a username across hundreds of social networks.
+
+    Args:
+        username (str): The username to search for.
+        output_file (str): Optional path to save the results to a JSON file.
     """
     results_model = await find_social_profiles(username)
 
