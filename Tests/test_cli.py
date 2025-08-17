@@ -6,12 +6,12 @@ that the application behaves as expected, including correct command routing,
 parameter validation, and output.
 """
 
-import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, AsyncMock, MagicMock
 from chimera_intel.cli import app
 
 # Create a runner instance to invoke commands
+
 
 runner = CliRunner()
 
