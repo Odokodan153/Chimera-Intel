@@ -21,12 +21,15 @@ class TestBusinessIntel(unittest.TestCase):
     """Test cases for business intelligence gathering functions."""
 
     @patch("chimera_intel.core.business_intel.yf.Ticker")
-    def test_get_financials_yfinance_success(self, mock_ticker):
+    def test_get_financials_yfinance_success(self, mock_ticker: MagicMock):
         """
         Tests a successful financial data lookup using the yfinance library.
 
         This test mocks the 'yf.Ticker' object to simulate a valid response
         without making a real call to Yahoo Finance.
+
+        Args:
+            mock_ticker (MagicMock): A mock object replacing `yf.Ticker`.
         """
         # Simulate a successful yfinance call with all required fields
 
@@ -47,12 +50,15 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
-    def test_get_news_gnews_success(self, mock_get):
+    def test_get_news_gnews_success(self, mock_get: MagicMock):
         """
         Tests a successful news retrieval from the GNews API.
 
         This test mocks the central 'sync_client.get' method to simulate a
         successful API response with a sample news article.
+
+        Args:
+            mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
         # Simulate a successful GNews API call
 
@@ -78,12 +84,15 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(result.articles[0].title, "Test News")
 
     @patch("chimera_intel.core.http_client.sync_client.get")
-    def test_scrape_google_patents_success(self, mock_get):
+    def test_scrape_google_patents_success(self, mock_get: MagicMock):
         """
         Tests a successful web scrape of Google Patents.
 
         This test mocks the central 'sync_client.get' method to return a
         sample HTML snippet, simulating a successful scrape of the patents page.
+
+        Args:
+            mock_get (MagicMock): A mock object replacing `sync_client.get`.
         """
         # Simulate a successful web scrape
 
