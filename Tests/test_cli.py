@@ -12,7 +12,6 @@ from chimera_intel.cli import app
 
 # Create a runner instance to invoke commands
 
-
 runner = CliRunner()
 
 # --- Tests for basic app functionality ---
@@ -55,7 +54,9 @@ def test_scan_footprint_success(mock_gather_footprint: AsyncMock):
     result = runner.invoke(app, ["scan", "footprint", "run", "example.com"])
 
     assert result.exit_code == 0
-    assert "Footprint scan complete for example.com" in result.stdout
+    # Assert that the JSON output is present in the standard output
+
+    assert '"domain": "example.com"' in result.stdout
 
 
 def test_scan_footprint_invalid_domain():
@@ -91,7 +92,9 @@ def test_defensive_breaches_success(mock_check_hibp: MagicMock):
             app, ["defensive", "checks", "breaches", "mycompany.com"]
         )
         assert result.exit_code == 0
-        assert "Starting HIBP breach check for mycompany.com" in result.stdout
+        # Check for the JSON output, not the log message
+
+        assert '"breaches": []' in result.stdout
 
 
 @patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", None)
