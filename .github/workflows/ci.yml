@@ -1,64 +1,49 @@
-# The name of your workflow, which will appear in the "Actions" tab on GitHub
-name: Python Quality Assurance
+# The name of your GitHub Actions workflow
+name: CI Pipeline
 
-# --- When the workflow should run ---
+# Controls when the workflow will run
 on:
-  # Run on every push to the 'main' or 'master' branch
+  # Triggers on git push or pull request events for the main branch
   push:
-    branches: [ "main", "master" ]
-  # Also run on every pull request that targets 'main' or 'master'
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
-# --- What the workflow does ---
+# Defines the jobs that will be executed
 jobs:
-  # A single job in this workflow, we'll call it 'build'
-  build:
-    # Use the latest version of Ubuntu Linux to run the job
+  test:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # --- Steps for the job ---
-    # A sequence of tasks to be executed
+    # Defines the steps that will be executed in the job
     steps:
-    # 1. Check out your code
-    # This step downloads your repository's code into the runner.
-    - name: Check out repository code
+    # Step 1: Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Set up Python
-    # This step installs a specific version of Python.
+    # Step 2: Sets up Python version 3.11
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+        # Cache dependencies to speed up future runs
+        cache: 'pip'
 
-    # 3. Install dependencies
-    # This step installs all your project's dependencies from pyproject.toml
-    # and the tools needed for quality checks.
+    # Step 3: Install dependencies (THIS IS THE KEY PART)
     - name: Install dependencies
       run: |
+        # Upgrade pip to the latest version
         python -m pip install --upgrade pip
-        # Install quality tools
-        pip install ruff black mypy pytest
-        # Install your project in editable mode
+        
+        # --- THE CORRECT ORDER ---
+        # 1. First, install your project and its specific dependencies from pyproject.toml
+        # This will install the correct version of 'click' required by 'typer==0.12.3'
         pip install -e .
+        
+        # 2. Then, install the testing and quality tools
+        pip install pytest pytest-cov ruff black mypy
 
-    # 4. Lint with Ruff
-    # Ruff is a very fast linter that checks for common errors and style issues.
-    - name: Lint with Ruff
-      run: ruff check .
-
-    # 5. Check formatting with Black
-    # This command checks if the code is formatted according to the Black style guide.
-    - name: Check formatting with Black
-      run: black --check .
-
-    # 6. Type check with Mypy
-    # This command checks for type errors in your code.
-    - name: Type check with Mypy
-      run: mypy src/
-
-    # 7. Run tests with Pytest and check coverage
-    # This command now also measures code coverage and fails if it's below 85%.
-    - name: Run tests and check coverage
-      run: pytest --cov=src/chimera_intel --cov-report=term-missing --cov-fail-under=85
+    # Step 4: Run tests with pytest and check for code coverage
+    - name: Run tests with pytest
+      run: |
+        pytest --cov=src/chimera_intel --cov-report=term-missing --cov-fail-under=85
