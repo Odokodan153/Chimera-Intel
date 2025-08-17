@@ -2,10 +2,9 @@
 # Sherlock is a powerful library, but it's designed for command-line use.
 # We need to import its core components and adapt them for our library.
 
-# --- ФИНАЛНА КОРЕКЦИЯ ТУК ---
 
-from sherlock.sherlock import sherlock
-from sherlock import sites
+from sherlock.sherlock import sherlock  # type: ignore
+from sherlock import sites  # type: ignore
 from .schemas import SocialProfile, SocialOSINTResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db
