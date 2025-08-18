@@ -14,7 +14,7 @@ from chimera_intel.core.schemas import (
     SocialAnalysisResult,
     AnalyzedPost,
 )
-from transformers import pipeline # type: ignore
+from transformers import pipeline  # type: ignore
 
 # Get a logger instance for this specific file
 
