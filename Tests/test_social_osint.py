@@ -3,12 +3,15 @@ import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.social_osint import find_social_profiles
 
+# FIX: Patch SitesInformation to prevent network calls during tests
 
+
+@patch("chimera_intel.core.social_osint.SitesInformation")
 class TestSocialOsint(unittest.TestCase):
     """Test cases for the social_osint module."""
 
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_success(self, mock_sherlock):
+    def test_find_social_profiles_success(self, mock_sherlock, mock_sites_info):
         """Tests a successful social media profile search."""
         # Mock the return value of the sherlock function
 
@@ -28,7 +31,7 @@ class TestSocialOsint(unittest.TestCase):
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_no_results(self, mock_sherlock):
+    def test_find_social_profiles_no_results(self, mock_sherlock, mock_sites_info):
         """Tests a search that yields no claimed profiles."""
         mock_sherlock.return_value = {
             "Twitter": {"status": MagicMock(name="AVAILABLE"), "url_user": ""}
@@ -38,16 +41,13 @@ class TestSocialOsint(unittest.TestCase):
         self.assertEqual(len(result.found_profiles), 0)
 
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_sherlock_error(self, mock_sherlock):
+    def test_find_social_profiles_sherlock_error(self, mock_sherlock, mock_sites_info):
         """Tests the search when the sherlock library raises an exception."""
-        # We can't easily mock an error inside the function,
-        # but we can ensure it returns an empty list if sherlock fails unexpectedly.
-        # This test is more conceptual for robustness.
+        # This test is more conceptual for robustness, ensuring the function doesn't crash.
 
         mock_sherlock.side_effect = Exception("Sherlock internal error")
 
-        # We expect the function to handle it gracefully, though it might log an error.
-        # For this test, we assume an empty result is the graceful outcome.
+        # We expect the function to handle the error gracefully and return an empty list.
 
         result = asyncio.run(find_social_profiles("testuser"))
         self.assertEqual(len(result.found_profiles), 0)

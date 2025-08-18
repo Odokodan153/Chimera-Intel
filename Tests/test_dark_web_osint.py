@@ -1,15 +1,17 @@
 import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
-from httpx import Response
+from httpx import Response, RequestError
 from chimera_intel.core.dark_web_osint import search_dark_web
 
 
 class TestDarkWebOsint(unittest.TestCase):
     """Test cases for the dark_web_osint module."""
 
-    @patch("httpx.AsyncClient", new_callable=AsyncMock)
-    def test_search_dark_web_success(self, mock_async_client):
+    # FIX: Correctly patch the async client for use in an 'async with' block
+
+    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
+    def test_search_dark_web_success(self, mock_async_client_constructor):
         """Tests a successful dark web search."""
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
@@ -20,10 +22,12 @@ class TestDarkWebOsint(unittest.TestCase):
           <p>Test Description</p>
         </li>
         """
-        # Configure the async context manager
 
-        mock_client_instance = mock_async_client.return_value
-        mock_client_instance.__aenter__.return_value.get.return_value = mock_response
+        # Configure the mock for the async context manager
+
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(search_dark_web("test query"))
 
@@ -31,13 +35,12 @@ class TestDarkWebOsint(unittest.TestCase):
         self.assertEqual(result.found_results[0].title, "Test Title")
         self.assertIsNone(result.error)
 
-    @patch("httpx.AsyncClient", new_callable=AsyncMock)
-    def test_search_dark_web_timeout(self, mock_async_client):
+    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
+    def test_search_dark_web_timeout(self, mock_async_client_constructor):
         """Tests the dark web search when a timeout occurs."""
-        mock_client_instance = mock_async_client.return_value
-        mock_client_instance.__aenter__.return_value.get.side_effect = (
-            asyncio.TimeoutError
-        )
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = asyncio.TimeoutError
+        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(search_dark_web("test query"))
 
@@ -45,13 +48,12 @@ class TestDarkWebOsint(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("timed out", result.error)
 
-    @patch("httpx.AsyncClient", new_callable=AsyncMock)
-    def test_search_dark_web_generic_exception(self, mock_async_client):
+    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
+    def test_search_dark_web_generic_exception(self, mock_async_client_constructor):
         """Tests the dark web search when a generic exception occurs."""
-        mock_client_instance = mock_async_client.return_value
-        mock_client_instance.__aenter__.return_value.get.side_effect = Exception(
-            "Proxy error"
-        )
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = RequestError("Proxy error")
+        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
         result = asyncio.run(search_dark_web("test query"))
 

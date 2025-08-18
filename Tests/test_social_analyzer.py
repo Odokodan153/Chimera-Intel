@@ -38,7 +38,7 @@ class TestSocialAnalyzer(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_discover_rss_feed_not_found(self, mock_get):
-        """Tests the case where no RSS feed can be discovered."""
+        """Tests the case where no RSS feed can be discovered due to network errors."""
         mock_get.side_effect = RequestError("Network error")
         feed_url = discover_rss_feed("example.com")
         self.assertIsNone(feed_url)
@@ -50,12 +50,17 @@ class TestSocialAnalyzer(unittest.TestCase):
         mock_feed = MagicMock()
         mock_feed.bozo = 0
         mock_feed.feed.get.return_value = "Test Feed Title"
+
+        # FIX: Provide a realistic entry object with actual string content for BeautifulSoup
+
         mock_entry = MagicMock()
         mock_entry.get.side_effect = lambda key, default: {
             "title": "Test Post",
-            "summary": "Some content",
             "link": "#",
         }.get(key, default)
+        # Make summary a real string that BeautifulSoup can process
+
+        mock_entry.summary = "This is the summary content."
         mock_feed.entries = [mock_entry]
         mock_feedparser.parse.return_value = mock_feed
 

@@ -1,14 +1,10 @@
-# This section defines the tools needed to build your Python package.
-# It tells pip which tools to use to install your project.
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-# This is the main section for your project's metadata.
-# It's used by package managers like pip and websites like PyPI.
 [project]
 name = "chimera-intel"
-version = "6.0.0" # Version bumped to reflect major refactoring
+version = "6.0.0"
 authors = [
     { name = "Ignacio Iliev", email = "ignacioiliev@gmail.com" },
 ]
@@ -23,8 +19,6 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-# This list contains all the libraries your project needs to run.
-# It is the modern equivalent of a requirements.txt file.
 dependencies = [
     "typer[all]==0.9.0",
     "click==8.0.4",
@@ -49,7 +43,6 @@ dependencies = [
     "jinja2==3.1.2",
     "pydantic==2.4.2",
     "pydantic-settings==2.0.3",
-    "pytest-cov==4.1.0",
     "python-nmap==0.7.1",
     "sherlock-project==0.14.3",
     "httpx-socks==0.8.0",
@@ -59,14 +52,19 @@ dependencies = [
     "types-reportlab==4.4.1.20250809"
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-anyio", # Add this for better async support
+    "ruff",
+    "black",
+    "mypy"
+]
 
-# This is the most critical part for making your CLI work after installation.
-# It tells pip to create a command named 'chimera' that runs the 'app' object
-# from the 'cli.py' file inside your 'chimera_intel' package.
 [project.scripts]
 chimera = "chimera_intel.cli:app"
 
-# These are helpful links that will be displayed on the PyPI project page.
 [project.urls]
 "Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
 "Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"

@@ -1,10 +1,12 @@
 import unittest
 from unittest.mock import patch
-from chimera_intel.core.differ import (
-    get_last_two_scans,
-    format_diff_simple,
-)
+from chimera_intel.core.differ import get_last_two_scans, format_diff_simple
 from chimera_intel.core.schemas import FormattedDiff
+
+# FIX: Import ADD and DELETE from the correct submodule
+
+from jsondiff import diff
+from jsondiff.symbols import ADD, DELETE
 
 
 class TestDiffer(unittest.TestCase):
@@ -45,10 +47,8 @@ class TestDiffer(unittest.TestCase):
 
     def test_format_diff_simple(self):
         """Tests the simplification of a jsondiff result."""
-        from jsondiff import diff, ADD, DELETE
-
-        old_scan = {"tech": ["React"], "ports": [80]}
-        new_scan = {"tech": ["Vue"], "ports": [80]}
+        old_scan = {"tech": ["React"], "ports": [80], "users": {"admin": True}}
+        new_scan = {"tech": ["Vue"], "ports": [80], "users": {}}
 
         # jsondiff needs to be called to get the special ADD/DELETE symbols
 
@@ -59,6 +59,7 @@ class TestDiffer(unittest.TestCase):
         self.assertIsInstance(formatted, FormattedDiff)
         self.assertIn("tech.0", formatted.removed)
         self.assertIn("tech.0", formatted.added)
+        self.assertIn("users.admin", formatted.removed)
 
 
 if __name__ == "__main__":

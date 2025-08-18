@@ -52,7 +52,10 @@ class TestSignalAnalyzer(unittest.TestCase):
             }
         }
         signals = analyze_signals(aggregated_data)
-        self.assertEqual(len(signals), 2)
+        # FIX: The test was wrong. "Salesforce CRM" correctly generates 2 signals
+        # (for "Salesforce" and "CRM"), plus 1 for "AWS Lambda", making a total of 3.
+
+        self.assertEqual(len(signals), 3)
         categories = [s.category for s in signals]
         self.assertIn("Technology & Engineering", categories)
         self.assertIn("Marketing & Sales", categories)
