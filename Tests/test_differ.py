@@ -1,6 +1,5 @@
 import unittest
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from chimera_intel.core.differ import get_last_two_scans, format_diff_simple
 from chimera_intel.core.schemas import FormattedDiff
 
