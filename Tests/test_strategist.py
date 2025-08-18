@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 from chimera_intel.core.strategist import generate_strategic_profile
 
+
 class TestStrategist(unittest.TestCase):
     """Test cases for the strategist module."""
 
@@ -34,5 +35,6 @@ class TestStrategist(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("API Error", result.error)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
