@@ -1,12 +1,12 @@
 import unittest
-from unittest.mock import patch
+import json
+from unittest.mock import patch, MagicMock
 from chimera_intel.core.differ import get_last_two_scans, format_diff_simple
 from chimera_intel.core.schemas import FormattedDiff
 
-# FIX: Import ADD and DELETE from the correct submodule
+# FIX: Remove unused imports as they are handled within the source function
 
 from jsondiff import diff
-from jsondiff.symbols import ADD, DELETE
 
 
 class TestDiffer(unittest.TestCase):
@@ -49,8 +49,6 @@ class TestDiffer(unittest.TestCase):
         """Tests the simplification of a jsondiff result."""
         old_scan = {"tech": ["React"], "ports": [80], "users": {"admin": True}}
         new_scan = {"tech": ["Vue"], "ports": [80], "users": {}}
-
-        # jsondiff needs to be called to get the special ADD/DELETE symbols
 
         raw_diff = diff(old_scan, new_scan)
 

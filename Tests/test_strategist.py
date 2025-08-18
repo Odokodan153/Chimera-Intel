@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from chimera_intel.core.strategist import generate_strategic_profile
 
 class TestStrategist(unittest.TestCase):
