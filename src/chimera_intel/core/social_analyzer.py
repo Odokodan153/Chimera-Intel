@@ -14,15 +14,17 @@ from chimera_intel.core.schemas import (
     SocialAnalysisResult,
     AnalyzedPost,
 )
+from transformers import pipeline
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initialization ---
 
+
 try:
-    from transformers import pipeline
 
     classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 except (ImportError, OSError):
@@ -141,6 +143,7 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
 
 
 # --- Typer CLI Application ---
+
 
 social_app = typer.Typer()
 
