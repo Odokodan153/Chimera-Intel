@@ -17,14 +17,12 @@ from chimera_intel.core.schemas import (
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initialization ---
 
-
 try:
-    from transformers import pipeline  # type: ignore
+    from transformers import pipeline
 
     classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 except (ImportError, OSError):
@@ -44,7 +42,6 @@ def discover_rss_feed(domain: str) -> Optional[str]:
     """
     base_url = f"https://www.{domain}"
     headers = {"User-Agent": "Mozilla/5.0"}
-
     try:
         response = sync_client.get(base_url, headers=headers)
         if response.status_code == 200:
@@ -110,19 +107,19 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
             "Technical Update",
             "Security Advisory",
         ]
-
         for entry in feed.entries[:num_posts]:
             title = entry.get("title", "No Title")
             content_to_analyze = entry.get("summary", "")
             if hasattr(entry, "content"):
                 content_to_analyze = entry.content[0].value
-            clean_content = BeautifulSoup(content_to_analyze, "html.parser").get_text(
-                separator=" ", strip=True
-            )
+            clean_content = ""
+            if isinstance(content_to_analyze, str):
+                clean_content = BeautifulSoup(
+                    content_to_analyze, "html.parser"
+                ).get_text(separator=" ", strip=True)
             classification = classifier(
                 f"{title}. {clean_content[:512]}", candidate_labels
             )
-
             posts_analysis.append(
                 AnalyzedPost(
                     title=title,
@@ -144,7 +141,6 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
 
 
 # --- Typer CLI Application ---
-
 
 social_app = typer.Typer()
 
@@ -178,22 +174,16 @@ def run_social_analysis(
     if not classifier:
         logger.warning("AI libraries not found. AI content analysis will be skipped.")
     logger.info("Starting social content analysis for %s", domain)
-
     feed_url = discover_rss_feed(domain)
-
     if not feed_url:
         logger.error("Could not automatically discover an RSS feed for %s.", domain)
         raise typer.Exit(code=1)
     logger.info("Feed found: %s", feed_url)
-
     analysis_results = analyze_feed_content(feed_url)
-
     results_model = SocialAnalysisResult(
         domain=domain, social_content_analysis=analysis_results
     )
-
     results_dict = results_model.model_dump()
-
     logger.info("Social content analysis complete for %s", domain)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="social_analyzer", data=results_dict)

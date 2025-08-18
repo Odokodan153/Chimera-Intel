@@ -3,7 +3,8 @@ import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.social_osint import find_social_profiles
 
-# FIX: Patch SitesInformation to prevent network calls during tests
+
+# FIX: Patch SitesInformation at the class level to prevent network calls during all tests
 
 
 @patch("chimera_intel.core.social_osint.SitesInformation")
@@ -48,9 +49,12 @@ class TestSocialOsint(unittest.TestCase):
         mock_sherlock.side_effect = Exception("Sherlock internal error")
 
         # We expect the function to handle the error gracefully and return an empty list.
+        # Note: A try/except block would need to be added to the source code to capture the error message.
 
         result = asyncio.run(find_social_profiles("testuser"))
         self.assertEqual(len(result.found_profiles), 0)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Sherlock internal error", result.error)
 
 
 if __name__ == "__main__":

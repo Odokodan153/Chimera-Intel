@@ -51,7 +51,7 @@ class TestSocialAnalyzer(unittest.TestCase):
         mock_feed.bozo = 0
         mock_feed.feed.get.return_value = "Test Feed Title"
 
-        # FIX: Provide a realistic entry object with actual string content for BeautifulSoup
+        # FIX: Provide a realistic entry object with an actual string for the summary
 
         mock_entry = MagicMock()
         mock_entry.get.side_effect = lambda key, default: {

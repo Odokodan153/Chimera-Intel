@@ -49,13 +49,16 @@ class TestDiffer(unittest.TestCase):
         old_scan = {"tech": ["React"], "ports": [80], "users": {"admin": True}}
         new_scan = {"tech": ["Vue"], "ports": [80], "users": {}}
 
-        raw_diff = diff(old_scan, new_scan)
-
+        raw_diff = diff(old_scan, new_scan, syntax="symmetric")
         formatted = format_diff_simple(raw_diff)
 
         self.assertIsInstance(formatted, FormattedDiff)
-        self.assertIn("tech.0", formatted.removed)
-        self.assertIn("tech.0", formatted.added)
+        # Check for the change in the 'tech' list
+
+        self.assertIn("tech: ['React']", formatted.removed)
+        self.assertIn("tech: ['Vue']", formatted.added)
+        # Check for the removal of the 'admin' user
+
         self.assertIn("users.admin", formatted.removed)
 
 

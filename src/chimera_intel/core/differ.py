@@ -2,7 +2,7 @@ import typer
 import sqlite3
 import json
 from rich.pretty import pprint
-from jsondiff import diff  # type: ignore
+from jsondiff import diff, symbols  # type: ignore
 from typing import Tuple, Optional, Dict, Any, List
 from .database import DB_FILE, console
 from .schemas import FormattedDiff, DiffResult
@@ -33,19 +33,16 @@ def get_last_two_scans(
     try:
         conn = sqlite3.connect(DB_FILE, timeout=10.0)
         cursor = conn.cursor()
-
         cursor.execute(
             "SELECT scan_data FROM scans WHERE target = ? AND module = ? ORDER BY timestamp DESC LIMIT 2",
             (target, module),
         )
         records = cursor.fetchall()
         conn.close()
-
         if len(records) < 2:
             return None, None
         latest_scan = json.loads(records[0][0])
         previous_scan = json.loads(records[1][0])
-
         return latest_scan, previous_scan
     except sqlite3.Error as e:
         logger.error("Database error fetching last two scans for '%s': %s", target, e)
@@ -68,15 +65,18 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         FormattedDiff: A Pydantic model showing added and removed items.
     """
     changes: Dict[str, List[str]] = {"added": [], "removed": []}
-    from jsondiff import ADD, DELETE
-
     for key, value in diff_result.items():
         if isinstance(value, dict):
             for sub_key, sub_value in value.items():
-                if sub_value == ADD:
+                if sub_value == symbols.ADD:
                     changes["added"].append(f"{key}.{sub_key}")
-                elif sub_value == DELETE:
+                elif sub_value == symbols.DELETE:
                     changes["removed"].append(f"{key}.{sub_key}")
+        # This handles cases where a list has changed
+
+        elif isinstance(value, list) and len(value) == 2:
+            changes["removed"].append(f"{key}: {value[0]}")
+            changes["added"].append(f"{key}: {value[1]}")
     return FormattedDiff(**changes)
 
 
@@ -104,9 +104,7 @@ def run_diff_analysis(
     logger.info(
         "Starting change detection for target '%s' in module '%s'", target, module
     )
-
     latest, previous = get_last_two_scans(target, module)
-
     if not latest or not previous:
         logger.warning(
             "Not enough historical data to compare for '%s' in module '%s'. Found 0 or 1 scans.",
@@ -116,7 +114,6 @@ def run_diff_analysis(
         raise typer.Exit()
     raw_difference = diff(previous, latest, syntax="symmetric", dump=True)
     difference_json = json.loads(raw_difference)
-
     if not difference_json:
         logger.info(
             "No changes detected between the last two scans for '%s' in module '%s'.",
@@ -125,15 +122,12 @@ def run_diff_analysis(
         )
         raise typer.Exit()
     logger.info("Changes detected for '%s' in module '%s'.", target, module)
-
     formatted_changes = format_diff_simple(difference_json)
     full_result = DiffResult(
         comparison_summary=formatted_changes, raw_diff=difference_json
     )
-
     console.print("\n[bold]Comparison Results:[/bold]")
     pprint(full_result.raw_diff)
-
     # --- Send Slack Notification ---
 
     slack_url = API_KEYS.slack_webhook_url

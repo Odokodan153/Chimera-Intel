@@ -30,21 +30,32 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
     # Initialize Sherlock's site data
 
     site_data = SitesInformation(None)
-
-    # Sherlock's main function is async, so we await it.
-    # We pass the username and a list of sites to search.
-
-    results = await sherlock(username, site_data, timeout=10)
-
     found_profiles: List[SocialProfile] = []
-    for site, result in results.items():
-        if result.get("status") and result["status"].name == "CLAIMED":
-            found_profiles.append(SocialProfile(name=site, url=result["url_user"]))
+    try:
+        # Sherlock's main function is async, so we await it.
+        # We pass the username and a list of sites to search.
+
+        results = await sherlock(username, site_data, timeout=10)
+        for site, result in results.items():
+            if (
+                result.get("status")
+                and hasattr(result["status"], "name")
+                and result["status"].name == "CLAIMED"
+            ):
+                found_profiles.append(SocialProfile(name=site, url=result["url_user"]))
+    except Exception as e:
+        logger.error(
+            "An error occurred during Sherlock scan for username '%s': %s", username, e
+        )
+        return SocialOSINTResult(
+            username=username,
+            found_profiles=[],
+            error=f"An error occurred during scan: {e}",
+        )
     return SocialOSINTResult(username=username, found_profiles=found_profiles)
 
 
 # --- Typer CLI Application ---
-
 
 social_osint_app = typer.Typer()
 
@@ -64,7 +75,6 @@ def run_social_osint_scan(
         output_file (str): Optional path to save the results to a JSON file.
     """
     results_model = asyncio.run(find_social_profiles(username))
-
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=username, module="social_osint", data=results_dict)
