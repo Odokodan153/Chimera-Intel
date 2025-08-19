@@ -1,58 +1,88 @@
 # Chimera Intel 🔱
 
-A modular OSINT platform for comprehensive corporate intelligence and counter-intelligence, powered by an AI analysis core.
+**A modular OSINT platform for comprehensive corporate intelligence and counter-intelligence, powered by an AI analysis core.**
 
-## Overview
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)](tests)
 
-Chimera Intel is a command-line tool designed to solve a critical business problem: information fragmentation. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams into a single, unified, and actionable dossier.
+---
+
+Chimera Intel is a command-line first OSINT (Open Source Intelligence) tool designed to solve a critical business problem: **information fragmentation**. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams into a single, unified, and actionable dossier.
 
 It is built to serve two primary functions:
-* **Offensive Intelligence:** To gather a deep understanding of external entities like competitors or potential partners.
+* **Offensive Intelligence:** To gather a deep understanding of external entities like competitors, potential partners, or acquisition targets.
 * **Defensive Counter-Intelligence:** To allow an organization to see its own digital footprint through the eyes of an attacker and proactively identify weaknesses.
 
-## Features
+## ✨ Key Features
 
-Chimera Intel is organized into several command groups, each with a suite of features.
+Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
 
-### SCAN (Offensive Intelligence)
-* `scan footprint`: Gathers WHOIS, DNS, and Subdomain information.
-* `scan web`: Analyzes a website's technology stack and traffic estimates.
-* `scan business`: Retrieves public financial data, news articles, and patent filings.
+| Command Group | Feature Command | Description |
+| :--- | :--- | :--- |
+| **`scan`** | `footprint` | Gathers WHOIS, DNS, Subdomains, and enriches them with Threat Intelligence from AlienVault OTX. |
+| | `web` | Analyzes a website's technology stack (Wappalyzer, BuiltWith) and traffic estimates. |
+| | `business` | Retrieves public financial data, news articles, and patent filings. |
+| | `cloud s3` | Scans for common S3 bucket misconfigurations for a given keyword. |
+| | `personnel emails`| Searches for public employee email addresses for a given domain via Hunter.io. |
+| | `profiles` | Finds social media profiles by username using the Sherlock library. |
+| **`defensive`**| `checks breaches` | Checks for domain-related email breaches via Have I Been Pwned (HIBP). |
+| | `checks leaks` | Scans GitHub for potential secret leaks using a Personal Access Token. |
+| | `vuln run` | Scans assets for open ports (`nmap`) and known vulnerabilities (CVEs) via the Vulners API. |
+| | `darkweb search`| Searches the dark web for a query via the Ahmia search engine over a Tor proxy. |
+| **`analysis`**| `core swot` | Automatically generates a SWOT analysis from collected data using Google's Gemini Pro AI. |
+| | `diff run` | Compares the two most recent historical scans to detect changes over time. |
+| | `forecast run` | Forecasts potential future events based on historical data changes. |
+| | `strategy run` | Generates a high-level, AI-powered strategic profile of a target. |
+| **`report`** | `pdf` & `graph` | Generates professional PDF reports or interactive HTML knowledge graphs from scan data. |
 
-### DEFENSIVE (Counter-Intelligence)
-* `defensive breaches`: Checks for domain-related email breaches via HIBP.
-* `defensive leaks`: Scans GitHub for potential secret leaks.
-* `defensive typosquat`: Detects potential phishing domains.
-* `defensive surface`: Analyzes public-facing assets using Shodan.
-* ...and more.
+---
 
-### ANALYSIS (AI & Historical Core)
-* `analysis core sentiment`: Analyzes the sentiment of a news headline or text.
-* `analysis core swot`: Automatically generates a SWOT analysis from collected data.
-* `analysis diff`: Compares historical scans to detect changes over time.
-* `analysis forecast`: Forecasts potential future events based on historical data.
-* `analysis strategy`: Generates a high-level strategic profile of a target.
+## 📖 Use Cases & Example Workflows
 
-## Setup & Installation
+Here are a few ways you can use Chimera Intel to gain actionable intelligence.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/your-username/chimera-intel.git](https://github.com/your-username/chimera-intel.git)
-    cd chimera-intel
-    ```
+### Workflow 1: Competitor Analysis
+Your goal is to build a complete dossier on a competitor, "megacorp.com".
 
-2.  **Set up API Keys:**
-    -   Create a `.env` file in the root directory (you can copy `.env.example`).
-    -   Open the `.env` file and add your secret API keys from the various services used.
+1.  **Initial Footprint**: `chimera scan footprint megacorp.com -o megacorp.json`
+2.  **Technology & Business Intel**: `chimera scan web megacorp.com` and `chimera scan business "MegaCorp Inc"`
+3.  **Find Key People**: `chimera scan personnel emails megacorp.com`
+4.  **Synthesize with AI**: `chimera analysis strategy megacorp.com`
+5.  **Generate Report**: `chimera report pdf megacorp.json`
 
-3.  **Install the package:**
-    This project uses modern Python packaging. The recommended way to install it is using `pip` in "editable" mode within a virtual environment. This installs the `chimera` command globally within your environment.
+### Workflow 2: Continuous Self-Monitoring
+You want to monitor your own company, "mycompany.com", for external threats.
 
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    pip install -e .
-    ```
+1.  **Check for Breaches**: `chimera defensive checks breaches mycompany.com`
+2.  **Look for Leaked Secrets**: `chimera defensive checks leaks "mycompany.com api_key"`
+3.  **Discover Attack Surface**: `chimera defensive vuln run mycompany.com`
+4.  **Monitor for Changes**: Set up a weekly cron job to run scans and use `chimera analysis diff run mycompany.com footprint` to get alerts on new subdomains.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+* Python 3.9 or higher.
+* `git` installed on your system.
+* The `nmap` command-line tool (for the vulnerability scanner).
+* A running Tor proxy (like the Tor Browser) for dark web searches.
+
+### 2. Installation
+It is highly recommended to install the tool within a Python virtual environment.
+
+```bash
+# Clone the repository
+git clone [https://github.com/your-username/chimera-intel.git](https://github.com/your-username/chimera-intel.git)
+cd chimera-intel
+
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+
+# Install the project and all dependencies in editable mode
+pip install -e .
 
 ## Usage Examples
 
