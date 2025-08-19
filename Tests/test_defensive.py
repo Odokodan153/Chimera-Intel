@@ -3,7 +3,7 @@ Unit tests for the 'defensive' module.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 import subprocess
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
@@ -17,8 +17,6 @@ from chimera_intel.core.defensive import (
     search_github_leaks,
     analyze_attack_surface_shodan,
     search_pastes_api,
-    analyze_ssl_ssllabs,
-    analyze_apk_mobsf,
 )
 from chimera_intel.core.schemas import HIBPResult, TyposquatResult, GitHubLeaksResult
 

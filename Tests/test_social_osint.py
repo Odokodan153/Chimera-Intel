@@ -1,6 +1,6 @@
 import unittest
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 from chimera_intel.core.social_osint import find_social_profiles
 
 # FIX: Patch SitesInformation at the class level to prevent network calls during all tests
