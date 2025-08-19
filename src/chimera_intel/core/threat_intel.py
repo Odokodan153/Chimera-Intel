@@ -30,14 +30,18 @@ async def get_threat_intel_otx(indicator: str) -> Optional[ThreatIntelResult]:
         # Could be an IP or a domain
 
         try:
-            # Check if it's an IP address
-
             parts = indicator.split(".")
-            if len(parts) == 4 and all(part.isdigit() for part in parts):
+            # A more robust check for IPv4
+
+            if len(parts) == 4 and all(
+                part.isdigit() and 0 <= int(part) <= 255 for part in parts
+            ):
                 indicator_type = "IPv4"
             else:
                 indicator_type = "domain"
-        except:
+        except (ValueError, IndexError):
+            # Fallback for cases that don't fit the expected IP or domain format
+
             indicator_type = "hostname"
     else:  # It's not an IP or a domain we can easily classify
         return ThreatIntelResult(
