@@ -245,16 +245,22 @@ class TestFootprint(unittest.TestCase):
         mock_urlscan.return_value = []
         mock_shodan.return_value = []
 
-        result = asyncio.run(gather_footprint_data("example.com"))
+        # Mock the API keys to control the number of available sources
 
-        self.assertEqual(result.domain, "example.com")
-        self.assertEqual(result.footprint.whois_info["registrar"], "Test Registrar")
-        self.assertEqual(result.footprint.subdomains.total_unique, 2)
-        # Check if confidence score is high for the subdomain found from two sources
+        with patch("chimera_intel.core.footprint.API_KEYS") as mock_keys:
+            mock_keys.virustotal_api_key = "fake_key"  # Source 1
+            mock_keys.shodan_api_key = None  # Not available
 
-        for sub in result.footprint.subdomains.results:
-            if sub.domain == "vt.example.com":
-                self.assertIn("HIGH", sub.confidence)
+            result = asyncio.run(gather_footprint_data("example.com"))
+
+            self.assertEqual(result.domain, "example.com")
+            self.assertEqual(result.footprint.whois_info["registrar"], "Test Registrar")
+            self.assertEqual(result.footprint.subdomains.total_unique, 2)
+            # Check if confidence score is high for the subdomain found from two sources
+
+            for sub in result.footprint.subdomains.results:
+                if sub.domain == "vt.example.com":
+                    self.assertIn("HIGH", sub.confidence)
 
 
 if __name__ == "__main__":
