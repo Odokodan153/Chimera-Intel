@@ -218,14 +218,32 @@ class TestFootprint(unittest.TestCase):
         "chimera_intel.core.footprint.get_subdomains_dnsdumpster",
         new_callable=AsyncMock,
     )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_threatminer",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_urlscan", new_callable=AsyncMock
+    )
+    @patch("chimera_intel.core.footprint.get_subdomains_shodan", new_callable=AsyncMock)
     def test_gather_footprint_data_core_logic(
-        self, mock_dd, mock_vt, mock_dns, mock_whois
+        self,
+        mock_shodan,
+        mock_urlscan,
+        mock_threatminer,
+        mock_dd,
+        mock_vt,
+        mock_dns,
+        mock_whois,
     ):
         """Tests the main data aggregation logic of gather_footprint_data."""
         mock_whois.return_value = {"registrar": "Test Registrar"}
         mock_dns.return_value = {"A": ["1.1.1.1"]}
         mock_vt.return_value = ["vt.example.com"]
         mock_dd.return_value = ["dd.example.com", "vt.example.com"]
+        mock_threatminer.return_value = []
+        mock_urlscan.return_value = []
+        mock_shodan.return_value = []
 
         result = asyncio.run(gather_footprint_data("example.com"))
 

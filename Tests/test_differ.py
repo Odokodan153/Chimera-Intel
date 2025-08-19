@@ -3,6 +3,7 @@ from unittest.mock import patch
 from chimera_intel.core.differ import (
     get_last_two_scans,
     format_diff_simple,
+    run_diff_analysis,
 )
 from chimera_intel.core.schemas import FormattedDiff
 from typer.testing import CliRunner
@@ -71,6 +72,7 @@ class TestDiffer(unittest.TestCase):
 
     @patch("chimera_intel.core.differ.get_last_two_scans")
     @patch("chimera_intel.core.differ.send_slack_notification")
+    @patch("chimera_intel.core.differ.API_KEYS.slack_webhook_url", "fake_url")
     def test_cli_diff_command_with_changes(self, mock_slack, mock_get_scans):
         """Tests the `analysis diff run` command when changes are detected."""
         mock_get_scans.return_value = (
