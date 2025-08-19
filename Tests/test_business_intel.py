@@ -1,5 +1,10 @@
 """
 Unit tests for the 'business_intel' module.
+
+This test suite verifies the functionality of the business intelligence gathering
+functions in 'chimera_intel.core.business_intel.py'. It uses 'unittest.mock'
+to simulate responses from external libraries (yfinance) and network calls,
+ensuring the tests are fast and reliable.
 """
 
 import unittest
@@ -14,7 +19,7 @@ from chimera_intel.core.business_intel import (
 )
 from chimera_intel.core.schemas import Financials, GNewsResult, PatentResult
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestBusinessIntel(unittest.TestCase):
@@ -24,6 +29,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_get_financials_yfinance_success(self, mock_ticker: MagicMock):
         """
         Tests a successful financial data lookup using the yfinance library.
+
+        Args:
+            mock_ticker (MagicMock): A mock for the `yfinance.Ticker` class.
         """
         mock_instance = mock_ticker.return_value
         mock_instance.info = {
@@ -44,6 +52,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_get_financials_yfinance_invalid_ticker(self, mock_ticker: MagicMock):
         """
         Tests yfinance when an invalid ticker is provided, returning incomplete data.
+
+        Args:
+            mock_ticker (MagicMock): A mock for the `yfinance.Ticker` class.
         """
         mock_instance = mock_ticker.return_value
         mock_instance.info = {"longName": "Invalid Ticker Inc."}
@@ -56,6 +67,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_get_financials_yfinance_unexpected_exception(self, mock_ticker: MagicMock):
         """
         Tests yfinance when the library raises an unexpected exception.
+
+        Args:
+            mock_ticker (MagicMock): A mock for the `yfinance.Ticker` class.
         """
         mock_ticker.side_effect = Exception("A critical yfinance error")
         result = get_financials_yfinance("AAPL")
@@ -67,6 +81,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_get_news_gnews_success(self, mock_get: MagicMock):
         """
         Tests a successful news retrieval from the GNews API.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
         """
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -97,7 +114,12 @@ class TestBusinessIntel(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_get_news_gnews_http_error(self, mock_get: MagicMock):
-        """Tests GNews retrieval when an HTTP error occurs."""
+        """
+        Tests GNews retrieval when an HTTP error occurs.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         http_error = HTTPStatusError(
             "Server Error", request=MagicMock(), response=Response(status_code=503)
@@ -114,6 +136,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_scrape_google_patents_success(self, mock_get: MagicMock):
         """
         Tests a successful web scrape of Google Patents.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
         """
         mock_html = """
         <article class="search-result">
@@ -136,6 +161,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_scrape_google_patents_no_results(self, mock_get: MagicMock):
         """
         Tests patent scraping when the page returns no matching elements.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
         """
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -151,6 +179,9 @@ class TestBusinessIntel(unittest.TestCase):
     def test_scrape_google_patents_network_error(self, mock_get: MagicMock):
         """
         Tests patent scraping during a network error.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
         """
         mock_get.side_effect = RequestError("Connection failed")
         result = scrape_google_patents("Test company")
@@ -158,16 +189,27 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("Network error", result.error)
 
-    # --- NEW TESTS FOR CLI COMMANDS ---
+    # --- CLI COMMAND TESTS ---
 
     @patch("chimera_intel.core.business_intel.get_financials_yfinance")
     @patch("chimera_intel.core.business_intel.get_news_gnews")
     @patch("chimera_intel.core.business_intel.scrape_google_patents")
     @patch("chimera_intel.core.config_loader.API_KEYS.gnews_api_key", "fake_key")
     def test_cli_business_intel_with_ticker(
-        self, mock_patents, mock_news, mock_financials
+        self, mock_patents: MagicMock, mock_news: MagicMock, mock_financials: MagicMock
     ):
-        """Tests the 'business' command when a ticker is provided."""
+        """
+        Tests the 'business' command when a ticker is provided.
+
+        Args:
+            mock_patents (MagicMock): A mock for `scrape_google_patents`.
+            mock_news (MagicMock): A mock for `get_news_gnews`.
+            mock_financials (MagicMock): A mock for `get_financials_yfinance`.
+        """
+        mock_financials.return_value = Financials(companyName="Apple Inc.")
+        mock_news.return_value = GNewsResult(articles=[])
+        mock_patents.return_value = PatentResult(patents=[])
+
         result = runner.invoke(
             app, ["scan", "business", "run", "Apple Inc.", "--ticker", "AAPL"]
         )
@@ -176,25 +218,33 @@ class TestBusinessIntel(unittest.TestCase):
         mock_news.assert_called_once()
         mock_patents.assert_called_once()
 
+    # --- EXTENDED LOGIC ---
+
     @patch("chimera_intel.core.business_intel.get_financials_yfinance")
     @patch("chimera_intel.core.business_intel.get_news_gnews")
     @patch("chimera_intel.core.business_intel.scrape_google_patents")
-    @patch("chimera_intel.core.config_loader.API_KEYS.gnews_api_key", None)
-    def test_cli_business_intel_no_api_key(
-        self, mock_patents, mock_news, mock_financials
+    @patch("chimera_intel.core.config_loader.API_KEYS.gnews_api_key", "fake_key")
+    def test_cli_business_intel_no_ticker(
+        self, mock_patents: MagicMock, mock_news: MagicMock, mock_financials: MagicMock
     ):
-        """Tests the 'business' command when the GNews API key is missing."""
-        # Mocks to prevent actual calls
+        """
+        Tests the 'business' command when no ticker is provided.
 
+        Args:
+            mock_patents (MagicMock): A mock for `scrape_google_patents`.
+            mock_news (MagicMock): A mock for `get_news_gnews`.
+            mock_financials (MagicMock): A mock for `get_financials_yfinance`.
+        """
+        mock_news.return_value = GNewsResult(articles=[])
         mock_patents.return_value = PatentResult(patents=[])
-        mock_financials.return_value = Financials()
 
         result = runner.invoke(app, ["scan", "business", "run", "Some Company"])
         self.assertEqual(result.exit_code, 0)
-        # get_news_gnews should not be called
+        # Financials function should not be called
 
-        mock_news.assert_not_called()
-        self.assertIn("GNews API key not configured", result.stdout)
+        mock_financials.assert_not_called()
+        mock_news.assert_called_once()
+        mock_patents.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1,3 +1,11 @@
+"""
+Dark web OSINT module for searching .onion sites.
+
+This module uses the Ahmia search engine to query the dark web for specific terms.
+It requires a running Tor proxy (e.g., from the Tor Browser) to route requests
+through the Tor network. The client is configured with a SOCKS5 proxy to achieve this.
+"""
+
 import typer
 import asyncio
 import logging

@@ -1,5 +1,10 @@
 """
 Unit tests for the 'defensive' module.
+
+This test suite verifies the functionality of the defensive scanning functions
+in 'chimera_intel.core.defensive.py'. It uses 'unittest.mock' to simulate
+responses from external APIs and command-line tools, ensuring that the tests
+are reliable and do not depend on network access.
 """
 
 import unittest
@@ -22,7 +27,7 @@ from chimera_intel.core.schemas import HIBPResult, TyposquatResult, GitHubLeaksR
 
 # CliRunner to simulate CLI commands
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestDefensive(unittest.TestCase):
@@ -30,7 +35,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_found(self, mock_get: MagicMock):
-        """Tests the HIBP breach check for a successful case where breaches are found."""
+        """
+        Tests the HIBP breach check for a successful case where breaches are found.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -54,7 +64,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_not_found(self, mock_get: MagicMock):
-        """Tests the HIBP breach check for a case where no breaches are found (404)."""
+        """
+        Tests the HIBP breach check for a case where no breaches are found (404).
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_get.return_value = mock_response
@@ -66,7 +81,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_http_error(self, mock_get: MagicMock):
-        """Tests the HIBP check when an HTTP error (e.g., 500) occurs."""
+        """
+        Tests the HIBP check when an HTTP error (e.g., 500) occurs.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         http_error = HTTPStatusError(
             "Server Error", request=MagicMock(), response=Response(status_code=500)
@@ -81,7 +101,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_network_error(self, mock_get: MagicMock):
-        """Tests the HIBP check during a network error."""
+        """
+        Tests the HIBP check during a network error.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_get.side_effect = RequestError("Network connection failed")
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
@@ -97,7 +122,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_success(self, mock_run: MagicMock):
-        """Tests the dnstwist wrapper for a successful execution."""
+        """
+        Tests the dnstwist wrapper for a successful execution.
+
+        Args:
+            mock_run (MagicMock): A mock for the `subprocess.run` function.
+        """
         mock_process = MagicMock()
         mock_process.stdout = '[{"fuzzer": "Original", "domain-name": "examp1e.com"}]'
         mock_run.return_value = mock_process
@@ -108,7 +138,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_command_not_found(self, mock_run: MagicMock):
-        """Tests dnstwist when the command is not found in the system."""
+        """
+        Tests dnstwist when the command is not found in the system.
+
+        Args:
+            mock_run (MagicMock): A mock for the `subprocess.run` function.
+        """
         mock_run.side_effect = FileNotFoundError
         result = find_typosquatting_dnstwist("example.com")
         self.assertIsInstance(result, TyposquatResult)
@@ -118,7 +153,12 @@ class TestDefensive(unittest.TestCase):
     def test_find_typosquatting_dnstwist_called_process_error(
         self, mock_run: MagicMock
     ):
-        """Tests dnstwist when the command returns a non-zero exit code."""
+        """
+        Tests dnstwist when the command returns a non-zero exit code.
+
+        Args:
+            mock_run (MagicMock): A mock for the `subprocess.run` function.
+        """
         mock_run.side_effect = subprocess.CalledProcessError(
             1, "dnstwist", stderr="Some error"
         )
@@ -128,7 +168,12 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_github_leaks_success(self, mock_get: MagicMock):
-        """Tests a successful GitHub leak search."""
+        """
+        Tests a successful GitHub leak search.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -148,8 +193,13 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("not found", result.error)
 
     @patch("shodan.Shodan")
-    def test_analyze_attack_surface_shodan_success(self, mock_shodan):
-        """Tests a successful Shodan search."""
+    def test_analyze_attack_surface_shodan_success(self, mock_shodan: MagicMock):
+        """
+        Tests a successful Shodan search.
+
+        Args:
+            mock_shodan (MagicMock): A mock for the `shodan.Shodan` class.
+        """
         mock_api = mock_shodan.return_value
         mock_api.search.return_value = {"total": 1, "matches": [{"ip_str": "1.1.1.1"}]}
 
@@ -164,8 +214,13 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("not found", result["error"])
 
     @patch("chimera_intel.core.http_client.sync_client.get")
-    def test_search_pastes_api_success(self, mock_get):
-        """Tests a successful paste.ee search."""
+    def test_search_pastes_api_success(self, mock_get: MagicMock):
+        """
+        Tests a successful paste.ee search.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"pastes": [{"id": "paste1"}]}
@@ -176,8 +231,13 @@ class TestDefensive(unittest.TestCase):
         self.assertEqual(result["pastes"][0]["id"], "paste1")
 
     @patch("chimera_intel.core.http_client.sync_client.get")
-    def test_search_pastes_api_http_error(self, mock_get):
-        """Tests the paste.ee search when an HTTP error occurs."""
+    def test_search_pastes_api_http_error(self, mock_get: MagicMock):
+        """
+        Tests the paste.ee search when an HTTP error occurs.
+
+        Args:
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
+        """
         mock_response = MagicMock()
         http_error = HTTPStatusError(
             "Error", request=MagicMock(), response=Response(status_code=404)
@@ -189,37 +249,92 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIn("404", result["error"])
 
-    # --- NEW TESTS FOR CLI COMMANDS ---
+    # --- CLI COMMAND TESTS ---
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
-    def test_cli_breaches_invalid_domain(self, mock_check):
-        """Tests the 'breaches' command with an invalid domain."""
-        result = runner.invoke(app, ["defensive", "breaches", "invalid-domain"])
+    def test_cli_breaches_invalid_domain(self, mock_check: MagicMock):
+        """
+        Tests the 'breaches' command with an invalid domain.
+
+        Args:
+            mock_check (MagicMock): A mock for `check_hibp_breaches`.
+        """
+        result = runner.invoke(
+            app, ["defensive", "checks", "breaches", "invalid-domain"]
+        )
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("not a valid domain format", result.stdout)
+        self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.find_typosquatting_dnstwist")
-    def test_cli_typosquat_invalid_domain(self, mock_find):
-        """Tests the 'typosquat' command with an invalid domain."""
-        result = runner.invoke(app, ["defensive", "typosquat", "invalid-domain"])
+    def test_cli_typosquat_invalid_domain(self, mock_find: MagicMock):
+        """
+        Tests the 'typosquat' command with an invalid domain.
+
+        Args:
+            mock_find (MagicMock): A mock for `find_typosquatting_dnstwist`.
+        """
+        result = runner.invoke(
+            app, ["defensive", "checks", "typosquat", "invalid-domain"]
+        )
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("not a valid domain format", result.stdout)
+        self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.analyze_ssl_ssllabs")
-    def test_cli_ssllabs_invalid_domain(self, mock_analyze):
-        """Tests the 'ssllabs' command with an invalid domain."""
-        result = runner.invoke(app, ["defensive", "ssllabs", "invalid-domain"])
+    def test_cli_ssllabs_invalid_domain(self, mock_analyze: MagicMock):
+        """
+        Tests the 'ssllabs' command with an invalid domain.
+
+        Args:
+            mock_analyze (MagicMock): A mock for `analyze_ssl_ssllabs`.
+        """
+        result = runner.invoke(
+            app, ["defensive", "checks", "ssllabs", "invalid-domain"]
+        )
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("not a valid domain format", result.stdout)
+        self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.search_github_leaks")
     @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
-    def test_cli_leaks_command(self, mock_search):
-        """Tests a successful 'leaks' CLI command."""
+    def test_cli_leaks_command(self, mock_search: MagicMock):
+        """
+        Tests a successful 'leaks' CLI command.
+
+        Args:
+            mock_search (MagicMock): A mock for `search_github_leaks`.
+        """
         mock_search.return_value.model_dump.return_value = {"total_count": 0}
-        result = runner.invoke(app, ["defensive", "leaks", "query"])
+        result = runner.invoke(app, ["defensive", "checks", "leaks", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_count": 0', result.stdout)
+
+    # --- EXTENDED LOGIC ---
+
+    @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
+    @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
+    def test_cli_surface_command(self, mock_analyze: MagicMock):
+        """
+        Tests a successful 'surface' CLI command.
+
+        Args:
+            mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
+        """
+        mock_analyze.return_value = {"total_results": 1}
+        result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"total_results": 1', result.stdout)
+
+    @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", None)
+    def test_cli_surface_command_no_api_key(self):
+        """
+        Tests the 'surface' command when the SHODAN_API_KEY is missing.
+        """
+        # The command should not be called, so we don't need to mock it.
+
+        result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
+        self.assertEqual(result.exit_code, 0)
+        # Verify no output is generated because the check is skipped
+
+        self.assertEqual(result.stdout.strip(), "")
 
 
 if __name__ == "__main__":

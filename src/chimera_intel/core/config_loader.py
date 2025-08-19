@@ -1,3 +1,14 @@
+"""
+Configuration loader for the Chimera Intel application.
+
+This module is the single source of truth for all configurations and secrets.
+It uses pydantic-settings to load API keys from a .env file and pydantic with
+PyYAML to load and validate the main application configuration from config.yaml.
+
+By centralizing configuration, other modules can simply import the `CONFIG` and
+`API_KEYS` objects without needing to handle file I/O or environment variables.
+"""
+
 import yaml
 from pydantic_settings import BaseSettings
 from pydantic import Field, ValidationError

@@ -1,3 +1,12 @@
+"""
+Business intelligence module for gathering financial data, news, and patents.
+
+This module provides functions to collect business-related intelligence on a target
+company. It uses the 'yfinance' library for financial metrics, the GNews API for
+news articles, and scrapes Google Patents for recent filings. All network requests
+are routed through the centralized HTTP client for consistency and resilience.
+"""
+
 import typer
 import yfinance as yf  # type: ignore
 from bs4 import BeautifulSoup
@@ -17,6 +26,7 @@ from chimera_intel.core.schemas import (
 )
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,3 +1,13 @@
+"""
+Core AI functionalities for sentiment analysis, SWOT generation, and anomaly detection.
+
+This module initializes and provides access to various AI models. It uses local
+'transformers' for sentiment analysis, Google's Generative AI (Gemini Pro) for
+SWOT analysis from structured data, and 'scikit-learn' for traffic anomaly detection.
+Models are loaded lazily and conditionally to prevent crashes if optional dependencies
+are not installed.
+"""
+
 import typer
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
@@ -9,11 +19,13 @@ from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetecti
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
 # Define variables before the try block
+
 
 sentiment_analyzer: Optional[Any] = None
 IsolationForest: Optional[Any] = None
@@ -84,7 +96,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
         )
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-pro")
-    prompt = f"""Based on the following OSINT data, perform a SWOT analysis. 
+    prompt = f"""Based on the following OSINT data, perform a SWOT analysis.
     Present the output in Markdown format with clear headings for Strengths, Weaknesses, Opportunities, and Threats.
     OSINT Data: {json_data_str}"""
     try:
