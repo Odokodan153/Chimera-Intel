@@ -16,8 +16,14 @@ from chimera_intel.core.business_intel import (
     get_financials_yfinance,
     get_news_gnews,
     scrape_google_patents,
+    get_sec_filings_analysis,  # <-- ADD THIS IMPORT
 )
-from chimera_intel.core.schemas import Financials, GNewsResult, PatentResult
+from chimera_intel.core.schemas import (
+    Financials,
+    GNewsResult,
+    PatentResult,
+    SECFilingAnalysis,
+)
 
 runner = CliRunner(mix_stderr=False)
 
@@ -189,6 +195,46 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("Network error", result.error)
 
+    @patch("chimera_intel.core.business_intel.API_KEYS")
+    @patch("chimera_intel.core.business_intel.ExtractorApi")
+    @patch("chimera_intel.core.business_intel.QueryApi")
+    def test_get_sec_filings_analysis_success(
+        self, mock_query_api, mock_extractor_api, mock_api_keys
+    ):
+        """
+        Tests a successful SEC filing analysis.
+
+        Args:
+            mock_query_api (MagicMock): A mock for the `sec_api.QueryApi`.
+            mock_extractor_api (MagicMock): A mock for the `sec_api.ExtractorApi`.
+            mock_api_keys (MagicMock): A mock for the API_KEYS object.
+        """
+        # Setup mocks
+
+        mock_api_keys.sec_api_io_key = "fake_sec_key"
+
+        mock_query_instance = mock_query_api.return_value
+        mock_query_instance.get_filings.return_value = {
+            "filings": [{"linkToFilingDetails": "http://fake.sec.url/filing.htm"}]
+        }
+
+        mock_extractor_instance = mock_extractor_api.return_value
+        mock_extractor_instance.get_section.return_value = (
+            "This is a summary of the risk factors."
+        )
+
+        result = get_sec_filings_analysis("AAPL")
+
+        self.assertIsInstance(result, SECFilingAnalysis)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.filing_url, "http://fake.sec.url/filing.htm")
+        self.assertIn("risk factors", result.risk_factors_summary)
+
+        # Verify that the APIs were called correctly
+
+        mock_query_api.assert_called_with(api_key="fake_sec_key")
+        mock_extractor_api.assert_called_with(api_key="fake_sec_key")
+
     # --- CLI COMMAND TESTS ---
 
     @patch("chimera_intel.core.business_intel.get_financials_yfinance")
@@ -217,8 +263,6 @@ class TestBusinessIntel(unittest.TestCase):
         mock_financials.assert_called_once_with("AAPL")
         mock_news.assert_called_once()
         mock_patents.assert_called_once()
-
-    # --- EXTENDED LOGIC ---
 
     @patch("chimera_intel.core.business_intel.get_financials_yfinance")
     @patch("chimera_intel.core.business_intel.get_news_gnews")

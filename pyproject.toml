@@ -49,7 +49,9 @@ dependencies = [
     "types-PyYAML==6.0.12.12",
     "types-beautifulsoup4==4.12.0.20250516",
     "types-python-nmap==0.7.1.20250809",
-    "types-reportlab==4.4.1.20250809"
+    "types-reportlab==4.4.1.20250809",
+    "sec-api==1.0.17",
+    "playwright==1.44.0"
 ]
 
 [project.optional-dependencies]

@@ -12,10 +12,12 @@ import yfinance as yf  # type: ignore
 from bs4 import BeautifulSoup
 from httpx import RequestError, HTTPStatusError
 import logging
-from chimera_intel.core.utils import save_or_print_results
+from sec_api import QueryApi, ExtractorApi
+from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
+from typing import Optional
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -23,11 +25,10 @@ from chimera_intel.core.schemas import (
     PatentResult,
     BusinessIntelData,
     BusinessIntelResult,
+    SECFilingAnalysis,
 )
 
 # Get a logger instance for this specific file
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -155,6 +156,59 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
         )
 
 
+def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
+    """
+    Finds the latest 10-K filing for a ticker and extracts the 'Risk Factors' section.
+
+    Args:
+        ticker (str): The stock market ticker symbol.
+
+    Returns:
+        Optional[SECFilingAnalysis]: A Pydantic model with the analysis, or None.
+    """
+    api_key = API_KEYS.sec_api_io_key
+    if not api_key:
+        logger.warning("sec-api.io key not found. Skipping SEC filings analysis.")
+        return None
+
+    try:
+        # Step 1: Find the latest 10-K filing to get its URL
+        queryApi = QueryApi(api_key=api_key)
+        query = {
+            "query": f"ticker:{ticker} AND formType:\"10-K\"",
+            "from": "0",
+            "size": "1",
+            "sort": [{"filedAt": {"order": "desc"}}]
+        }
+        filings = queryApi.get_filings(query)
+
+        if not filings.get('filings'):
+            logger.warning("No 10-K filings found for ticker '%s'.", ticker)
+            return None
+        
+        latest_filing_url = filings['filings'][0]['linkToFilingDetails']
+
+        # Step 2: Use the Extractor API to get the 'Risk Factors' section (Item 1A)
+        extractorApi = ExtractorApi(api_key=api_key)
+        risk_factors_text = extractorApi.get_section(
+            filing_url=latest_filing_url,
+            section="1A", # Item 1A is "Risk Factors"
+            return_type="text"
+        )
+
+        # Basic summary (can be enhanced with AI later)
+        summary = (risk_factors_text[:700] + '...') if len(risk_factors_text) > 700 else risk_factors_text
+
+        return SECFilingAnalysis(
+            filing_url=latest_filing_url,
+            risk_factors_summary=summary
+        )
+
+    except Exception as e:
+        logger.error("An error occurred during SEC filing analysis for ticker '%s': %s", ticker, e)
+        return SECFilingAnalysis(filing_url="", error=str(e))
+
+
 # --- Typer CLI Application ---
 
 
@@ -169,16 +223,18 @@ def run_business_intel(
     ticker: str = typer.Option(
         None, help="The stock market ticker for financial data."
     ),
+    filings: bool = typer.Option(False, "--filings", help="Enable SEC filings analysis (requires ticker)."),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
     """
-    Gathers business intelligence: financials, news, and patents for a target company.
+    Gathers business intelligence: financials, news, patents, and SEC filings.
 
     Args:
         company_name (str): The full name of the target company.
         ticker (str): The stock market ticker for financial data.
+        filings (bool): Flag to enable SEC filings analysis.
         output_file (str): Optional path to save the results to a JSON file.
     """
     logger.info(
@@ -189,16 +245,25 @@ def run_business_intel(
 
     gnews_key = API_KEYS.gnews_api_key
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
+    
+    filings_analysis = None
+    if filings and ticker:
+        with console.status(f"[bold cyan]Analyzing SEC filings for {ticker}...[/bold cyan]"):
+            filings_analysis = get_sec_filings_analysis(ticker)
+    elif filings and not ticker:
+        logger.warning("The --filings flag requires a --ticker to be provided.")
 
     if not gnews_key:
         logger.warning("GNews API key not found. Skipping news gathering.")
         news_data = GNewsResult(error="GNews API key not configured.")
     else:
         news_data = get_news_gnews(company_name, gnews_key)
+        
     intel_data = BusinessIntelData(
         financials=financial_data,
         news=news_data,
         patents=scrape_google_patents(company_name),
+        sec_filings_analysis=filings_analysis
     )
 
     results_model = BusinessIntelResult(company=company_name, business_intel=intel_data)

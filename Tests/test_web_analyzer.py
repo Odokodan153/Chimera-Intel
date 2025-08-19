@@ -14,7 +14,6 @@ from httpx import RequestError, HTTPStatusError, Response
 
 # Use the absolute import path for the package structure
 
-
 from chimera_intel.core.web_analyzer import (
     get_tech_stack_builtwith,
     get_tech_stack_wappalyzer,
@@ -163,6 +162,40 @@ class TestWebAnalyzer(unittest.TestCase):
             for tech in result.web_analysis.tech_stack.results:
                 if tech.technology == "React":
                     self.assertIn("HIGH", tech.confidence)
+
+    @patch("chimera_intel.core.web_analyzer.take_screenshot", new_callable=AsyncMock)
+    @patch(
+        "chimera_intel.core.web_analyzer.get_traffic_similarweb", new_callable=AsyncMock
+    )
+    @patch(
+        "chimera_intel.core.web_analyzer.get_tech_stack_wappalyzer",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.web_analyzer.get_tech_stack_builtwith",
+        new_callable=AsyncMock,
+    )
+    def test_gather_web_analysis_calls_screenshot(
+        self, mock_builtwith, mock_wappalyzer, mock_similarweb, mock_screenshot
+    ):
+        """Tests that the main web analysis function calls the screenshot utility."""
+        # Arrange: Set return values for all mocked functions
+
+        mock_builtwith.return_value = []
+        mock_wappalyzer.return_value = []
+        mock_similarweb.return_value = {}
+        mock_screenshot.return_value = "/path/to/screenshots/example_com.png"
+
+        # Act: Run the main data gathering function
+
+        result = asyncio.run(gather_web_analysis_data("example.com"))
+
+        # Assert: Check that our screenshot function was called and its result was used
+
+        mock_screenshot.assert_called_once_with("example.com")
+        self.assertEqual(
+            result.web_analysis.screenshot_path, "/path/to/screenshots/example_com.png"
+        )
 
 
 if __name__ == "__main__":

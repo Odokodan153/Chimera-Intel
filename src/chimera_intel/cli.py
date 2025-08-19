@@ -26,6 +26,8 @@ from chimera_intel.core.social_osint import social_osint_app
 from chimera_intel.core.dark_web_osint import dark_web_app
 from chimera_intel.core.cloud_osint import cloud_osint_app
 from chimera_intel.core.personnel_osint import personnel_osint_app
+from chimera_intel.core.corporate_records import corporate_records_app
+from chimera_intel.core.tpr_engine import tpr_app
 
 setup_logging()
 
@@ -83,7 +85,8 @@ scan_app.add_typer(
     name="personnel",
     help="Gathers intelligence on company employees.",
 )
-
+app.add_typer(corporate_records_app, name="compliance", help="Run corporate compliance and due diligence checks.")
+app.add_typer(tpr_app, name="tpr-scan", help="Runs a comprehensive Third-Party Risk Management scan.")
 # 2. 'defensive' command group for internal security and counter-intelligence.
 
 

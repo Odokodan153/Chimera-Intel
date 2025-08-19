@@ -3,7 +3,10 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
+import os
+from playwright.async_api import async_playwright
+from datetime import datetime
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
@@ -16,7 +19,6 @@ from chimera_intel.core.schemas import (
 from chimera_intel.core.http_client import async_client
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,45 @@ async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
         return {"error": f"An error occurred with Similarweb: {e}"}
 
 
+async def take_screenshot(domain: str) -> Optional[str]:
+    """
+    Takes a screenshot of a website's homepage using Playwright.
+
+    Args:
+        domain (str): The domain to take a screenshot of.
+
+    Returns:
+        Optional[str]: The file path where the screenshot was saved, or None on error.
+    """
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+
+            url = f"https://{domain}"
+            await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+
+            # Create the directory if it doesn't exist
+
+            output_dir = "screenshots"
+            os.makedirs(output_dir, exist_ok=True)
+
+            # Sanitize domain for filename and add timestamp
+
+            safe_filename = domain.replace(".", "_")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = os.path.join(output_dir, f"{safe_filename}_{timestamp}.png")
+
+            await page.screenshot(path=filepath, full_page=True)
+            await browser.close()
+
+            logger.info("Screenshot saved for %s at %s", domain, filepath)
+            return filepath
+    except Exception as e:
+        logger.error("Failed to take screenshot for %s: %s", domain, e)
+        return None
+
+
 # --- Core Logic Function ---
 
 
@@ -145,8 +186,12 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
             if similarweb_key
             else asyncio.sleep(0, result={})
         ),
+        take_screenshot(domain),
     ]
-    builtwith_tech, wappalyzer_tech, traffic_info = await asyncio.gather(*tasks)
+
+    builtwith_tech, wappalyzer_tech, traffic_info, screenshot_filepath = (
+        await asyncio.gather(*tasks)
+    )
 
     all_tech: Dict[str, List[str]] = {}
     for tech in builtwith_tech:
@@ -169,6 +214,7 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     web_analysis_data = WebAnalysisData(
         tech_stack=tech_stack_report,
         traffic_info=traffic_info if isinstance(traffic_info, dict) else {},
+        screenshot_path=screenshot_filepath,
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
@@ -187,7 +233,13 @@ def run_web_analysis(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
-    """Analyzes web-specific data asynchronously."""
+    """
+    Analyzes web-specific data asynchronously, including taking a screenshot.
+
+    Args:
+        domain (str): The target domain to analyze.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
+    """
     if not is_valid_domain(domain):
         logger.warning("Invalid domain format provided to 'web' command: %s", domain)
         console.print(
