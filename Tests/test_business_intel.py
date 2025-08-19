@@ -1,21 +1,20 @@
 """
 Unit tests for the 'business_intel' module.
-
-This test suite verifies the functionality of the business intelligence gathering
-functions in 'chimera_intel.core.business_intel.py'. It uses 'unittest.mock'
-to simulate responses from external libraries (yfinance) and network calls,
-ensuring the tests are fast and reliable.
 """
 
 import unittest
 from unittest.mock import patch, MagicMock
 from httpx import RequestError, HTTPStatusError, Response
+from typer.testing import CliRunner
+from chimera_intel.cli import app  # Import the main Typer app
 from chimera_intel.core.business_intel import (
     get_financials_yfinance,
     get_news_gnews,
     scrape_google_patents,
 )
 from chimera_intel.core.schemas import Financials, GNewsResult, PatentResult
+
+runner = CliRunner()
 
 
 class TestBusinessIntel(unittest.TestCase):
@@ -47,10 +46,7 @@ class TestBusinessIntel(unittest.TestCase):
         Tests yfinance when an invalid ticker is provided, returning incomplete data.
         """
         mock_instance = mock_ticker.return_value
-        # Simulate yfinance returning a dictionary without the key fields we check for
-
         mock_instance.info = {"longName": "Invalid Ticker Inc."}
-
         result = get_financials_yfinance("INVALIDTICKER")
         self.assertIsInstance(result, Financials)
         self.assertIsNotNone(result.error)
@@ -161,6 +157,44 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsInstance(result, PatentResult)
         self.assertIsNotNone(result.error)
         self.assertIn("Network error", result.error)
+
+    # --- NEW TESTS FOR CLI COMMANDS ---
+
+    @patch("chimera_intel.core.business_intel.get_financials_yfinance")
+    @patch("chimera_intel.core.business_intel.get_news_gnews")
+    @patch("chimera_intel.core.business_intel.scrape_google_patents")
+    @patch("chimera_intel.core.config_loader.API_KEYS.gnews_api_key", "fake_key")
+    def test_cli_business_intel_with_ticker(
+        self, mock_patents, mock_news, mock_financials
+    ):
+        """Tests the 'business' command when a ticker is provided."""
+        result = runner.invoke(
+            app, ["scan", "business", "run", "Apple Inc.", "--ticker", "AAPL"]
+        )
+        self.assertEqual(result.exit_code, 0)
+        mock_financials.assert_called_once_with("AAPL")
+        mock_news.assert_called_once()
+        mock_patents.assert_called_once()
+
+    @patch("chimera_intel.core.business_intel.get_financials_yfinance")
+    @patch("chimera_intel.core.business_intel.get_news_gnews")
+    @patch("chimera_intel.core.business_intel.scrape_google_patents")
+    @patch("chimera_intel.core.config_loader.API_KEYS.gnews_api_key", None)
+    def test_cli_business_intel_no_api_key(
+        self, mock_patents, mock_news, mock_financials
+    ):
+        """Tests the 'business' command when the GNews API key is missing."""
+        # Mocks to prevent actual calls
+
+        mock_patents.return_value = PatentResult(patents=[])
+        mock_financials.return_value = Financials()
+
+        result = runner.invoke(app, ["scan", "business", "run", "Some Company"])
+        self.assertEqual(result.exit_code, 0)
+        # get_news_gnews should not be called
+
+        mock_news.assert_not_called()
+        self.assertIn("GNews API key not configured", result.stdout)
 
 
 if __name__ == "__main__":

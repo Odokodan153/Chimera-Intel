@@ -1,24 +1,30 @@
 """
 Unit tests for the 'defensive' module.
-
-This test suite verifies the functionality of the defensive scanning functions
-in 'chimera_intel.core.defensive.py'. It uses 'unittest.mock' to simulate
-responses from external APIs and command-line tools, ensuring that the tests
-are reliable and do not depend on network access.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 import subprocess
 from httpx import RequestError, HTTPStatusError, Response
+from typer.testing import CliRunner
+
+# Import the main app to test commands
+
+from chimera_intel.cli import app
 from chimera_intel.core.defensive import (
     check_hibp_breaches,
     find_typosquatting_dnstwist,
     search_github_leaks,
     analyze_attack_surface_shodan,
     search_pastes_api,
+    analyze_ssl_ssllabs,
+    analyze_apk_mobsf,
 )
 from chimera_intel.core.schemas import HIBPResult, TyposquatResult, GitHubLeaksResult
+
+# CliRunner to simulate CLI commands
+
+runner = CliRunner()
 
 
 class TestDefensive(unittest.TestCase):
@@ -127,8 +133,6 @@ class TestDefensive(unittest.TestCase):
         """Tests a successful GitHub leak search."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        # FIX: Added the required 'repository' field to the mock data.
-
         mock_response.json.return_value = {
             "total_count": 1,
             "items": [{"url": "http://leak.com", "repository": "test/repo"}],
@@ -186,6 +190,38 @@ class TestDefensive(unittest.TestCase):
         result = search_pastes_api("some_query")
         self.assertIn("error", result)
         self.assertIn("404", result["error"])
+
+    # --- NEW TESTS FOR CLI COMMANDS ---
+
+    @patch("chimera_intel.core.defensive.check_hibp_breaches")
+    def test_cli_breaches_invalid_domain(self, mock_check):
+        """Tests the 'breaches' command with an invalid domain."""
+        result = runner.invoke(app, ["defensive", "breaches", "invalid-domain"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("not a valid domain format", result.stdout)
+
+    @patch("chimera_intel.core.defensive.find_typosquatting_dnstwist")
+    def test_cli_typosquat_invalid_domain(self, mock_find):
+        """Tests the 'typosquat' command with an invalid domain."""
+        result = runner.invoke(app, ["defensive", "typosquat", "invalid-domain"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("not a valid domain format", result.stdout)
+
+    @patch("chimera_intel.core.defensive.analyze_ssl_ssllabs")
+    def test_cli_ssllabs_invalid_domain(self, mock_analyze):
+        """Tests the 'ssllabs' command with an invalid domain."""
+        result = runner.invoke(app, ["defensive", "ssllabs", "invalid-domain"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("not a valid domain format", result.stdout)
+
+    @patch("chimera_intel.core.defensive.search_github_leaks")
+    @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
+    def test_cli_leaks_command(self, mock_search):
+        """Tests a successful 'leaks' CLI command."""
+        mock_search.return_value.model_dump.return_value = {"total_count": 0}
+        result = runner.invoke(app, ["defensive", "leaks", "query"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"total_count": 0', result.stdout)
 
 
 if __name__ == "__main__":

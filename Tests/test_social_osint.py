@@ -3,7 +3,6 @@ import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.social_osint import find_social_profiles
 
-
 # FIX: Patch SitesInformation at the class level to prevent network calls during all tests
 
 
@@ -14,14 +13,20 @@ class TestSocialOsint(unittest.TestCase):
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
     def test_find_social_profiles_success(self, mock_sherlock, mock_sites_info):
         """Tests a successful social media profile search."""
+        # This helper class mimics the structure of the Sherlock enum
+
+        class MockStatus:
+            def __init__(self, name):
+                self.name = name
+
         # Mock the return value of the sherlock function
 
         mock_sherlock.return_value = {
             "GitHub": {
-                "status": MagicMock(name="CLAIMED"),
+                "status": MockStatus("CLAIMED"),
                 "url_user": "https://github.com/testuser",
             },
-            "Twitter": {"status": MagicMock(name="AVAILABLE"), "url_user": ""},
+            "Twitter": {"status": MockStatus("AVAILABLE"), "url_user": ""},
         }
 
         result = asyncio.run(find_social_profiles("testuser"))
@@ -34,8 +39,13 @@ class TestSocialOsint(unittest.TestCase):
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
     def test_find_social_profiles_no_results(self, mock_sherlock, mock_sites_info):
         """Tests a search that yields no claimed profiles."""
+
+        class MockStatus:
+            def __init__(self, name):
+                self.name = name
+
         mock_sherlock.return_value = {
-            "Twitter": {"status": MagicMock(name="AVAILABLE"), "url_user": ""}
+            "Twitter": {"status": MockStatus("AVAILABLE"), "url_user": ""}
         }
 
         result = asyncio.run(find_social_profiles("testuser_no_profiles"))
@@ -49,7 +59,6 @@ class TestSocialOsint(unittest.TestCase):
         mock_sherlock.side_effect = Exception("Sherlock internal error")
 
         # We expect the function to handle the error gracefully and return an empty list.
-        # Note: A try/except block would need to be added to the source code to capture the error message.
 
         result = asyncio.run(find_social_profiles("testuser"))
         self.assertEqual(len(result.found_profiles), 0)

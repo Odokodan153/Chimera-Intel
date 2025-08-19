@@ -12,6 +12,7 @@ import logging
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,22 +66,26 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         FormattedDiff: A Pydantic model showing added and removed items.
     """
     changes: Dict[str, List[str]] = {"added": [], "removed": []}
-    for key, value in diff_result.items():
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                if sub_value == symbols.ADD:
-                    changes["added"].append(f"{key}.{sub_key}")
-                elif sub_value == symbols.DELETE:
-                    changes["removed"].append(f"{key}.{sub_key}")
-        # This handles cases where a list has changed
 
-        elif isinstance(value, list) and len(value) == 2:
-            changes["removed"].append(f"{key}: {value[0]}")
-            changes["added"].append(f"{key}: {value[1]}")
+    def process_level(data, prefix=""):
+        for key, value in data.items():
+            full_key = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                process_level(value, prefix=full_key)
+            elif value == symbols.DELETE:
+                changes["removed"].append(full_key)
+            elif value == symbols.ADD:
+                changes["added"].append(full_key)
+            elif isinstance(value, list) and len(value) == 2:
+                changes["removed"].append(f"{full_key}: {value[0]}")
+                changes["added"].append(f"{full_key}: {value[1]}")
+
+    process_level(diff_result)
     return FormattedDiff(**changes)
 
 
 # --- Typer CLI Application ---
+
 
 diff_app = typer.Typer()
 
@@ -112,9 +117,11 @@ def run_diff_analysis(
             module,
         )
         raise typer.Exit()
-    raw_difference = diff(previous, latest, syntax="symmetric", dump=True)
-    difference_json = json.loads(raw_difference)
-    if not difference_json:
+    # Using dump=False to get a Python dictionary directly
+
+    raw_difference = diff(previous, latest, syntax="symmetric")
+
+    if not raw_difference:
         logger.info(
             "No changes detected between the last two scans for '%s' in module '%s'.",
             target,
@@ -122,9 +129,9 @@ def run_diff_analysis(
         )
         raise typer.Exit()
     logger.info("Changes detected for '%s' in module '%s'.", target, module)
-    formatted_changes = format_diff_simple(difference_json)
+    formatted_changes = format_diff_simple(raw_difference)
     full_result = DiffResult(
-        comparison_summary=formatted_changes, raw_diff=difference_json
+        comparison_summary=formatted_changes, raw_diff=raw_difference
     )
     console.print("\n[bold]Comparison Results:[/bold]")
     pprint(full_result.raw_diff)
