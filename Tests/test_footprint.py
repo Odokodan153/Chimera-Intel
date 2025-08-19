@@ -14,6 +14,7 @@ from httpx import RequestError, HTTPStatusError, Response
 
 # Use the absolute import path for the package structure
 
+
 from chimera_intel.core.utils import is_valid_domain
 from chimera_intel.core.footprint import (
     get_whois_info,
@@ -21,6 +22,9 @@ from chimera_intel.core.footprint import (
     get_subdomains_virustotal,
     get_subdomains_dnsdumpster,
     get_subdomains_threatminer,
+    get_subdomains_urlscan,
+    get_subdomains_shodan,
+    gather_footprint_data,
 )
 
 
@@ -173,6 +177,66 @@ class TestFootprint(unittest.TestCase):
 
         result = asyncio.run(get_subdomains_threatminer("example.com"))
         self.assertEqual(result, [])
+
+    @patch("chimera_intel.core.http_client.async_client.get", new_callable=AsyncMock)
+    def test_get_subdomains_urlscan_success(self, mock_async_get):
+        """Tests a successful async call to the URLScan.io API."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {"page": {"domain": "sub1.example.com"}},
+                {"page": {"domain": "sub2.example.com"}},
+            ]
+        }
+        mock_async_get.return_value = mock_response
+        result = asyncio.run(get_subdomains_urlscan("example.com"))
+        self.assertIn("sub1.example.com", result)
+        self.assertEqual(len(result), 2)
+
+    @patch("chimera_intel.core.footprint.shodan.Shodan")
+    def test_get_subdomains_shodan_success(self, mock_shodan_client):
+        """Tests a successful async call to the Shodan API."""
+        mock_api = mock_shodan_client.return_value
+        mock_api.search.return_value = {
+            "matches": [
+                {"hostnames": ["sub1.example.com"]},
+                {"hostnames": ["sub2.example.com"]},
+            ]
+        }
+        result = asyncio.run(get_subdomains_shodan("example.com", "fake_api_key"))
+        self.assertIn("sub1.example.com", result)
+        self.assertEqual(len(result), 2)
+
+    @patch("chimera_intel.core.footprint.get_whois_info")
+    @patch("chimera_intel.core.footprint.get_dns_records")
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_virustotal",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_dnsdumpster",
+        new_callable=AsyncMock,
+    )
+    def test_gather_footprint_data_core_logic(
+        self, mock_dd, mock_vt, mock_dns, mock_whois
+    ):
+        """Tests the main data aggregation logic of gather_footprint_data."""
+        mock_whois.return_value = {"registrar": "Test Registrar"}
+        mock_dns.return_value = {"A": ["1.1.1.1"]}
+        mock_vt.return_value = ["vt.example.com"]
+        mock_dd.return_value = ["dd.example.com", "vt.example.com"]
+
+        result = asyncio.run(gather_footprint_data("example.com"))
+
+        self.assertEqual(result.domain, "example.com")
+        self.assertEqual(result.footprint.whois_info["registrar"], "Test Registrar")
+        self.assertEqual(result.footprint.subdomains.total_unique, 2)
+        # Check if confidence score is high for the subdomain found from two sources
+
+        for sub in result.footprint.subdomains.results:
+            if sub.domain == "vt.example.com":
+                self.assertIn("HIGH", sub.confidence)
 
 
 if __name__ == "__main__":

@@ -318,7 +318,8 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIn("File not found", result["error"])
 
-    def test_analyze_apk_mobsf_no_creds(self):
+    @patch("os.path.exists", return_value=True)
+    def test_analyze_apk_mobsf_no_creds(self, mock_exists):
         """Tests MobSF analysis when URL or API key are missing."""
         result = analyze_apk_mobsf("test.apk", "", "")
         self.assertIn("error", result)

@@ -14,10 +14,12 @@ from httpx import RequestError, HTTPStatusError, Response
 
 # Use the absolute import path for the package structure
 
+
 from chimera_intel.core.web_analyzer import (
     get_tech_stack_builtwith,
     get_tech_stack_wappalyzer,
     get_traffic_similarweb,
+    gather_web_analysis_data,
 )
 
 
@@ -125,6 +127,42 @@ class TestWebAnalyzer(unittest.TestCase):
         result = asyncio.run(get_traffic_similarweb("example.com", ""))
         self.assertIn("error", result)
         self.assertIn("API key not found", result["error"])
+
+    @patch(
+        "chimera_intel.core.web_analyzer.get_tech_stack_builtwith",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.web_analyzer.get_tech_stack_wappalyzer",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.web_analyzer.get_traffic_similarweb", new_callable=AsyncMock
+    )
+    def test_gather_web_analysis_data_all_sources(
+        self, mock_similarweb, mock_wappalyzer, mock_builtwith
+    ):
+        """Tests the main data aggregation logic with all API keys present."""
+        mock_builtwith.return_value = ["React", "Nginx"]
+        mock_wappalyzer.return_value = ["React", "jQuery"]
+        mock_similarweb.return_value = {"visits": 1000}
+
+        # Mock the API_KEYS to simulate they are present
+
+        with patch("chimera_intel.core.web_analyzer.API_KEYS") as mock_keys:
+            mock_keys.builtwith_api_key = "fake_key"
+            mock_keys.wappalyzer_api_key = "fake_key"
+            mock_keys.similarweb_api_key = "fake_key"
+
+            result = asyncio.run(gather_web_analysis_data("example.com"))
+
+            self.assertEqual(result.web_analysis.tech_stack.total_unique, 3)
+            self.assertEqual(result.web_analysis.traffic_info["visits"], 1000)
+            # Check for high confidence on 'React'
+
+            for tech in result.web_analysis.tech_stack.results:
+                if tech.technology == "React":
+                    self.assertIn("HIGH", tech.confidence)
 
 
 if __name__ == "__main__":

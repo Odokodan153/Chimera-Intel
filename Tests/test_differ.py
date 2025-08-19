@@ -1,11 +1,19 @@
 import unittest
 from unittest.mock import patch
-from chimera_intel.core.differ import get_last_two_scans, format_diff_simple
+from chimera_intel.core.differ import (
+    get_last_two_scans,
+    format_diff_simple,
+)
 from chimera_intel.core.schemas import FormattedDiff
+from typer.testing import CliRunner
+from chimera_intel.cli import app
 
 # FIX: Remove unused imports as they are handled within the source function
 
+
 from jsondiff import diff
+
+runner = CliRunner(mix_stderr=False)
 
 
 class TestDiffer(unittest.TestCase):
@@ -60,6 +68,27 @@ class TestDiffer(unittest.TestCase):
         # Check for the removal of the 'admin' user
 
         self.assertIn("users.admin", formatted.removed)
+
+    @patch("chimera_intel.core.differ.get_last_two_scans")
+    @patch("chimera_intel.core.differ.send_slack_notification")
+    def test_cli_diff_command_with_changes(self, mock_slack, mock_get_scans):
+        """Tests the `analysis diff run` command when changes are detected."""
+        mock_get_scans.return_value = (
+            {"key": "new_value"},
+            {"key": "old_value"},
+        )
+        result = runner.invoke(app, ["analysis", "diff", "run", "example.com", "test"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Comparison Results:", result.stdout)
+        mock_slack.assert_called_once()
+
+    @patch("chimera_intel.core.differ.get_last_two_scans")
+    def test_cli_diff_command_no_changes(self, mock_get_scans):
+        """Tests the `analysis diff run` command when no changes are detected."""
+        mock_get_scans.return_value = ({"key": "value"}, {"key": "value"})
+        result = runner.invoke(app, ["analysis", "diff", "run", "example.com", "test"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertNotIn("Comparison Results:", result.stdout)
 
 
 if __name__ == "__main__":
