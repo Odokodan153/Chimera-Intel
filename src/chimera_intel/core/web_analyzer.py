@@ -3,7 +3,7 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Union
 import os
 from playwright.async_api import async_playwright
 from datetime import datetime
