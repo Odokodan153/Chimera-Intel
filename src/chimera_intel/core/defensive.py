@@ -22,7 +22,17 @@ from chimera_intel.core.utils import console, save_or_print_results, is_valid_do
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
-from chimera_intel.core.schemas import HIBPResult, GitHubLeaksResult, TyposquatResult
+from chimera_intel.core.schemas import (
+    HIBPResult,
+    GitHubLeaksResult,
+    TyposquatResult,
+    ShodanResult,
+    ShodanHost,
+    PasteResult,
+    Paste,
+    SSLLabsResult,
+    MobSFResult,
+)
 
 # Get a logger instance for this specific file
 
@@ -126,7 +136,7 @@ def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
         return TyposquatResult(error=f"An unexpected error occurred: {e}")
 
 
-def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
+def analyze_attack_surface_shodan(query: str, api_key: str) -> ShodanResult:
     """
     Uses Shodan to find devices and services exposed on the internet.
 
@@ -135,30 +145,30 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> Dict[str, Any]:
         api_key (str): The Shodan API key.
 
     Returns:
-        Dict[str, Any]: A dictionary of discovered hosts, or an error message.
+        ShodanResult: A Pydantic model of discovered hosts, or an error message.
     """
     if not api_key:
-        return {"error": "Shodan API key not found. Check your .env file."}
+        return ShodanResult(error="Shodan API key not found. Check your .env file.")
     try:
         api = shodan.Shodan(api_key)
         results = api.search(query, limit=100)
         hosts = [
-            {
-                "ip": s.get("ip_str"),
-                "port": s.get("port"),
-                "org": s.get("org"),
-                "hostnames": s.get("hostnames"),
-                "data": s.get("data", "").strip(),
-            }
+            ShodanHost(
+                ip=s.get("ip_str"),
+                port=s.get("port"),
+                org=s.get("org"),
+                hostnames=s.get("hostnames"),
+                data=s.get("data", "").strip(),
+            )
             for s in results.get("matches", [])
         ]
-        return {"total_results": results.get("total", 0), "hosts": hosts}
+        return ShodanResult(total_results=results.get("total", 0), hosts=hosts)
     except Exception as e:
         logger.error("An error occurred with Shodan for query '%s': %s", query, e)
-        return {"error": f"An error occurred with Shodan: {e}"}
+        return ShodanResult(error=f"An error occurred with Shodan: {e}")
 
 
-def search_pastes_api(query: str) -> Dict[str, Any]:
+def search_pastes_api(query: str) -> PasteResult:
     """
     Searches for pastes containing a specific query using the paste.ee API.
 
@@ -166,7 +176,7 @@ def search_pastes_api(query: str) -> Dict[str, Any]:
         query (str): The keyword or domain to search for.
 
     Returns:
-        Dict[str, Any]: A dictionary of found pastes, or an error message.
+        PasteResult: A Pydantic model of found pastes, or an error message.
     """
     url = "https://api.paste.ee/v1/pastes"
     params: Dict[str, Union[str, int]] = {"query": query, "per_page": 20}
@@ -177,23 +187,23 @@ def search_pastes_api(query: str) -> Dict[str, Any]:
         data = response.json()
 
         pastes = [
-            {
-                "id": p.get("id"),
-                "link": p.get("link"),
-                "description": p.get("description"),
-            }
+            Paste(
+                id=p.get("id"),
+                link=p.get("link"),
+                description=p.get("description"),
+            )
             for p in data.get("pastes", [])
         ]
-        return {"pastes": pastes, "count": len(pastes)}
+        return PasteResult(pastes=pastes, count=len(pastes))
     except HTTPStatusError as e:
         logger.error("HTTP error searching pastes for query '%s': %s", query, e)
-        return {"error": f"HTTP error occurred: {e.response.status_code}"}
+        return PasteResult(error=f"HTTP error occurred: {e.response.status_code}")
     except RequestError as e:
         logger.error("Network error searching pastes for query '%s': %s", query, e)
-        return {"error": f"A network error occurred: {e}"}
+        return PasteResult(error=f"A network error occurred: {e}")
 
 
-def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
+def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
     """
     Performs an in-depth SSL/TLS analysis using the SSL Labs API.
 
@@ -201,7 +211,7 @@ def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
         host (str): The hostname to scan (e.g., 'google.com').
 
     Returns:
-        Dict[str, Any]: A dictionary containing the full SSL Labs report, or an error message.
+        SSLLabsResult: A Pydantic model containing the full SSL Labs report, or an error message.
     """
     api_url = "https://api.ssllabs.com/api/v3/"
 
@@ -229,24 +239,24 @@ def analyze_ssl_ssllabs(host: str) -> Dict[str, Any]:
             initial_data = start_scan(host)
 
             if initial_data["status"] == "ERROR":
-                return {
-                    "error": initial_data.get(
+                return SSLLabsResult(
+                    error=initial_data.get(
                         "statusMessage", "Unknown error starting scan."
                     )
-                }
+                )
             progress.update(
                 task,
                 description="[cyan]Scan in progress... (this can take a few minutes)",
             )
             final_data = poll_scan(host)
             progress.update(task, completed=100, description="[green]Scan complete!")
-        return final_data
+        return SSLLabsResult(report=final_data)
     except (HTTPStatusError, RequestError) as e:
         logger.error("An error occurred with SSL Labs API for host '%s': %s", host, e)
-        return {"error": f"An error occurred with SSL Labs API: {e}"}
+        return SSLLabsResult(error=f"An error occurred with SSL Labs API: {e}")
 
 
-def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str, Any]:
+def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> MobSFResult:
     """
     Uploads an Android APK to a running MobSF instance and retrieves the scan results.
 
@@ -256,13 +266,13 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
         api_key (str): The MobSF REST API key.
 
     Returns:
-        Dict[str, Any]: The full JSON report from MobSF, or an error message.
+        MobSFResult: The full JSON report from MobSF, or an error message.
     """
     if not os.path.exists(file_path):
         logger.error("APK file not found at path: %s", file_path)
-        return {"error": f"File not found at path: {file_path}"}
+        return MobSFResult(error=f"File not found at path: {file_path}")
     if not mobsf_url or not api_key:
-        return {"error": "MobSF URL and API Key are required."}
+        return MobSFResult(error="MobSF URL and API Key are required.")
     headers = {"Authorization": api_key}
 
     try:
@@ -284,10 +294,10 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> Dict[str,
         )
         report_response.raise_for_status()
 
-        return report_response.json()
+        return MobSFResult(report=report_response.json())
     except (HTTPStatusError, RequestError) as e:
         logger.error("An error occurred with MobSF API: %s", e)
-        return {"error": f"An error occurred with MobSF API: {e}"}
+        return MobSFResult(error=f"An error occurred with MobSF API: {e}")
 
 
 # --- Typer CLI Application ---
@@ -336,8 +346,6 @@ def run_leaks_check(query: str, output_file: Optional[str] = None):
         query (str): The search query.
         output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    # FIX: Move logger call inside the api_key check
-
     api_key = API_KEYS.github_pat
     if api_key:
         logger.info("Starting GitHub leaks search for query: '%s'", query)
@@ -390,8 +398,10 @@ def run_surface_check(query: str, output_file: Optional[str] = None):
     if api_key:
         logger.info("Starting Shodan surface scan for query: '%s'", query)
         results = analyze_attack_surface_shodan(query, api_key)
-        save_or_print_results(results, output_file)
-        save_scan_to_db(target=query, module="defensive_surface", data=results)
+        save_or_print_results(results.model_dump(), output_file)
+        save_scan_to_db(
+            target=query, module="defensive_surface", data=results.model_dump()
+        )
 
 
 @defensive_app.command("pastebin")
@@ -405,8 +415,10 @@ def run_pastebin_check(query: str, output_file: Optional[str] = None):
     """
     logger.info("Starting public paste search for query: '%s'", query)
     results = search_pastes_api(query)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=query, module="defensive_pastebin", data=results)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(
+        target=query, module="defensive_pastebin", data=results.model_dump()
+    )
 
 
 @defensive_app.command("ssllabs")
@@ -432,8 +444,10 @@ def run_ssllabs_check(domain: str, output_file: Optional[str] = None):
         raise typer.Exit(code=1)
     logger.info("Starting SSL Labs scan for %s", domain)
     results = analyze_ssl_ssllabs(domain)
-    save_or_print_results(results, output_file)
-    save_scan_to_db(target=domain, module="defensive_ssllabs", data=results)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(
+        target=domain, module="defensive_ssllabs", data=results.model_dump()
+    )
 
 
 @defensive_app.command("mobsf")
@@ -462,7 +476,9 @@ def run_mobsf_scan(
         raise typer.Exit(code=1)
     logger.info("Starting MobSF scan for APK file: %s", apk_file)
     results = analyze_apk_mobsf(apk_file, mobsf_url, api_key)
-    save_or_print_results(results, output_file)
+    save_or_print_results(results.model_dump(), output_file)
     save_scan_to_db(
-        target=os.path.basename(apk_file), module="defensive_mobsf", data=results
+        target=os.path.basename(apk_file),
+        module="defensive_mobsf",
+        data=results.model_dump(),
     )

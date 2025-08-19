@@ -24,6 +24,8 @@ from chimera_intel.core.social_analyzer import social_app
 from chimera_intel.core.vulnerability_scanner import vulnerability_app
 from chimera_intel.core.social_osint import social_osint_app
 from chimera_intel.core.dark_web_osint import dark_web_app
+from chimera_intel.core.cloud_osint import cloud_osint_app
+from chimera_intel.core.personnel_osint import personnel_osint_app
 
 setup_logging()
 
@@ -70,6 +72,16 @@ scan_app.add_typer(
 )
 scan_app.add_typer(
     social_osint_app, name="profiles", help="Finds social media profiles by username."
+)
+scan_app.add_typer(
+    cloud_osint_app,
+    name="cloud",
+    help="Scans for exposed cloud assets like S3 buckets.",
+)
+scan_app.add_typer(
+    personnel_osint_app,
+    name="personnel",
+    help="Gathers intelligence on company employees.",
 )
 
 # 2. 'defensive' command group for internal security and counter-intelligence.

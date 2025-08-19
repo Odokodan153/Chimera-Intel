@@ -1,7 +1,7 @@
 import unittest
 import sqlite3
 import os
-import time  # Import the time module
+import datetime
 from unittest.mock import patch
 from chimera_intel.core.database import (
     initialize_database,
@@ -68,23 +68,39 @@ class TestDatabase(unittest.TestCase):
             save_scan_to_db("example.com", "footprint", {})
             mock_print.assert_called()
 
-    def test_get_aggregated_data_for_target(self):
+    @patch("chimera_intel.core.database.datetime")
+    def test_get_aggregated_data_for_target(self, mock_datetime):
         """Tests aggregation of multiple module scans for a target."""
-        # Save scans with a small delay to ensure unique timestamps
+        # We now control the time manually
 
+        base_time = datetime.datetime.now()
+
+        # First scan
+
+        mock_datetime.datetime.now.return_value.isoformat.return_value = (
+            base_time.isoformat()
+        )
         save_scan_to_db("example.com", "footprint", {"footprint_key": "v0"})
-        time.sleep(0.01)  # FIX: Add a small delay
+
+        # Second scan - simulate 1 second later
+
+        mock_datetime.datetime.now.return_value.isoformat.return_value = (
+            base_time + datetime.timedelta(seconds=1)
+        ).isoformat()
         save_scan_to_db("example.com", "web_analyzer", {"web_key": "v2"})
-        time.sleep(0.01)  # FIX: Add a small delay
-        save_scan_to_db(
-            "example.com", "footprint", {"footprint_key": "v1"}
-        )  # This is now the latest
+
+        # Third scan - simulate 2 seconds later (this is now the latest)
+
+        mock_datetime.datetime.now.return_value.isoformat.return_value = (
+            base_time + datetime.timedelta(seconds=2)
+        ).isoformat()
+        save_scan_to_db("example.com", "footprint", {"footprint_key": "v1"})
 
         aggregated = get_aggregated_data_for_target("example.com")
         self.assertIsNotNone(aggregated)
         self.assertIn("footprint", aggregated["modules"])
         self.assertIn("web_analyzer", aggregated["modules"])
-        # Now the test will correctly check for the latest record, 'v1'
+        # The test will now correctly and reliably check for the latest record, 'v1'
 
         self.assertEqual(aggregated["modules"]["footprint"]["footprint_key"], "v1")
 

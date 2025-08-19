@@ -26,7 +26,19 @@ from chimera_intel.core.defensive import (
     analyze_ssl_ssllabs,
     analyze_apk_mobsf,
 )
-from chimera_intel.core.schemas import HIBPResult, TyposquatResult, GitHubLeaksResult
+
+# Import all necessary Pydantic models for testing
+
+
+from chimera_intel.core.schemas import (
+    HIBPResult,
+    TyposquatResult,
+    GitHubLeaksResult,
+    ShodanResult,
+    PasteResult,
+    SSLLabsResult,
+    MobSFResult,
+)
 
 # CliRunner to simulate CLI commands
 
@@ -208,14 +220,19 @@ class TestDefensive(unittest.TestCase):
         mock_api.search.return_value = {"total": 1, "matches": [{"ip_str": "1.1.1.1"}]}
 
         result = analyze_attack_surface_shodan("org:Google", "fake_shodan_key")
-        self.assertEqual(result["total_results"], 1)
-        self.assertEqual(result["hosts"][0]["ip"], "1.1.1.1")
+
+        self.assertIsInstance(result, ShodanResult)
+        self.assertEqual(result.total_results, 1)
+        self.assertEqual(result.hosts[0].ip, "1.1.1.1")
+        self.assertIsNone(result.error)
 
     def test_analyze_attack_surface_shodan_no_key(self):
         """Tests Shodan search when no API key is provided."""
         result = analyze_attack_surface_shodan("org:Google", "")
-        self.assertIn("error", result)
-        self.assertIn("not found", result["error"])
+
+        self.assertIsInstance(result, ShodanResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("not found", result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_pastes_api_success(self, mock_get: MagicMock):
@@ -227,12 +244,17 @@ class TestDefensive(unittest.TestCase):
         """
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"pastes": [{"id": "paste1"}]}
+        mock_response.json.return_value = {
+            "pastes": [{"id": "paste1", "link": "link1"}]
+        }
         mock_get.return_value = mock_response
 
         result = search_pastes_api("example.com")
-        self.assertEqual(result["count"], 1)
-        self.assertEqual(result["pastes"][0]["id"], "paste1")
+
+        self.assertIsInstance(result, PasteResult)
+        self.assertEqual(result.count, 1)
+        self.assertEqual(result.pastes[0].id, "paste1")
+        self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_pastes_api_http_error(self, mock_get: MagicMock):
@@ -250,13 +272,21 @@ class TestDefensive(unittest.TestCase):
         mock_get.return_value = mock_response
 
         result = search_pastes_api("some_query")
-        self.assertIn("error", result)
-        self.assertIn("404", result["error"])
+
+        self.assertIsInstance(result, PasteResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("404", result.error)
 
     @patch("chimera_intel.core.defensive.sync_client.get")
     @patch("time.sleep", return_value=None)
     def test_analyze_ssl_ssllabs_success(self, mock_sleep, mock_get):
-        """Tests a successful SSL Labs scan."""
+        """
+        Tests a successful SSL Labs scan.
+
+        Args:
+            mock_sleep (MagicMock): A mock for `time.sleep`.
+            mock_get (MagicMock): A mock for `httpx.Client.get`.
+        """
         mock_start_response = MagicMock(status_code=200)
         mock_start_response.json.return_value = {"status": "IN_PROGRESS"}
         mock_poll_response_1 = MagicMock(status_code=200)
@@ -270,13 +300,20 @@ class TestDefensive(unittest.TestCase):
         ]
 
         result = analyze_ssl_ssllabs("example.com")
-        self.assertEqual(result.get("grade"), "A+")
-        self.assertIsNone(result.get("error"))
+
+        self.assertIsInstance(result, SSLLabsResult)
+        self.assertEqual(result.report.get("grade"), "A+")
+        self.assertIsNone(result.error)
         self.assertEqual(mock_get.call_count, 3)
 
     @patch("chimera_intel.core.defensive.sync_client.get")
     def test_analyze_ssl_ssllabs_start_error(self, mock_get):
-        """Tests an SSL Labs scan that errors on initiation."""
+        """
+        Tests an SSL Labs scan that errors on initiation.
+
+        Args:
+            mock_get (MagicMock): A mock for `httpx.Client.get`.
+        """
         mock_start_response = MagicMock(status_code=200)
         mock_start_response.json.return_value = {
             "status": "ERROR",
@@ -284,14 +321,23 @@ class TestDefensive(unittest.TestCase):
         }
         mock_get.return_value = mock_start_response
         result = analyze_ssl_ssllabs("example.com")
-        self.assertIn("error", result)
-        self.assertIn("Invalid host", result["error"])
+
+        self.assertIsInstance(result, SSLLabsResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Invalid host", result.error)
 
     @patch("os.path.exists", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data=b"apk_data")
     @patch("chimera_intel.core.defensive.sync_client.post")
     def test_analyze_apk_mobsf_success(self, mock_post, mock_file, mock_exists):
-        """Tests a successful MobSF APK analysis."""
+        """
+        Tests a successful MobSF APK analysis.
+
+        Args:
+            mock_post (MagicMock): A mock for `httpx.Client.post`.
+            mock_file (MagicMock): A mock for the `open` built-in.
+            mock_exists (MagicMock): A mock for `os.path.exists`.
+        """
         mock_upload_response = MagicMock(status_code=200)
         mock_upload_data = {
             "hash": "123",
@@ -309,21 +355,32 @@ class TestDefensive(unittest.TestCase):
         ]
 
         result = analyze_apk_mobsf("test.apk", "http://mobsf.local", "fake_key")
-        self.assertEqual(result.get("app_name"), "TestApp")
-        self.assertIsNone(result.get("error"))
+
+        self.assertIsInstance(result, MobSFResult)
+        self.assertEqual(result.report.get("app_name"), "TestApp")
+        self.assertIsNone(result.error)
 
     def test_analyze_apk_mobsf_no_file(self):
         """Tests MobSF analysis when the APK file does not exist."""
         result = analyze_apk_mobsf("nonexistent.apk", "http://mobsf.local", "fake_key")
-        self.assertIn("error", result)
-        self.assertIn("File not found", result["error"])
+
+        self.assertIsInstance(result, MobSFResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("File not found", result.error)
 
     @patch("os.path.exists", return_value=True)
     def test_analyze_apk_mobsf_no_creds(self, mock_exists):
-        """Tests MobSF analysis when URL or API key are missing."""
+        """
+        Tests MobSF analysis when URL or API key are missing.
+
+        Args:
+            mock_exists (MagicMock): A mock for `os.path.exists`.
+        """
         result = analyze_apk_mobsf("test.apk", "", "")
-        self.assertIn("error", result)
-        self.assertIn("MobSF URL and API Key are required", result["error"])
+
+        self.assertIsInstance(result, MobSFResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("MobSF URL and API Key are required", result.error)
 
     # --- CLI COMMAND TESTS ---
 
@@ -385,16 +442,28 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.search_pastes_api")
     def test_cli_pastebin_command(self, mock_search: MagicMock):
-        """Tests a successful 'pastebin' CLI command."""
-        mock_search.return_value = {"count": 1, "pastes": []}
+        """
+        Tests a successful 'pastebin' CLI command.
+
+        Args:
+            mock_search (MagicMock): A mock for `search_pastes_api`.
+        """
+        mock_search.return_value.model_dump.return_value = {"count": 1, "pastes": []}
         result = runner.invoke(app, ["defensive", "checks", "pastebin", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"count": 1', result.stdout)
 
     @patch("chimera_intel.core.defensive.analyze_ssl_ssllabs")
     def test_cli_ssllabs_command_success(self, mock_analyze: MagicMock):
-        """Tests a successful 'ssllabs' CLI command."""
-        mock_analyze.return_value = {"host": "example.com", "grade": "A"}
+        """
+        Tests a successful 'ssllabs' CLI command.
+
+        Args:
+            mock_analyze (MagicMock): A mock for `analyze_ssl_ssllabs`.
+        """
+        mock_analyze.return_value.model_dump.return_value = {
+            "report": {"host": "example.com", "grade": "A"}
+        }
         result = runner.invoke(app, ["defensive", "checks", "ssllabs", "example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"grade": "A"', result.stdout)
@@ -402,8 +471,15 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.defensive.analyze_apk_mobsf")
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", "fake_key")
     def test_cli_mobsf_command_success(self, mock_analyze: MagicMock):
-        """Tests a successful 'mobsf' CLI command."""
-        mock_analyze.return_value = {"app_name": "TestApp"}
+        """
+        Tests a successful 'mobsf' CLI command.
+
+        Args:
+            mock_analyze (MagicMock): A mock for `analyze_apk_mobsf`.
+        """
+        mock_analyze.return_value.model_dump.return_value = {
+            "report": {"app_name": "TestApp"}
+        }
         result = runner.invoke(
             app, ["defensive", "checks", "mobsf", "--apk-file", "test.apk"]
         )
@@ -418,8 +494,6 @@ class TestDefensive(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 1)
 
-    # --- EXTENDED LOGIC ---
-
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
     def test_cli_surface_command(self, mock_analyze: MagicMock):
@@ -429,7 +503,7 @@ class TestDefensive(unittest.TestCase):
         Args:
             mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
         """
-        mock_analyze.return_value = {"total_results": 1}
+        mock_analyze.return_value.model_dump.return_value = {"total_results": 1}
         result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_results": 1', result.stdout)
@@ -439,12 +513,8 @@ class TestDefensive(unittest.TestCase):
         """
         Tests the 'surface' command when the SHODAN_API_KEY is missing.
         """
-        # The command should not be called, so we don't need to mock it.
-
         result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
         self.assertEqual(result.exit_code, 0)
-        # Verify no output is generated because the check is skipped
-
         self.assertEqual(result.stdout.strip(), "")
 
 

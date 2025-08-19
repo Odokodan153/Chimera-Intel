@@ -16,6 +16,27 @@ class ScoredResult(BaseModel):
     sources: List[str]
 
 
+# --- Threat Intelligence Models ---
+
+
+class PulseInfo(BaseModel):
+    """Model for a single Threat Pulse from OTX."""
+
+    name: str
+    malware_families: List[str] = []
+    tags: List[str] = []
+
+
+class ThreatIntelResult(BaseModel):
+    """Model for the threat intelligence context of an indicator."""
+
+    indicator: str
+    pulse_count: int = 0
+    is_malicious: bool = False
+    pulses: List[PulseInfo] = []
+    error: Optional[str] = None
+
+
 # --- Footprint Module Models ---
 
 
@@ -32,6 +53,7 @@ class FootprintData(BaseModel):
     whois_info: Dict[str, Any]
     dns_records: Dict[str, Any]
     subdomains: SubdomainReport
+    ip_threat_intelligence: List[ThreatIntelResult]
 
 
 class FootprintResult(BaseModel):
@@ -185,6 +207,56 @@ class TyposquatResult(BaseModel):
     error: Optional[str] = None
 
 
+class ShodanHost(BaseModel):
+    """Model for a single host found by Shodan."""
+
+    ip: Optional[str] = None
+    port: Optional[int] = None
+    org: Optional[str] = None
+    hostnames: Optional[List[str]] = None
+    data: Optional[str] = None
+
+
+class ShodanResult(BaseModel):
+    """Model for the result of a Shodan scan."""
+
+    total_results: int = 0
+    hosts: List[ShodanHost] = []
+    error: Optional[str] = None
+
+
+class Paste(BaseModel):
+    """Model for a single paste from paste.ee."""
+
+    id: str
+    link: str
+    description: Optional[str] = None
+
+
+class PasteResult(BaseModel):
+    """Model for the result of a paste search."""
+
+    pastes: List[Paste] = []
+    count: int = 0
+    error: Optional[str] = None
+
+
+class SSLLabsResult(BaseModel):
+    """A flexible model to hold the entire JSON response from SSL Labs."""
+
+    # We use Dict[str, Any] because the report is very complex and variable
+
+    report: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class MobSFResult(BaseModel):
+    """A flexible model to hold the entire JSON response from MobSF."""
+
+    report: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
 # --- Social Analyzer Models ---
 
 
@@ -221,10 +293,17 @@ class ConfigFootprint(BaseModel):
     dns_records_to_query: List[str] = ["A", "MX"]
 
 
+class ConfigDarkWeb(BaseModel):
+    """Configuration for the dark web module from config.yaml."""
+
+    tor_proxy_url: str = "socks5://127.0.0.1:9150"
+
+
 class ConfigModules(BaseModel):
     """Configuration for all modules from config.yaml."""
 
     footprint: ConfigFootprint
+    dark_web: ConfigDarkWeb
 
 
 class ConfigNetwork(BaseModel):
@@ -332,6 +411,14 @@ class ForecastResult(BaseModel):
 # --- Vulnerability Scanner Models ---
 
 
+class CVE(BaseModel):
+    """Model for a single CVE entry from Vulners."""
+
+    id: str
+    cvss_score: float = Field(..., alias="cvss")
+    title: str
+
+
 class PortDetail(BaseModel):
     """Model for details about a single open port."""
 
@@ -340,6 +427,7 @@ class PortDetail(BaseModel):
     service: str
     product: Optional[str] = None
     version: Optional[str] = None
+    vulnerabilities: List[CVE] = []
 
 
 class HostScanResult(BaseModel):
@@ -393,4 +481,46 @@ class DarkWebScanResult(BaseModel):
 
     query: str
     found_results: List[DarkWebResult]
+    error: Optional[str] = None
+
+
+# --- Cloud OSINT Models ---
+
+
+class S3Bucket(BaseModel):
+    """Model for a single discovered S3 bucket."""
+
+    name: str
+    url: str
+    is_public: bool
+
+
+class CloudOSINTResult(BaseModel):
+    """The main, top-level result model for a cloud OSINT scan."""
+
+    target_keyword: str
+    found_buckets: List[S3Bucket] = []
+    error: Optional[str] = None
+
+
+# --- Personnel OSINT Models ---
+
+
+class EmployeeProfile(BaseModel):
+    """Model for a single employee profile found by Hunter.io."""
+
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: str
+    position: Optional[str] = None
+    phone_number: Optional[str] = None
+
+
+class PersonnelOSINTResult(BaseModel):
+    """The main, top-level result model for a personnel OSINT scan."""
+
+    domain: str
+    organization_name: Optional[str] = None
+    total_emails_found: int = 0
+    employee_profiles: List[EmployeeProfile] = []
     error: Optional[str] = None

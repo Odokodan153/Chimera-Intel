@@ -20,6 +20,10 @@ modules:
     # Add settings for web analysis here in the future
     placeholder: true
 
+  dark_web:
+    # The SOCKS5 proxy address required to connect to the Tor network
+    tor_proxy_url: "socks5://127.0.0.1:9150"
+
 # Settings for report generation
 reporting:
   graph:

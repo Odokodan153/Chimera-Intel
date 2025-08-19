@@ -20,6 +20,11 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.http_client import async_client
 
+# Import the new threat intel function
+
+
+from .threat_intel import get_threat_intel_otx
+
 logger = logging.getLogger(__name__)
 load_dotenv()
 
@@ -38,7 +43,6 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
     """
     try:
         domain_info = whois.whois(domain)
-
         if domain_info and domain_info.get("domain_name"):
             return dict(domain_info)
         else:
@@ -70,14 +74,11 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
         except dns.resolver.NoAnswer:
             dns_results[record_type] = None
         except dns.resolver.NXDOMAIN:
-            logger.warning(
-                "DNS query failed for '%s' because the domain does not exist (NXDOMAIN).",
-                domain,
-            )
+            logger.warning("DNS query failed for '%s' (NXDOMAIN).", domain)
             return {"error": f"Domain does not exist (NXDOMAIN): {domain}"}
         except Exception as e:
             logger.error(
-                "Could not resolve DNS record type '%s' for domain '%s': %s",
+                "Could not resolve DNS record type '%s' for '%s': %s",
                 record_type,
                 domain,
                 e,
@@ -143,7 +144,6 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
             "https://dnsdumpster.com/", data=post_data, headers=headers
         )
         results_response.raise_for_status()
-
         subdomains = re.findall(
             r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r")<br>",
             results_response.text,
@@ -246,7 +246,7 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
 
 async def gather_footprint_data(domain: str) -> FootprintResult:
     """
-    The core logic for gathering all footprint data asynchronously.
+    The core logic for gathering all footprint data and enriching it with threat intelligence.
 
     Args:
         domain (str): The target domain for the footprint scan.
@@ -254,11 +254,12 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     Returns:
         FootprintResult: A Pydantic model containing all the gathered and processed data.
     """
+    # --- Stage 1: Initial Data Gathering ---
+
     vt_api_key = API_KEYS.virustotal_api_key
     shodan_api_key = API_KEYS.shodan_api_key
-    available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
 
-    tasks = [
+    initial_tasks = [
         (
             get_subdomains_virustotal(domain, vt_api_key)
             if vt_api_key
@@ -272,11 +273,13 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
             if shodan_api_key
             else asyncio.sleep(0, result=[])
         ),
+        asyncio.to_thread(get_whois_info, domain),
+        asyncio.to_thread(get_dns_records, domain),
     ]
-    vt, dd, tm, us, sh = await asyncio.gather(*tasks)
 
-    whois_data = get_whois_info(domain)
-    dns_data = get_dns_records(domain)
+    (vt, dd, tm, us, sh, whois_data, dns_data) = await asyncio.gather(*initial_tasks)
+
+    # --- Stage 2: Consolidate and Prepare for Enrichment ---
 
     all_subdomains: Dict[str, List[str]] = {}
     for sub in vt:
@@ -289,20 +292,51 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         all_subdomains.setdefault(sub, []).append("URLScan.io")
     for sub in sh:
         all_subdomains.setdefault(sub, []).append("Shodan")
+    # Collect all unique indicators (IPs and subdomains) for threat intel lookup
+
+    indicators_to_check = set(all_subdomains.keys())
+    main_domain_ips = dns_data.get("A", []) or []
+    for ip in main_domain_ips:
+        indicators_to_check.add(ip)
+    # --- Stage 3: Threat Intelligence Enrichment ---
+
+    threat_intel_results: Dict[str, Any] = {}
+    if API_KEYS.otx_api_key:
+        with console.status(
+            "[bold cyan]Correlating findings with threat intelligence...[/bold cyan]"
+        ):
+            threat_intel_tasks = [
+                get_threat_intel_otx(indicator) for indicator in indicators_to_check
+            ]
+            ti_results = await asyncio.gather(*threat_intel_tasks)
+            for res in ti_results:
+                if res:
+                    threat_intel_results[res.indicator] = res
+    # --- Stage 4: Final Assembly ---
+
+    available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
     scored_results = [
         ScoredResult(
             domain=sub,
             sources=sources,
             confidence=f"{'HIGH' if len(sources) > 1 else 'LOW'} ({len(sources)}/{available_sources} sources)",
+            threat_intel=threat_intel_results.get(sub),
         )
         for sub, sources in sorted(all_subdomains.items())
+    ]
+
+    ip_threat_intelligence = [
+        threat_intel_results[ip] for ip in main_domain_ips if ip in threat_intel_results
     ]
 
     subdomain_report = SubdomainReport(
         total_unique=len(scored_results), results=scored_results
     )
     footprint_data = FootprintData(
-        whois_info=whois_data, dns_records=dns_data, subdomains=subdomain_report
+        whois_info=whois_data,
+        dns_records=dns_data,
+        subdomains=subdomain_report,
+        ip_threat_intelligence=ip_threat_intelligence,
     )
     return FootprintResult(domain=domain, footprint=footprint_data)
 
@@ -325,7 +359,7 @@ def run_footprint_scan(
 
     Args:
         domain (str): The target domain, e.g., 'google.com'.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (str | None): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning(

@@ -16,6 +16,7 @@ import httpx
 from .schemas import DarkWebResult, DarkWebScanResult
 from .utils import save_or_print_results
 from .database import save_scan_to_db
+from .config_loader import CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +40,15 @@ async def search_dark_web(query: str) -> DarkWebScanResult:
     """
     logger.info("Starting dark web search for query: %s", query)
 
-    # Configure an httpx client to use the Tor SOCKS5 proxy.
+    # Configure an httpx client to use the Tor SOCKS5 proxy from the config.
     # This requires the Tor Browser to be running.
 
-    transport = AsyncProxyTransport.from_url("socks5://127.0.0.1:9150")
+    proxy_url = CONFIG.modules.dark_web.tor_proxy_url
+    if not proxy_url:
+        error_msg = "Tor proxy URL is not configured in config.yaml."
+        logger.error(error_msg)
+        return DarkWebScanResult(query=query, found_results=[], error=error_msg)
+    transport = AsyncProxyTransport.from_url(proxy_url)
 
     found_results: List[DarkWebResult] = []
 
