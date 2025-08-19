@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 from .schemas import ThreatIntelResult, PulseInfo
 from .config_loader import API_KEYS
 from .http_client import async_client

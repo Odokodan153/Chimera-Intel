@@ -1,7 +1,6 @@
 import typer
 import asyncio
 import logging
-from typing import List
 from .schemas import CloudOSINTResult, S3Bucket
 from .http_client import async_client
 from .utils import save_or_print_results
