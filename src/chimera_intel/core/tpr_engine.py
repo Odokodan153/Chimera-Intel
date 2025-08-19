@@ -3,16 +3,14 @@ import asyncio
 import logging
 import json
 from .schemas import TPRMReport
-from .vulnerability_scanner import run_vulnerability_scan  # We'll need to adapt this
+from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import check_hibp_breaches
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
+from .ai_core import generate_swot_from_data
 
 logger = logging.getLogger(__name__)
-
-# NOTE: run_vulnerability_scan is synchronous. We'll need to adapt it for async orchestration.
-# For now, we'll run it in a thread. A better long-term solution would be to make it fully async.
 
 
 async def run_full_tpr_scan(domain: str) -> TPRMReport:
@@ -28,11 +26,19 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
     # Run scans concurrently
 
     vuln_scan_task = asyncio.to_thread(run_vulnerability_scan, domain)
-    hibp_api_key = API_KEYS.hibp_api_key
-    breach_scan_task = asyncio.to_thread(check_hibp_breaches, domain, hibp_api_key)
 
-    vuln_results, breach_results = await asyncio.gather(
-        vuln_scan_task, breach_scan_task
+    hibp_api_key = API_KEYS.hibp_api_key
+    breach_scan_task = None
+    if hibp_api_key:
+        breach_scan_task = asyncio.to_thread(check_hibp_breaches, domain, hibp_api_key)
+    tasks = [vuln_scan_task]
+    if breach_scan_task:
+        tasks.append(breach_scan_task)
+    results = await asyncio.gather(*tasks)
+
+    vuln_results = results[0]
+    breach_results = (
+        results[1] if len(results) > 1 else check_hibp_breaches(domain, None)
     )
 
     # Prepare data for AI summary
@@ -81,6 +87,7 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
 
 
 # --- Typer CLI Application ---
+
 
 tpr_app = typer.Typer()
 

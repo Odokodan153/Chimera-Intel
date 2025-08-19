@@ -277,25 +277,33 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         asyncio.to_thread(get_dns_records, domain),
     ]
 
-    (vt, dd, tm, us, sh, whois_data, dns_data) = await asyncio.gather(*initial_tasks)
+    results = await asyncio.gather(*initial_tasks)
+    vt, dd, tm, us, sh, whois_data, dns_data = results
 
     # --- Stage 2: Consolidate and Prepare for Enrichment ---
 
     all_subdomains: Dict[str, List[str]] = {}
-    for sub in vt:
-        all_subdomains.setdefault(sub, []).append("VirusTotal")
-    for sub in dd:
-        all_subdomains.setdefault(sub, []).append("DNSDumpster")
-    for sub in tm:
-        all_subdomains.setdefault(sub, []).append("ThreatMiner")
-    for sub in us:
-        all_subdomains.setdefault(sub, []).append("URLScan.io")
-    for sub in sh:
-        all_subdomains.setdefault(sub, []).append("Shodan")
+    if isinstance(vt, list):
+        for sub in vt:
+            all_subdomains.setdefault(sub, []).append("VirusTotal")
+    if isinstance(dd, list):
+        for sub in dd:
+            all_subdomains.setdefault(sub, []).append("DNSDumpster")
+    if isinstance(tm, list):
+        for sub in tm:
+            all_subdomains.setdefault(sub, []).append("ThreatMiner")
+    if isinstance(us, list):
+        for sub in us:
+            all_subdomains.setdefault(sub, []).append("URLScan.io")
+    if isinstance(sh, list):
+        for sub in sh:
+            all_subdomains.setdefault(sub, []).append("Shodan")
     # Collect all unique indicators (IPs and subdomains) for threat intel lookup
 
     indicators_to_check = set(all_subdomains.keys())
-    main_domain_ips = dns_data.get("A", []) or []
+    main_domain_ips = (
+        dns_data.get("A", []) if isinstance(dns_data, dict) and dns_data else []
+    )
     for ip in main_domain_ips:
         indicators_to_check.add(ip)
     # --- Stage 3: Threat Intelligence Enrichment ---
@@ -333,8 +341,8 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         total_unique=len(scored_results), results=scored_results
     )
     footprint_data = FootprintData(
-        whois_info=whois_data,
-        dns_records=dns_data,
+        whois_info=whois_data if isinstance(whois_data, dict) else {},
+        dns_records=dns_data if isinstance(dns_data, dict) else {},
         subdomains=subdomain_report,
         ip_threat_intelligence=ip_threat_intelligence,
     )

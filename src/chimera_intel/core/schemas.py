@@ -14,6 +14,7 @@ class ScoredResult(BaseModel):
     technology: Optional[str] = None
     confidence: str
     sources: List[str]
+    threat_intel: Optional["ThreatIntelResult"] = None
 
 
 # --- Threat Intelligence Models ---

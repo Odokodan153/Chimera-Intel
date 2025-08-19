@@ -6,21 +6,26 @@ from .schemas import (
     CompanyRecord,
     Officer,
     SanctionsScreeningResult,
-    SanctionedEntity,  # <-- ADDED IMPORTS
+    SanctionedEntity,
 )
 from .config_loader import API_KEYS
 from .http_client import sync_client
-from .utils import save_or_print_results, console  # <-- ADDED console
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
 
-# --- Company Registry Function (remains the same) ---
-
 
 def get_company_records(company_name: str) -> CorporateRegistryResult:
-    # ... (this function is unchanged)
+    """
+    Retrieves official company records from the OpenCorporates API.
 
+    Args:
+        company_name (str): The company name to search for.
+
+    Returns:
+        CorporateRegistryResult: A Pydantic model with the company records, or an error.
+    """
     api_key = API_KEYS.open_corporates_api_key
     if not api_key:
         return CorporateRegistryResult(
@@ -67,9 +72,6 @@ def get_company_records(company_name: str) -> CorporateRegistryResult:
         )
 
 
-# --- NEW SANCTIONS SCREENING FUNCTION ---
-
-
 def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
     """
     Screens a name against the U.S. Treasury's OFAC Sanctions List.
@@ -81,8 +83,6 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         SanctionsScreeningResult: A Pydantic model with any potential matches.
     """
     logger.info("Screening name '%s' against OFAC sanctions list.", name)
-    # This URL structure is based on the official OFAC search tool
-
     url = "https://sanctionssearch.ofac.treas.gov/Details.aspx"
     params = {"ss": name, "type": "All"}
 
@@ -92,10 +92,10 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         soup = BeautifulSoup(response.text, "html.parser")
 
         results_table = soup.find("table", {"class": "table-bordered"})
-        if not results_table:
+        if not results_table or not results_table.find("tbody"):
             return SanctionsScreeningResult(query=name, hits_found=0)
         entities = []
-        rows = results_table.find("tbody").find_all("tr")
+        rows = results_table.find("all", ["tr"])
         for row in rows:
             cells = row.find_all("td")
             if len(cells) == 5:
@@ -118,6 +118,7 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
 
 
 # --- Typer CLI Application ---
+
 
 corporate_records_app = typer.Typer()
 

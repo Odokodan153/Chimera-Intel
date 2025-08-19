@@ -3,7 +3,7 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Union
 import os
 from playwright.async_api import async_playwright
 from datetime import datetime
@@ -18,11 +18,7 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.http_client import async_client
 
-# Get a logger instance for this specific file
-
 logger = logging.getLogger(__name__)
-
-# --- Asynchronous Data Gathering Functions ---
 
 
 async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
@@ -131,12 +127,8 @@ async def take_screenshot(domain: str) -> Optional[str]:
             url = f"https://{domain}"
             await page.goto(url, wait_until="domcontentloaded", timeout=15000)
 
-            # Create the directory if it doesn't exist
-
             output_dir = "screenshots"
             os.makedirs(output_dir, exist_ok=True)
-
-            # Sanitize domain for filename and add timestamp
 
             safe_filename = domain.replace(".", "_")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -150,9 +142,6 @@ async def take_screenshot(domain: str) -> Optional[str]:
     except Exception as e:
         logger.error("Failed to take screenshot for %s: %s", domain, e)
         return None
-
-
-# --- Core Logic Function ---
 
 
 async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
@@ -189,15 +178,16 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         take_screenshot(domain),
     ]
 
-    builtwith_tech, wappalyzer_tech, traffic_info, screenshot_filepath = (
-        await asyncio.gather(*tasks)
-    )
+    results: tuple[Union[list, dict], ...] = await asyncio.gather(*tasks)
+    builtwith_tech, wappalyzer_tech, traffic_info, screenshot_filepath = results
 
     all_tech: Dict[str, List[str]] = {}
-    for tech in builtwith_tech:
-        all_tech.setdefault(tech, []).append("BuiltWith")
-    for tech in wappalyzer_tech:
-        all_tech.setdefault(tech, []).append("Wappalyzer")
+    if isinstance(builtwith_tech, list):
+        for tech in builtwith_tech:
+            all_tech.setdefault(tech, []).append("BuiltWith")
+    if isinstance(wappalyzer_tech, list):
+        for tech in wappalyzer_tech:
+            all_tech.setdefault(tech, []).append("Wappalyzer")
     scored_tech_results = [
         ScoredResult(
             technology=tech,
@@ -214,13 +204,12 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     web_analysis_data = WebAnalysisData(
         tech_stack=tech_stack_report,
         traffic_info=traffic_info if isinstance(traffic_info, dict) else {},
-        screenshot_path=screenshot_filepath,
+        screenshot_path=(
+            screenshot_filepath if isinstance(screenshot_filepath, str) else None
+        ),
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
-
-
-# --- Typer CLI Application ---
 
 
 web_app = typer.Typer()
