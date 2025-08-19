@@ -1,9 +1,15 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response
+
 # --- FIXED: All necessary imports are now included ---
-from chimera_intel.core.corporate_records import get_company_records, screen_sanctions_list
+
+from chimera_intel.core.corporate_records import (
+    get_company_records,
+    screen_sanctions_list,
+)
 from chimera_intel.core.schemas import CorporateRegistryResult, SanctionsScreeningResult
+
 
 class TestCorporateRecords(unittest.TestCase):
     """Test cases for the corporate_records module."""
@@ -13,9 +19,11 @@ class TestCorporateRecords(unittest.TestCase):
     def test_get_company_records_success(self, mock_get, mock_api_keys):
         """Tests a successful company records search."""
         # Setup the mock API key
+
         mock_api_keys.open_corporates_api_key = "fake_oc_key"
 
         # Setup the mock API response
+
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -30,11 +38,16 @@ class TestCorporateRecords(unittest.TestCase):
                             "inactive": False,
                             "registered_address_in_full": "1600 Amphitheatre Parkway, Mountain View, USA",
                             "officers": [
-                                {"officer": {"name": "SUNDAR PICHAI", "position": "Chief Executive Officer"}}
-                            ]
+                                {
+                                    "officer": {
+                                        "name": "SUNDAR PICHAI",
+                                        "position": "Chief Executive Officer",
+                                    }
+                                }
+                            ],
                         }
                     }
-                ]
+                ],
             }
         }
         mock_get.return_value = mock_response
@@ -73,6 +86,7 @@ class TestCorporateRecords(unittest.TestCase):
     def test_screen_sanctions_list_success_with_hits(self, mock_get):
         """Tests a successful sanctions screening with positive matches."""
         # A simplified HTML response mimicking the OFAC results page
+
         mock_html = """
         <html><body>
         <table class="table-bordered">
@@ -105,6 +119,7 @@ class TestCorporateRecords(unittest.TestCase):
     def test_screen_sanctions_list_no_hits(self, mock_get):
         """Tests a sanctions screening that returns no matches."""
         # OFAC returns a page without the results table when there are no hits
+
         mock_html = "<html><body>No results found.</body></html>"
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
@@ -114,6 +129,7 @@ class TestCorporateRecords(unittest.TestCase):
         result = screen_sanctions_list("John Doe")
         self.assertEqual(result.hits_found, 0)
         self.assertEqual(len(result.entities), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

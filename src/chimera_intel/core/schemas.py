@@ -132,12 +132,16 @@ class PatentResult(BaseModel):
 
     patents: Optional[List[Patent]] = None
     error: Optional[str] = None
+
+
 class SECFilingAnalysis(BaseModel):
     """Model for the analysis of a specific SEC filing."""
+
     filing_url: str
     filing_type: str = "10-K"
     risk_factors_summary: Optional[str] = None
     error: Optional[str] = None
+
 
 class BusinessIntelData(BaseModel):
     """The nested object containing all business intelligence data."""
@@ -532,15 +536,20 @@ class PersonnelOSINTResult(BaseModel):
     employee_profiles: List[EmployeeProfile] = []
     error: Optional[str] = None
 
+
 # --- Corporate Records Models ---
+
 
 class Officer(BaseModel):
     """Model for a single company officer or director."""
+
     name: str
     position: str
 
+
 class CompanyRecord(BaseModel):
     """Model for a single official company record from OpenCorporates."""
+
     name: str
     company_number: str
     jurisdiction: str
@@ -548,35 +557,43 @@ class CompanyRecord(BaseModel):
     is_inactive: bool
     officers: List[Officer] = []
 
+
 class CorporateRegistryResult(BaseModel):
     """The main, top-level result model for a corporate registry search."""
+
     query: str
     total_found: int = 0
     records: List[CompanyRecord] = []
     error: Optional[str] = None
 
+
 class SanctionedEntity(BaseModel):
     """Model for a single entity found on the OFAC sanctions list."""
+
     name: str
     address: Optional[str] = None
     type: str
     programs: List[str] = []
     score: int
 
+
 class SanctionsScreeningResult(BaseModel):
     """The main, top-level result model for a sanctions list screening."""
+
     query: str
     hits_found: int = 0
     entities: List[SanctionedEntity] = []
     error: Optional[str] = None
 
+
 # --- Third-Party Risk Management (TPRM) Models ---
+
 
 class TPRMReport(BaseModel):
     """Model for an aggregated Third-Party Risk Management report."""
+
     target_domain: str
     ai_summary: Optional[str] = None
     vulnerability_scan_results: VulnerabilityScanResult
     breach_results: HIBPResult
     error: Optional[str] = None
-

@@ -85,8 +85,16 @@ scan_app.add_typer(
     name="personnel",
     help="Gathers intelligence on company employees.",
 )
-app.add_typer(corporate_records_app, name="compliance", help="Run corporate compliance and due diligence checks.")
-app.add_typer(tpr_app, name="tpr-scan", help="Runs a comprehensive Third-Party Risk Management scan.")
+app.add_typer(
+    corporate_records_app,
+    name="compliance",
+    help="Run corporate compliance and due diligence checks.",
+)
+app.add_typer(
+    tpr_app,
+    name="tpr-scan",
+    help="Runs a comprehensive Third-Party Risk Management scan.",
+)
 # 2. 'defensive' command group for internal security and counter-intelligence.
 
 

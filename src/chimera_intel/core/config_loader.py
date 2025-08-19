@@ -39,7 +39,9 @@ class ApiKeys(BaseSettings):
     similarweb_api_key: Optional[str] = Field(None, alias="SIMILARWEB_API_KEY")
     gnews_api_key: Optional[str] = Field(None, alias="GNEWS_API_KEY")
     hunter_api_key: Optional[str] = Field(None, alias="HUNTER_API_KEY")
-    open_corporates_api_key: Optional[str] = Field(None, alias="OPEN_CORPORATES_API_KEY")
+    open_corporates_api_key: Optional[str] = Field(
+        None, alias="OPEN_CORPORATES_API_KEY"
+    )
 
     # Defensive Counter-Intelligence Keys
 
@@ -49,7 +51,7 @@ class ApiKeys(BaseSettings):
     mobsf_api_key: Optional[str] = Field(None, alias="MOBSF_API_KEY")
     vulners_api_key: Optional[str] = Field(None, alias="VULNERS_API_KEY")
     otx_api_key: Optional[str] = Field(None, alias="OTX_API_KEY")
-    sec_api_io_key: Optional[str] = Field(None, alias="SEC_API_IO_KEY") 
+    sec_api_io_key: Optional[str] = Field(None, alias="SEC_API_IO_KEY")
     sec_api_user_agent: Optional[str] = Field(None, alias="SEC_API_USER_AGENT")
 
     # AI Core Keys

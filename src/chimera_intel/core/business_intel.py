@@ -29,6 +29,7 @@ from chimera_intel.core.schemas import (
 )
 
 # Get a logger instance for this specific file
+
 logger = logging.getLogger(__name__)
 
 
@@ -170,42 +171,49 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
     if not api_key:
         logger.warning("sec-api.io key not found. Skipping SEC filings analysis.")
         return None
-
     try:
         # Step 1: Find the latest 10-K filing to get its URL
+
         queryApi = QueryApi(api_key=api_key)
         query = {
-            "query": f"ticker:{ticker} AND formType:\"10-K\"",
+            "query": f'ticker:{ticker} AND formType:"10-K"',
             "from": "0",
             "size": "1",
-            "sort": [{"filedAt": {"order": "desc"}}]
+            "sort": [{"filedAt": {"order": "desc"}}],
         }
         filings = queryApi.get_filings(query)
 
-        if not filings.get('filings'):
+        if not filings.get("filings"):
             logger.warning("No 10-K filings found for ticker '%s'.", ticker)
             return None
-        
-        latest_filing_url = filings['filings'][0]['linkToFilingDetails']
+        latest_filing_url = filings["filings"][0]["linkToFilingDetails"]
 
         # Step 2: Use the Extractor API to get the 'Risk Factors' section (Item 1A)
+
         extractorApi = ExtractorApi(api_key=api_key)
         risk_factors_text = extractorApi.get_section(
             filing_url=latest_filing_url,
-            section="1A", # Item 1A is "Risk Factors"
-            return_type="text"
+            section="1A",  # Item 1A is "Risk Factors"
+            return_type="text",
         )
 
         # Basic summary (can be enhanced with AI later)
-        summary = (risk_factors_text[:700] + '...') if len(risk_factors_text) > 700 else risk_factors_text
 
-        return SECFilingAnalysis(
-            filing_url=latest_filing_url,
-            risk_factors_summary=summary
+        summary = (
+            (risk_factors_text[:700] + "...")
+            if len(risk_factors_text) > 700
+            else risk_factors_text
         )
 
+        return SECFilingAnalysis(
+            filing_url=latest_filing_url, risk_factors_summary=summary
+        )
     except Exception as e:
-        logger.error("An error occurred during SEC filing analysis for ticker '%s': %s", ticker, e)
+        logger.error(
+            "An error occurred during SEC filing analysis for ticker '%s': %s",
+            ticker,
+            e,
+        )
         return SECFilingAnalysis(filing_url="", error=str(e))
 
 
@@ -223,7 +231,9 @@ def run_business_intel(
     ticker: str = typer.Option(
         None, help="The stock market ticker for financial data."
     ),
-    filings: bool = typer.Option(False, "--filings", help="Enable SEC filings analysis (requires ticker)."),
+    filings: bool = typer.Option(
+        False, "--filings", help="Enable SEC filings analysis (requires ticker)."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
@@ -245,25 +255,25 @@ def run_business_intel(
 
     gnews_key = API_KEYS.gnews_api_key
     financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
-    
+
     filings_analysis = None
     if filings and ticker:
-        with console.status(f"[bold cyan]Analyzing SEC filings for {ticker}...[/bold cyan]"):
+        with console.status(
+            f"[bold cyan]Analyzing SEC filings for {ticker}...[/bold cyan]"
+        ):
             filings_analysis = get_sec_filings_analysis(ticker)
     elif filings and not ticker:
         logger.warning("The --filings flag requires a --ticker to be provided.")
-
     if not gnews_key:
         logger.warning("GNews API key not found. Skipping news gathering.")
         news_data = GNewsResult(error="GNews API key not configured.")
     else:
         news_data = get_news_gnews(company_name, gnews_key)
-        
     intel_data = BusinessIntelData(
         financials=financial_data,
         news=news_data,
         patents=scrape_google_patents(company_name),
-        sec_filings_analysis=filings_analysis
+        sec_filings_analysis=filings_analysis,
     )
 
     results_model = BusinessIntelResult(company=company_name, business_intel=intel_data)
