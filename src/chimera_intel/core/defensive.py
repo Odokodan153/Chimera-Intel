@@ -336,6 +336,8 @@ def run_leaks_check(query: str, output_file: Optional[str] = None):
         query (str): The search query.
         output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
+    # FIX: Move logger call inside the api_key check
+
     api_key = API_KEYS.github_pat
     if api_key:
         logger.info("Starting GitHub leaks search for query: '%s'", query)
@@ -385,8 +387,6 @@ def run_surface_check(query: str, output_file: Optional[str] = None):
         output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
     api_key = API_KEYS.shodan_api_key
-    # FIX: Move the logger call inside the api_key check
-
     if api_key:
         logger.info("Starting Shodan surface scan for query: '%s'", query)
         results = analyze_attack_surface_shodan(query, api_key)

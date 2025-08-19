@@ -21,6 +21,7 @@ import logging
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,8 +77,6 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
     for key, value in diff_result.items():
         if isinstance(value, dict):
             for sub_key, sub_value in value.items():
-                # FIX: Use lowercase 'add' and 'delete' as required by the library
-
                 if sub_value == symbols.add:
                     changes["added"].append(f"{key}.{sub_key}")
                 elif sub_value == symbols.delete:
@@ -85,12 +84,20 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         # This handles cases where a list has changed
 
         elif isinstance(value, list) and len(value) == 2:
-            changes["removed"].append(f"{key}: {value[0]}")
-            changes["added"].append(f"{key}: {value[1]}")
+            old_val, new_val = value
+            # If a dictionary becomes empty, treat it as a deletion of its keys.
+
+            if isinstance(old_val, dict) and new_val == {}:
+                for sub_key in old_val.keys():
+                    changes["removed"].append(f"{key}.{sub_key}")
+            else:
+                changes["removed"].append(f"{key}: {value[0]}")
+                changes["added"].append(f"{key}: {value[1]}")
     return FormattedDiff(**changes)
 
 
 # --- Typer CLI Application ---
+
 
 diff_app = typer.Typer()
 
