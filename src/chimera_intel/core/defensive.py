@@ -1,3 +1,12 @@
+"""
+Defensive counter-intelligence and security scanning module.
+
+This module contains functions for an organization to assess its own digital
+footprint from an attacker's perspective. It includes checks for data breaches
+(Have I Been Pwned), code leaks (GitHub), typosquatting domains (dnstwist),
+exposed assets (Shodan), and more.
+"""
+
 import typer
 import os
 import json
@@ -294,7 +303,7 @@ def run_breach_check(domain: str, output_file: Optional[str] = None):
 
     Args:
         domain (str): The domain to check.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning(
@@ -325,11 +334,11 @@ def run_leaks_check(query: str, output_file: Optional[str] = None):
 
     Args:
         query (str): The search query.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    logger.info("Starting GitHub leaks search for query: '%s'", query)
     api_key = API_KEYS.github_pat
     if api_key:
+        logger.info("Starting GitHub leaks search for query: '%s'", query)
         results = search_github_leaks(query, api_key)
         save_or_print_results(results.model_dump(), output_file)
         save_scan_to_db(
@@ -344,7 +353,7 @@ def run_typosquat_check(domain: str, output_file: Optional[str] = None):
 
     Args:
         domain (str): The domain to check.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning(
@@ -373,11 +382,13 @@ def run_surface_check(query: str, output_file: Optional[str] = None):
 
     Args:
         query (str): The Shodan query.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    logger.info("Starting Shodan surface scan for query: '%s'", query)
     api_key = API_KEYS.shodan_api_key
+    # FIX: Move the logger call inside the api_key check
+
     if api_key:
+        logger.info("Starting Shodan surface scan for query: '%s'", query)
         results = analyze_attack_surface_shodan(query, api_key)
         save_or_print_results(results, output_file)
         save_scan_to_db(target=query, module="defensive_surface", data=results)
@@ -390,7 +401,7 @@ def run_pastebin_check(query: str, output_file: Optional[str] = None):
 
     Args:
         query (str): The search query.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
     logger.info("Starting public paste search for query: '%s'", query)
     results = search_pastes_api(query)
@@ -405,7 +416,7 @@ def run_ssllabs_check(domain: str, output_file: Optional[str] = None):
 
     Args:
         domain (str): The domain to scan.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning(
@@ -443,13 +454,13 @@ def run_mobsf_scan(
     Args:
         apk_file (str): Path to the .apk file.
         mobsf_url (str): URL of the MobSF instance.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    logger.info("Starting MobSF scan for APK file: %s", apk_file)
     api_key = API_KEYS.mobsf_api_key
     if not api_key:
         logger.error("MOBSF_API_KEY not found in .env file.")
         raise typer.Exit(code=1)
+    logger.info("Starting MobSF scan for APK file: %s", apk_file)
     results = analyze_apk_mobsf(apk_file, mobsf_url, api_key)
     save_or_print_results(results, output_file)
     save_scan_to_db(

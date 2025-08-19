@@ -1,3 +1,12 @@
+"""
+Module for comparing historical scans to detect changes over time.
+
+This module provides the core logic for the 'diff' command. It fetches the two
+most recent scans for a given target and module from the database, compares them
+using the 'jsondiff' library, and formats the differences into a human-readable
+summary. It can also trigger notifications (e.g., to Slack) when changes are detected.
+"""
+
 import typer
 import sqlite3
 import json
@@ -11,7 +20,6 @@ from .config_loader import API_KEYS
 import logging
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +35,8 @@ def get_last_two_scans(
         module (str): The name of the module to retrieve scans for (e.g., 'footprint').
 
     Returns:
-        Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]: A tuple containing the most
-        recent scan and the previous scan as dictionaries. Returns (None, None) if not
-        enough scans are found.
+        A tuple containing the most recent scan and the previous scan as dictionaries.
+        Returns (None, None) if not enough scans are found.
     """
     try:
         conn = sqlite3.connect(DB_FILE, timeout=10.0)
@@ -66,26 +73,24 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         FormattedDiff: A Pydantic model showing added and removed items.
     """
     changes: Dict[str, List[str]] = {"added": [], "removed": []}
+    for key, value in diff_result.items():
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                # FIX: Use lowercase 'add' and 'delete' as required by the library
 
-    def process_level(data, prefix=""):
-        for key, value in data.items():
-            full_key = f"{prefix}.{key}" if prefix else key
-            if isinstance(value, dict):
-                process_level(value, prefix=full_key)
-            elif value == symbols.DELETE:
-                changes["removed"].append(full_key)
-            elif value == symbols.ADD:
-                changes["added"].append(full_key)
-            elif isinstance(value, list) and len(value) == 2:
-                changes["removed"].append(f"{full_key}: {value[0]}")
-                changes["added"].append(f"{full_key}: {value[1]}")
+                if sub_value == symbols.add:
+                    changes["added"].append(f"{key}.{sub_key}")
+                elif sub_value == symbols.delete:
+                    changes["removed"].append(f"{key}.{sub_key}")
+        # This handles cases where a list has changed
 
-    process_level(diff_result)
+        elif isinstance(value, list) and len(value) == 2:
+            changes["removed"].append(f"{key}: {value[0]}")
+            changes["added"].append(f"{key}: {value[1]}")
     return FormattedDiff(**changes)
 
 
 # --- Typer CLI Application ---
-
 
 diff_app = typer.Typer()
 
@@ -117,11 +122,9 @@ def run_diff_analysis(
             module,
         )
         raise typer.Exit()
-    # Using dump=False to get a Python dictionary directly
-
-    raw_difference = diff(previous, latest, syntax="symmetric")
-
-    if not raw_difference:
+    raw_difference = diff(previous, latest, syntax="symmetric", dump=True)
+    difference_json = json.loads(raw_difference)
+    if not difference_json:
         logger.info(
             "No changes detected between the last two scans for '%s' in module '%s'.",
             target,
@@ -129,9 +132,9 @@ def run_diff_analysis(
         )
         raise typer.Exit()
     logger.info("Changes detected for '%s' in module '%s'.", target, module)
-    formatted_changes = format_diff_simple(raw_difference)
+    formatted_changes = format_diff_simple(difference_json)
     full_result = DiffResult(
-        comparison_summary=formatted_changes, raw_diff=raw_difference
+        comparison_summary=formatted_changes, raw_diff=difference_json
     )
     console.print("\n[bold]Comparison Results:[/bold]")
     pprint(full_result.raw_diff)
