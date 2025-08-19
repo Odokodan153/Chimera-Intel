@@ -3,7 +3,6 @@ from unittest.mock import patch
 from chimera_intel.core.differ import (
     get_last_two_scans,
     format_diff_simple,
-    run_diff_analysis,
 )
 from chimera_intel.core.schemas import FormattedDiff
 from typer.testing import CliRunner
