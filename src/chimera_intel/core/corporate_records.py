@@ -1,6 +1,6 @@
 import typer
 import logging
-from bs4 import BeautifulSoup, ResultSet
+from bs4 import BeautifulSoup, Tag, ResultSet
 from .schemas import (
     CorporateRegistryResult,
     CompanyRecord,
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 def get_company_records(company_name: str) -> CorporateRegistryResult:
     """
     Retrieves official company records from the OpenCorporates API.
+
     Args:
         company_name (str): The company name to search for.
 
@@ -91,12 +92,15 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         soup = BeautifulSoup(response.text, "html.parser")
 
         results_table = soup.find("table", {"class": "table-bordered"})
-        if not results_table or not results_table.find("tbody"):
+        if not isinstance(results_table, Tag):
+            return SanctionsScreeningResult(query=name, hits_found=0)
+        # FIX: Check if tbody exists before trying to find rows in it
+
+        tbody = results_table.find("tbody")
+        if not isinstance(tbody, Tag):
             return SanctionsScreeningResult(query=name, hits_found=0)
         entities = []
-        # Use find_all to get an iterable list of rows
-
-        rows: ResultSet = results_table.find("tbody").find_all("tr")
+        rows: ResultSet = tbody.find_all("tr")
         for row in rows:
             cells = row.find_all("td")
             if len(cells) == 5:
@@ -119,7 +123,6 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
 
 
 # --- Typer CLI Application ---
-
 
 corporate_records_app = typer.Typer()
 
