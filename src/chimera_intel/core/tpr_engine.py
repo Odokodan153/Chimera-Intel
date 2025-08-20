@@ -5,6 +5,7 @@ import json
 from .schemas import TPRMReport, HIBPResult
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import check_hibp_breaches
+from .ai_core import generate_swot_from_data  # <-- FIXED: Moved import to top level
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
@@ -22,21 +23,17 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
     Returns:
         TPRMReport: An aggregated report with a final AI-generated summary.
     """
+    hibp_api_key = API_KEYS.hibp_api_key
+
     # Run scans concurrently
 
     vuln_scan_task = asyncio.to_thread(run_vulnerability_scan, domain)
-
-    hibp_api_key = API_KEYS.hibp_api_key
-    # Only create a breach scan task if the API key exists
-
     if hibp_api_key:
         breach_scan_task = asyncio.to_thread(check_hibp_breaches, domain, hibp_api_key)
         vuln_results, breach_results = await asyncio.gather(
             vuln_scan_task, breach_scan_task
         )
     else:
-        # If no key, just run the vuln scan and create a default breach result
-
         vuln_results = await vuln_scan_task
         breach_results = HIBPResult(error="HIBP API key not configured.")
     # Prepare data for AI summary
@@ -65,10 +62,6 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
         {json.dumps(summary_data, indent=2)}
         ```
         """
-        # We can reuse the SWOT function as it's a generic prompt executor
-
-        from .ai_core import generate_swot_from_data
-
         summary_result = generate_swot_from_data(prompt, google_api_key)
         if summary_result and not summary_result.error:
             ai_summary = summary_result.analysis_text

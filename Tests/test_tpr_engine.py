@@ -13,16 +13,16 @@ from chimera_intel.core.schemas import (
 class TestTprEngine(unittest.TestCase):
     """Test cases for the TPRM engine module."""
 
-    # FIX: Correct the patch path to where 'generate_swot_from_data' is used.
+    # FIX: Correct the patch path to where the function is now located
 
     @patch("chimera_intel.core.tpr_engine.API_KEYS")
     @patch("chimera_intel.core.tpr_engine.generate_swot_from_data")
     @patch("chimera_intel.core.tpr_engine.check_hibp_breaches")
     @patch("chimera_intel.core.tpr_engine.run_vulnerability_scan")
-    def test_run_full_tpr_scan(
+    def test_run_full_tpr_scan_success(
         self, mock_vuln_scan, mock_breach_check, mock_ai_summary, mock_api_keys
     ):
-        """Tests the full TPRM scan orchestration logic."""
+        """Tests the full TPRM scan orchestration logic with all keys present."""
         mock_vuln_scan.return_value = VulnerabilityScanResult(
             target_domain="vendor.com", scanned_hosts=[]
         )
@@ -44,8 +44,6 @@ class TestTprEngine(unittest.TestCase):
         self.assertIn("Risk Level: LOW", result.ai_summary)
         self.assertEqual(result.vulnerability_scan_results.target_domain, "vendor.com")
         self.assertEqual(result.breach_results.message, "No breaches found")
-
-    # ADDED: New test to increase coverage
 
     @patch("chimera_intel.core.tpr_engine.API_KEYS")
     @patch("chimera_intel.core.tpr_engine.run_vulnerability_scan")
