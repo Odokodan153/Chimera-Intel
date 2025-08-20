@@ -27,8 +27,6 @@ def find_employee_emails(domain: str) -> PersonnelOSINTResult:
             domain=domain, error="Hunter.io API key not found in .env file."
         )
     url = "https://api.hunter.io/v2/domain-search"
-    # FIX: Explicitly type the params dictionary to satisfy mypy
-
     params: Dict[str, Union[str, int]] = {
         "domain": domain,
         "api_key": api_key,
@@ -44,8 +42,12 @@ def find_employee_emails(domain: str) -> PersonnelOSINTResult:
         response.raise_for_status()
 
         data = response.json().get("data", {})
+
+        # FIX: Map the 'value' field from the API to the 'email' field in the Pydantic model.
+
         profiles = [
-            EmployeeProfile(**email_info) for email_info in data.get("emails", [])
+            EmployeeProfile(email=email_info.pop("value"), **email_info)
+            for email_info in data.get("emails", [])
         ]
 
         return PersonnelOSINTResult(
