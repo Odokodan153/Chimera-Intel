@@ -1,5 +1,6 @@
 import typer
 import logging
+from typing import Dict, Union
 from .schemas import PersonnelOSINTResult, EmployeeProfile
 from .config_loader import API_KEYS
 from .http_client import sync_client
@@ -26,7 +27,13 @@ def find_employee_emails(domain: str) -> PersonnelOSINTResult:
             domain=domain, error="Hunter.io API key not found in .env file."
         )
     url = "https://api.hunter.io/v2/domain-search"
-    params = {"domain": domain, "api_key": api_key, "limit": 100}
+    # FIX: Explicitly type the params dictionary to satisfy mypy
+
+    params: Dict[str, Union[str, int]] = {
+        "domain": domain,
+        "api_key": api_key,
+        "limit": 100,
+    }
 
     try:
         response = sync_client.get(url, params=params)
@@ -57,7 +64,6 @@ def find_employee_emails(domain: str) -> PersonnelOSINTResult:
 
 
 # --- Typer CLI Application ---
-
 
 personnel_osint_app = typer.Typer()
 

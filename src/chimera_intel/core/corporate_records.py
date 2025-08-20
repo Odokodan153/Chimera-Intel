@@ -1,6 +1,6 @@
 import typer
 import logging
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, ResultSet
 from .schemas import (
     CorporateRegistryResult,
     CompanyRecord,
@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 def get_company_records(company_name: str) -> CorporateRegistryResult:
     """
     Retrieves official company records from the OpenCorporates API.
-
     Args:
         company_name (str): The company name to search for.
 
@@ -95,7 +94,9 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         if not results_table or not results_table.find("tbody"):
             return SanctionsScreeningResult(query=name, hits_found=0)
         entities = []
-        rows = results_table.find("all", ["tr"])
+        # Use find_all to get an iterable list of rows
+
+        rows: ResultSet = results_table.find("tbody").find_all("tr")
         for row in rows:
             cells = row.find_all("td")
             if len(cells) == 5:
@@ -142,9 +143,6 @@ def run_registry_search(
     save_scan_to_db(target=company, module="corporate_registry", data=results_dict)
 
 
-# --- NEW SCREENING COMMAND ---
-
-
 @corporate_records_app.command("screen")
 def run_sanctions_screening(
     name: str = typer.Argument(
@@ -161,5 +159,3 @@ def run_sanctions_screening(
         results_model = screen_sanctions_list(name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    # Note: We might not want to save every single screening to the DB unless it's a primary target.
-    # For now, we'll just print/save the output.

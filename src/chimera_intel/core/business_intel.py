@@ -12,12 +12,12 @@ import yfinance as yf  # type: ignore
 from bs4 import BeautifulSoup
 from httpx import RequestError, HTTPStatusError
 import logging
-from sec_api import QueryApi, ExtractorApi
+from sec_api import QueryApi, ExtractorApi  # type: ignore
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
-from typing import Optional
+from typing import Optional, Union, Any, Dict
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -29,6 +29,7 @@ from chimera_intel.core.schemas import (
 )
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,7 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
         # Step 1: Find the latest 10-K filing to get its URL
 
         queryApi = QueryApi(api_key=api_key)
-        query = {
+        query: Dict[str, Any] = {
             "query": f'ticker:{ticker} AND formType:"10-K"',
             "from": "0",
             "size": "1",
@@ -228,13 +229,13 @@ def run_business_intel(
     company_name: str = typer.Argument(
         ..., help="The full name of the target company."
     ),
-    ticker: str = typer.Option(
+    ticker: Optional[str] = typer.Option(
         None, help="The stock market ticker for financial data."
     ),
     filings: bool = typer.Option(
         False, "--filings", help="Enable SEC filings analysis (requires ticker)."
     ),
-    output_file: str = typer.Option(
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
@@ -254,7 +255,9 @@ def run_business_intel(
     )
 
     gnews_key = API_KEYS.gnews_api_key
-    financial_data = get_financials_yfinance(ticker) if ticker else "Not provided"
+    financial_data: Union[Financials, str] = (
+        get_financials_yfinance(ticker) if ticker else "Not provided"
+    )
 
     filings_analysis = None
     if filings and ticker:

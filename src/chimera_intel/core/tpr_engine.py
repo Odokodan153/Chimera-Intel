@@ -2,7 +2,7 @@ import typer
 import asyncio
 import logging
 import json
-from .schemas import TPRMReport
+from .schemas import TPRMReport, VulnerabilityScanResult, HIBPResult, SWOTAnalysisResult
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import check_hibp_breaches
 from .utils import save_or_print_results, console
@@ -27,19 +27,18 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
     vuln_scan_task = asyncio.to_thread(run_vulnerability_scan, domain)
 
     hibp_api_key = API_KEYS.hibp_api_key
-    breach_scan_task = None
+    # Only create a breach scan task if the API key exists
+
     if hibp_api_key:
         breach_scan_task = asyncio.to_thread(check_hibp_breaches, domain, hibp_api_key)
-    tasks = [vuln_scan_task]
-    if breach_scan_task:
-        tasks.append(breach_scan_task)
-    results = await asyncio.gather(*tasks)
+        vuln_results, breach_results = await asyncio.gather(
+            vuln_scan_task, breach_scan_task
+        )
+    else:
+        # If no key, just run the vuln scan and create a default breach result
 
-    vuln_results = results[0]
-    breach_results = (
-        results[1] if len(results) > 1 else check_hibp_breaches(domain, None)
-    )
-
+        vuln_results = await vuln_scan_task
+        breach_results = HIBPResult(error="HIBP API key not configured.")
     # Prepare data for AI summary
 
     summary_data = {
@@ -55,8 +54,6 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
     ai_summary = "AI analysis skipped: GOOGLE_API_KEY not configured."
     google_api_key = API_KEYS.google_api_key
     if google_api_key:
-        # Re-using the strategist's prompt logic for a focused summary
-
         prompt = f"""
         As a senior cybersecurity risk analyst, provide a concise Third-Party Risk Management (TPRM) summary
         for the domain '{domain}' based ONLY on the following JSON data.
@@ -68,13 +65,11 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
         {json.dumps(summary_data, indent=2)}
         ```
         """
-        # This is a simplified call; we're directly using the AI model logic here
+        # We can reuse the SWOT function as it's a generic prompt executor
 
         from .ai_core import generate_swot_from_data
 
-        summary_result = generate_swot_from_data(
-            prompt, google_api_key
-        )  # Misnomer, but it just runs a prompt
+        summary_result = generate_swot_from_data(prompt, google_api_key)
         if summary_result and not summary_result.error:
             ai_summary = summary_result.analysis_text
     return TPRMReport(
@@ -86,7 +81,6 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
 
 
 # --- Typer CLI Application ---
-
 
 tpr_app = typer.Typer()
 
@@ -105,8 +99,6 @@ def run_tpr_scan_command(
         f"[bold cyan]Running comprehensive TPRM scan on {domain}... This may take a while.[/bold cyan]"
     ):
         results_model = asyncio.run(run_full_tpr_scan(domain))
-    # Print the AI summary to the console for a quick overview
-
     console.print(f"\n--- [bold]Third-Party Risk Summary for {domain}[/bold] ---")
     console.print(results_model.ai_summary)
     console.print("---")
@@ -114,6 +106,4 @@ def run_tpr_scan_command(
     if output_file:
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
-        # Also save to DB
-
         save_scan_to_db(target=domain, module="tpr_report", data=results_dict)

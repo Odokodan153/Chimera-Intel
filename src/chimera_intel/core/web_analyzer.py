@@ -3,7 +3,7 @@ import asyncio
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Any, cast
 import os
 from playwright.async_api import async_playwright
 from datetime import datetime
@@ -18,10 +18,12 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.http_client import async_client
 
+# Get a logger instance for this specific file
+
 logger = logging.getLogger(__name__)
 
 
-async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
+async def get_tech_stack_builtwith(domain: str, api_key: str) -> List[str]:
     """
     Asynchronously retrieves website technology stack from the BuiltWith API.
 
@@ -30,7 +32,7 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
         api_key (str): The BuiltWith API key.
 
     Returns:
-        list: A list of unique technology names found.
+        List[str]: A list of unique technology names found.
     """
     if not api_key:
         logger.warning("BuiltWith API key not found. Skipping.")
@@ -46,13 +48,13 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> list:
                 for path in result.get("Result", {}).get("Paths", []):
                     for tech in path.get("Technologies", []):
                         technologies.append(tech.get("Name"))
-        return list(set(technologies))
+        return list(set(filter(None, technologies)))
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error fetching tech stack from BuiltWith for '%s': %s", domain, e)
         return []
 
 
-async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
+async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> List[str]:
     """
     Asynchronously retrieves website technology stack from the Wappalyzer API.
 
@@ -61,7 +63,7 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
         api_key (str): The Wappalyzer API key.
 
     Returns:
-        list: A list of unique technology names found.
+        List[str]: A list of unique technology names found.
     """
     if not api_key:
         logger.warning("Wappalyzer API key not found. Skipping.")
@@ -76,7 +78,7 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
         if data and isinstance(data, list):
             for tech_info in data[0].get("technologies", []):
                 technologies.append(tech_info.get("name"))
-        return list(set(technologies))
+        return list(set(filter(None, technologies)))
     except (HTTPStatusError, RequestError) as e:
         logger.error(
             "Error fetching tech stack from Wappalyzer for '%s': %s", domain, e
@@ -84,7 +86,7 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> list:
         return []
 
 
-async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
+async def get_traffic_similarweb(domain: str, api_key: str) -> Dict[str, Any]:
     """
     Asynchronously retrieves estimated website traffic from the Similarweb API.
 
@@ -93,7 +95,7 @@ async def get_traffic_similarweb(domain: str, api_key: str) -> dict:
         api_key (str): The Similarweb API key.
 
     Returns:
-        dict: The API response containing traffic data, or an error.
+        Dict[str, Any]: The API response containing traffic data, or an error dictionary.
     """
     if not api_key:
         return {"error": "Similarweb API key not found."}
@@ -178,16 +180,17 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         take_screenshot(domain),
     ]
 
-    results: tuple[Union[list, dict], ...] = await asyncio.gather(*tasks)
-    builtwith_tech, wappalyzer_tech, traffic_info, screenshot_filepath = results
+    results = await asyncio.gather(*tasks)
+    builtwith_tech = cast(List[str], results[0])
+    wappalyzer_tech = cast(List[str], results[1])
+    traffic_info = cast(Dict[str, Any], results[2])
+    screenshot_filepath = cast(Optional[str], results[3])
 
     all_tech: Dict[str, List[str]] = {}
-    if isinstance(builtwith_tech, list):
-        for tech in builtwith_tech:
-            all_tech.setdefault(tech, []).append("BuiltWith")
-    if isinstance(wappalyzer_tech, list):
-        for tech in wappalyzer_tech:
-            all_tech.setdefault(tech, []).append("Wappalyzer")
+    for tech in builtwith_tech:
+        all_tech.setdefault(tech, []).append("BuiltWith")
+    for tech in wappalyzer_tech:
+        all_tech.setdefault(tech, []).append("Wappalyzer")
     scored_tech_results = [
         ScoredResult(
             technology=tech,
@@ -203,14 +206,14 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
 
     web_analysis_data = WebAnalysisData(
         tech_stack=tech_stack_report,
-        traffic_info=traffic_info if isinstance(traffic_info, dict) else {},
-        screenshot_path=(
-            screenshot_filepath if isinstance(screenshot_filepath, str) else None
-        ),
+        traffic_info=traffic_info,
+        screenshot_path=screenshot_filepath,
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
 
+
+# --- Typer CLI Application ---
 
 web_app = typer.Typer()
 
@@ -218,7 +221,7 @@ web_app = typer.Typer()
 @web_app.command("run")
 def run_web_analysis(
     domain: str = typer.Argument(..., help="The target domain to analyze."),
-    output_file: str = typer.Option(
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
