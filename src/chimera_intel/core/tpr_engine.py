@@ -2,7 +2,7 @@ import typer
 import asyncio
 import logging
 import json
-from .schemas import TPRMReport, VulnerabilityScanResult, HIBPResult, SWOTAnalysisResult
+from .schemas import TPRMReport, HIBPResult
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import check_hibp_breaches
 from .utils import save_or_print_results, console
