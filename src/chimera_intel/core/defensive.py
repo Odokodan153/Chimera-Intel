@@ -36,7 +36,6 @@ from chimera_intel.core.schemas import (
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -44,8 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
-    """
-    Checks a domain against the Have I Been Pwned (HIBP) database for data breaches.
+    """Checks a domain against the Have I Been Pwned (HIBP) database for data breaches.
 
     Args:
         domain (str): The company's domain to check.
@@ -78,8 +76,7 @@ def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
 
 
 def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
-    """
-    Searches GitHub for potential secret leaks related to a query.
+    """Searches GitHub for potential secret leaks related to a query.
 
     Args:
         query (str): The search term (e.g., 'yourcompany.com "api key"').
@@ -108,8 +105,7 @@ def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
 
 
 def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
-    """
-    Securely uses the dnstwist command-line tool to find potential typosquatting domains.
+    """Securely uses the dnstwist command-line tool to find potential typosquatting domains.
 
     Args:
         domain (str): The domain to check for typosquatting variations.
@@ -117,6 +113,13 @@ def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
     Returns:
         TyposquatResult: A Pydantic model of the dnstwist JSON output, or an error.
     """
+    # Prevent command injection if a domain starts with a hyphen.
+
+    if domain.startswith("-"):
+        logger.error("Invalid domain format for dnstwist scan: '%s'", domain)
+        return TyposquatResult(
+            error="Invalid domain format. Cannot start with a hyphen."
+        )
     try:
         command = ["dnstwist", "--json", domain]
         process = subprocess.run(
@@ -137,8 +140,7 @@ def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
 
 
 def analyze_attack_surface_shodan(query: str, api_key: str) -> ShodanResult:
-    """
-    Uses Shodan to find devices and services exposed on the internet.
+    """Uses Shodan to find devices and services exposed on the internet.
 
     Args:
         query (str): The Shodan search query (e.g., 'org:"My Company"').
@@ -169,8 +171,7 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> ShodanResult:
 
 
 def search_pastes_api(query: str) -> PasteResult:
-    """
-    Searches for pastes containing a specific query using the paste.ee API.
+    """Searches for pastes containing a specific query using the paste.ee API.
 
     Args:
         query (str): The keyword or domain to search for.
@@ -204,8 +205,7 @@ def search_pastes_api(query: str) -> PasteResult:
 
 
 def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
-    """
-    Performs an in-depth SSL/TLS analysis using the SSL Labs API.
+    """Performs an in-depth SSL/TLS analysis using the SSL Labs API.
 
     Args:
         host (str): The hostname to scan (e.g., 'google.com').
@@ -257,8 +257,7 @@ def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
 
 
 def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> MobSFResult:
-    """
-    Uploads an Android APK to a running MobSF instance and retrieves the scan results.
+    """Uploads an Android APK to a running MobSF instance and retrieves the scan results.
 
     Args:
         file_path (str): The local path to the .apk file.
@@ -307,14 +306,13 @@ defensive_app = typer.Typer()
 
 
 @defensive_app.command("breaches")
-def run_breach_check(domain: str, output_file: Optional[str] = None):
-    """
-    Checks your domain against the Have I Been Pwned database.
-
-    Args:
-        domain (str): The domain to check.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_breach_check(
+    domain: str = typer.Argument(..., help="The domain to check against HIBP."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Checks your domain against the Have I Been Pwned database."""
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'breaches' command: %s", domain
@@ -328,43 +326,59 @@ def run_breach_check(domain: str, output_file: Optional[str] = None):
         )
         raise typer.Exit(code=1)
     api_key = API_KEYS.hibp_api_key
-    if api_key:
-        logger.info("Starting HIBP breach check for %s", domain)
-        results = check_hibp_breaches(domain, api_key)
-        save_or_print_results(results.model_dump(), output_file)
-        save_scan_to_db(
-            target=domain, module="defensive_breaches", data=results.model_dump()
+    if not api_key:
+        console.print(
+            Panel(
+                "[bold yellow]Skipping HIBP Scan:[/bold yellow] `HIBP_API_KEY` not found in your .env file.",
+                title="[yellow]Configuration Warning[/yellow]",
+                border_style="yellow",
+            )
         )
+        return
+    logger.info("Starting HIBP breach check for %s", domain)
+    results = check_hibp_breaches(domain, api_key)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(
+        target=domain, module="defensive_breaches", data=results.model_dump()
+    )
 
 
 @defensive_app.command("leaks")
-def run_leaks_check(query: str, output_file: Optional[str] = None):
-    """
-    Searches GitHub for potential code and secret leaks.
-
-    Args:
-        query (str): The search query.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_leaks_check(
+    query: str = typer.Argument(
+        ..., help="The search query for GitHub (e.g., 'mycompany.com api_key')."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Searches GitHub for potential code and secret leaks."""
     api_key = API_KEYS.github_pat
-    if api_key:
-        logger.info("Starting GitHub leaks search for query: '%s'", query)
-        results = search_github_leaks(query, api_key)
-        save_or_print_results(results.model_dump(), output_file)
-        save_scan_to_db(
-            target=query, module="defensive_leaks", data=results.model_dump()
+    if not api_key:
+        console.print(
+            Panel(
+                "[bold yellow]Skipping GitHub Leaks Scan:[/bold yellow] `GITHUB_PAT` not found in your .env file.",
+                title="[yellow]Configuration Warning[/yellow]",
+                border_style="yellow",
+            )
         )
+        return
+    logger.info("Starting GitHub leaks search for query: '%s'", query)
+    results = search_github_leaks(query, api_key)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(target=query, module="defensive_leaks", data=results.model_dump())
 
 
 @defensive_app.command("typosquat")
-def run_typosquat_check(domain: str, output_file: Optional[str] = None):
-    """
-    Finds potential phishing domains similar to yours using dnstwist.
-
-    Args:
-        domain (str): The domain to check.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_typosquat_check(
+    domain: str = typer.Argument(
+        ..., help="The domain to check for similar-looking domains."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Finds potential phishing domains similar to yours using dnstwist."""
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'typosquat' command: %s", domain
@@ -386,33 +400,41 @@ def run_typosquat_check(domain: str, output_file: Optional[str] = None):
 
 
 @defensive_app.command("surface")
-def run_surface_check(query: str, output_file: Optional[str] = None):
-    """
-    Analyzes your public attack surface using Shodan.
-
-    Args:
-        query (str): The Shodan query.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_surface_check(
+    query: str = typer.Argument(
+        ..., help="The Shodan search query (e.g., 'org:\"My Company\"')."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Analyzes your public attack surface using Shodan."""
     api_key = API_KEYS.shodan_api_key
-    if api_key:
-        logger.info("Starting Shodan surface scan for query: '%s'", query)
-        results = analyze_attack_surface_shodan(query, api_key)
-        save_or_print_results(results.model_dump(), output_file)
-        save_scan_to_db(
-            target=query, module="defensive_surface", data=results.model_dump()
+    if not api_key:
+        console.print(
+            Panel(
+                "[bold yellow]Skipping Shodan Scan:[/bold yellow] `SHODAN_API_KEY` not found in your .env file.",
+                title="[yellow]Configuration Warning[/yellow]",
+                border_style="yellow",
+            )
         )
+        return
+    logger.info("Starting Shodan surface scan for query: '%s'", query)
+    results = analyze_attack_surface_shodan(query, api_key)
+    save_or_print_results(results.model_dump(), output_file)
+    save_scan_to_db(target=query, module="defensive_surface", data=results.model_dump())
 
 
 @defensive_app.command("pastebin")
-def run_pastebin_check(query: str, output_file: Optional[str] = None):
-    """
-    Searches public pastes for a query using the paste.ee API.
-
-    Args:
-        query (str): The search query.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_pastebin_check(
+    query: str = typer.Argument(
+        ..., help="The keyword or domain to search for in public pastes."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Searches public pastes for a query using the paste.ee API."""
     logger.info("Starting public paste search for query: '%s'", query)
     results = search_pastes_api(query)
     save_or_print_results(results.model_dump(), output_file)
@@ -422,14 +444,15 @@ def run_pastebin_check(query: str, output_file: Optional[str] = None):
 
 
 @defensive_app.command("ssllabs")
-def run_ssllabs_check(domain: str, output_file: Optional[str] = None):
-    """
-    Performs an in-depth SSL/TLS analysis via SSL Labs.
-
-    Args:
-        domain (str): The domain to scan.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+def run_ssllabs_check(
+    domain: str = typer.Argument(
+        ..., help="The domain to perform an SSL/TLS analysis on."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Performs an in-depth SSL/TLS analysis via SSL Labs."""
     if not is_valid_domain(domain):
         logger.warning(
             "Invalid domain format provided to 'ssllabs' command: %s", domain
@@ -462,17 +485,16 @@ def run_mobsf_scan(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """
-    Analyzes an Android .apk file using a local MobSF instance.
-
-    Args:
-        apk_file (str): Path to the .apk file.
-        mobsf_url (str): URL of the MobSF instance.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
-    """
+    """Analyzes an Android .apk file using a local MobSF instance."""
     api_key = API_KEYS.mobsf_api_key
     if not api_key:
-        logger.error("MOBSF_API_KEY not found in .env file.")
+        console.print(
+            Panel(
+                "[bold yellow]Skipping MobSF Scan:[/bold yellow] `MOBSF_API_KEY` not found in your .env file.",
+                title="[yellow]Configuration Warning[/yellow]",
+                border_style="yellow",
+            )
+        )
         raise typer.Exit(code=1)
     logger.info("Starting MobSF scan for APK file: %s", apk_file)
     results = analyze_apk_mobsf(apk_file, mobsf_url, api_key)

@@ -7,6 +7,7 @@ from chimera_intel.core.database import (
     initialize_database,
     save_scan_to_db,
     get_aggregated_data_for_target,
+    get_scan_history,  # Import the new function
     DB_FILE,
 )
 
@@ -71,8 +72,6 @@ class TestDatabase(unittest.TestCase):
     @patch("chimera_intel.core.database.datetime")
     def test_get_aggregated_data_for_target(self, mock_datetime):
         """Tests aggregation of multiple module scans for a target."""
-        # We now control the time manually
-
         base_time = datetime.datetime.now()
 
         # First scan
@@ -115,6 +114,27 @@ class TestDatabase(unittest.TestCase):
         mock_connect.side_effect = sqlite3.Error("Cannot read from db")
         result = get_aggregated_data_for_target("example.com")
         self.assertIsNone(result)
+
+    def test_get_scan_history(self):
+        """Tests retrieving the full scan history."""
+        # Save some dummy scans
+
+        save_scan_to_db("example.com", "footprint", {"data": 1})
+        save_scan_to_db("google.com", "web_analyzer", {"data": 2})
+        save_scan_to_db("example.com", "business_intel", {"data": 3})
+
+        history = get_scan_history()
+
+        self.assertIsInstance(history, list)
+        self.assertEqual(len(history), 3)
+        # Check if the most recent scan is first (business_intel)
+
+        self.assertEqual(history[0]["target"], "example.com")
+        self.assertEqual(history[0]["module"], "business_intel")
+        # Check the oldest scan is last (footprint)
+
+        self.assertEqual(history[2]["target"], "example.com")
+        self.assertEqual(history[2]["module"], "footprint")
 
 
 if __name__ == "__main__":

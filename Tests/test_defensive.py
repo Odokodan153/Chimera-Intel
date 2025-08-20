@@ -15,7 +15,6 @@ from typer.testing import CliRunner
 
 # Import the main app to test commands
 
-
 from chimera_intel.cli import app
 from chimera_intel.core.defensive import (
     check_hibp_breaches,
@@ -29,7 +28,6 @@ from chimera_intel.core.defensive import (
 
 # Import all necessary Pydantic models for testing
 
-
 from chimera_intel.core.schemas import (
     HIBPResult,
     TyposquatResult,
@@ -41,7 +39,6 @@ from chimera_intel.core.schemas import (
 )
 
 # CliRunner to simulate CLI commands
-
 
 runner = CliRunner(mix_stderr=False)
 
@@ -151,6 +148,12 @@ class TestDefensive(unittest.TestCase):
         result = find_typosquatting_dnstwist("example.com")
         self.assertIsInstance(result, TyposquatResult)
         self.assertIsNotNone(result.results)
+
+    def test_find_typosquatting_dnstwist_invalid_input(self):
+        """Tests dnstwist wrapper with an invalid domain starting with a hyphen."""
+        result = find_typosquatting_dnstwist("-example.com")
+        self.assertIsNotNone(result.error)
+        self.assertIn("Invalid domain format", result.error)
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_command_not_found(self, mock_run: MagicMock):
@@ -440,6 +443,14 @@ class TestDefensive(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_count": 0', result.stdout)
 
+    @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", None)
+    def test_cli_leaks_no_api_key_shows_warning(self):
+        """Tests 'defensive leaks' prints a warning when API key is missing."""
+        result = runner.invoke(app, ["defensive", "checks", "leaks", "query"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Skipping GitHub Leaks Scan", result.stdout)
+        self.assertIn("GITHUB_PAT", result.stdout)
+
     @patch("chimera_intel.core.defensive.search_pastes_api")
     def test_cli_pastebin_command(self, mock_search: MagicMock):
         """
@@ -487,12 +498,14 @@ class TestDefensive(unittest.TestCase):
         self.assertIn('"app_name": "TestApp"', result.stdout)
 
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", None)
-    def test_cli_mobsf_command_no_api_key(self):
-        """Tests the 'mobsf' command when the MOBSF_API_KEY is missing."""
+    def test_cli_mobsf_no_api_key_shows_warning(self):
+        """Tests 'defensive mobsf' prints a warning when API key is missing."""
         result = runner.invoke(
             app, ["defensive", "checks", "mobsf", "--apk-file", "test.apk"]
         )
         self.assertEqual(result.exit_code, 1)
+        self.assertIn("Skipping MobSF Scan", result.stdout)
+        self.assertIn("MOBSF_API_KEY", result.stdout)
 
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
@@ -509,13 +522,12 @@ class TestDefensive(unittest.TestCase):
         self.assertIn('"total_results": 1', result.stdout)
 
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", None)
-    def test_cli_surface_command_no_api_key(self):
-        """
-        Tests the 'surface' command when the SHODAN_API_KEY is missing.
-        """
+    def test_cli_surface_no_api_key_shows_warning(self):
+        """Tests 'defensive surface' prints a warning when API key is missing."""
         result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual(result.stdout.strip(), "")
+        self.assertIn("Skipping Shodan Scan", result.stdout)
+        self.assertIn("SHODAN_API_KEY", result.stdout)
 
 
 if __name__ == "__main__":

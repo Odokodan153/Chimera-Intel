@@ -1,5 +1,6 @@
 import typer
 import asyncio
+import time
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
@@ -22,6 +23,11 @@ from chimera_intel.core.http_client import async_client
 
 logger = logging.getLogger(__name__)
 
+# --- Simple In-Memory Cache ---
+
+API_CACHE: Dict[str, Any] = {}
+CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
+
 
 async def get_tech_stack_builtwith(domain: str, api_key: str) -> List[str]:
     """
@@ -38,6 +44,17 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> List[str]:
         logger.warning("BuiltWith API key not found. Skipping.")
         return []
     url = f"https://api.builtwith.com/v21/api.json?KEY={api_key}&LOOKUP={domain}"
+
+    # --- Caching Logic Start ---
+
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached BuiltWith data for {domain}")
+        return API_CACHE[url]["data"]
+    # --- Caching Logic End ---
+
     try:
         response = await async_client.get(url)
         response.raise_for_status()
@@ -48,7 +65,12 @@ async def get_tech_stack_builtwith(domain: str, api_key: str) -> List[str]:
                 for path in result.get("Result", {}).get("Paths", []):
                     for tech in path.get("Technologies", []):
                         technologies.append(tech.get("Name"))
-        return list(set(filter(None, technologies)))
+        unique_tech = list(set(filter(None, technologies)))
+        API_CACHE[url] = {
+            "timestamp": time.time(),
+            "data": unique_tech,
+        }  # Save to cache
+        return unique_tech
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error fetching tech stack from BuiltWith for '%s': %s", domain, e)
         return []
@@ -69,6 +91,17 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> List[str]:
         logger.warning("Wappalyzer API key not found. Skipping.")
         return []
     url = f"https://api.wappalyzer.com/v2/lookup/?urls=https://{domain}"
+
+    # --- Caching Logic Start ---
+
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached Wappalyzer data for {domain}")
+        return API_CACHE[url]["data"]
+    # --- Caching Logic End ---
+
     headers = {"x-api-key": api_key}
     try:
         response = await async_client.get(url, headers=headers)
@@ -78,7 +111,12 @@ async def get_tech_stack_wappalyzer(domain: str, api_key: str) -> List[str]:
         if data and isinstance(data, list):
             for tech_info in data[0].get("technologies", []):
                 technologies.append(tech_info.get("name"))
-        return list(set(filter(None, technologies)))
+        unique_tech = list(set(filter(None, technologies)))
+        API_CACHE[url] = {
+            "timestamp": time.time(),
+            "data": unique_tech,
+        }  # Save to cache
+        return unique_tech
     except (HTTPStatusError, RequestError) as e:
         logger.error(
             "Error fetching tech stack from Wappalyzer for '%s': %s", domain, e
@@ -100,10 +138,26 @@ async def get_traffic_similarweb(domain: str, api_key: str) -> Dict[str, Any]:
     if not api_key:
         return {"error": "Similarweb API key not found."}
     url = f"https://api.similarweb.com/v1/website/{domain}/total-traffic-and-engagement/visits?api_key={api_key}&granularity=monthly&main_domain_only=false"
+
+    # --- Caching Logic Start ---
+
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached Similarweb data for {domain}")
+        return API_CACHE[url]["data"]
+    # --- Caching Logic End ---
+
     try:
         response = await async_client.get(url)
         response.raise_for_status()
-        return response.json()
+        json_response = response.json()
+        API_CACHE[url] = {
+            "timestamp": time.time(),
+            "data": json_response,
+        }  # Save to cache
+        return json_response
     except (HTTPStatusError, RequestError) as e:
         logger.error(
             "Error fetching traffic data from Similarweb for '%s': %s", domain, e
@@ -214,6 +268,7 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
 
 
 # --- Typer CLI Application ---
+
 
 web_app = typer.Typer()
 

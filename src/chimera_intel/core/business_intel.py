@@ -8,7 +8,8 @@ are routed through the centralized HTTP client for consistency and resilience.
 """
 
 import typer
-import yfinance as yf  # type: ignore
+import asyncio
+import yfinance as yf  # yfinance is synchronous
 from bs4 import BeautifulSoup
 from httpx import RequestError, HTTPStatusError
 import logging
@@ -16,8 +17,8 @@ from sec_api import QueryApi, ExtractorApi  # type: ignore
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import sync_client
-from typing import Optional, Union, Any, Dict
+from chimera_intel.core.http_client import async_client  # CHANGED to async_client
+from typing import Optional, Any, Dict
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -30,13 +31,13 @@ from chimera_intel.core.schemas import (
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 
 def get_financials_yfinance(ticker_symbol: str) -> Financials:
     """
     Retrieves key financial data for a public company from Yahoo Finance.
+    NOTE: This remains synchronous as yfinance does not support async.
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
@@ -73,7 +74,9 @@ def get_financials_yfinance(ticker_symbol: str) -> Financials:
         return Financials(error=f"An unexpected error occurred: {e}")
 
 
-def get_news_gnews(query: str, api_key: str) -> GNewsResult:
+async def get_news_gnews(
+    query: str, api_key: str
+) -> GNewsResult:  # CHANGED to async def
     """
     Retrieves news articles from the GNews API using the resilient central client.
 
@@ -88,7 +91,7 @@ def get_news_gnews(query: str, api_key: str) -> GNewsResult:
         return GNewsResult(error="GNews API key not found.")
     url = f'https://gnews.io/api/v4/search?q="{query}"&lang=en&max=10&token={api_key}'
     try:
-        response = sync_client.get(url)
+        response = await async_client.get(url)  # CHANGED to await async_client
         response.raise_for_status()
         return GNewsResult(**response.json())
     except HTTPStatusError as e:
@@ -106,7 +109,9 @@ def get_news_gnews(query: str, api_key: str) -> GNewsResult:
         return GNewsResult(error=f"An unexpected error occurred: {e}")
 
 
-def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
+async def scrape_google_patents(
+    query: str, num_patents: int = 5
+) -> PatentResult:  # CHANGED to async def
     """
     Scrapes the first few patent results from Google Patents using the central client.
 
@@ -120,7 +125,9 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
     headers = {"User-Agent": "Mozilla/5.0"}
     url = f"https://patents.google.com/?q=({query})&num=10"
     try:
-        response = sync_client.get(url, headers=headers)
+        response = await async_client.get(
+            url, headers=headers
+        )  # CHANGED to await async_client
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -161,6 +168,7 @@ def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
 def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
     """
     Finds the latest 10-K filing for a ticker and extracts the 'Risk Factors' section.
+    NOTE: This remains synchronous as the sec-api library does not support async.
 
     Args:
         ticker (str): The stock market ticker symbol.
@@ -173,8 +181,6 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
         logger.warning("sec-api.io key not found. Skipping SEC filings analysis.")
         return None
     try:
-        # Step 1: Find the latest 10-K filing to get its URL
-
         queryApi = QueryApi(api_key=api_key)
         query: Dict[str, Any] = {
             "query": f'ticker:{ticker} AND formType:"10-K"',
@@ -189,16 +195,12 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
             return None
         latest_filing_url = filings["filings"][0]["linkToFilingDetails"]
 
-        # Step 2: Use the Extractor API to get the 'Risk Factors' section (Item 1A)
-
         extractorApi = ExtractorApi(api_key=api_key)
         risk_factors_text = extractorApi.get_section(
             filing_url=latest_filing_url,
-            section="1A",  # Item 1A is "Risk Factors"
+            section="1A",
             return_type="text",
         )
-
-        # Basic summary (can be enhanced with AI later)
 
         summary = (
             (risk_factors_text[:700] + "...")
@@ -241,47 +243,67 @@ def run_business_intel(
 ):
     """
     Gathers business intelligence: financials, news, patents, and SEC filings.
-
-    Args:
-        company_name (str): The full name of the target company.
-        ticker (str): The stock market ticker for financial data.
-        filings (bool): Flag to enable SEC filings analysis.
-        output_file (str): Optional path to save the results to a JSON file.
     """
-    logger.info(
-        "Starting business intelligence scan for %s (Ticker: %s)",
-        company_name,
-        ticker or "N/A",
-    )
 
-    gnews_key = API_KEYS.gnews_api_key
-    financial_data: Union[Financials, str] = (
-        get_financials_yfinance(ticker) if ticker else "Not provided"
-    )
+    # This function now needs to run an async event loop
 
-    filings_analysis = None
-    if filings and ticker:
-        with console.status(
-            f"[bold cyan]Analyzing SEC filings for {ticker}...[/bold cyan]"
-        ):
-            filings_analysis = get_sec_filings_analysis(ticker)
-    elif filings and not ticker:
-        logger.warning("The --filings flag requires a --ticker to be provided.")
-    if not gnews_key:
-        logger.warning("GNews API key not found. Skipping news gathering.")
-        news_data = GNewsResult(error="GNews API key not configured.")
-    else:
-        news_data = get_news_gnews(company_name, gnews_key)
-    intel_data = BusinessIntelData(
-        financials=financial_data,
-        news=news_data,
-        patents=scrape_google_patents(company_name),
-        sec_filings_analysis=filings_analysis,
-    )
+    async def main():
+        logger.info(
+            "Starting business intelligence scan for %s (Ticker: %s)",
+            company_name,
+            ticker or "N/A",
+        )
 
-    results_model = BusinessIntelResult(company=company_name, business_intel=intel_data)
-    results_dict = results_model.model_dump(exclude_none=True)
+        gnews_key = API_KEYS.gnews_api_key
 
-    logger.info("Business intelligence scan complete for %s", company_name)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=company_name, module="business_intel", data=results_dict)
+        # Synchronous calls can be run in a thread to not block the async loop
+
+        loop = asyncio.get_running_loop()
+        financial_data_task = (
+            loop.run_in_executor(None, get_financials_yfinance, ticker)
+            if ticker
+            else asyncio.sleep(0, result="Not provided")
+        )
+
+        filings_analysis_task = (
+            loop.run_in_executor(None, get_sec_filings_analysis, ticker)
+            if filings and ticker
+            else asyncio.sleep(0, result=None)
+        )
+
+        if filings and not ticker:
+            logger.warning("The --filings flag requires a --ticker to be provided.")
+        if not gnews_key:
+            logger.warning("GNews API key not found. Skipping news gathering.")
+            news_data_task = asyncio.sleep(
+                0, result=GNewsResult(error="GNews API key not configured.")
+            )
+        else:
+            news_data_task = get_news_gnews(company_name, gnews_key)
+        patents_task = scrape_google_patents(company_name)
+
+        # Gather all results
+
+        financial_data, filings_analysis, news_data, patents_data = (
+            await asyncio.gather(
+                financial_data_task, filings_analysis_task, news_data_task, patents_task
+            )
+        )
+
+        intel_data = BusinessIntelData(
+            financials=financial_data,
+            news=news_data,
+            patents=patents_data,
+            sec_filings_analysis=filings_analysis,
+        )
+
+        results_model = BusinessIntelResult(
+            company=company_name, business_intel=intel_data
+        )
+        results_dict = results_model.model_dump(exclude_none=True)
+
+        logger.info("Business intelligence scan complete for %s", company_name)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(target=company_name, module="business_intel", data=results_dict)
+
+    asyncio.run(main())

@@ -8,6 +8,7 @@ from rich.panel import Panel
 from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional
 import logging
+import time
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
@@ -19,14 +20,16 @@ from chimera_intel.core.schemas import (
     ScoredResult,
 )
 from chimera_intel.core.http_client import async_client
-
-# Import the new threat intel function
-
-
 from .threat_intel import get_threat_intel_otx
 
 logger = logging.getLogger(__name__)
 load_dotenv()
+
+# --- Simple In-Memory Cache ---
+
+API_CACHE: Dict[str, Any] = {}
+CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
+
 
 # --- Synchronous Helper Functions ---
 
@@ -105,11 +108,20 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
         return []
     headers = {"x-apikey": api_key}
     url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
+
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached VirusTotal data for {domain}")
+        return API_CACHE[url]["data"]
     try:
         response = await async_client.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
-        return [item.get("id") for item in data.get("data", [])]
+        subdomains = [item.get("id") for item in data.get("data", [])]
+        API_CACHE[url] = {"timestamp": time.time(), "data": subdomains}
+        return subdomains
     except (HTTPStatusError, RequestError) as e:
         logger.error(
             "Error fetching subdomains from VirusTotal for '%s': %s", domain, e
@@ -127,8 +139,16 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
     Returns:
         List[str]: A list of subdomain strings found.
     """
+    url = "https://dnsdumpster.com/"
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[f"{url}_{domain}"]["timestamp"])
+        < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached DNSDumpster data for {domain}")
+        return API_CACHE[f"{url}_{domain}"]["data"]
     try:
-        home_response = await async_client.get("https://dnsdumpster.com/")
+        home_response = await async_client.get(url)
         home_response.raise_for_status()
         csrf_token = home_response.cookies.get("csrftoken")
         if not csrf_token:
@@ -140,15 +160,17 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
             "user": "free",
         }
         headers = {"Referer": "https://dnsdumpster.com/"}
-        results_response = await async_client.post(
-            "https://dnsdumpster.com/", data=post_data, headers=headers
-        )
+        results_response = await async_client.post(url, data=post_data, headers=headers)
         results_response.raise_for_status()
-        subdomains = re.findall(
-            r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r")<br>",
-            results_response.text,
+        subdomains_set = set(
+            re.findall(
+                r'<td class="col-md-4">([\w\d\.\-]+\.' + re.escape(domain) + r")<br>",
+                results_response.text,
+            )
         )
-        return list(set(subdomains))
+        subdomains = list(subdomains_set)
+        API_CACHE[f"{url}_{domain}"] = {"timestamp": time.time(), "data": subdomains}
+        return subdomains
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error scraping DNSDumpster for '%s': %s", domain, e)
         return []
@@ -165,12 +187,20 @@ async def get_subdomains_threatminer(domain: str) -> List[str]:
         List[str]: A list of subdomain strings found.
     """
     url = f"https://api.threatminer.org/v2/domain.php?q={domain}&rt=5"
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached ThreatMiner data for {domain}")
+        return API_CACHE[url]["data"]
     try:
         response = await async_client.get(url)
         response.raise_for_status()
         data = response.json()
         if data.get("status_code") == "200":
-            return data.get("results", [])
+            results = data.get("results", [])
+            API_CACHE[url] = {"timestamp": time.time(), "data": results}
+            return results
         return []
     except (RequestError, HTTPStatusError) as e:
         logger.error(
@@ -190,6 +220,12 @@ async def get_subdomains_urlscan(domain: str) -> List[str]:
         List[str]: A list of subdomain strings found.
     """
     url = f"https://urlscan.io/api/v1/search/?q=domain:{domain}"
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached URLScan.io data for {domain}")
+        return API_CACHE[url]["data"]
     try:
         response = await async_client.get(url)
         response.raise_for_status()
@@ -199,7 +235,9 @@ async def get_subdomains_urlscan(domain: str) -> List[str]:
             for result in data.get("results", [])
             if "page" in result and "domain" in result["page"]
         }
-        return list(subdomains)
+        subdomain_list = list(subdomains)
+        API_CACHE[url] = {"timestamp": time.time(), "data": subdomain_list}
+        return subdomain_list
     except (RequestError, HTTPStatusError) as e:
         logger.error(
             "Error fetching subdomains from URLScan.io for '%s': %s", domain, e
@@ -220,18 +258,26 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
     """
     if not api_key:
         return []
+    query = f"hostname:.{domain}"
+    if (
+        query in API_CACHE
+        and (time.time() - API_CACHE[query]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached Shodan data for {domain}")
+        return API_CACHE[query]["data"]
 
     def search() -> List[str]:
         try:
             api = shodan.Shodan(api_key)
-            query = f"hostname:.{domain}"
             result = api.search(query, limit=500)
             hostnames = {
                 host["hostnames"][0]
                 for host in result["matches"]
                 if host.get("hostnames")
             }
-            return list(hostnames)
+            hostname_list = list(hostnames)
+            API_CACHE[query] = {"timestamp": time.time(), "data": hostname_list}
+            return hostname_list
         except Exception as e:
             logger.error(
                 "Error fetching subdomains from Shodan for '%s': %s", domain, e
@@ -298,8 +344,6 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     if isinstance(sh, list):
         for sub in sh:
             all_subdomains.setdefault(sub, []).append("Shodan")
-    # Collect all unique indicators (IPs and subdomains) for threat intel lookup
-
     indicators_to_check = set(all_subdomains.keys())
     main_domain_ips = (
         dns_data.get("A", []) if isinstance(dns_data, dict) and dns_data else []
@@ -350,7 +394,6 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
 
 # --- Typer CLI Application ---
-
 
 footprint_app = typer.Typer()
 
