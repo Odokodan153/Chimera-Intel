@@ -1,6 +1,11 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
 from chimera_intel.core.strategist import generate_strategic_profile
+
+runner = CliRunner()
 
 
 class TestStrategist(unittest.TestCase):
@@ -34,6 +39,42 @@ class TestStrategist(unittest.TestCase):
         result = generate_strategic_profile({}, "fake_api_key")
         self.assertIsNotNone(result.error)
         self.assertIn("API Error", result.error)
+
+    # CLI Tests
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.generate_strategic_profile")
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_key")
+    def test_cli_strategy_run_success(self, mock_generate, mock_get_data):
+        """Tests a successful 'strategy run' CLI command."""
+        mock_get_data.return_value = {"target": "example.com"}
+        mock_generate.return_value.profile_text = "Strategic text"
+        mock_generate.return_value.error = None
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Strategic text", result.stdout)
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    def test_cli_strategy_run_no_data(self, mock_get_data):
+        """Tests the 'strategy run' command when no historical data is found."""
+        mock_get_data.return_value = None
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        self.assertEqual(result.exit_code, 1)
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", None)
+    def test_cli_strategy_run_no_api_key(self, mock_get_data):
+        """Tests the 'strategy run' command when the API key is missing."""
+        mock_get_data.return_value = {"target": "example.com"}
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Google API key not found", result.stdout)
 
 
 if __name__ == "__main__":

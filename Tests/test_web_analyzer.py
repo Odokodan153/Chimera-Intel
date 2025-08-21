@@ -1,27 +1,20 @@
-"""
-Unit tests for the 'web_analyzer' module.
-
-This test suite verifies the functionality of the asynchronous data gathering
-functions in 'chimera_intel.core.web_analyzer.py'. It uses 'unittest.mock'
-to simulate API responses, ensuring the tests are fast and independent of
-live network conditions.
-"""
-
 import unittest
 import time
 from unittest.mock import patch, MagicMock, AsyncMock
+from typer.testing import CliRunner
 
-# Use the absolute import path for the package structure
-
-
+from chimera_intel.cli import app
 from chimera_intel.core.web_analyzer import (
     get_tech_stack_builtwith,
     get_tech_stack_wappalyzer,
     get_traffic_similarweb,
     gather_web_analysis_data,
+    take_screenshot,
     API_CACHE,
-    CACHE_TTL_SECONDS,  # Import cache for testing
+    CACHE_TTL_SECONDS,
 )
+
+runner = CliRunner()
 
 
 class TestWebAnalyzer(unittest.TestCase):
@@ -170,11 +163,65 @@ class TestWebAnalyzer(unittest.TestCase):
                 if tech.technology == "React":
                     self.assertIn("HIGH", tech.confidence)
 
+    @patch("chimera_intel.core.web_analyzer.async_playwright")
+    async def test_take_screenshot_success(self, mock_playwright):
+        """Tests a successful screenshot."""
+        # Create a complex mock for the async context manager and chained calls
+
+        mock_browser = AsyncMock()
+        mock_page = AsyncMock()
+        mock_playwright.return_value.__aenter__.return_value.chromium.launch.return_value = (
+            mock_browser
+        )
+        mock_browser.new_page.return_value = mock_page
+
+        result = await take_screenshot("example.com")
+
+        self.assertIsNotNone(result)
+        self.assertIn("example_com", result)
+        self.assertIn(".png", result)
+        mock_page.goto.assert_called_once()
+        mock_page.screenshot.assert_called_once()
+        mock_browser.close.assert_called_once()
+
+    @patch("chimera_intel.core.web_analyzer.async_playwright")
+    async def test_take_screenshot_failure(self, mock_playwright):
+        """Tests screenshot failure."""
+        mock_playwright.return_value.__aenter__.return_value.chromium.launch.side_effect = Exception(
+            "Browser launch failed"
+        )
+
+        result = await take_screenshot("example.com")
+
+        self.assertIsNone(result)
+
+    # CLI Tests
+
+    @patch(
+        "chimera_intel.core.web_analyzer.gather_web_analysis_data",
+        new_callable=AsyncMock,
+    )
+    def test_cli_web_run_success(self, mock_gather):
+        """Tests the 'web run' CLI command for a successful scan."""
+        mock_result_model = MagicMock()
+        mock_result_model.model_dump.return_value = {
+            "domain": "example.com",
+            "web_analysis": {},
+        }
+        mock_gather.return_value = mock_result_model
+
+        result = runner.invoke(app, ["scan", "web", "run", "example.com"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"domain": "example.com"', result.stdout)
+
+    def test_cli_web_run_invalid_domain(self):
+        """Tests the 'web run' CLI command with an invalid domain."""
+        result = runner.invoke(app, ["scan", "web", "run", "invalid-domain"])
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("is not a valid domain format", result.stdout)
+
 
 if __name__ == "__main__":
-    # To run async tests, we need to use an async test runner.
-    # unittest.main() can work if run with `python -m unittest`
-    # or if we manually configure an event loop, but for simplicity,
-    # relying on a test runner like pytest with pytest-asyncio is best.
-
     unittest.main()
