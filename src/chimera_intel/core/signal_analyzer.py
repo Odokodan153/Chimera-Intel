@@ -2,11 +2,19 @@ import typer
 from bs4 import BeautifulSoup
 from rich.panel import Panel
 from rich.table import Table
+
+# FIX: Import Console class and sys module
+
+from rich.console import Console
+import sys
 from typing import List
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.http_client import sync_client
+
+# Keep the existing import for the standard console
+
 from chimera_intel.core.utils import is_valid_domain, console
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
 
@@ -116,8 +124,6 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
         tech_name = tech_item.get("technology")
         if not isinstance(tech_name, str):
             continue
-        # FIX: Break after finding the first match for a tech item to avoid duplicates
-
         signal_found_for_tech = False
         for category, keywords in SIGNAL_KEYWORDS.items():
             for keyword in keywords:
@@ -137,8 +143,6 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
 
     job_postings = aggregated_data.get("job_postings", {}).get("job_postings", [])
     for job_title in job_postings:
-        # FIX: Break after finding the first match for a job title to avoid duplicates
-
         signal_found_for_job = False
         for category, keywords in SIGNAL_KEYWORDS.items():
             for keyword in keywords:
@@ -161,6 +165,9 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
 
 
 signal_app = typer.Typer()
+# FIX: Create a dedicated console for stderr output
+
+console_err = Console(stderr=True, style="bold yellow")
 
 
 @signal_app.command("run")
@@ -191,11 +198,10 @@ def run_signal_analysis(
     aggregated_data = get_aggregated_data_for_target(target)
 
     if not aggregated_data:
-        # FIX: Add a user-facing message and exit with error code 1
+        # FIX: Use the dedicated stderr console
 
-        console.print(
-            f"[bold yellow]No historical data found for '{target}'. Run a full scan first.[/bold yellow]",
-            stderr=True,
+        console_err.print(
+            f"No historical data found for '{target}'. Run a full scan first."
         )
         raise typer.Exit(code=1)
     logger.info("Performing a live scrape for job postings for %s.", target)
@@ -210,11 +216,10 @@ def run_signal_analysis(
             "No strong strategic signals detected for %s based on the current rule set.",
             target,
         )
-        # FIX: Add a user-facing message to stderr
+        # FIX: Use the dedicated stderr console
 
-        console.print(
-            "[bold]No strong strategic signals detected based on the current rule set.[/bold]",
-            stderr=True,
+        console_err.print(
+            "No strong strategic signals detected based on the current rule set."
         )
         raise typer.Exit()
     table = Table(title=f"Potential Strategic Signals Detected for {target}")
