@@ -5,6 +5,10 @@ from typer.testing import CliRunner
 
 from chimera_intel.cli import app
 from chimera_intel.core.social_analyzer import discover_rss_feed, analyze_feed_content
+from chimera_intel.core.schemas import (
+    SocialContentAnalysis,
+    AnalyzedPost,
+)
 
 runner = CliRunner()
 
@@ -100,35 +104,22 @@ class TestSocialAnalyzer(unittest.TestCase):
     def test_cli_social_run_success(self, mock_analyze, mock_discover):
         """Tests a successful 'social run' CLI command."""
         mock_discover.return_value = "http://fake.url/feed.xml"
-        mock_analyze.return_value.model_dump.return_value = {"feed_title": "Test Feed"}
+        mock_analyze.return_value = SocialContentAnalysis(
+            feed_title="Test Feed",
+            posts=[
+                AnalyzedPost(
+                    title="Test Post",
+                    link="#",
+                    top_category="Product Launch",
+                    confidence="99.00%",
+                )
+            ],
+        )
 
-        # This is a bit complex: the result model is nested.
-        # We need to mock the structure that the CLI command expects.
+        result = runner.invoke(app, ["scan", "social", "run", "example.com"])
 
-        mock_analysis_result = MagicMock()
-        mock_analysis_result.model_dump.return_value = {"feed_title": "Test Feed"}
-
-        # `analyze_feed_content` returns a `SocialContentAnalysis` model
-        # The CLI command then wraps this in a `SocialAnalysisResult` model
-        # So, we need to mock what `analyze_feed_content` returns.
-
-        with patch(
-            "chimera_intel.core.schemas.SocialAnalysisResult"
-        ) as mock_social_analysis_result:
-            # When `SocialAnalysisResult` is instantiated, return an object that has a `model_dump` method
-
-            mock_final_result = MagicMock()
-            mock_final_result.model_dump.return_value = {"domain": "example.com"}
-            mock_social_analysis_result.return_value = mock_final_result
-
-            mock_analyze.return_value = (
-                MagicMock()
-            )  # The content of this mock doesn't matter as much now
-
-            result = runner.invoke(app, ["scan", "social", "run", "example.com"])
-
-            self.assertEqual(result.exit_code, 0)
-            self.assertIn('"domain": "example.com"', result.stdout)
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"feed_title": "Test Feed"', result.stdout)
 
     def test_cli_social_run_invalid_domain(self):
         """Tests the 'social run' command with an invalid domain."""
