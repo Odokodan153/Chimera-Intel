@@ -2,27 +2,22 @@ import typer
 from bs4 import BeautifulSoup
 from rich.panel import Panel
 from rich.table import Table
-
-# FIX: Import Console class and sys module
-
 from rich.console import Console
-import sys
 from typing import List
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.http_client import sync_client
-
-# Keep the existing import for the standard console
-
 from chimera_intel.core.utils import is_valid_domain, console
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 # Define keywords that might signal strategic intent in different areas.
+
 
 SIGNAL_KEYWORDS = {
     "Marketing & Sales": ["HubSpot", "Marketo", "Salesforce", "CRM", "Pardot", "Drift"],
@@ -166,6 +161,7 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
 
 signal_app = typer.Typer()
 # FIX: Create a dedicated console for stderr output
+
 
 console_err = Console(stderr=True, style="bold yellow")
 
