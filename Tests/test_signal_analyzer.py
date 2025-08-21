@@ -8,7 +8,7 @@ from chimera_intel.core.signal_analyzer import (
     scrape_job_postings,
     analyze_signals,
 )
-from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
+from chimera_intel.core.schemas import JobPostingsResult
 
 runner = CliRunner(mix_stderr=False)
 
