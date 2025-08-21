@@ -7,10 +7,10 @@ from chimera_intel.core.strategist import (
 )
 from chimera_intel.core.schemas import StrategicProfileResult
 
-# Initialize the Typer test runner
+# FIX: Do not mix stderr to allow for separate checking of stderr
+# This is the corrected initialization.
 
-
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestStrategist(unittest.TestCase):
@@ -18,7 +18,10 @@ class TestStrategist(unittest.TestCase):
     Extended test cases for the strategist module, covering core logic and CLI commands.
     """
 
-    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
+    # FIX: Correct the patch to target the class where it's defined (at the source)
+    # This is more robust than targeting where it's imported.
+
+    @patch("google.generativeai.GenerativeModel")
     @patch("chimera_intel.core.strategist.API_KEYS")
     def test_generate_strategic_profile_success(self, mock_api_keys, mock_model):
         """
@@ -60,7 +63,9 @@ class TestStrategist(unittest.TestCase):
         self.assertIsInstance(result, StrategicProfileResult)
         self.assertIn("GOOGLE_API_KEY not found", result.error)
 
-    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
+    # FIX: Correct the patch to target the class where it's defined
+
+    @patch("google.generativeai.GenerativeModel")
     @patch("chimera_intel.core.strategist.API_KEYS")
     def test_generate_strategic_profile_api_exception(self, mock_api_keys, mock_model):
         """
@@ -152,6 +157,8 @@ class TestStrategist(unittest.TestCase):
         # --- Assert ---
 
         self.assertEqual(result.exit_code, 1)
+        # With mix_stderr=False, we can now check the stderr stream
+
         self.assertIn("Google API key not found", result.stderr)
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
@@ -176,11 +183,16 @@ class TestStrategist(unittest.TestCase):
         result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
 
         # --- Assert ---
-        # The command should still exit cleanly, but log an error
+        # The command should exit cleanly, but log an error to stderr
 
         self.assertEqual(result.exit_code, 0)
+        # With mix_stderr=False, we can check the error message in stderr
+
         self.assertIn("Failed to generate strategic profile", result.stderr)
-        self.assertNotIn("No analysis generated", result.stdout)
+        self.assertNotIn(
+            "AI service is down", result.stdout
+        )  # Ensure error isn't in stdout
+        self.assertIn("No analysis generated", result.stdout)
 
 
 if __name__ == "__main__":

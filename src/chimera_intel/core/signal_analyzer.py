@@ -114,9 +114,14 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
     )
     for tech_item in tech_data:
         tech_name = tech_item.get("technology")
+        if not isinstance(tech_name, str):
+            continue
+        # FIX: Break after finding the first match for a tech item to avoid duplicates
+
+        signal_found_for_tech = False
         for category, keywords in SIGNAL_KEYWORDS.items():
             for keyword in keywords:
-                if isinstance(tech_name, str) and keyword.lower() in tech_name.lower():
+                if keyword.lower() in tech_name.lower():
                     signals.append(
                         StrategicSignal(
                             category=category,
@@ -124,10 +129,17 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
                             source="Web Technology Stack",
                         )
                     )
+                    signal_found_for_tech = True
+                    break  # Stop checking other keywords in this category
+            if signal_found_for_tech:
+                break  # Stop checking other categories for this tech item
     # 2. Analyze Job Postings for signals
 
     job_postings = aggregated_data.get("job_postings", {}).get("job_postings", [])
     for job_title in job_postings:
+        # FIX: Break after finding the first match for a job title to avoid duplicates
+
+        signal_found_for_job = False
         for category, keywords in SIGNAL_KEYWORDS.items():
             for keyword in keywords:
                 if keyword.lower() in job_title.lower():
@@ -138,6 +150,10 @@ def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
                             source="Job Postings",
                         )
                     )
+                    signal_found_for_job = True
+                    break  # Stop checking other keywords in this category
+            if signal_found_for_job:
+                break  # Stop checking other categories for this job title
     return signals
 
 
@@ -175,7 +191,13 @@ def run_signal_analysis(
     aggregated_data = get_aggregated_data_for_target(target)
 
     if not aggregated_data:
-        raise typer.Exit()
+        # FIX: Add a user-facing message and exit with error code 1
+
+        console.print(
+            f"[bold yellow]No historical data found for '{target}'. Run a full scan first.[/bold yellow]",
+            stderr=True,
+        )
+        raise typer.Exit(code=1)
     logger.info("Performing a live scrape for job postings for %s.", target)
     job_results = scrape_job_postings(target)
     aggregated_data["job_postings"] = job_results.model_dump()
@@ -187,6 +209,12 @@ def run_signal_analysis(
         logger.info(
             "No strong strategic signals detected for %s based on the current rule set.",
             target,
+        )
+        # FIX: Add a user-facing message to stderr
+
+        console.print(
+            "[bold]No strong strategic signals detected based on the current rule set.[/bold]",
+            stderr=True,
         )
         raise typer.Exit()
     table = Table(title=f"Potential Strategic Signals Detected for {target}")
