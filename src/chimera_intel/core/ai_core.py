@@ -34,7 +34,7 @@ np: Optional[Any] = None
 try:
     from transformers import pipeline  # type: ignore
 
-    sentiment_analyzer = pipeline(
+    sentiment_analyzer = pipeline(  # type: ignore
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
     )
 except (ImportError, OSError):

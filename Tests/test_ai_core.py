@@ -17,7 +17,7 @@ from chimera_intel.core.ai_core import (
     detect_traffic_anomalies,
 )
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestAiCore(unittest.TestCase):

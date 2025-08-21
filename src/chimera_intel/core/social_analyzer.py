@@ -14,7 +14,7 @@ from chimera_intel.core.schemas import (
     SocialAnalysisResult,
     AnalyzedPost,
 )
-from transformers import pipeline  # type: ignore
+from transformers import pipeline, Pipeline  # # type: ignore
 
 # Get a logger instance for this specific file
 
@@ -24,10 +24,12 @@ logger = logging.getLogger(__name__)
 # --- AI Model Initialization ---
 
 
+classifier: Optional[Pipeline] = None  # Add Optional type hint
 try:
-
     classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 except (ImportError, OSError):
+    # This assignment is now valid because of the Optional type hint
+
     classifier = None
 # --- Core Functions ---
 
@@ -81,7 +83,7 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
 
     Args:
         feed_url (str): The URL of the RSS feed to analyze.
-        num_posts (int): The number of recent posts to analyze. Defaults to 5.
+        num_posts (int, optional): The number of recent posts to analyze. Defaults to 5.
 
     Returns:
         SocialContentAnalysis: A Pydantic model containing the analysis results or an error.
@@ -162,7 +164,7 @@ def run_social_analysis(
 
     Args:
         domain (str): The target domain to find and analyze a blog/RSS feed for.
-        output_file (str): Optional path to save the results to a JSON file.
+        output_file (str, optional): Optional path to save the results to a JSON file.
     """
     if not is_valid_domain(domain):
         logger.warning("Invalid domain format provided to 'social' command: %s", domain)

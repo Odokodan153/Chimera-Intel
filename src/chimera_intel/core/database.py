@@ -157,7 +157,8 @@ def get_aggregated_data_for_target(target: str) -> Optional[Dict[str, Any]]:
             f"[bold red]An unexpected error occurred while fetching aggregated data:[/] {e}"
         )
         return None
-    
+
+
 def get_scan_history() -> List[Dict[str, Any]]:
     """
     Retrieves all scan records from the database, ordered by the most recent first.
@@ -169,6 +170,7 @@ def get_scan_history() -> List[Dict[str, Any]]:
     try:
         conn = sqlite3.connect(DB_FILE, timeout=10.0)
         # Return rows as dictionaries for easy JSON serialization
+
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
@@ -177,6 +179,7 @@ def get_scan_history() -> List[Dict[str, Any]]:
         records = cursor.fetchall()
         conn.close()
         # Convert row objects to plain dictionaries
+
         return [dict(row) for row in records]
     except sqlite3.Error as e:
         console.print(

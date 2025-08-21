@@ -391,8 +391,9 @@ class StrategicProfileResult(BaseModel):
 class FormattedDiff(BaseModel):
     """A simplified, human-readable format for scan differences."""
 
-    added: List[str]
-    removed: List[str]
+    added: List[str] = Field(default_factory=list)
+    removed: List[str] = Field(default_factory=list)
+    changed: List[str] = Field(default_factory=list)
 
 
 class DiffResult(BaseModel):

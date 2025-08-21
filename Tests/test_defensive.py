@@ -15,6 +15,7 @@ from typer.testing import CliRunner
 
 # Import the main app to test commands
 
+
 from chimera_intel.cli import app
 from chimera_intel.core.defensive import (
     check_hibp_breaches,
@@ -28,6 +29,7 @@ from chimera_intel.core.defensive import (
 
 # Import all necessary Pydantic models for testing
 
+
 from chimera_intel.core.schemas import (
     HIBPResult,
     TyposquatResult,
@@ -40,7 +42,8 @@ from chimera_intel.core.schemas import (
 
 # CliRunner to simulate CLI commands
 
-runner = CliRunner(mix_stderr=False)
+
+runner = CliRunner()
 
 
 class TestDefensive(unittest.TestCase):

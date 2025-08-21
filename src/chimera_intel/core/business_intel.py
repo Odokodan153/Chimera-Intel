@@ -9,15 +9,15 @@ are routed through the centralized HTTP client for consistency and resilience.
 
 import typer
 import asyncio
-import yfinance as yf  # yfinance is synchronous
+import yfinance as yf  # type: ignore
 from bs4 import BeautifulSoup
 from httpx import RequestError, HTTPStatusError
 import logging
 from sec_api import QueryApi, ExtractorApi  # type: ignore
-from chimera_intel.core.utils import console, save_or_print_results
+from chimera_intel.core.utils import save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import async_client  # CHANGED to async_client
+from chimera_intel.core.http_client import async_client
 from typing import Optional, Any, Dict
 from chimera_intel.core.schemas import (
     Financials,
@@ -30,6 +30,7 @@ from chimera_intel.core.schemas import (
 )
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,7 @@ def get_financials_yfinance(ticker_symbol: str) -> Financials:
         return Financials(error=f"An unexpected error occurred: {e}")
 
 
-async def get_news_gnews(
-    query: str, api_key: str
-) -> GNewsResult:  # CHANGED to async def
+async def get_news_gnews(query: str, api_key: str) -> GNewsResult:
     """
     Retrieves news articles from the GNews API using the resilient central client.
 
@@ -91,7 +90,7 @@ async def get_news_gnews(
         return GNewsResult(error="GNews API key not found.")
     url = f'https://gnews.io/api/v4/search?q="{query}"&lang=en&max=10&token={api_key}'
     try:
-        response = await async_client.get(url)  # CHANGED to await async_client
+        response = await async_client.get(url)
         response.raise_for_status()
         return GNewsResult(**response.json())
     except HTTPStatusError as e:
@@ -109,9 +108,7 @@ async def get_news_gnews(
         return GNewsResult(error=f"An unexpected error occurred: {e}")
 
 
-async def scrape_google_patents(
-    query: str, num_patents: int = 5
-) -> PatentResult:  # CHANGED to async def
+async def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResult:
     """
     Scrapes the first few patent results from Google Patents using the central client.
 
@@ -125,9 +122,7 @@ async def scrape_google_patents(
     headers = {"User-Agent": "Mozilla/5.0"}
     url = f"https://patents.google.com/?q=({query})&num=10"
     try:
-        response = await async_client.get(
-            url, headers=headers
-        )  # CHANGED to await async_client
+        response = await async_client.get(url, headers=headers)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -245,8 +240,6 @@ def run_business_intel(
     Gathers business intelligence: financials, news, patents, and SEC filings.
     """
 
-    # This function now needs to run an async event loop
-
     async def main():
         logger.info(
             "Starting business intelligence scan for %s (Ticker: %s)",
@@ -255,8 +248,6 @@ def run_business_intel(
         )
 
         gnews_key = API_KEYS.gnews_api_key
-
-        # Synchronous calls can be run in a thread to not block the async loop
 
         loop = asyncio.get_running_loop()
         financial_data_task = (
@@ -281,8 +272,6 @@ def run_business_intel(
         else:
             news_data_task = get_news_gnews(company_name, gnews_key)
         patents_task = scrape_google_patents(company_name)
-
-        # Gather all results
 
         financial_data, filings_analysis, news_data, patents_data = (
             await asyncio.gather(

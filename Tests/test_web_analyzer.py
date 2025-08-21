@@ -8,12 +8,11 @@ live network conditions.
 """
 
 import unittest
-import asyncio
 import time
 from unittest.mock import patch, MagicMock, AsyncMock
-from httpx import RequestError, HTTPStatusError, Response
 
 # Use the absolute import path for the package structure
+
 
 from chimera_intel.core.web_analyzer import (
     get_tech_stack_builtwith,
