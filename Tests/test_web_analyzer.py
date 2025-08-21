@@ -123,8 +123,9 @@ class TestWebAnalyzer(unittest.TestCase):
             self.assertEqual(mock_async_get.call_count, 1)
 
             # Manually expire the cache entry
+            # FIX: Removed the unnecessary 'f' prefix from the string.
 
-            url = f"https://api.builtwith.com/v21/api.json?KEY=fake_key&LOOKUP=anotherexample.com"
+            url = "https://api.builtwith.com/v21/api.json?KEY=fake_key&LOOKUP=anotherexample.com"
             API_CACHE[url]["timestamp"] = time.time() - CACHE_TTL_SECONDS - 1
 
             # Second call should re-trigger the API
