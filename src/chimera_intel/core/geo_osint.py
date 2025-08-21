@@ -1,7 +1,7 @@
 import typer
 import asyncio
 import logging
-import folium  # <-- Import the new library
+import folium  # type: ignore
 from typing import List, Optional
 from chimera_intel.core.schemas import GeoIntelResult, GeoIntelData
 from chimera_intel.core.http_client import async_client
