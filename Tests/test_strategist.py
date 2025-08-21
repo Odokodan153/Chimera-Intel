@@ -1,107 +1,187 @@
-import typer
-import json
-import google.generativeai as genai  # type: ignore
-from rich.markdown import Markdown
-import logging
-from chimera_intel.core.database import get_aggregated_data_for_target
-from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.utils import console
+import unittest
+from unittest.mock import patch, MagicMock
+from typer.testing import CliRunner
+from chimera_intel.cli import app
+from chimera_intel.core.strategist import (
+    generate_strategic_profile,
+    run_strategy_analysis,
+)
 from chimera_intel.core.schemas import StrategicProfileResult
 
-# Get a logger instance for this specific file
+# Initialize the Typer test runner
+
+runner = CliRunner()
 
 
-logger = logging.getLogger(__name__)
-
-
-def generate_strategic_profile(
-    aggregated_data: dict, api_key: str
-) -> StrategicProfileResult:
+class TestStrategist(unittest.TestCase):
     """
-    Uses a Generative AI model (Google Gemini Pro) to create a high-level strategic profile.
-
-    Args:
-        aggregated_data (dict): The combined OSINT data for the target.
-        api_key (str): The Google AI API key for authentication.
-
-    Returns:
-        StrategicProfileResult: A Pydantic model containing the AI-generated markdown
-                                analysis or an error message.
-    """
-    if not api_key:
-        return StrategicProfileResult(error="GOOGLE_API_KEY not found in .env file.")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-pro")
-
-    data_str = json.dumps(aggregated_data, indent=2, default=str)
-
-    prompt = f"""
-    As an expert business intelligence analyst, your task is to synthesize the following OSINT data into a high-level strategic profile of the target company.
-    Focus on deducing their likely strategies based ONLY on the provided data.
-
-    OSINT DATA:
-    ```json
-    {data_str}
-    ```
-
-    Based on the data, provide a concise analysis covering the following points. Present the entire output in Markdown format.
-    
-    1.  **Marketing & Sales Strategy:** Based on their web technologies, traffic sources, and news, what is their likely go-to-market strategy? Are they targeting consumers (B2C) or businesses (B2B)?
-    2.  **Technology & Innovation Strategy:** Based on their tech stack and patents, are they a technology leader, a fast follower, or lagging in their industry? What are their R&D priorities?
-    3.  **Expansion & Growth Strategy:** Are there any signals (e.g., in news, financials) that suggest they are planning to expand into new markets, launch new products, or are in a phase of aggressive growth?
-    4.  **Overall Summary:** Provide a concluding paragraph summarizing their likely strategic position in the market.
+    Extended test cases for the strategist module, covering core logic and CLI commands.
     """
 
-    try:
-        response = model.generate_content(prompt)
-        return StrategicProfileResult(profile_text=response.text)
-    except Exception as e:
-        logger.error(
-            "An error occurred with the Google AI API during strategy generation: %s", e
+    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_generate_strategic_profile_success(self, mock_api_keys, mock_model):
+        """
+        Tests a successful strategic profile generation, ensuring the API is called correctly.
+        """
+        # --- Arrange ---
+        # Mock the API key and the generative model's response
+
+        mock_api_keys.google_api_key = "fake_google_key"
+        mock_instance = mock_model.return_value
+        mock_instance.generate_content.return_value.text = "## Strategic Analysis"
+        test_data = {"domain": "example.com", "tech": ["React"]}
+
+        # --- Act ---
+        # Call the function with test data
+
+        result = generate_strategic_profile(test_data, "fake_google_key")
+
+        # --- Assert ---
+        # Verify the result object is correct
+
+        self.assertIsInstance(result, StrategicProfileResult)
+        self.assertEqual(result.profile_text, "## Strategic Analysis")
+        self.assertIsNone(result.error)
+        # Verify that the model was called exactly once
+
+        mock_model.return_value.generate_content.assert_called_once()
+
+    def test_generate_strategic_profile_no_api_key(self):
+        """
+        Tests that the function returns an error immediately if no API key is provided.
+        """
+        # --- Act ---
+
+        result = generate_strategic_profile({}, "")
+
+        # --- Assert ---
+
+        self.assertIsInstance(result, StrategicProfileResult)
+        self.assertIn("GOOGLE_API_KEY not found", result.error)
+
+    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_generate_strategic_profile_api_exception(self, mock_api_keys, mock_model):
+        """
+        Tests error handling when the Google AI API raises an exception.
+        """
+        # --- Arrange ---
+
+        mock_api_keys.google_api_key = "fake_google_key"
+        # Configure the mock to raise a generic exception
+
+        mock_model.return_value.generate_content.side_effect = Exception(
+            "API connection timed out"
         )
-        return StrategicProfileResult(
-            error=f"An error occurred with the Google AI API: {e}"
-        )
+
+        # --- Act ---
+
+        result = generate_strategic_profile({}, "fake_google_key")
+
+        # --- Assert ---
+
+        self.assertIsInstance(result, StrategicProfileResult)
+        self.assertIn("API connection timed out", result.error)
+        self.assertIsNone(result.profile_text)
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.generate_strategic_profile")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_cli_strategy_command_success(
+        self, mock_api_keys, mock_generate, mock_get_data
+    ):
+        """
+        Tests a successful run of the `analysis strategy run` CLI command.
+        """
+        # --- Arrange ---
+
+        mock_api_keys.google_api_key = "fake_google_key"
+        mock_get_data.return_value = {"target": "example.com", "modules": {}}
+        mock_generate.return_value = StrategicProfileResult(profile_text="**Success**")
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        # --- Assert ---
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Success", result.stdout)
+        mock_get_data.assert_called_once_with("example.com")
+        mock_generate.assert_called_once()
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_cli_strategy_no_historical_data(self, mock_api_keys, mock_get_data):
+        """
+        Tests the CLI command's behavior when no historical data is found for the target.
+        """
+        # --- Arrange ---
+
+        mock_api_keys.google_api_key = "fake_google_key"
+        mock_get_data.return_value = None  # Simulate no data in the database
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "nonexistent.com"])
+
+        # --- Assert ---
+        # The command should exit with a non-zero status code to indicate failure
+
+        self.assertEqual(result.exit_code, 1)
+        # It should not attempt to generate a profile
+
+        self.assertNotIn("Automated Strategic Profile", result.stdout)
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_cli_strategy_missing_api_key(self, mock_api_keys, mock_get_data):
+        """
+        Tests the CLI command's failure when the GOOGLE_API_KEY is not configured.
+        """
+        # --- Arrange ---
+
+        mock_api_keys.google_api_key = None  # Simulate a missing key
+        mock_get_data.return_value = {"target": "example.com", "modules": {}}
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        # --- Assert ---
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Google API key not found", result.stderr)
+
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.generate_strategic_profile")
+    @patch("chimera_intel.core.strategist.API_KEYS")
+    def test_cli_strategy_handles_generation_error(
+        self, mock_api_keys, mock_generate, mock_get_data
+    ):
+        """
+        Tests that the CLI command correctly handles an error from the AI generation function.
+        """
+        # --- Arrange ---
+
+        mock_api_keys.google_api_key = "fake_google_key"
+        mock_get_data.return_value = {"target": "example.com", "modules": {}}
+        # Simulate the AI function returning an error
+
+        mock_generate.return_value = StrategicProfileResult(error="AI service is down")
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+
+        # --- Assert ---
+        # The command should still exit cleanly, but log an error
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Failed to generate strategic profile", result.stderr)
+        self.assertNotIn("No analysis generated", result.stdout)
 
 
-# --- Typer CLI Application ---
-
-
-strategy_app = typer.Typer()
-
-
-@strategy_app.command("run")
-def run_strategy_analysis(
-    target: str = typer.Argument(
-        ..., help="The target company to analyze (must have historical data)."
-    )
-):
-    """
-    Generates an AI-powered strategic profile of a competitor by aggregating all known data.
-
-    Args:
-        target (str): The target company to analyze.
-    """
-    logger.info("Generating strategic profile for target: %s", target)
-
-    aggregated_data = get_aggregated_data_for_target(target)
-
-    if not aggregated_data:
-        raise typer.Exit(code=1)
-    logger.info("Submitting aggregated data to AI strategist for analysis.")
-    api_key = API_KEYS.google_api_key
-
-    if not api_key:
-        logger.error(
-            "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
-        )
-        raise typer.Exit(code=1)
-    strategic_result = generate_strategic_profile(aggregated_data, api_key)
-
-    console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
-    if strategic_result.error:
-        logger.error("Failed to generate strategic profile: %s", strategic_result.error)
-    else:
-        console.print(
-            Markdown(strategic_result.profile_text or "No analysis generated.")
-        )
+if __name__ == "__main__":
+    unittest.main()

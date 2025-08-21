@@ -1,201 +1,240 @@
-import typer
-from bs4 import BeautifulSoup
-from rich.panel import Panel
-from rich.table import Table
-from typing import List
-import logging
-from httpx import RequestError, HTTPStatusError
-from chimera_intel.core.database import get_aggregated_data_for_target
-from chimera_intel.core.http_client import sync_client
-from chimera_intel.core.utils import is_valid_domain, console
+import unittest
+from unittest.mock import patch, MagicMock
+from httpx import Response, RequestError
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
+from chimera_intel.core.signal_analyzer import (
+    scrape_job_postings,
+    analyze_signals,
+    run_signal_analysis,
+)
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
 
-# Get a logger instance for this specific file
+runner = CliRunner(mix_stderr=False)
 
 
-logger = logging.getLogger(__name__)
-
-# Define keywords that might signal strategic intent in different areas.
-
-
-SIGNAL_KEYWORDS = {
-    "Marketing & Sales": ["HubSpot", "Marketo", "Salesforce", "CRM", "Pardot", "Drift"],
-    "Technology & Engineering": [
-        "Kubernetes",
-        "Terraform",
-        "AWS Lambda",
-        "Go",
-        "Rust",
-        "Microservices",
-        "Data Scientist",
-    ],
-    "Expansion & Growth": [
-        "Country Manager",
-        "International",
-        "Logistics",
-        "Supply Chain",
-        "New Market",
-    ],
-    "HR & Culture": ["Head of People", "Culture", "Chief Happiness Officer"],
-    "Financial Strategy": [
-        "investment",
-        "acquisition",
-        "funding round",
-        "merger",
-        "ipo",
-        "financial results",
-    ],
-}
-
-
-def scrape_job_postings(domain: str) -> JobPostingsResult:
+class TestSignalAnalyzer(unittest.TestCase):
     """
-    Scrapes a target's potential careers pages to find job postings.
-
-    This is a generic scraper that tries common URL paths for job/career pages.
-    It may need to be adapted for specific, non-standard site structures.
-
-    Args:
-        domain (str): The domain to find a careers page for.
-
-    Returns:
-        JobPostingsResult: A Pydantic model containing a list of unique job titles found or an error.
+    Extended test cases for the signal_analyzer module.
     """
-    urls_to_try = [
-        f"https://www.{domain}/careers",
-        f"https://www.{domain}/jobs",
-        f"https://boards.greenhouse.io/{domain}",
-    ]
-    headers = {"User-Agent": "Mozilla/5.0"}
-    job_titles: List[str] = []
 
-    for url in urls_to_try:
-        try:
-            response = sync_client.get(url, headers=headers)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                # A generic search for tags that often contain job titles.
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_scrape_job_postings_success_on_first_url(self, mock_get):
+        """
+        Tests a successful job posting scrape from the first attempted URL.
+        """
+        # --- Arrange ---
 
-                for tag in soup.find_all(
-                    ["h2", "h3", "a", "div"], class_=lambda x: x and "job" in x.lower()
-                ):
-                    job_titles.append(tag.text.strip())
-                # If we found jobs on the first successful URL, we can stop.
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 200
+        # Simulate a realistic HTML structure with a job title
 
-                if job_titles:
-                    return JobPostingsResult(job_postings=list(set(job_titles)))
-        except (HTTPStatusError, RequestError) as e:
-            logger.warning("Could not scrape job postings from %s: %s", url, e)
-            continue  # Try the next URL
-    return JobPostingsResult(job_postings=list(set(job_titles)))
+        mock_response.text = '<html><body><a class="job-opening-link">Senior Data Scientist</a></body></html>'
+        mock_get.return_value = mock_response
 
+        # --- Act ---
 
-def analyze_signals(aggregated_data: dict) -> List[StrategicSignal]:
-    """
-    Applies a rule-based engine to find and categorize strategic signals in OSINT data.
+        result = scrape_job_postings("example.com")
 
-    It scans through technology stack information and job postings (if available)
-    for keywords defined in the SIGNAL_KEYWORDS dictionary.
+        # --- Assert ---
 
-    Args:
-        aggregated_data (dict): The combined OSINT data for the target.
+        self.assertIsInstance(result, JobPostingsResult)
+        self.assertEqual(len(result.job_postings), 1)
+        self.assertIn("Senior Data Scientist", result.job_postings)
+        self.assertIsNone(result.error)
+        # Ensure it only tried the first URL and then stopped
 
-    Returns:
-        List[StrategicSignal]: A list of Pydantic models, each representing a detected signal.
-    """
-    signals: List[StrategicSignal] = []
+        mock_get.assert_called_once()
 
-    # 1. Analyze Technology Stack for signals
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_scrape_job_postings_success_on_fallback_url(self, mock_get):
+        """
+        Tests that the scraper correctly tries the next URL if the first one fails.
+        """
+        # --- Arrange ---
+        # First call will be a 404, second will be a success
 
-    tech_data = (
-        aggregated_data.get("modules", {})
-        .get("web_analyzer", {})
-        .get("web_analysis", {})
-        .get("tech_stack", {})
-        .get("results", [])
-    )
-    for tech_item in tech_data:
-        tech_name = tech_item.get("technology")
-        for category, keywords in SIGNAL_KEYWORDS.items():
-            for keyword in keywords:
-                if isinstance(tech_name, str) and keyword.lower() in tech_name.lower():
-                    signals.append(
-                        StrategicSignal(
-                            category=category,
-                            signal=f"Adoption of '{tech_name}' technology detected.",
-                            source="Web Technology Stack",
-                        )
-                    )
-    # 2. Analyze Job Postings for signals
-
-    job_postings = aggregated_data.get("job_postings", {}).get("job_postings", [])
-    for job_title in job_postings:
-        for category, keywords in SIGNAL_KEYWORDS.items():
-            for keyword in keywords:
-                if keyword.lower() in job_title.lower():
-                    signals.append(
-                        StrategicSignal(
-                            category=category,
-                            signal=f"Hiring for role: '{job_title}'.",
-                            source="Job Postings",
-                        )
-                    )
-    return signals
-
-
-# --- Typer CLI Application ---
-
-
-signal_app = typer.Typer()
-
-
-@signal_app.command("run")
-def run_signal_analysis(
-    target: str = typer.Argument(
-        ..., help="The target domain to analyze for strategic signals."
-    )
-):
-    """
-    Analyzes a target's public footprint for unintentional strategic signals.
-
-    This command aggregates historical data, performs a live scrape for job postings,
-    and then analyzes the combined data to detect potential strategic movements
-    based on a predefined set of keywords and rules.
-    """
-    if not is_valid_domain(target):
-        logger.warning("Invalid domain format provided to 'signal' command: %s", target)
-        console.print(
-            Panel(
-                f"[bold red]Invalid Input:[/] '{target}' is not a valid domain format.",
-                title="Error",
-                border_style="red",
-            )
+        mock_fail_response = MagicMock(spec=Response, status_code=404)
+        mock_success_response = MagicMock(spec=Response, status_code=200)
+        mock_success_response.text = (
+            '<html><body><h2 class="job">Backend Engineer (Go)</h2></body></html>'
         )
-        raise typer.Exit(code=1)
-    logger.info("Analyzing strategic signals for: %s", target)
+        mock_get.side_effect = [mock_fail_response, mock_success_response]
 
-    aggregated_data = get_aggregated_data_for_target(target)
+        # --- Act ---
 
-    if not aggregated_data:
-        raise typer.Exit(code=1)
-    logger.info("Performing a live scrape for job postings for %s.", target)
-    job_results = scrape_job_postings(target)
-    aggregated_data["job_postings"] = job_results.model_dump()
+        result = scrape_job_postings("example.com")
 
-    logger.info("Analyzing data for strategic signals.")
-    detected_signals = analyze_signals(aggregated_data)
+        # --- Assert ---
 
-    if not detected_signals:
-        logger.info(
-            "No strong strategic signals detected for %s based on the current rule set.",
-            target,
+        self.assertEqual(len(result.job_postings), 1)
+        self.assertIn("Backend Engineer (Go)", result.job_postings)
+        # Verify it was called twice (first URL failed, second succeeded)
+
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("chimera_intel.core.http_client.sync_client.get")
+    def test_scrape_job_postings_all_urls_fail(self, mock_get):
+        """
+        Tests the behavior when all potential job page URLs result in errors.
+        """
+        # --- Arrange ---
+        # Simulate network errors for all attempts
+
+        mock_get.side_effect = RequestError("Connection failed")
+
+        # --- Act ---
+
+        result = scrape_job_postings("example.com")
+
+        # --- Assert ---
+
+        self.assertEqual(len(result.job_postings), 0)
+        # It should try all available URLs before giving up
+
+        self.assertGreaterEqual(mock_get.call_count, 2)
+
+    def test_analyze_signals_multiple_sources(self):
+        """
+        Tests the analysis engine when signals are present in both tech stack and job postings.
+        """
+        # --- Arrange ---
+
+        aggregated_data = {
+            "modules": {
+                "web_analyzer": {
+                    "web_analysis": {
+                        "tech_stack": {"results": [{"technology": "Salesforce CRM"}]}
+                    }
+                }
+            },
+            "job_postings": {
+                "job_postings": [
+                    "Hiring: Head of People and Culture",
+                    "Senior Terraform Engineer",
+                ]
+            },
+        }
+
+        # --- Act ---
+
+        signals = analyze_signals(aggregated_data)
+
+        # --- Assert ---
+
+        self.assertEqual(len(signals), 3)
+        categories = {s.category for s in signals}
+        self.assertIn("Marketing & Sales", categories)
+        self.assertIn("HR & Culture", categories)
+        self.assertIn("Technology & Engineering", categories)
+
+    def test_analyze_signals_no_relevant_data(self):
+        """
+        Tests that no signals are generated when the data contains no keywords.
+        """
+        # --- Arrange ---
+
+        aggregated_data = {
+            "modules": {
+                "web_analyzer": {
+                    "web_analysis": {
+                        "tech_stack": {"results": [{"technology": "React"}]}
+                    }
+                }
+            },
+            "job_postings": {"job_postings": ["Frontend Developer"]},
+        }
+
+        # --- Act ---
+
+        signals = analyze_signals(aggregated_data)
+
+        # --- Assert ---
+
+        self.assertEqual(len(signals), 0)
+
+    @patch("chimera_intel.core.signal_analyzer.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.signal_analyzer.scrape_job_postings")
+    def test_cli_signal_analysis_command_success(self, mock_scrape, mock_get_data):
+        """
+        Tests a successful run of the `analysis signal run` CLI command.
+        """
+        # --- Arrange ---
+
+        mock_get_data.return_value = {"modules": {}}
+        mock_scrape.return_value = JobPostingsResult(
+            job_postings=["Hiring for Data Scientist"]
         )
-        raise typer.Exit()
-    table = Table(title=f"Potential Strategic Signals Detected for {target}")
-    table.add_column("Category", style="magenta")
-    table.add_column("Signal Detected", style="cyan")
-    table.add_column("Source", style="green")
 
-    for signal_model in detected_signals:
-        table.add_row(signal_model.category, signal_model.signal, signal_model.source)
-    console.print(table)
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+
+        # --- Assert ---
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Potential Strategic Signals Detected", result.stdout)
+        self.assertIn("Technology & Engineering", result.stdout)
+        mock_get_data.assert_called_once_with("example.com")
+        mock_scrape.assert_called_once_with("example.com")
+
+    def test_cli_signal_analysis_invalid_domain(self):
+        """
+        Tests that the CLI command exits with an error for an invalid domain format.
+        """
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "signal", "run", "invalid-domain"])
+
+        # --- Assert ---
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("is not a valid domain format", result.stdout)
+
+    @patch("chimera_intel.core.signal_analyzer.get_aggregated_data_for_target")
+    def test_cli_signal_analysis_no_historical_data(self, mock_get_data):
+        """
+        Tests the CLI command's graceful exit when no historical data is found.
+        """
+        # --- Arrange ---
+
+        mock_get_data.return_value = None
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+
+        # --- Assert ---
+        # The command should exit with a non-zero code to indicate no data was found
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertNotIn("Potential Strategic Signals Detected", result.stdout)
+
+    @patch("chimera_intel.core.signal_analyzer.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.signal_analyzer.scrape_job_postings")
+    def test_cli_signal_analysis_no_signals_found(self, mock_scrape, mock_get_data):
+        """
+        Tests the CLI command's behavior when scans run but no signals are detected.
+        """
+        # --- Arrange ---
+
+        mock_get_data.return_value = {"modules": {}}
+        mock_scrape.return_value = JobPostingsResult(job_postings=["Sales Associate"])
+
+        # --- Act ---
+
+        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+
+        # --- Assert ---
+        # The command should exit cleanly
+
+        self.assertEqual(result.exit_code, 0)
+        # The results table should not be printed
+
+        self.assertNotIn("Potential Strategic Signals Detected", result.stdout)
+        self.assertIn("No strong strategic signals detected", result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
