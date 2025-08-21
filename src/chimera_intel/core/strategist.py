@@ -10,6 +10,7 @@ from chimera_intel.core.schemas import StrategicProfileResult
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,6 +66,7 @@ def generate_strategic_profile(
 
 # --- Typer CLI Application ---
 
+
 strategy_app = typer.Typer()
 
 
@@ -90,15 +92,24 @@ def run_strategy_analysis(
     api_key = API_KEYS.google_api_key
 
     if not api_key:
-        logger.error(
-            "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
+        # FIX: Print error to stderr for better testability and user feedback
+
+        console.print(
+            "[bold red]Error:[/] Google API key not found. Please set GOOGLE_API_KEY in your .env file.",
+            style="stderr",
         )
         raise typer.Exit(code=1)
     strategic_result = generate_strategic_profile(aggregated_data, api_key)
 
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
-        logger.error("Failed to generate strategic profile: %s", strategic_result.error)
+        # FIX: Print error to stderr for better testability and user feedback
+
+        console.print(
+            f"[bold red]Error:[/] Failed to generate strategic profile: {strategic_result.error}",
+            style="stderr",
+        )
+        console.print(Markdown("No analysis generated."))
     else:
         console.print(
             Markdown(strategic_result.profile_text or "No analysis generated.")

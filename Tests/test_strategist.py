@@ -10,6 +10,7 @@ from chimera_intel.core.schemas import StrategicProfileResult
 # FIX: Do not mix stderr to allow for separate checking of stderr
 # This is the corrected initialization.
 
+
 runner = CliRunner(mix_stderr=False)
 
 
@@ -21,7 +22,7 @@ class TestStrategist(unittest.TestCase):
     # FIX: Correct the patch to target the class where it's defined (at the source)
     # This is more robust than targeting where it's imported.
 
-    @patch("google.generativeai.GenerativeModel")
+    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
     @patch("chimera_intel.core.strategist.API_KEYS")
     def test_generate_strategic_profile_success(self, mock_api_keys, mock_model):
         """
@@ -65,7 +66,7 @@ class TestStrategist(unittest.TestCase):
 
     # FIX: Correct the patch to target the class where it's defined
 
-    @patch("google.generativeai.GenerativeModel")
+    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
     @patch("chimera_intel.core.strategist.API_KEYS")
     def test_generate_strategic_profile_api_exception(self, mock_api_keys, mock_model):
         """
