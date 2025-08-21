@@ -19,20 +19,15 @@ class TestStrategist(unittest.TestCase):
     Extended test cases for the strategist module, covering core logic and CLI commands.
     """
 
-    # FIX: Correct the patch to target the class where it's defined (at the source)
-    # This is more robust than targeting where it's imported.
-
-    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_generate_strategic_profile_success(self, mock_api_keys, mock_model):
+    @patch("chimera_intel.core.strategist.genai")
+    def test_generate_strategic_profile_success(self, mock_genai):
         """
         Tests a successful strategic profile generation, ensuring the API is called correctly.
         """
         # --- Arrange ---
         # Mock the API key and the generative model's response
 
-        mock_api_keys.google_api_key = "fake_google_key"
-        mock_instance = mock_model.return_value
+        mock_instance = mock_genai.GenerativeModel.return_value
         mock_instance.generate_content.return_value.text = "## Strategic Analysis"
         test_data = {"domain": "example.com", "tech": ["React"]}
 
@@ -49,7 +44,7 @@ class TestStrategist(unittest.TestCase):
         self.assertIsNone(result.error)
         # Verify that the model was called exactly once
 
-        mock_model.return_value.generate_content.assert_called_once()
+        mock_genai.GenerativeModel.return_value.generate_content.assert_called_once()
 
     def test_generate_strategic_profile_no_api_key(self):
         """
@@ -64,21 +59,16 @@ class TestStrategist(unittest.TestCase):
         self.assertIsInstance(result, StrategicProfileResult)
         self.assertIn("GOOGLE_API_KEY not found", result.error)
 
-    # FIX: Correct the patch to target the class where it's defined
-
-    @patch("chimera_intel.core.strategist.genai.GenerativeModel")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_generate_strategic_profile_api_exception(self, mock_api_keys, mock_model):
+    @patch("chimera_intel.core.strategist.genai")
+    def test_generate_strategic_profile_api_exception(self, mock_genai):
         """
         Tests error handling when the Google AI API raises an exception.
         """
         # --- Arrange ---
-
-        mock_api_keys.google_api_key = "fake_google_key"
         # Configure the mock to raise a generic exception
 
-        mock_model.return_value.generate_content.side_effect = Exception(
-            "API connection timed out"
+        mock_genai.GenerativeModel.return_value.generate_content.side_effect = (
+            Exception("API connection timed out")
         )
 
         # --- Act ---
@@ -93,16 +83,15 @@ class TestStrategist(unittest.TestCase):
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_cli_strategy_command_success(
-        self, mock_api_keys, mock_generate, mock_get_data
-    ):
+    @patch(
+        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
+    )
+    def test_cli_strategy_command_success(self, mock_generate, mock_get_data):
         """
         Tests a successful run of the `analysis strategy run` CLI command.
         """
         # --- Arrange ---
 
-        mock_api_keys.google_api_key = "fake_google_key"
         mock_get_data.return_value = {"target": "example.com", "modules": {}}
         mock_generate.return_value = StrategicProfileResult(profile_text="**Success**")
 
@@ -118,14 +107,15 @@ class TestStrategist(unittest.TestCase):
         mock_generate.assert_called_once()
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_cli_strategy_no_historical_data(self, mock_api_keys, mock_get_data):
+    @patch(
+        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
+    )
+    def test_cli_strategy_no_historical_data(self, mock_get_data):
         """
         Tests the CLI command's behavior when no historical data is found for the target.
         """
         # --- Arrange ---
 
-        mock_api_keys.google_api_key = "fake_google_key"
         mock_get_data.return_value = None  # Simulate no data in the database
 
         # --- Act ---
@@ -141,14 +131,13 @@ class TestStrategist(unittest.TestCase):
         self.assertNotIn("Automated Strategic Profile", result.stdout)
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_cli_strategy_missing_api_key(self, mock_api_keys, mock_get_data):
+    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", None)
+    def test_cli_strategy_missing_api_key(self, mock_get_data):
         """
         Tests the CLI command's failure when the GOOGLE_API_KEY is not configured.
         """
         # --- Arrange ---
 
-        mock_api_keys.google_api_key = None  # Simulate a missing key
         mock_get_data.return_value = {"target": "example.com", "modules": {}}
 
         # --- Act ---
@@ -164,16 +153,15 @@ class TestStrategist(unittest.TestCase):
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
-    @patch("chimera_intel.core.strategist.API_KEYS")
-    def test_cli_strategy_handles_generation_error(
-        self, mock_api_keys, mock_generate, mock_get_data
-    ):
+    @patch(
+        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
+    )
+    def test_cli_strategy_handles_generation_error(self, mock_generate, mock_get_data):
         """
         Tests that the CLI command correctly handles an error from the AI generation function.
         """
         # --- Arrange ---
 
-        mock_api_keys.google_api_key = "fake_google_key"
         mock_get_data.return_value = {"target": "example.com", "modules": {}}
         # Simulate the AI function returning an error
 
@@ -186,14 +174,11 @@ class TestStrategist(unittest.TestCase):
         # --- Assert ---
         # The command should exit cleanly, but log an error to stderr
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         # With mix_stderr=False, we can check the error message in stderr
 
         self.assertIn("Failed to generate strategic profile", result.stderr)
-        self.assertNotIn(
-            "AI service is down", result.stdout
-        )  # Ensure error isn't in stdout
-        self.assertIn("No analysis generated", result.stdout)
+        self.assertNotIn("AI service is down", result.stdout)
 
 
 if __name__ == "__main__":

@@ -92,24 +92,22 @@ def run_strategy_analysis(
     api_key = API_KEYS.google_api_key
 
     if not api_key:
-        # FIX: Print error to stderr for better testability and user feedback
-
-        console.print(
-            "[bold red]Error:[/] Google API key not found. Please set GOOGLE_API_KEY in your .env file.",
-            style="stderr",
+        typer.secho(
+            "Error: Google API key not found. Please set GOOGLE_API_KEY in your .env file.",
+            err=True,
+            fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
     strategic_result = generate_strategic_profile(aggregated_data, api_key)
 
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
-        # FIX: Print error to stderr for better testability and user feedback
-
-        console.print(
-            f"[bold red]Error:[/] Failed to generate strategic profile: {strategic_result.error}",
-            style="stderr",
+        typer.secho(
+            f"Error: Failed to generate strategic profile: {strategic_result.error}",
+            err=True,
+            fg=typer.colors.RED,
         )
-        console.print(Markdown("No analysis generated."))
+        raise typer.Exit(code=1)
     else:
         console.print(
             Markdown(strategic_result.profile_text or "No analysis generated.")
