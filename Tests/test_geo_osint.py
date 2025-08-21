@@ -9,7 +9,6 @@ and do not depend on network access or file I/O.
 """
 
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
@@ -32,7 +31,10 @@ from chimera_intel.core.schemas import GeoIntelData, GeoIntelResult
 runner = CliRunner()
 
 
-class TestGeoOsint(unittest.TestCase):
+# Use IsolatedAsyncioTestCase for testing async functions
+
+
+class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
     """Comprehensive test cases for the geo_osint module."""
 
     @patch("chimera_intel.core.geo_osint.async_client.get", new_callable=AsyncMock)
@@ -148,42 +150,39 @@ class TestGeoOsint(unittest.TestCase):
 
     # --- CLI Command Tests ---
 
-    @patch("chimera_intel.core.geo_osint.gather_geo_intel", new_callable=AsyncMock)
-    def test_cli_geo_osint_run_success(self, mock_gather: AsyncMock):
+    @patch("chimera_intel.core.geo_osint.asyncio.run")
+    def test_cli_geo_osint_run_success(self, mock_asyncio_run: MagicMock):
         """Tests a successful run of the 'scan geo run' CLI command."""
-        # Must wrap the test logic in an async function to await the mock
+        # Mock the return value of the main async function that `asyncio.run` will execute
 
-        async def run_test():
-            mock_gather.return_value = GeoIntelResult(
-                locations=[GeoIntelData(query="8.8.8.8", country="USA")]
-            )
-            result = runner.invoke(app, ["scan", "geo", "run", "8.8.8.8"])
-            self.assertEqual(result.exit_code, 0)
-            self.assertIn('"country": "USA"', result.stdout)
-            # Ensure the database saving function is called (implicitly tested by no crash)
+        mock_asyncio_run.return_value = GeoIntelResult(
+            locations=[GeoIntelData(query="8.8.8.8", country="USA")]
+        )
 
-        asyncio.run(run_test())
+        result = runner.invoke(app, ["scan", "geo", "run", "8.8.8.8"])
 
-    @patch("chimera_intel.core.geo_osint.gather_geo_intel", new_callable=AsyncMock)
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"country": "USA"', result.stdout)
+
+    @patch("chimera_intel.core.geo_osint.asyncio.run")
     @patch("chimera_intel.core.geo_osint.create_ip_map")
     def test_cli_geo_osint_with_map_option(
-        self, mock_create_map: MagicMock, mock_gather: AsyncMock
+        self, mock_create_map: MagicMock, mock_asyncio_run: MagicMock
     ):
         """Tests the CLI command with the --map flag."""
+        # The main async function returns a result
 
-        async def run_test():
-            mock_gather.return_value = GeoIntelResult(locations=[])
-            result = runner.invoke(
-                app, ["scan", "geo", "run", "1.1.1.1", "--map", "map.html"]
-            )
-            self.assertEqual(result.exit_code, 0)
-            # Verify that the map creation function was called with the correct arguments
+        mock_result = GeoIntelResult(locations=[])
+        mock_asyncio_run.return_value = mock_result
 
-            mock_create_map.assert_called_once_with(
-                mock_gather.return_value, "map.html"
-            )
+        result = runner.invoke(
+            app, ["scan", "geo", "run", "1.1.1.1", "--map", "map.html"]
+        )
 
-        asyncio.run(run_test())
+        self.assertEqual(result.exit_code, 0)
+        # Verify that the map creation function was called with the correct arguments
+
+        mock_create_map.assert_called_once_with(mock_result, "map.html")
 
     def test_cli_geo_osint_no_ips_provided(self):
         """Tests that the CLI command exits if no IP addresses are provided."""
