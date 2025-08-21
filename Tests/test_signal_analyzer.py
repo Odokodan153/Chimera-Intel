@@ -7,7 +7,6 @@ from chimera_intel.cli import app
 from chimera_intel.core.signal_analyzer import (
     scrape_job_postings,
     analyze_signals,
-    run_signal_analysis,
 )
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
 
