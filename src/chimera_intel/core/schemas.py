@@ -599,3 +599,25 @@ class TPRMReport(BaseModel):
     vulnerability_scan_results: VulnerabilityScanResult
     breach_results: HIBPResult
     error: Optional[str] = None
+
+
+# --- Geo OSINT Models ---
+
+
+class GeoIntelData(BaseModel):
+    """Model for geolocation data for a single IP address from IP-API.com."""
+
+    query: str
+    country: Optional[str] = None
+    city: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    isp: Optional[str] = None
+    org: Optional[str] = None
+
+
+class GeoIntelResult(BaseModel):
+    """The main, top-level result model for a geolocation OSINT scan."""
+
+    locations: List[GeoIntelData] = []
+    error: Optional[str] = None

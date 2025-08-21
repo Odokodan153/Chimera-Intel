@@ -52,7 +52,8 @@ dependencies = [
     "types-reportlab>=4.4.1.20250809,<4.5.0.0",
     "sec-api>=1.0.17,<2.0.0",
     "playwright>=1.44.0,<2.0.0",
-    "lxml>=5.2.2,<6.0.0"
+    "lxml>=5.2.2,<6.0.0",
+    "folium>=0.15.1,<0.16.0"
 ]
 
 [project.optional-dependencies]

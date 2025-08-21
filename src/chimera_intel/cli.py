@@ -28,6 +28,7 @@ from chimera_intel.core.cloud_osint import cloud_osint_app
 from chimera_intel.core.personnel_osint import personnel_osint_app
 from chimera_intel.core.corporate_records import corporate_records_app
 from chimera_intel.core.tpr_engine import tpr_app
+from chimera_intel.core.geo_osint import geo_osint_app
 
 setup_logging()
 
@@ -84,6 +85,11 @@ scan_app.add_typer(
     personnel_osint_app,
     name="personnel",
     help="Gathers intelligence on company employees.",
+)
+scan_app.add_typer(
+    geo_osint_app,
+    name="geo",
+    help="Retrieves geolocation information for IP addresses.",
 )
 app.add_typer(
     corporate_records_app,
