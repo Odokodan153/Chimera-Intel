@@ -6,7 +6,10 @@ from chimera_intel.core.reporter import generate_pdf_report, create_pdf_report
 class TestReporter(unittest.TestCase):
     """Test cases for the reporter module."""
 
-    @patch("chimera_intel.core.reporter.SimpleDocTemplate")
+    # FIX: The patch target has been updated from SimpleDocTemplate to BaseDocTemplate
+    # to match the new implementation in the reporter module.
+
+    @patch("chimera_intel.core.reporter.BaseDocTemplate")
     @patch("chimera_intel.core.reporter.Paragraph")
     @patch("chimera_intel.core.reporter.Spacer")
     @patch("chimera_intel.core.reporter.Table")
@@ -42,7 +45,9 @@ class TestReporter(unittest.TestCase):
 
         mock_table.assert_called()
 
-    @patch("chimera_intel.core.reporter.SimpleDocTemplate")
+    # FIX: The patch target has been updated here as well for consistency.
+
+    @patch("chimera_intel.core.reporter.BaseDocTemplate")
     def test_generate_pdf_report_exception(self, mock_doc):
         """Tests PDF generation when an unexpected error occurs."""
         # Make the build method raise an exception

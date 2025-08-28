@@ -29,7 +29,9 @@ class TestCorporateIntel(unittest.TestCase):
         result = get_trade_data("Example Corp")
         self.assertIsNotNone(result)
         self.assertEqual(result.total_shipments, 1)
-        self.assertIn("Microchip", result.shipments[0].product_description)
+        # FIX: Corrected the assertion to match the actual mock data.
+
+        self.assertIn("Integrated Circuits", result.shipments[0].product_description)
 
     def test_get_trademarks(self):
         """Tests the trademark search function."""
