@@ -57,10 +57,12 @@ class TestAutomation(unittest.TestCase):
         self.assertIsInstance(result, VTSubmissionResult)
         self.assertIn("Missing API Key", result.error)
 
+    # FIX: Corrected the `read_data` string to use proper newlines (`\n`) for the YAML parser.
+
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data="target: example.com\\nsteps:\\n  - run: scan footprint {target}",
+        read_data="target: example.com\nsteps:\n  - run: scan footprint {target}",
     )
     @patch("logging.Logger.info")
     def test_run_workflow(self, mock_logger, mock_file):
