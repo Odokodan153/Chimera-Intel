@@ -311,7 +311,6 @@ class ConfigDarkWeb(BaseModel):
     tor_proxy_url: str = "socks5://127.0.0.1:9150"
 
 
-
 # --- AI Core Models ---
 
 
@@ -1046,21 +1045,6 @@ class ThreatInfraResult(BaseModel):
     initial_indicator: str
     related_indicators: List[RelatedIndicator] = []
     error: Optional[str] = None
-
-
-# --- Main Application Configuration Models (from config.yaml) ---
-
-
-class ConfigFootprint(BaseModel):
-    """Configuration for the footprint module from config.yaml."""
-
-    dns_records_to_query: List[str] = ["A", "MX"]
-
-
-class ConfigDarkWeb(BaseModel):
-    """Configuration for the dark web module from config.yaml."""
-
-    tor_proxy_url: str = "socks5://127.0.0.1:9150"
 
 
 # --- NEW: Add models for PDF reporting configuration ---
