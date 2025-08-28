@@ -311,18 +311,6 @@ class ConfigDarkWeb(BaseModel):
     tor_proxy_url: str = "socks5://127.0.0.1:9150"
 
 
-class ConfigModules(BaseModel):
-    """Configuration for all modules from config.yaml."""
-
-    footprint: ConfigFootprint
-    dark_web: ConfigDarkWeb
-
-
-class ConfigNetwork(BaseModel):
-    """General network settings from config.yaml."""
-
-    timeout: float = 20.0
-
 
 # --- AI Core Models ---
 
