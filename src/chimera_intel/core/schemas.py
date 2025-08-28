@@ -324,13 +324,6 @@ class ConfigNetwork(BaseModel):
     timeout: float = 20.0
 
 
-class AppConfig(BaseModel):
-    """The main model for validating the entire config.yaml file."""
-
-    network: ConfigNetwork
-    modules: ConfigModules
-
-
 # --- AI Core Models ---
 
 
@@ -1066,40 +1059,56 @@ class ThreatInfraResult(BaseModel):
     related_indicators: List[RelatedIndicator] = []
     error: Optional[str] = None
 
+
 # --- Main Application Configuration Models (from config.yaml) ---
+
 
 class ConfigFootprint(BaseModel):
     """Configuration for the footprint module from config.yaml."""
+
     dns_records_to_query: List[str] = ["A", "MX"]
+
 
 class ConfigDarkWeb(BaseModel):
     """Configuration for the dark web module from config.yaml."""
+
     tor_proxy_url: str = "socks5://127.0.0.1:9150"
 
+
 # --- NEW: Add models for PDF reporting configuration ---
+
+
 class ConfigPDF(BaseModel):
     """Configuration for PDF report generation."""
+
     logo_path: Optional[str] = None
     title_text: str = "Chimera Intel - Intelligence Report"
     footer_text: str = "Confidential | Prepared by Chimera Intel"
 
+
 class ConfigReporting(BaseModel):
     """Configuration for all reporting."""
+
     graph: Dict[str, Any] = {}
     pdf: ConfigPDF = ConfigPDF()
 
+
 class ConfigModules(BaseModel):
     """Configuration for all modules from config.yaml."""
+
     footprint: ConfigFootprint
     dark_web: ConfigDarkWeb
 
+
 class ConfigNetwork(BaseModel):
     """General network settings from config.yaml."""
+
     timeout: float = 20.0
+
 
 class AppConfig(BaseModel):
     """The main model for validating the entire config.yaml file."""
+
     network: ConfigNetwork
     modules: ConfigModules
-    # --- UPDATE: Add the new reporting config ---
     reporting: ConfigReporting = ConfigReporting()
