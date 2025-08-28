@@ -29,11 +29,6 @@ def analyze_log_file(file_path: str) -> LogAnalysisResult:
     NOTE: This is a placeholder with basic pattern matching.
     """
     logger.info(f"Analyzing log file: {file_path}")
-    suspicious_patterns = {
-        "failed_login": "failed login",
-        "ssh_bruteforce": "disconnect from.*[preauth]",
-        "error_spike": "error",
-    }
 
     # In a real implementation, this would read the file line by line.
     # We will simulate this process.

@@ -22,7 +22,6 @@ from .schemas import (
 )
 from .utils import save_or_print_results
 from .config_loader import API_KEYS
-from .http_client import sync_client
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +189,7 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
 
     return VTSubmissionResult(
         resource_id="SAMPLE_RESOURCE_ID_12345",
-        permalink=f"https://www.virustotal.com/gui/file/SAMPLE_RESOURCE_ID_12345/detection",
+        permalink="https://www.virustotal.com/gui/file/SAMPLE_RESOURCE_ID_12345/detection",
         response_code=1,
         verbose_msg="Scan request successfully queued. It is now being analyzed by VirusTotal.",
     )
@@ -256,6 +255,7 @@ def run_automation_workflow(
 
 
 # New Typer app for integrations
+
 
 connect_app = typer.Typer()
 

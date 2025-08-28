@@ -1,7 +1,4 @@
-# tests/test_corporate_intel.py (new file)
-
 import unittest
-from unittest.mock import patch
 from chimera_intel.core.corporate_intel import (
     get_hiring_trends,
     get_employee_sentiment,

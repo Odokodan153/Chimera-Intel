@@ -1,18 +1,27 @@
 import typer
 import json
 from reportlab.platypus import (
-    SimpleDocTemplate,
     Paragraph,
     Spacer,
     Table,
     TableStyle,
+    Image,
     Flowable,
+    BaseDocTemplate,
+    Frame,
+    PageTemplate,
 )
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
+import os
+
+# Import the global CONFIG object to access customization settings
+
+
+from .config_loader import CONFIG
 
 # Get a logger instance for this specific file
 
@@ -20,34 +29,66 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# --- NEW: Custom Footer Function ---
+
+
+def footer(canvas, doc):
+    """
+    This function is called on each page and draws the footer text.
+    It pulls the footer content directly from the global CONFIG object.
+    """
+    canvas.saveState()
+    canvas.setFont("Helvetica", 9)
+    # Use the footer_text from the loaded config.yaml
+
+    footer_text = CONFIG.reporting.pdf.footer_text
+    canvas.drawString(inch, 0.75 * inch, f"{footer_text} | Page {doc.page}")
+    canvas.restoreState()
+
+
 def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
     """
-    Generates a professional PDF report from a JSON scan result.
+    Generates a professional PDF report from a JSON scan result with customizations.
 
     This function uses the ReportLab library to construct a PDF document. It iterates
     through the modules and sections of the input JSON data, creating titles,
-    paragraphs, and tables for each part.
+    paragraphs, and tables for each part. It now includes a logo, custom title,
+    and footer based on the settings in config.yaml.
 
     Args:
         json_data (Dict[str, Any]): The loaded JSON data from a scan.
         output_path (str): The path where the generated PDF file will be saved.
     """
     try:
-        doc = SimpleDocTemplate(output_path)
-        styles = getSampleStyleSheet()
-        # Correct the type hint for the story list to accept all Flowable elements
+        # Use BaseDocTemplate to allow for custom page templates (for the footer)
 
+        doc = BaseDocTemplate(output_path)
+        styles = getSampleStyleSheet()
         story: List[Flowable] = []
 
         # --- Title Page ---
 
-        story.append(Paragraph("Chimera Intel", styles["h1"]))
+        # Add logo if the path is specified in config.yaml and the file exists
+
+        logo_path = CONFIG.reporting.pdf.logo_path
+        if logo_path and os.path.exists(logo_path):
+            try:
+                logo = Image(logo_path, width=2 * inch, height=2 * inch)
+                logo.hAlign = "CENTER"
+                story.append(logo)
+                story.append(Spacer(1, 0.25 * inch))
+            except Exception as e:
+                logger.warning(f"Could not load logo image from {logo_path}: {e}")
+        # Use the custom title from the loaded config.yaml
+
+        story.append(Paragraph(CONFIG.reporting.pdf.title_text, styles["h1"]))
         story.append(Paragraph("Intelligence Report", styles["h2"]))
         target = json_data.get("domain") or json_data.get("company", "Unknown Target")
         story.append(Paragraph(f"Target: {target}", styles["h3"]))
         story.append(Spacer(1, 0.5 * inch))
 
         # --- Report Content ---
+        # (The logic for generating the main content remains the same)
 
         for module_name, module_data in json_data.items():
             if isinstance(module_data, dict):
@@ -66,22 +107,27 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
                     if "results" in section_data and isinstance(
                         section_data["results"], list
                     ):
-                        table_data = [["Item", "Confidence", "Sources"]]
-                        for item in section_data["results"]:
-                            item_name = item.get("domain") or item.get(
-                                "technology", "N/A"
-                            )
-                            confidence = item.get("confidence", "N/A")
-                            sources = ", ".join(item.get("sources", []))
-                            table_data.append([item_name, confidence, sources])
+                        # Handle list of dictionaries (like subdomains)
+
+                        if section_data["results"] and isinstance(
+                            section_data["results"][0], dict
+                        ):
+                            headers = list(section_data["results"][0].keys())
+                            table_data.append(headers)
+                            for item in section_data["results"]:
+                                table_data.append(
+                                    [str(item.get(h, "N/A")) for h in headers]
+                                )
+                        else:  # Handle list of simple strings
+                            table_data = [[item] for item in section_data["results"]]
                     else:
+                        # Handle simple key-value pairs
+
                         table_data = [
                             [key, str(value)] for key, value in section_data.items()
                         ]
                     if table_data:
-                        t = Table(
-                            table_data, colWidths=[2 * inch, 3.5 * inch], repeatRows=1
-                        )
+                        t = Table(table_data, repeatRows=1)
                         t.setStyle(
                             TableStyle(
                                 [
@@ -98,12 +144,18 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
                         )
                         story.append(t)
                     story.append(Spacer(1, 0.2 * inch))
-        # Build the PDF
+        # --- Build the PDF with the custom footer ---
+
+        frame = Frame(
+            doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal"
+        )
+        template = PageTemplate(id="main_template", frames=[frame], onPage=footer)
+        doc.addPageTemplates([template])
 
         doc.build(story)
         logger.info("Successfully generated PDF report at: %s", output_path)
     except Exception as e:
-        logger.error("An error occurred during PDF generation: %s", e)
+        logger.error("An error occurred during PDF generation: %s", e, exc_info=True)
 
 
 # --- Typer CLI Application ---
@@ -115,7 +167,7 @@ report_app = typer.Typer()
 @report_app.command("pdf")
 def create_pdf_report(
     json_file: str = typer.Argument(..., help="Path to the JSON scan result file."),
-    output_file: str = typer.Option(
+    output_file: Optional[str] = typer.Option(
         None,
         "--output",
         "-o",

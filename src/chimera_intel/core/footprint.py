@@ -107,7 +107,7 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
     if not api_key:
         return []
     headers = {"x-apikey": api_key}
-    url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
+    url = "https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
 
     if (
         url in API_CACHE
