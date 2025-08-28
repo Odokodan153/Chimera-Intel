@@ -26,11 +26,10 @@ modules:
 
 # Settings for report generation
 reporting:
-  graph:
+  graph: {} 
   pdf:
-    # Path to your company's logo. Leave blank to omit.
-    # Example: "assets/logo.png"
-    logo_path: ""
+    # Path to your company's logo. This now points to your uploaded logo.
+    logo_path: "src/chimera_intel/assets/my_logo.png"
     # The main title for the report.
     title_text: "Chimera Intel - Intelligence Report"
     # Text to display in the footer of each page.
