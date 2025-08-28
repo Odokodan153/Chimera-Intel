@@ -8,6 +8,7 @@ from chimera_intel.core.automation import (
     submit_to_virustotal,
     run_workflow,
 )
+from chimera_intel.core.schemas import VTSubmissionResult
 
 
 class TestAutomation(unittest.TestCase):
@@ -49,18 +50,28 @@ class TestAutomation(unittest.TestCase):
         self.assertEqual(result.response_code, 1)
         self.assertIn("virustotal.com", result.permalink)
 
+    @patch("chimera_intel.core.automation.API_KEYS.virustotal_api_key", None)
+    def test_submit_to_virustotal_no_api_key(self):
+        """Tests VirusTotal submission when the API key is missing."""
+        result = submit_to_virustotal("file.txt")
+        self.assertIsInstance(result, VTSubmissionResult)
+        self.assertIn("Missing API Key", result.error)
+
     @patch(
         "builtins.open",
         new_callable=mock_open,
         read_data="target: example.com\\nsteps:\\n  - run: scan footprint {target}",
     )
-    def test_run_workflow(self, mock_file):
+    @patch("logging.Logger.info")
+    def test_run_workflow(self, mock_logger, mock_file):
         """Tests the workflow execution function."""
-        # This test ensures the function runs and correctly parses the mock file.
-        # A more advanced test could patch subprocess to verify the commands.
-
         run_workflow("workflow.yaml")
         mock_file.assert_called_once_with("workflow.yaml", "r")
+        # Check that the logger was called with the step information
+
+        self.assertTrue(
+            any("Running Step 1" in call[0][0] for call in mock_logger.call_args_list)
+        )
 
 
 if __name__ == "__main__":

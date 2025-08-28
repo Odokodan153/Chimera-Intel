@@ -6,9 +6,6 @@ from chimera_intel.core.reporter import generate_pdf_report, create_pdf_report
 class TestReporter(unittest.TestCase):
     """Test cases for the reporter module."""
 
-    # FIX: The patch target has been updated from SimpleDocTemplate to BaseDocTemplate
-    # to match the new implementation in the reporter module.
-
     @patch("chimera_intel.core.reporter.BaseDocTemplate")
     @patch("chimera_intel.core.reporter.Paragraph")
     @patch("chimera_intel.core.reporter.Spacer")
@@ -36,25 +33,14 @@ class TestReporter(unittest.TestCase):
 
         generate_pdf_report(test_data, "test_report.pdf")
 
-        # Verify that the document was created and built
-
         mock_doc.assert_called_with("test_report.pdf")
         self.assertTrue(mock_doc_instance.build.called)
-
-        # Verify that a table was created for the subdomain data
-
         mock_table.assert_called()
-
-    # FIX: The patch target has been updated here as well for consistency.
 
     @patch("chimera_intel.core.reporter.BaseDocTemplate")
     def test_generate_pdf_report_exception(self, mock_doc):
         """Tests PDF generation when an unexpected error occurs."""
-        # Make the build method raise an exception
-
         mock_doc.return_value.build.side_effect = Exception("Failed to write PDF")
-
-        # The function should catch the exception and log an error, not crash
 
         with patch("logging.Logger.error") as mock_logger_error:
             generate_pdf_report({}, "test.pdf")
@@ -86,13 +72,23 @@ class TestReporter(unittest.TestCase):
     ):
         """Tests the CLI command when no output file is specified."""
         create_pdf_report(json_file="test.json", output_file=None)
-
-        # Verify it generates a default filename based on the target
-
         expected_output_path = "example_com.pdf"
         mock_generate_pdf.assert_called_once_with(
             {"domain": "example.com"}, expected_output_path
         )
+
+    @patch("chimera_intel.core.reporter.BaseDocTemplate")
+    @patch("os.path.exists", return_value=True)
+    def test_generate_pdf_with_logo(self, mock_exists, mock_doc):
+        """Tests that the PDF generator attempts to add a logo if configured."""
+        with patch(
+            "chimera_intel.core.reporter.CONFIG.reporting.pdf.logo_path", "logo.png"
+        ):
+            with patch("chimera_intel.core.reporter.Image") as mock_image:
+                generate_pdf_report({}, "report.pdf")
+                # Check if Image was called with a width in inches (144.0 = 2 * 72)
+
+                mock_image.assert_called_with("logo.png", width=144.0, height=144.0)
 
 
 if __name__ == "__main__":
