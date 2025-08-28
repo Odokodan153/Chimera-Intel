@@ -44,23 +44,46 @@ Its command-line interface ensures scriptable workflows, automation of repetitiv
 
 Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
 
+# Command Reference
+
 | Command Group | Feature Command | Description |
 | :--- | :--- | :--- |
-| **`scan`** | `footprint` | Gathers WHOIS, DNS, Subdomains, and enriches them with Threat Intelligence from AlienVault OTX. |
-| | `web` | Analyzes a website's technology stack (Wappalyzer, BuiltWith) and traffic estimates. |
-| | `business` | Retrieves public financial data, news articles, and patent filings. |
-| | `cloud s3` | Scans for common S3 bucket misconfigurations for a given keyword. |
-| | `personnel emails`| Searches for public employee email addresses for a given domain via Hunter.io. |
-| | `profiles` | Finds social media profiles by username using the Sherlock library. |
-| **`defensive`**| `checks breaches` | Checks for domain-related email breaches via Have I Been Pwned (HIBP). |
-| | `checks leaks` | Scans GitHub for potential secret leaks using a Personal Access Token. |
-| | `vuln run` | Scans assets for open ports (`nmap`) and known vulnerabilities (CVEs) via the Vulners API. |
-| | `darkweb search`| Searches the dark web for a query via the Ahmia search engine over a Tor proxy. |
-| **`analysis`**| `core swot` | Automatically generates a SWOT analysis from collected data using Google's Gemini Pro AI. |
-| | `diff run` | Compares the two most recent historical scans to detect changes over time. |
-| | `forecast run` | Forecasts potential future events based on historical data changes. |
-| | `strategy run` | Generates a high-level, AI-powered strategic profile of a target. |
-| **`report`** | `pdf` & `graph` | Generates professional PDF reports or interactive HTML knowledge graphs from scan data. |
+| **corporate** | `hr-intel` | Gathers strategic intelligence on hiring trends. |
+| | `supplychain` | Collects trade data and supply chain insights. |
+| | `ip-deep` | Tracks trademarks, patents, and IP activity. |
+| | `regulatory` | Monitors lobbying and regulatory activities. |
+| **scan** | `footprint` | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence. |
+| | `web` | Analyzes website technology stacks and traffic estimates. |
+| | `business` | Retrieves public financial data, news, and patents. |
+| | `cloud` | Scans for misconfigured cloud assets like S3 buckets. |
+| | `personnel` | Finds public employee email addresses. |
+| | `profiles` | Identifies social media profiles via usernames. |
+| **offensive** | `api-discover` | Finds exposed APIs through active reconnaissance. |
+| | `enum-content` | Enumerates hidden web content. |
+| | `cloud-takeover` | Checks for subdomain and cloud takeovers. |
+| **defensive** | `checks` | Audits security posture for breaches and leaks. |
+| | `vuln` | Scans for CVEs and open ports. |
+| | `darkweb` | Searches the dark web for relevant queries. |
+| | `certs` | Monitors new SSL/TLS certificate issuance. |
+| | `scan-iac` | Checks Infrastructure-as-Code for security flaws. |
+| | `scan-secrets` | Detects leaked secrets in code repositories. |
+| **internal** | `analyze-log` | Analyzes local logs for incident response. |
+| | `static-analysis` | Performs malware or code static analysis. |
+| | `parse-mft` | Parses Master File Tables for forensic insights. |
+| **analysis** | `core` | Performs AI-assisted SWOT analysis and strategic evaluation. |
+| | `diff` | Detects changes by comparing historical scans. |
+| | `forecast` | Predicts potential future events from historical data. |
+| | `strategy` | Generates a high-level AI-powered strategic profile. |
+| | `signal` | Detects emerging trends and anomalies. |
+| **auto** | `enrich-ioc` | Automatically enriches Indicators of Compromise. |
+| | `enrich-cve` | Enriches CVE data for vulnerability management. |
+| | `threat-model` | Automates threat modeling processes. |
+| | `ueba` | Performs User and Entity Behavior Analytics. |
+| | `workflow` | Executes multi-step automated security workflows. |
+| **connect** | `virustotal` | Integrates with VirusTotal for file and URL analysis. |
+| **report** | `pdf` | Generates professional PDF reports from scan data. |
+| | `graph` | Creates interactive HTML knowledge graphs. |
+
 
 ---
 
@@ -137,42 +160,34 @@ The following diagram illustrates the typical data flow for a `scan` command.
 graph TD
     graph TD
     subgraph User Interface
-        A[User runs 'chimera scan footprint google.com'] --> B{CLI Entrypoint (cli.py)};
-        A2[User runs 'chimera defensive vuln your-domain.com'] --> B;
-        A3[User runs 'chimera defensive darkweb "leaked data"'] --> B;
+        A1[User runs 'chimera corporate hr-intel ...'] --> B{CLI Entrypoint};
+        A2[User runs 'chimera offensive enum-content ...'] --> B;
+        A3[User runs 'chimera internal analyze-log ...'] --> B;
     end
 
-    subgraph Core Logic
-        B --> C[Footprint Module];
-        B --> C2[Vulnerability Module];
-        B --> C3[Dark Web Module];
+    subgraph Core Logic Modules
+        B --> C1[Corporate Intel];
+        B --> C2[Offensive Recon];
+        B --> C3[Internal & Forensic];
+        B --> C4[Defensive & Proactive];
+        B --> C5[AI & Automation];
 
-        C --> D{gather_footprint_data()};
-        D -- Calls --> E[External APIs (VirusTotal, etc.)];
-        D -- Calls --> F[Local Libraries (whois, dnspython)];
-        
-        C2 -- Depends on --> C;
-        C2 -- Scans assets with --> G[Local Tools (Nmap)];
-        
-        C3 -- Queries via --> H[Tor Proxy & Ahmia Onion Service];
-
-        E --> I[Pydantic Models (schemas.py)];
-        F --> I;
-        G --> I;
-        H --> I;
-        I --> J[Aggregated Scan Result];
+        C1 -- Queries --> D1[Strategic Data APIs];
+        C2 -- Actively Probes --> D2[Target Systems];
+        C3 -- Analyzes --> D3[Local Files (Logs, Artifacts)];
+        C4 -- Audits & Monitors --> D4[Public Logs & Local Configs];
+        C5 -- Synthesizes Data --> D5[AI Models & Workflow Engine];
     end
 
-    subgraph Output & Persistence
-        J --> K[Utils (utils.py)];
-        K -- Output File? --> L{Save to JSON};
-        K -- No Output File --> M[Print to Console];
-        J --> N[Database Module (database.py)];
-        N --> O[Save to chimera_intel.db];
+    subgraph Data Persistence
+        C1 & C2 & C3 & C4 --> E[Pydantic Models (schemas.py)];
+        E --> F[Database Module (database.py)];
+        F --> G[Save to chimera_intel.db];
     end
 
-    subgraph Analysis (Later Stage)
-        O --> P[Analysis Modules (strategist.py, differ.py)];
-        P --> Q[AI Models / Historical Comparison];
-        Q --> R[Final Report/Analysis];
+    subgraph Output & Integration
+        E --> H[Utils (utils.py)];
+        H -- Output File? --> I{Save to JSON/PDF};
+        H -- No Output File --> J[Print to Console];
+        C5 -- Can Orchestrate --> K[External Tools (VirusTotal)];
     end

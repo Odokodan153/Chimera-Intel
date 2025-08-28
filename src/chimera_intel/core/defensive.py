@@ -32,9 +32,16 @@ from chimera_intel.core.schemas import (
     Paste,
     SSLLabsResult,
     MobSFResult,
+    CTMentorResult,
+    Certificate,
+    IaCScanResult,
+    IaCSecurityIssue,
+    SecretsScanResult,
+    FoundSecret,
 )
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
@@ -503,4 +510,134 @@ def run_mobsf_scan(
         target=os.path.basename(apk_file),
         module="defensive_mobsf",
         data=results.model_dump(),
+    )
+
+
+# --- Certificate Transparency Monitoring ---
+
+
+def monitor_ct_logs(domain: str) -> CTMentorResult:
+    """
+    Monitors Certificate Transparency logs for new SSL/TLS certificates.
+    NOTE: This is a placeholder; a real implementation would use an API like crt.sh.
+    """
+    logger.info(f"Monitoring CT logs for new certificates for {domain}")
+    # A real implementation would query a service like https://crt.sh/?q=example.com&output=json
+
+    mock_certs = [
+        Certificate(
+            issuer_name="C=US, O=Let's Encrypt, CN=R3",
+            not_before="2025-08-20T10:00:00",
+            not_after="2025-11-20T10:00:00",
+            subject_name=f"mail.{domain}",
+        )
+    ]
+    return CTMentorResult(
+        domain=domain, total_found=len(mock_certs), certificates=mock_certs
+    )
+
+
+# --- IaC Scanning ---
+
+
+def scan_iac_files(directory: str) -> IaCScanResult:
+    """
+    Scans Infrastructure as Code (IaC) files for security misconfigurations.
+    NOTE: This is a placeholder; a real implementation would use a tool like 'tfsec' or 'checkov'.
+    """
+    logger.info(f"Scanning IaC files in directory: {directory}")
+    # A real implementation would run a subprocess command for a tool like 'tfsec' and parse the JSON output.
+
+    mock_issues = [
+        IaCSecurityIssue(
+            file_path=f"{directory}/main.tf",
+            line_number=25,
+            issue_id="AWS006",
+            description="S3 bucket does not have encryption enabled.",
+            severity="High",
+        )
+    ]
+    return IaCScanResult(
+        target_path=directory, total_issues=len(mock_issues), issues=mock_issues
+    )
+
+
+# --- Secrets Scanning ---
+
+
+def scan_for_secrets(directory: str) -> SecretsScanResult:
+    """
+    Scans a directory for hardcoded secrets.
+    NOTE: This is a placeholder; a real implementation would use a tool like 'gitleaks' or 'trufflehog'.
+    """
+    logger.info(f"Scanning for hardcoded secrets in directory: {directory}")
+    # A real implementation would run a tool like 'gitleaks' and parse its output.
+
+    mock_secrets = [
+        FoundSecret(
+            file_path=f"{directory}/config/prod.yaml",
+            line_number=10,
+            rule_id="aws-access-key",
+            secret_type="AWS Access Key",
+        )
+    ]
+    return SecretsScanResult(
+        target_path=directory, total_found=len(mock_secrets), secrets=mock_secrets
+    )
+
+
+# (Add the new commands to the existing 'defensive_app' Typer application)
+
+
+@defensive_app.command("certs")
+def run_ct_log_check(
+    domain: str = typer.Argument(..., help="The domain to check for new certificates."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Monitors Certificate Transparency logs for newly issued SSL certificates."""
+    results = monitor_ct_logs(domain)
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(target=domain, module="defensive_certs", data=results_dict)
+
+
+@defensive_app.command("scan-iac")
+def run_iac_scan(
+    directory: str = typer.Argument(..., help="Path to the directory with IaC files."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Scans Infrastructure as Code (Terraform, etc.) for security issues."""
+    results = scan_iac_files(directory)
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    # Note: We might use the directory name as the "target" for DB storage
+
+    save_scan_to_db(
+        target=os.path.basename(directory),
+        module="defensive_scan_iac",
+        data=results_dict,
+    )
+
+
+@defensive_app.command("scan-secrets")
+def run_secrets_scan(
+    directory: str = typer.Argument(
+        ..., help="Path to the source code directory to scan."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Scans a local directory for hardcoded secrets."""
+    results = scan_for_secrets(directory)
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=os.path.basename(directory),
+        module="defensive_scan_secrets",
+        data=results_dict,
     )

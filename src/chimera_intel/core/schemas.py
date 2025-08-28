@@ -621,3 +621,447 @@ class GeoIntelResult(BaseModel):
 
     locations: List[GeoIntelData] = []
     error: Optional[str] = None
+
+
+# HR Intelligence
+
+
+class JobPosting(BaseModel):
+    """Model for a single job posting."""
+
+    title: str
+    location: Optional[str] = None
+    department: Optional[str] = None
+
+
+class HiringTrendsResult(BaseModel):
+    """Model for the result of a hiring trend analysis."""
+
+    total_postings: int
+    trends_by_department: Dict[str, int] = {}
+    job_postings: List[JobPosting] = []
+    error: Optional[str] = None
+
+
+class EmployeeSentimentResult(BaseModel):
+    """Model for the result of an employee sentiment analysis."""
+
+    overall_rating: Optional[float] = None
+    ceo_approval: Optional[str] = None
+    sentiment_summary: Dict[str, float] = {}
+    error: Optional[str] = None
+
+
+# Supply Chain Intelligence
+
+
+class Shipment(BaseModel):
+    """Model for a single import/export shipment."""
+
+    date: str
+    shipper: str
+    consignee: str
+    product_description: str
+    quantity: Optional[str] = None
+    weight_kg: Optional[float] = None
+
+
+class TradeDataResult(BaseModel):
+    """Model for the result of a trade data search."""
+
+    total_shipments: int
+    shipments: List[Shipment] = []
+    error: Optional[str] = None
+
+
+# Deeper IP Intelligence
+
+
+class Trademark(BaseModel):
+    """Model for a single trademark registration."""
+
+    serial_number: str
+    status: str
+    description: str
+    owner: str
+
+
+class TrademarkResult(BaseModel):
+    """Model for the result of a trademark search."""
+
+    total_found: int
+    trademarks: List[Trademark] = []
+    error: Optional[str] = None
+
+
+# Regulatory Intelligence
+
+
+class LobbyingRecord(BaseModel):
+    """Model for a single lobbying disclosure."""
+
+    issue: str
+    amount: int
+    year: int
+
+
+class LobbyingResult(BaseModel):
+    """Model for the result of a lobbying activity search."""
+
+    total_spent: int
+    records: List[LobbyingRecord] = []
+    error: Optional[str] = None
+
+
+# --- Offensive & Reconnaissance Models ---
+
+# API Discovery
+
+
+class DiscoveredAPI(BaseModel):
+    """Model for a single discovered API endpoint or specification."""
+
+    url: str
+    api_type: str  # e.g., "REST", "GraphQL", "Swagger/OpenAPI"
+    status_code: int
+
+
+class APIDiscoveryResult(BaseModel):
+    """Model for the result of an API discovery scan."""
+
+    target_domain: str
+    discovered_apis: List[DiscoveredAPI] = []
+    error: Optional[str] = None
+
+
+# Content Enumeration
+
+
+class DiscoveredContent(BaseModel):
+    """Model for a single discovered directory or file."""
+
+    url: str
+    status_code: int
+    content_length: int
+
+
+class ContentEnumerationResult(BaseModel):
+    """Model for the result of a content enumeration scan."""
+
+    target_url: str
+    found_content: List[DiscoveredContent] = []
+    error: Optional[str] = None
+
+
+# Advanced Cloud Recon
+
+
+class SubdomainTakeoverResult(BaseModel):
+    """Model for a potential subdomain takeover."""
+
+    subdomain: str
+    vulnerable_service: str
+    details: str
+
+
+class AdvancedCloudResult(BaseModel):
+    """Model for the result of an advanced cloud recon scan."""
+
+    target_domain: str
+    potential_takeovers: List[SubdomainTakeoverResult] = []
+    error: Optional[str] = None
+
+    # --- Internal & Post-Breach Models ---
+
+
+# Incident Response
+
+
+class LogAnalysisResult(BaseModel):
+    """Model for the result of a log file analysis."""
+
+    total_lines_parsed: int
+    suspicious_events: Dict[str, int] = {}
+    error: Optional[str] = None
+
+
+class IncidentTimelineEvent(BaseModel):
+    """Model for a single event in an incident timeline."""
+
+    timestamp: str
+    source: str
+    event_description: str
+
+
+class IncidentTimelineResult(BaseModel):
+    """Model for a generated incident timeline."""
+
+    total_events: int
+    timeline: List[IncidentTimelineEvent] = []
+    error: Optional[str] = None
+
+
+# Malware Analysis
+
+
+class StaticAnalysisResult(BaseModel):
+    """Model for the static analysis of a file."""
+
+    filename: str
+    file_size: int
+    hashes: Dict[str, str] = {}  # e.g., {"md5": "...", "sha256": "..."}
+    embedded_strings: List[str] = []
+    error: Optional[str] = None
+
+
+# Forensic Artifact Analysis
+
+
+class MFTEntry(BaseModel):
+    """Model for a single entry from a parsed MFT."""
+
+    record_number: int
+    filename: str
+    creation_time: str
+    modification_time: str
+    is_directory: bool
+
+
+class MFTAnalysisResult(BaseModel):
+    """Model for the result of a Master File Table analysis."""
+
+    total_records: int
+    entries: List[MFTEntry] = []
+    error: Optional[str] = None
+
+
+# --- Proactive & Defensive Models ---
+
+# Certificate Transparency
+
+
+class Certificate(BaseModel):
+    """Model for a single certificate found in CT logs."""
+
+    issuer_name: str
+    not_before: str
+    not_after: str
+    subject_name: str
+
+
+class CTMentorResult(BaseModel):
+    """Model for the result of a Certificate Transparency log search."""
+
+    domain: str
+    total_found: int
+    certificates: List[Certificate] = []
+    error: Optional[str] = None
+
+
+# IaC Scanning
+
+
+class IaCSecurityIssue(BaseModel):
+    """Model for a single security issue found in an IaC file."""
+
+    file_path: str
+    line_number: int
+    issue_id: str
+    description: str
+    severity: str  # e.g., "High", "Medium", "Low"
+
+
+class IaCScanResult(BaseModel):
+    """Model for the result of an Infrastructure as Code scan."""
+
+    target_path: str
+    total_issues: int
+    issues: List[IaCSecurityIssue] = []
+    error: Optional[str] = None
+
+
+# Secrets Scanning
+
+
+class FoundSecret(BaseModel):
+    """Model for a single hardcoded secret found in a file."""
+
+    file_path: str
+    line_number: int
+    rule_id: str
+    secret_type: str  # e.g., "AWS Access Key", "Generic API Key"
+
+
+class SecretsScanResult(BaseModel):
+    """Model for the result of a secrets scan."""
+
+    target_path: str
+    total_found: int
+    secrets: List[FoundSecret] = []
+    error: Optional[str] = None
+
+
+# --- Analysis & Automation Models ---
+
+# Data Enrichment
+
+
+class EnrichedIOC(BaseModel):
+    """Model for a single, enriched Indicator of Compromise."""
+
+    indicator: str
+    is_malicious: bool
+    source: str  # e.g., "OTX", "Local DB"
+    details: Optional[str] = None
+
+
+class EnrichmentResult(BaseModel):
+    """Model for the result of an IOC enrichment task."""
+
+    total_enriched: int
+    enriched_iocs: List[EnrichedIOC] = []
+    error: Optional[str] = None
+
+
+# Threat Modeling
+
+
+class AttackPath(BaseModel):
+    """Model for a single potential attack path."""
+
+    entry_point: str
+    path: List[str]
+    target: str
+    confidence: str  # e.g., "High", "Medium"
+
+
+class ThreatModelResult(BaseModel):
+    """Model for a generated threat model."""
+
+    target_domain: str
+    potential_paths: List[AttackPath] = []
+    error: Optional[str] = None
+
+
+# UEBA
+
+
+class BehavioralBaseline(BaseModel):
+    """Model for a user's normal behavioral baseline."""
+
+    user: str
+    typical_login_hours: List[int]
+    common_source_ips: List[str]
+
+
+class BehavioralAnomaly(BaseModel):
+    """Model for a single detected behavioral anomaly."""
+
+    timestamp: str
+    user: str
+    anomaly_description: str
+    severity: str
+
+
+class UEBAResult(BaseModel):
+    """Model for the result of a UEBA log analysis."""
+
+    total_anomalies_found: int
+    anomalies: List[BehavioralAnomaly] = []
+    error: Optional[str] = None
+
+
+# CVE Enrichment
+
+
+class EnrichedCVE(BaseModel):
+    """Model for a single, enriched CVE."""
+
+    cve_id: str
+    cvss_score: float
+    summary: str
+    references: List[str] = []
+
+
+class CVEEnrichmentResult(BaseModel):
+    """Model for the result of a CVE enrichment task."""
+
+    total_enriched: int
+    enriched_cves: List[EnrichedCVE] = []
+    error: Optional[str] = None
+
+
+# Integration Results
+
+
+class VTSubmissionResult(BaseModel):
+    """Model for a VirusTotal file/URL submission result."""
+
+    resource_id: str
+    permalink: str
+    response_code: int
+    verbose_msg: str
+    error: Optional[str] = None
+
+
+# Credential Reconnaissance
+
+
+class CompromisedCredential(BaseModel):
+    """Model for a single compromised credential found in a leak."""
+
+    email: str
+    source_breach: str
+    password_hash: Optional[str] = None
+    is_plaintext: bool = False
+
+
+class CredentialExposureResult(BaseModel):
+    """Model for the result of a credential leak search."""
+
+    target_domain: str
+    total_found: int
+    compromised_credentials: List[CompromisedCredential] = []
+    error: Optional[str] = None
+
+
+# Digital Asset Intelligence
+
+
+class MobileApp(BaseModel):
+    """Model for an analyzed mobile application."""
+
+    app_name: str
+    app_id: str
+    store: str  # "Google Play" or "Apple App Store"
+    developer: str
+    permissions: List[str] = []
+    embedded_endpoints: List[str] = []
+
+
+class AssetIntelResult(BaseModel):
+    """Model for the result of a digital asset intelligence scan."""
+
+    target_company: str
+    mobile_apps: List[MobileApp] = []
+    public_datasets: List[str] = []
+    error: Optional[str] = None
+
+
+# Threat Infrastructure Reconnaissance
+
+
+class RelatedIndicator(BaseModel):
+    """Model for an indicator related to a malicious asset."""
+
+    indicator_type: str  # e.g., "IP Address", "Domain"
+    value: str
+    relation: str  # e.g., "Hosted on", "Communicated with"
+
+
+class ThreatInfraResult(BaseModel):
+    """Model for the result of a threat infrastructure analysis."""
+
+    initial_indicator: str
+    related_indicators: List[RelatedIndicator] = []
+    error: Optional[str] = None

@@ -29,6 +29,12 @@ from chimera_intel.core.personnel_osint import personnel_osint_app
 from chimera_intel.core.corporate_records import corporate_records_app
 from chimera_intel.core.tpr_engine import tpr_app
 from chimera_intel.core.geo_osint import geo_osint_app
+from chimera_intel.core.corporate_intel import corporate_intel_app
+from chimera_intel.core.offensive import offensive_app
+from chimera_intel.core.internal import internal_app
+from chimera_intel.core.automation import automation_app
+from chimera_intel.core.automation import connect_app
+from chimera_intel.core.recon import recon_app
 
 setup_logging()
 
@@ -155,6 +161,44 @@ app.add_typer(report_app_group, name="report")
 report_app_group.add_typer(report_app, name="pdf", help="Generate a formal PDF report.")
 report_app_group.add_typer(
     graph_app, name="graph", help="Generate a visual, interactive HTML graph."
+)
+
+# 5. 'corporate' command group for deep strategic intelligence.
+
+app.add_typer(
+    corporate_intel_app,
+    name="corporate",
+    help="Run deep corporate and strategic intelligence scans.",
+)
+
+app.add_typer(
+    offensive_app,
+    name="offensive",
+    help="Run active reconnaissance and offensive security scans.",
+)
+
+app.add_typer(
+    internal_app,
+    name="internal",
+    help="Run internal analysis, IR, and forensic scans on local files.",
+)
+
+app.add_typer(
+    automation_app,
+    name="auto",
+    help="Run automation, enrichment, and advanced analysis tasks.",
+)
+
+app.add_typer(
+    connect_app,
+    name="connect",
+    help="Integrate and orchestrate with external security tools.",
+)
+
+app.add_typer(
+    recon_app,
+    name="recon",
+    help="Run advanced reconnaissance for specific intelligence data.",
 )
 
 

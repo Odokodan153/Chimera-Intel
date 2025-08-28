@@ -12,6 +12,11 @@ from unittest.mock import patch, MagicMock, mock_open
 import subprocess
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
+from chimera_intel.core.defensive import (
+    monitor_ct_logs,
+    scan_iac_files,
+    scan_for_secrets,
+)
 
 # Import the main app to test commands
 
@@ -531,6 +536,27 @@ class TestDefensive(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Skipping Shodan Scan", result.stdout)
         self.assertIn("SHODAN_API_KEY", result.stdout)
+
+    def test_monitor_ct_logs(self):
+        """Tests the Certificate Transparency log monitoring function."""
+        result = monitor_ct_logs("example.com")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.total_found, 1)
+        self.assertIn("mail.example.com", result.certificates[0].subject_name)
+
+    def test_scan_iac_files(self):
+        """Tests the IaC scanning function."""
+        result = scan_iac_files("/path/to/terraform")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.total_issues, 1)
+        self.assertEqual(result.issues[0].severity, "High")
+
+    def test_scan_for_secrets(self):
+        """Tests the secrets scanning function."""
+        result = scan_for_secrets("/path/to/repo")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.total_found, 1)
+        self.assertEqual(result.secrets[0].secret_type, "AWS Access Key")
 
 
 if __name__ == "__main__":
