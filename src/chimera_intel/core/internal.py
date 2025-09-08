@@ -45,7 +45,8 @@ def analyze_log_file(file_path: str) -> LogAnalysisResult:
         )
     suspicious_patterns = {
         "failed_login": re.compile(
-            r"fail(ed|ure) login|authentication failure", re.IGNORECASE
+            r"(fail(ed|ure) login|authentication failure|Failed password)",
+            re.IGNORECASE,
         ),
         "ssh_bruteforce": re.compile(
             r"ssh.*(authentication failure|invalid user|disconnect)", re.IGNORECASE

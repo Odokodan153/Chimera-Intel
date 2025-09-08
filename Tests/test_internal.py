@@ -28,7 +28,6 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         result = analyze_log_file("/var/log/auth.log")
         self.assertIsInstance(result, LogAnalysisResult)
         self.assertEqual(result.total_lines_parsed, 3)
-        # FIX: With the corrected regex in the source, this now correctly identifies 1 failed login.
 
         self.assertEqual(result.suspicious_events["failed_login"], 1)
         self.assertEqual(result.suspicious_events["ssh_bruteforce"], 2)
@@ -50,12 +49,10 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertIn("some content API_KEY other content", result.embedded_strings)
         self.assertIsNone(result.error)
 
-    # FIX: Add a patch to ensure the MFT_AVAILABLE flag is True during the test.
-
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.analyzeMFT.main")
-    def test_parse_mft(self, mock_main, mock_exists, mock_mft_available):
+    def test_parse_mft(self, mock_main, mock_exists):
         """Tests the MFT parsing function."""
         mock_main.return_value = [
             {
@@ -82,8 +79,6 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         ]
         result = parse_mft("MFT_dump")
         self.assertIsInstance(result, MFTAnalysisResult)
-        # FIX: The test now correctly mocks the function and will pass this assertion.
-
         self.assertEqual(result.total_records, 3)
         self.assertEqual(result.entries[1].filename, "evil.exe")
         self.assertIsNone(result.error)
