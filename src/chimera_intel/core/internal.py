@@ -99,7 +99,7 @@ def perform_static_analysis(file_path: str) -> StaticAnalysisResult:
             "sha256": hashlib.sha256(content).hexdigest(),
         }
 
-        string_pattern = re.compile(rb'[A-Za-z0-9\s.,!?:;"\'/\\-]{5,}')
+        string_pattern = re.compile(rb'[A-Za-z0-9\s.,!?:;"\'/\\-_{}]{5,}')
         found_strings = [
             s.decode("utf-8", "ignore") for s in string_pattern.findall(content)
         ]
@@ -144,7 +144,7 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
         options.filename = file_path
         options.output_filename = dummy_output
 
-        mft_results = analyzeMFT.main_run(options)
+        mft_results = analyzeMFT.main(options)
 
         for record in mft_results:
             entries.append(

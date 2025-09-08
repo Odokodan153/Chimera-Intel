@@ -45,14 +45,14 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertIsInstance(result, StaticAnalysisResult)
         self.assertIn("md5", result.hashes)
         self.assertIn("sha256", result.hashes)
-        self.assertIn("API_KEY", result.embedded_strings)
+        self.assertIn("some content API_KEY other content", result.embedded_strings)
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
-    @patch("chimera_intel.core.internal.analyzeMFT.main_run")
-    def test_parse_mft(self, mock_main_run, mock_exists):
+    @patch("chimera_intel.core.internal.analyzeMFT.main")
+    def test_parse_mft(self, mock_main, mock_exists):
         """Tests the MFT parsing function."""
-        mock_main_run.return_value = [
+        mock_main.return_value = [
             {
                 "record_number": 1,
                 "filename": "file1.txt",

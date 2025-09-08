@@ -17,7 +17,8 @@ class TestTTPMapper(unittest.TestCase):
 
         # Create mock Technique and KillChainPhase objects
 
-        mock_phase = MagicMock(name="Execution")
+        mock_phase = MagicMock()
+        mock_phase.name = "Execution"
         mock_tech = MagicMock(
             name="Exploit Public-Facing Application",
             external_references=[MagicMock(external_id="T1190")],

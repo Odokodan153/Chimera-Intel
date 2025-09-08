@@ -16,13 +16,18 @@ class TestCodeIntel(unittest.TestCase):
         mock_repo = MagicMock()
 
         # Create mock commit objects
+        # FIX: Ensure the attributes of the mock authors are strings, not other mocks.
 
-        mock_author1 = MagicMock(name="Jane Doe", email="jane@example.com")
+        mock_author1 = MagicMock()
+        mock_author1.name = "Jane Doe"
+        mock_author1.email = "jane@example.com"
         mock_commit1 = MagicMock(
             author=mock_author1, message="feat: Add new dashboard feature"
         )
 
-        mock_author2 = MagicMock(name="John Smith", email="john@example.com")
+        mock_author2 = MagicMock()
+        mock_author2.name = "John Smith"
+        mock_author2.email = "john@example.com"
         mock_commit2 = MagicMock(
             author=mock_author2, message="fix: Correct bug in API endpoint"
         )
