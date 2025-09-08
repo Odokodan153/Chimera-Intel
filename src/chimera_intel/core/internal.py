@@ -13,8 +13,7 @@ import os
 from typing import Optional, List, Dict
 
 try:
-    from MFT import MFT as MFTParser
-    from MFT import MFTError
+    import analyzeMFT
 
     MFT_AVAILABLE = True
 except ImportError:
@@ -123,12 +122,12 @@ def perform_static_analysis(file_path: str) -> StaticAnalysisResult:
 def parse_mft(file_path: str) -> MFTAnalysisResult:
     """
     Parses a Master File Table ($MFT) to create a timeline of file activity
-    using the 'python-mft' library.
+    using the 'analyzeMFT' library.
     """
     logger.info(f"Attempting to parse MFT file: {file_path}")
 
     if not MFT_AVAILABLE:
-        error_msg = "'python-mft' library not installed. Please add it to pyproject.toml and reinstall."
+        error_msg = "'analyzeMFT' library not installed. Please add it to pyproject.toml and reinstall."
         logger.error(error_msg)
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     if not os.path.exists(file_path):
@@ -137,38 +136,31 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     entries: List[MFTEntry] = []
     try:
-        mft_parser = MFTParser(file_path)
-        for record in mft_parser.get_records():
-            # Get all filenames associated with the record
+        # The 'analyzeMFT' library requires an output file, so we'll create a dummy one
+        # that we can discard later.
 
-            filenames = record.get_filenames()
-            if not filenames:
-                continue
-            # We'll use the first available filename for simplicity
+        dummy_output = "mft_temp_output.csv"
+        options = analyzeMFT.Options()
+        options.filename = file_path
+        options.output_filename = dummy_output
 
-            main_filename = filenames[0]
+        mft_results = analyzeMFT.main_run(options)
 
-            entry = MFTEntry(
-                record_number=record.entry_id,
-                filename=main_filename.get("filename", "N/A"),
-                creation_time=(
-                    main_filename.get("creation_time", "N/A").isoformat()
-                    if main_filename.get("creation_time")
-                    else "N/A"
-                ),
-                modification_time=(
-                    main_filename.get("modification_time", "N/A").isoformat()
-                    if main_filename.get("modification_time")
-                    else "N/A"
-                ),
-                is_directory=record.is_directory(),
+        for record in mft_results:
+            entries.append(
+                MFTEntry(
+                    record_number=record.get("record_number", -1),
+                    filename=record.get("filename", "N/A"),
+                    creation_time=record.get("creation_time", "N/A"),
+                    modification_time=record.get("modification_time", "N/A"),
+                    is_directory=record.get("is_directory", False),
+                )
             )
-            entries.append(entry)
+        # Clean up the dummy output file
+
+        if os.path.exists(dummy_output):
+            os.remove(dummy_output)
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
-    except MFTError as e:
-        error_msg = f"MFT parsing error for {file_path}: {e}. Is this a valid MFT file?"
-        logger.error(error_msg)
-        return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"
         logger.error(error_msg)
