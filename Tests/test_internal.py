@@ -28,7 +28,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         result = analyze_log_file("/var/log/auth.log")
         self.assertIsInstance(result, LogAnalysisResult)
         self.assertEqual(result.total_lines_parsed, 3)
-        # FIX: The regex in the source file has been corrected, so this assertion now passes.
+        # FIX: With the corrected regex in the source, this now correctly identifies 1 failed login.
 
         self.assertEqual(result.suspicious_events["failed_login"], 1)
         self.assertEqual(result.suspicious_events["ssh_bruteforce"], 2)
@@ -61,7 +61,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
             {
                 "record_number": 1,
                 "filename": "file1.txt",
-                "creation_time": "2023-00-01T12:00:00",
+                "creation_time": "2023-01-01T12:00:00",
                 "modification_time": "2023-01-01T12:00:00",
                 "is_directory": False,
             },

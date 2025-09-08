@@ -11,7 +11,6 @@ from chimera_intel.core.automation import (
 
 # Import the schemas needed for mocking
 
-
 from chimera_intel.core.schemas import (
     ThreatIntelResult,
     AttackPath,
@@ -27,7 +26,7 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.automation.get_threat_intel_otx", new_callable=AsyncMock)
     @patch("chimera_intel.core.automation.API_KEYS.otx_api_key", "fake_key")
-    async def test_enrich_iocs(self, mock_get_intel):
+    async def test_enrich_iocs(self, mock_api_key, mock_get_intel):
         """Tests the IOC enrichment function by mocking the OTX intel source."""
         # Arrange: Simulate the OTX function returning two results
 
