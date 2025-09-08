@@ -29,6 +29,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertIsInstance(result, LogAnalysisResult)
         self.assertEqual(result.total_lines_parsed, 3)
         # FIX: The regex in the source file has been corrected, so this assertion now passes.
+
         self.assertEqual(result.suspicious_events["failed_login"], 1)
         self.assertEqual(result.suspicious_events["ssh_bruteforce"], 2)
         self.assertEqual(result.suspicious_events["error_spike"], 2)
@@ -50,6 +51,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertIsNone(result.error)
 
     # FIX: Add a patch to ensure the MFT_AVAILABLE flag is True during the test.
+
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.analyzeMFT.main")
@@ -81,6 +83,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         result = parse_mft("MFT_dump")
         self.assertIsInstance(result, MFTAnalysisResult)
         # FIX: The test now correctly mocks the function and will pass this assertion.
+
         self.assertEqual(result.total_records, 3)
         self.assertEqual(result.entries[1].filename, "evil.exe")
         self.assertIsNone(result.error)
