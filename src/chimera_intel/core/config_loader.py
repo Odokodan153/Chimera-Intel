@@ -69,6 +69,8 @@ class ApiKeys(BaseSettings):
     spycloud_api_key: Optional[str] = Field(None, alias="SPYCLOUD_API_KEY")
     etherscan_api_key: Optional[str] = Field(None, alias="ETHERSCAN_API_KEY")
     google_maps_api_key: Optional[str] = Field(None, alias="GOOGLE_MAPS_API_KEY")
+    import_genius_api_key: Optional[str] = Field(None, alias="IMPORT_GENIUS_API_KEY")
+    uspto_api_key: Optional[str] = Field(None, alias="USPTO_API_KEY")
 
     class Config:
         """Pydantic-settings configuration."""

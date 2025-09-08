@@ -5,7 +5,7 @@ Module for advanced, in-depth reconnaissance to gather specific intelligence dat
 import typer
 import logging
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Dict, Union
 from google_play_scraper import search as search_google_play  # type: ignore
 from .schemas import (
     CredentialExposureResult,
@@ -38,13 +38,13 @@ def find_credential_leaks(domain: str) -> CredentialExposureResult:
     api_key = API_KEYS.spycloud_api_key
     if not api_key:
         return CredentialExposureResult(
-            target_domain=domain, error="SpyCloud API key not found in .env file."
+            target_domain=domain, total_found=0, error="SpyCloud API key not found in .env file."
         )
     logger.info(f"Searching SpyCloud for credential leaks associated with: {domain}")
 
     base_url = "https://api.spycloud.io/enterprise-api/v1/breach/data"
     headers = {"X-Api-Key": api_key}
-    params = {"domain": domain, "limit": 100}
+    params: Dict[str, Union[str, int]] = {"domain": domain, "limit": 100}
 
     try:
         response = sync_client.get(base_url, headers=headers, params=params)
@@ -69,7 +69,7 @@ def find_credential_leaks(domain: str) -> CredentialExposureResult:
     except Exception as e:
         logger.error(f"Failed to get credential leaks from SpyCloud for {domain}: {e}")
         return CredentialExposureResult(
-            target_domain=domain, error=f"An error occurred with the SpyCloud API: {e}"
+            target_domain=domain, total_found=0, error=f"An error occurred with the SpyCloud API: {e}"
         )
 
 

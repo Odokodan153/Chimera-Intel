@@ -11,7 +11,7 @@ import git  # type: ignore
 import tempfile
 import shutil
 from collections import Counter
-from typing import Optional
+from typing import Optional, Counter as CounterType
 from .schemas import RepoAnalysisResult, CommitterInfo
 from .utils import save_or_print_results
 from .database import save_scan_to_db
@@ -44,7 +44,9 @@ def analyze_git_repository(repo_url: str) -> RepoAnalysisResult:
         # 1. Committer Analysis
 
         committer_counts = Counter(
-            (commit.author.name, commit.author.email) for commit in commits
+            (commit.author.name, commit.author.email)
+            for commit in commits
+            if commit.author
         )
         top_committers = [
             CommitterInfo(name=author[0], email=author[1], commit_count=count)
@@ -53,7 +55,7 @@ def analyze_git_repository(repo_url: str) -> RepoAnalysisResult:
 
         # 2. Commit Keyword Analysis
 
-        keyword_counts = Counter()
+        keyword_counts: CounterType[str] = Counter()
         keywords = ["feature", "fix", "bug", "refactor", "security", "release"]
         for commit in commits:
             message = commit.message.lower()
@@ -70,12 +72,18 @@ def analyze_git_repository(repo_url: str) -> RepoAnalysisResult:
     except git.GitCommandError as e:
         logger.error(f"Failed to clone or analyze repository {repo_url}: {e}")
         return RepoAnalysisResult(
-            repository_url=repo_url, error=f"Git command failed: {e}"
+            repository_url=repo_url,
+            total_commits=0,
+            total_committers=0,
+            error=f"Git command failed: {e}",
         )
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
         return RepoAnalysisResult(
-            repository_url=repo_url, error=f"An unexpected error occurred: {e}"
+            repository_url=repo_url,
+            total_commits=0,
+            total_committers=0,
+            error=f"An unexpected error occurred: {e}",
         )
     finally:
         # Clean up the temporary directory

@@ -244,7 +244,9 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
             # Check for required headers
 
             required_headers = ["timestamp", "user", "source_ip"]
-            if not all(header in reader.fieldnames for header in required_headers):
+            if reader.fieldnames and not all(
+                header in reader.fieldnames for header in required_headers
+            ):
                 return UEBAResult(
                     total_anomalies_found=0,
                     error=f"Log file must contain headers: {', '.join(required_headers)}",

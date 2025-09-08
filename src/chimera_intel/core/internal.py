@@ -13,7 +13,7 @@ import os
 from typing import Optional, List, Dict
 
 try:
-    import analyzeMFT
+    import analyzeMFT # type: ignore
 
     MFT_AVAILABLE = True
 except ImportError:

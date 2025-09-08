@@ -7,7 +7,7 @@ blockchains like Ethereum, retrieving balance, transaction history, and more.
 
 import typer
 import logging
-from typing import Optional
+from typing import Optional, Dict, Union
 from datetime import datetime
 from .schemas import WalletAnalysisResult, WalletTransaction
 from .config_loader import API_KEYS
@@ -31,7 +31,10 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
     api_key = API_KEYS.etherscan_api_key
     if not api_key:
         return WalletAnalysisResult(
-            address=address, error="Etherscan API key not found in .env file."
+            address=address,
+            balance_eth="0",
+            total_transactions=0,
+            error="Etherscan API key not found in .env file.",
         )
     logger.info(f"Analyzing Ethereum wallet: {address}")
     base_url = "https://api.etherscan.io/api"
@@ -39,7 +42,7 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
     try:
         # --- 1. Get ETH Balance ---
 
-        balance_params = {
+        balance_params: Dict[str, Union[str, int]] = {
             "module": "account",
             "action": "balance",
             "address": address,
@@ -57,7 +60,7 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
 
         # --- 2. Get Transactions ---
 
-        tx_params = {
+        tx_params: Dict[str, Union[str, int]] = {
             "module": "account",
             "action": "txlist",
             "address": address,
@@ -92,7 +95,10 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
     except Exception as e:
         logger.error(f"Failed to analyze wallet {address}: {e}")
         return WalletAnalysisResult(
-            address=address, error=f"An API error occurred: {e}"
+            address=address,
+            balance_eth="0",
+            total_transactions=0,
+            error=f"An API error occurred: {e}",
         )
 
 
