@@ -49,7 +49,11 @@ def analyze_git_repository(repo_url: str) -> RepoAnalysisResult:
             if commit.author
         )
         top_committers = [
-            CommitterInfo(name=author[0], email=author[1], commit_count=count)
+            CommitterInfo(
+                name=author[0] or "Unknown",
+                email=author[1] or "Unknown",
+                commit_count=count,
+            )
             for author, count in committer_counts.most_common(5)
         ]
 

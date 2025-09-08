@@ -53,10 +53,8 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
         balance_response.raise_for_status()
         balance_data = balance_response.json()
 
-        # Convert balance from Wei to Ether
-
         balance_in_wei = int(balance_data.get("result", 0))
-        balance_in_eth = balance_in_wei / 1e18  # 1 Ether = 10^18 Wei
+        balance_in_eth = balance_in_wei / 1e18
 
         # --- 2. Get Transactions ---
 
@@ -75,21 +73,22 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
         tx_response.raise_for_status()
         tx_data = tx_response.json()
 
-        transactions = [
-            WalletTransaction(
-                hash=tx.get("hash"),
-                from_address=tx.get("from"),
-                to_address=tx.get("to"),
-                value_eth=str(int(tx.get("value", 0)) / 1e18),
-                timestamp=str(datetime.fromtimestamp(int(tx.get("timeStamp")))),
-            )
-            for tx in tx_data.get("result", [])
-        ]
+        transactions = []
+        for tx in tx_data.get("result", []):
+            # Use model_validate with a dictionary to handle the 'from' alias correctly
 
+            tx_dict = {
+                "hash": tx.get("hash"),
+                "from": tx.get("from"),
+                "to": tx.get("to"),
+                "value_eth": str(int(tx.get("value", 0)) / 1e18),
+                "timestamp": str(datetime.fromtimestamp(int(tx.get("timeStamp", "0")))),
+            }
+            transactions.append(WalletTransaction.model_validate(tx_dict))
         return WalletAnalysisResult(
             address=address,
             balance_eth=f"{balance_in_eth:.4f}",
-            total_transactions=len(transactions),  # Simplified for this example
+            total_transactions=len(transactions),
             recent_transactions=transactions,
         )
     except Exception as e:
@@ -103,7 +102,6 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
 
 
 # --- Typer CLI Application ---
-
 
 blockchain_app = typer.Typer()
 
