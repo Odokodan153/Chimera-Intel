@@ -19,11 +19,14 @@ class TestTTPMapper(unittest.TestCase):
 
         mock_phase = MagicMock()
         mock_phase.name = "Execution"
-        mock_tech = MagicMock(
-            name="Exploit Public-Facing Application",
-            external_references=[MagicMock(external_id="T1190")],
-            kill_chain_phases=[mock_phase],
-        )
+
+        # FIX: Explicitly set attributes on the MagicMock instance instead of passing them
+        # in the constructor to avoid Pydantic validation errors with mock objects.
+
+        mock_tech = MagicMock()
+        mock_tech.name = "Exploit Public-Facing Application"
+        mock_tech.external_references = [MagicMock(external_id="T1190")]
+        mock_tech.kill_chain_phases = [mock_phase]
 
         mock_attack.get_techniques_by_cve_id.return_value = [mock_tech]
 
@@ -37,6 +40,10 @@ class TestTTPMapper(unittest.TestCase):
         self.assertIsNone(result.error)
         self.assertEqual(len(result.mapped_techniques), 1)
         self.assertEqual(result.mapped_techniques[0].technique_id, "T1190")
+        self.assertEqual(
+            result.mapped_techniques[0].technique_name,
+            "Exploit Public-Facing Application",
+        )
         self.assertEqual(result.mapped_techniques[0].tactic, "Execution")
 
 
