@@ -38,7 +38,9 @@ def find_credential_leaks(domain: str) -> CredentialExposureResult:
     api_key = API_KEYS.spycloud_api_key
     if not api_key:
         return CredentialExposureResult(
-            target_domain=domain, total_found=0, error="SpyCloud API key not found in .env file."
+            target_domain=domain,
+            total_found=0,
+            error="SpyCloud API key not found in .env file.",
         )
     logger.info(f"Searching SpyCloud for credential leaks associated with: {domain}")
 
@@ -69,7 +71,9 @@ def find_credential_leaks(domain: str) -> CredentialExposureResult:
     except Exception as e:
         logger.error(f"Failed to get credential leaks from SpyCloud for {domain}: {e}")
         return CredentialExposureResult(
-            target_domain=domain, total_found=0, error=f"An error occurred with the SpyCloud API: {e}"
+            target_domain=domain,
+            total_found=0,
+            error=f"An error occurred with the SpyCloud API: {e}",
         )
 
 

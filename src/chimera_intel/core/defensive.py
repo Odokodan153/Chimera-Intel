@@ -397,14 +397,24 @@ def scan_iac_files(directory: str) -> IaCScanResult:
             "The 'tfsec' command was not found. Please ensure it is installed and in your PATH."
         )
         return IaCScanResult(
-            target_path=directory, total_issues=0, error="tfsec command not found. Please ensure it is installed."
+            target_path=directory,
+            total_issues=0,
+            error="tfsec command not found. Please ensure it is installed.",
         )
     except json.JSONDecodeError:
         logger.error(f"Failed to parse tfsec JSON output. Error: {process.stderr}")
-        return IaCScanResult(target_path=directory, total_issues=0, error="Failed to parse tfsec JSON output.")
+        return IaCScanResult(
+            target_path=directory,
+            total_issues=0,
+            error="Failed to parse tfsec JSON output.",
+        )
     except Exception as e:
         logger.critical(f"An unexpected error occurred while running tfsec: {e}")
-        return IaCScanResult(target_path=directory, total_issues=0, error=f"An unexpected error occurred: {e}")
+        return IaCScanResult(
+            target_path=directory,
+            total_issues=0,
+            error=f"An unexpected error occurred: {e}",
+        )
 
 
 # --- : Secrets Scanning ---
@@ -479,11 +489,17 @@ def scan_for_secrets(directory: str) -> SecretsScanResult:
             "The 'gitleaks' command was not found. Please ensure it is installed and in your PATH."
         )
         return SecretsScanResult(
-            target_path=directory, total_found=0, error="gitleaks command not found. Please ensure it is installed."
+            target_path=directory,
+            total_found=0,
+            error="gitleaks command not found. Please ensure it is installed.",
         )
     except Exception as e:
         logger.critical(f"An unexpected error occurred while running gitleaks: {e}")
-        return SecretsScanResult(target_path=directory, total_found=0, error=f"An unexpected error occurred: {e}")
+        return SecretsScanResult(
+            target_path=directory,
+            total_found=0,
+            error=f"An unexpected error occurred: {e}",
+        )
 
 
 # --- Typer CLI Application ---

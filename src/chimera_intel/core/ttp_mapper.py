@@ -8,7 +8,7 @@ how they might be exploited by real-world adversaries.
 import typer
 import logging
 from typing import List, Optional
-from mitreattack.stix20 import MitreAttackData # type: ignore
+from mitreattack.stix20 import MitreAttackData  # type: ignore
 from .schemas import TTPMappingResult, MappedTechnique
 from .utils import save_or_print_results
 from .database import save_scan_to_db
