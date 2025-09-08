@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chimera-intel"
 version = "6.0.0"
 authors = [
-    { name = "Ignacio Iliev", email = "ignacioiliev@gmail.com" },
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 description = "A modular OSINT platform for corporate intelligence and counter-intelligence, powered by an AI analysis core."
 readme = "README.md"

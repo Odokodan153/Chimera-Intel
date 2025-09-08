@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from chimera_intel.core.internal import (
     analyze_log_file,
     perform_static_analysis,
@@ -9,7 +9,6 @@ from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
     MFTAnalysisResult,
-    MFTEntry,
 )
 
 

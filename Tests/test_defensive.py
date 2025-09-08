@@ -9,7 +9,6 @@ are reliable and do not depend on network access.
 
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
-import subprocess
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
 
