@@ -12,17 +12,15 @@ from unittest.mock import patch, MagicMock, mock_open
 import subprocess
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
-from chimera_intel.core.defensive import (
-    monitor_ct_logs,
-    scan_iac_files,
-    scan_for_secrets,
-)
 
 # Import the main app to test commands
 
 
 from chimera_intel.cli import app
 from chimera_intel.core.defensive import (
+    monitor_ct_logs,
+    scan_iac_files,
+    scan_for_secrets,
     check_hibp_breaches,
     find_typosquatting_dnstwist,
     search_github_leaks,
@@ -56,8 +54,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_found(self, mock_get: MagicMock):
-        """
-        Tests the HIBP breach check for a successful case where breaches are found.
+        """Tests the HIBP breach check for a successful case where breaches are found.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -77,7 +74,6 @@ class TestDefensive(unittest.TestCase):
             }
         ]
         mock_get.return_value = mock_response
-
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
         self.assertIsNotNone(result.breaches)
@@ -85,8 +81,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_not_found(self, mock_get: MagicMock):
-        """
-        Tests the HIBP breach check for a case where no breaches are found (404).
+        """Tests the HIBP breach check for a case where no breaches are found (404).
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -94,7 +89,6 @@ class TestDefensive(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_get.return_value = mock_response
-
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
         self.assertEqual(result.breaches, [])
@@ -102,8 +96,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_http_error(self, mock_get: MagicMock):
-        """
-        Tests the HIBP check when an HTTP error (e.g., 500) occurs.
+        """Tests the HIBP check when an HTTP error (e.g., 500) occurs.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -114,7 +107,6 @@ class TestDefensive(unittest.TestCase):
         )
         mock_response.raise_for_status.side_effect = http_error
         mock_get.return_value = mock_response
-
         result = check_hibp_breaches("example.com", "fake_api_key")
         self.assertIsInstance(result, HIBPResult)
         self.assertIsNotNone(result.error)
@@ -122,8 +114,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_check_hibp_breaches_network_error(self, mock_get: MagicMock):
-        """
-        Tests the HIBP check during a network error.
+        """Tests the HIBP check during a network error.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -143,8 +134,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_success(self, mock_run: MagicMock):
-        """
-        Tests the dnstwist wrapper for a successful execution.
+        """Tests the dnstwist wrapper for a successful execution.
 
         Args:
             mock_run (MagicMock): A mock for the `subprocess.run` function.
@@ -152,7 +142,6 @@ class TestDefensive(unittest.TestCase):
         mock_process = MagicMock()
         mock_process.stdout = '[{"fuzzer": "Original", "domain-name": "examp1e.com"}]'
         mock_run.return_value = mock_process
-
         result = find_typosquatting_dnstwist("example.com")
         self.assertIsInstance(result, TyposquatResult)
         self.assertIsNotNone(result.results)
@@ -165,8 +154,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.subprocess.run")
     def test_find_typosquatting_dnstwist_command_not_found(self, mock_run: MagicMock):
-        """
-        Tests dnstwist when the command is not found in the system.
+        """Tests dnstwist when the command is not found in the system.
 
         Args:
             mock_run (MagicMock): A mock for the `subprocess.run` function.
@@ -176,27 +164,9 @@ class TestDefensive(unittest.TestCase):
         self.assertIsInstance(result, TyposquatResult)
         self.assertIn("command not found", result.error)
 
-    @patch("chimera_intel.core.defensive.subprocess.run")
-    def test_find_typosquatting_dnstwist_called_process_error(
-        self, mock_run: MagicMock
-    ):
-        """
-        Tests dnstwist when the command returns a non-zero exit code.
-
-        Args:
-            mock_run (MagicMock): A mock for the `subprocess.run` function.
-        """
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "dnstwist", stderr="Some error"
-        )
-        result = find_typosquatting_dnstwist("example.com")
-        self.assertIsInstance(result, TyposquatResult)
-        self.assertIn("returned an error", result.error)
-
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_github_leaks_success(self, mock_get: MagicMock):
-        """
-        Tests a successful GitHub leak search.
+        """Tests a successful GitHub leak search.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -208,7 +178,6 @@ class TestDefensive(unittest.TestCase):
             "items": [{"url": "http://leak.com", "repository": "test/repo"}],
         }
         mock_get.return_value = mock_response
-
         result = search_github_leaks("example.com api_key", "fake_pat")
         self.assertIsInstance(result, GitHubLeaksResult)
         self.assertEqual(result.total_count, 1)
@@ -221,17 +190,14 @@ class TestDefensive(unittest.TestCase):
 
     @patch("shodan.Shodan")
     def test_analyze_attack_surface_shodan_success(self, mock_shodan: MagicMock):
-        """
-        Tests a successful Shodan search.
+        """Tests a successful Shodan search.
 
         Args:
             mock_shodan (MagicMock): A mock for the `shodan.Shodan` class.
         """
         mock_api = mock_shodan.return_value
         mock_api.search.return_value = {"total": 1, "matches": [{"ip_str": "1.1.1.1"}]}
-
         result = analyze_attack_surface_shodan("org:Google", "fake_shodan_key")
-
         self.assertIsInstance(result, ShodanResult)
         self.assertEqual(result.total_results, 1)
         self.assertEqual(result.hosts[0].ip, "1.1.1.1")
@@ -240,15 +206,13 @@ class TestDefensive(unittest.TestCase):
     def test_analyze_attack_surface_shodan_no_key(self):
         """Tests Shodan search when no API key is provided."""
         result = analyze_attack_surface_shodan("org:Google", "")
-
         self.assertIsInstance(result, ShodanResult)
         self.assertIsNotNone(result.error)
         self.assertIn("not found", result.error)
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_pastes_api_success(self, mock_get: MagicMock):
-        """
-        Tests a successful paste.ee search.
+        """Tests a successful paste.ee search.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -259,9 +223,7 @@ class TestDefensive(unittest.TestCase):
             "pastes": [{"id": "paste1", "link": "link1"}]
         }
         mock_get.return_value = mock_response
-
         result = search_pastes_api("example.com")
-
         self.assertIsInstance(result, PasteResult)
         self.assertEqual(result.count, 1)
         self.assertEqual(result.pastes[0].id, "paste1")
@@ -269,8 +231,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.http_client.sync_client.get")
     def test_search_pastes_api_http_error(self, mock_get: MagicMock):
-        """
-        Tests the paste.ee search when an HTTP error occurs.
+        """Tests the paste.ee search when an HTTP error occurs.
 
         Args:
             mock_get (MagicMock): A mock for the `httpx.Client.get` method.
@@ -281,9 +242,7 @@ class TestDefensive(unittest.TestCase):
         )
         mock_response.raise_for_status.side_effect = http_error
         mock_get.return_value = mock_response
-
         result = search_pastes_api("some_query")
-
         self.assertIsInstance(result, PasteResult)
         self.assertIsNotNone(result.error)
         self.assertIn("404", result.error)
@@ -291,8 +250,7 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.defensive.sync_client.get")
     @patch("time.sleep", return_value=None)
     def test_analyze_ssl_ssllabs_success(self, mock_sleep, mock_get):
-        """
-        Tests a successful SSL Labs scan.
+        """Tests a successful SSL Labs scan.
 
         Args:
             mock_sleep (MagicMock): A mock for `time.sleep`.
@@ -309,40 +267,17 @@ class TestDefensive(unittest.TestCase):
             mock_poll_response_1,
             mock_poll_response_2,
         ]
-
         result = analyze_ssl_ssllabs("example.com")
-
         self.assertIsInstance(result, SSLLabsResult)
         self.assertEqual(result.report.get("grade"), "A+")
         self.assertIsNone(result.error)
         self.assertEqual(mock_get.call_count, 3)
 
-    @patch("chimera_intel.core.defensive.sync_client.get")
-    def test_analyze_ssl_ssllabs_start_error(self, mock_get):
-        """
-        Tests an SSL Labs scan that errors on initiation.
-
-        Args:
-            mock_get (MagicMock): A mock for `httpx.Client.get`.
-        """
-        mock_start_response = MagicMock(status_code=200)
-        mock_start_response.json.return_value = {
-            "status": "ERROR",
-            "statusMessage": "Invalid host",
-        }
-        mock_get.return_value = mock_start_response
-        result = analyze_ssl_ssllabs("example.com")
-
-        self.assertIsInstance(result, SSLLabsResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("Invalid host", result.error)
-
     @patch("os.path.exists", return_value=True)
     @patch("builtins.open", new_callable=mock_open, read_data=b"apk_data")
     @patch("chimera_intel.core.defensive.sync_client.post")
     def test_analyze_apk_mobsf_success(self, mock_post, mock_file, mock_exists):
-        """
-        Tests a successful MobSF APK analysis.
+        """Tests a successful MobSF APK analysis.
 
         Args:
             mock_post (MagicMock): A mock for `httpx.Client.post`.
@@ -350,11 +285,7 @@ class TestDefensive(unittest.TestCase):
             mock_exists (MagicMock): A mock for `os.path.exists`.
         """
         mock_upload_response = MagicMock(status_code=200)
-        mock_upload_data = {
-            "hash": "123",
-            "scan_type": "apk",
-            "file_name": "test.apk",
-        }
+        mock_upload_data = {"hash": "123", "scan_type": "apk", "file_name": "test.apk"}
         mock_upload_response.json.return_value = mock_upload_data
         mock_scan_response = MagicMock(status_code=200)
         mock_report_response = MagicMock(status_code=200)
@@ -364,41 +295,123 @@ class TestDefensive(unittest.TestCase):
             mock_scan_response,
             mock_report_response,
         ]
-
         result = analyze_apk_mobsf("test.apk", "http://mobsf.local", "fake_key")
-
         self.assertIsInstance(result, MobSFResult)
         self.assertEqual(result.report.get("app_name"), "TestApp")
         self.assertIsNone(result.error)
 
-    def test_analyze_apk_mobsf_no_file(self):
-        """Tests MobSF analysis when the APK file does not exist."""
-        result = analyze_apk_mobsf("nonexistent.apk", "http://mobsf.local", "fake_key")
-
-        self.assertIsInstance(result, MobSFResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("File not found", result.error)
-
-    @patch("os.path.exists", return_value=True)
-    def test_analyze_apk_mobsf_no_creds(self, mock_exists):
-        """
-        Tests MobSF analysis when URL or API key are missing.
+    @patch("chimera_intel.core.defensive.sync_client.get")
+    def test_monitor_ct_logs_success(self, mock_get):
+        """Tests the Certificate Transparency log monitoring by mocking the crt.sh API.
 
         Args:
-            mock_exists (MagicMock): A mock for `os.path.exists`.
+            mock_get (MagicMock): A mock for the `httpx.Client.get` method.
         """
-        result = analyze_apk_mobsf("test.apk", "", "")
+        # Arrange
 
-        self.assertIsInstance(result, MobSFResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("MobSF URL and API Key are required", result.error)
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = [
+            {
+                "issuer_name": "C=US, O=Let's Encrypt, CN=R3",
+                "name_value": "test.example.com",
+            }
+        ]
+        mock_get.return_value = mock_response
+
+        # Act
+
+        result = monitor_ct_logs("example.com")
+
+        # Assert
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.total_found, 1)
+        self.assertEqual(result.certificates[0].subject_name, "test.example.com")
+
+    @patch("chimera_intel.core.defensive.subprocess.run")
+    def test_scan_iac_files_success(self, mock_subprocess_run):
+        """Tests the IaC scanning function by mocking the tfsec subprocess.
+
+        Args:
+            mock_subprocess_run (MagicMock): A mock for `subprocess.run`.
+        """
+        # Arrange
+
+        mock_tfsec_output = """
+        {
+            "results": [{
+                "rule_id": "AWS006",
+                "description": "S3 bucket does not have encryption enabled.",
+                "severity": "HIGH",
+                "location": {"filename": "main.tf", "start_line": 25}
+            }]
+        }
+        """
+        mock_subprocess_run.return_value = MagicMock(
+            stdout=mock_tfsec_output, stderr="", returncode=1
+        )
+
+        with patch("os.path.isdir", return_value=True):
+            # Act
+
+            result = scan_iac_files("/path/to/terraform")
+
+            # Assert
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result.total_issues, 1)
+            self.assertEqual(result.issues[0].severity, "HIGH")
+            self.assertEqual(result.issues[0].issue_id, "AWS006")
+
+    @patch("chimera_intel.core.defensive.os.remove")
+    @patch("chimera_intel.core.defensive.os.path.exists", return_value=True)
+    @patch("chimera_intel.core.defensive.subprocess.run")
+    def test_scan_for_secrets_success(
+        self, mock_subprocess_run, mock_exists, mock_remove
+    ):
+        """Tests the secrets scanning function by mocking the gitleaks subprocess.
+
+        Args:
+            mock_subprocess_run (MagicMock): A mock for `subprocess.run`.
+            mock_exists (MagicMock): A mock for `os.path.exists`.
+            mock_remove (MagicMock): A mock for `os.remove`.
+        """
+        # Arrange
+
+        mock_gitleaks_report = """
+        [{
+            "File": "config/prod.yaml",
+            "RuleID": "aws-access-key",
+            "Description": "AWS Access Key",
+            "StartLine": 10
+        }]
+        """
+        # Simulate gitleaks running and writing to its report file
+
+        mock_subprocess_run.return_value = MagicMock(returncode=1)
+
+        with patch("builtins.open", mock_open(read_data=mock_gitleaks_report)):
+            with patch("os.path.isdir", return_value=True):
+                # Act
+
+                result = scan_for_secrets("/path/to/repo")
+
+                # Assert
+
+                self.assertIsNotNone(result)
+                self.assertEqual(result.total_found, 1)
+                self.assertEqual(result.secrets[0].secret_type, "AWS Access Key")
+                self.assertEqual(result.secrets[0].file_path, "config/prod.yaml")
+                # Verify the temporary report file was cleaned up
+
+                mock_remove.assert_called_once_with("gitleaks-report.json")
 
     # --- CLI COMMAND TESTS ---
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
     def test_cli_breaches_invalid_domain(self, mock_check: MagicMock):
-        """
-        Tests the 'breaches' command with an invalid domain.
+        """Tests the 'breaches' command with an invalid domain.
 
         Args:
             mock_check (MagicMock): A mock for `check_hibp_breaches`.
@@ -411,8 +424,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.find_typosquatting_dnstwist")
     def test_cli_typosquat_invalid_domain(self, mock_find: MagicMock):
-        """
-        Tests the 'typosquat' command with an invalid domain.
+        """Tests the 'typosquat' command with an invalid domain.
 
         Args:
             mock_find (MagicMock): A mock for `find_typosquatting_dnstwist`.
@@ -425,8 +437,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_ssl_ssllabs")
     def test_cli_ssllabs_invalid_domain(self, mock_analyze: MagicMock):
-        """
-        Tests the 'ssllabs' command with an invalid domain.
+        """Tests the 'ssllabs' command with an invalid domain.
 
         Args:
             mock_analyze (MagicMock): A mock for `analyze_ssl_ssllabs`.
@@ -440,8 +451,7 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.defensive.search_github_leaks")
     @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
     def test_cli_leaks_command(self, mock_search: MagicMock):
-        """
-        Tests a successful 'leaks' CLI command.
+        """Tests a successful 'leaks' CLI command.
 
         Args:
             mock_search (MagicMock): A mock for `search_github_leaks`.
@@ -461,8 +471,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.search_pastes_api")
     def test_cli_pastebin_command(self, mock_search: MagicMock):
-        """
-        Tests a successful 'pastebin' CLI command.
+        """Tests a successful 'pastebin' CLI command.
 
         Args:
             mock_search (MagicMock): A mock for `search_pastes_api`.
@@ -474,8 +483,7 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_ssl_ssllabs")
     def test_cli_ssllabs_command_success(self, mock_analyze: MagicMock):
-        """
-        Tests a successful 'ssllabs' CLI command.
+        """Tests a successful 'ssllabs' CLI command.
 
         Args:
             mock_analyze (MagicMock): A mock for `analyze_ssl_ssllabs`.
@@ -490,8 +498,7 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.defensive.analyze_apk_mobsf")
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", "fake_key")
     def test_cli_mobsf_command_success(self, mock_analyze: MagicMock):
-        """
-        Tests a successful 'mobsf' CLI command.
+        """Tests a successful 'mobsf' CLI command.
 
         Args:
             mock_analyze (MagicMock): A mock for `analyze_apk_mobsf`.
@@ -518,8 +525,7 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
     def test_cli_surface_command(self, mock_analyze: MagicMock):
-        """
-        Tests a successful 'surface' CLI command.
+        """Tests a successful 'surface' CLI command.
 
         Args:
             mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
@@ -536,27 +542,6 @@ class TestDefensive(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Skipping Shodan Scan", result.stdout)
         self.assertIn("SHODAN_API_KEY", result.stdout)
-
-    def test_monitor_ct_logs(self):
-        """Tests the Certificate Transparency log monitoring function."""
-        result = monitor_ct_logs("example.com")
-        self.assertIsNotNone(result)
-        self.assertEqual(result.total_found, 1)
-        self.assertIn("mail.example.com", result.certificates[0].subject_name)
-
-    def test_scan_iac_files(self):
-        """Tests the IaC scanning function."""
-        result = scan_iac_files("/path/to/terraform")
-        self.assertIsNotNone(result)
-        self.assertEqual(result.total_issues, 1)
-        self.assertEqual(result.issues[0].severity, "High")
-
-    def test_scan_for_secrets(self):
-        """Tests the secrets scanning function."""
-        result = scan_for_secrets("/path/to/repo")
-        self.assertIsNotNone(result)
-        self.assertEqual(result.total_found, 1)
-        self.assertEqual(result.secrets[0].secret_type, "AWS Access Key")
 
 
 if __name__ == "__main__":

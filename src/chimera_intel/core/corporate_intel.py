@@ -1,5 +1,3 @@
-# src/chimera_intel/core/corporate_intel.py (new file)
-
 """
 Module for gathering deep corporate and strategic intelligence.
 
@@ -9,6 +7,8 @@ employee sentiment, supply chain, intellectual property, and regulatory activiti
 
 import typer
 import logging
+from bs4 import BeautifulSoup
+from typing import List, Dict
 from .schemas import (
     HiringTrendsResult,
     EmployeeSentimentResult,
@@ -20,8 +20,10 @@ from .schemas import (
     Trademark,
     LobbyingRecord,
 )
-from .utils import save_or_print_results
+from .utils import save_or_print_results, is_valid_domain
 from .database import save_scan_to_db
+from .http_client import sync_client
+from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
@@ -31,37 +33,105 @@ logger = logging.getLogger(__name__)
 def get_hiring_trends(domain: str) -> HiringTrendsResult:
     """
     Analyzes a company's hiring trends by scraping its careers page.
-    NOTE: This is a placeholder and would require a sophisticated scraper in a real implementation.
+    NOTE: This is a best-effort generic scraper and may not work for all sites.
     """
     logger.info(f"Analyzing hiring trends for {domain}")
-    # In a real implementation, this would involve a complex web scraper.
-    # For this example, we'll return mock data.
 
-    mock_postings = [
-        JobPosting(title="Senior AI Research Scientist", department="R&D"),
-        JobPosting(title="International Sales Manager (EMEA)", department="Sales"),
-        JobPosting(title="Kubernetes Engineer", department="Engineering"),
-    ]
+    if not is_valid_domain(domain):
+        return HiringTrendsResult(total_postings=0, error="Invalid domain provided.")
+    urls_to_try = [f"https://www.{domain}/careers", f"https://www.{domain}/jobs"]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    postings: List[JobPosting] = []
+    trends: Dict[str, int] = {}
+
+    for url in urls_to_try:
+        try:
+            response = sync_client.get(url, headers=headers, follow_redirects=True)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, "html.parser")
+                job_links = soup.find_all("a", href=True)
+                for link in job_links:
+                    text = link.text.strip()
+                    if any(
+                        kw in text.lower()
+                        for kw in [
+                            "engineer",
+                            "manager",
+                            "developer",
+                            "analyst",
+                            "scientist",
+                            "sales",
+                        ]
+                    ):
+                        postings.append(JobPosting(title=text))
+                if postings:
+                    for post in postings:
+                        if (
+                            "engineer" in post.title.lower()
+                            or "developer" in post.title.lower()
+                        ):
+                            trends["Engineering"] = trends.get("Engineering", 0) + 1
+                        elif (
+                            "sales" in post.title.lower()
+                            or "marketing" in post.title.lower()
+                        ):
+                            trends["Sales/Marketing"] = (
+                                trends.get("Sales/Marketing", 0) + 1
+                            )
+                        elif (
+                            "data" in post.title.lower()
+                            or "analyst" in post.title.lower()
+                        ):
+                            trends["Data/Analytics"] = (
+                                trends.get("Data/Analytics", 0) + 1
+                            )
+                    return HiringTrendsResult(
+                        total_postings=len(postings),
+                        trends_by_department=trends,
+                        job_postings=list(set(postings)),
+                    )
+        except Exception as e:
+            logger.warning(f"Could not scrape hiring trends from {url}: {e}")
+            continue
     return HiringTrendsResult(
-        total_postings=len(mock_postings),
-        trends_by_department={"R&D": 1, "Sales": 1, "Engineering": 1},
-        job_postings=mock_postings,
+        total_postings=0,
+        job_postings=[],
+        error="Could not find or parse a careers page.",
     )
 
 
 def get_employee_sentiment(company_name: str) -> EmployeeSentimentResult:
     """
-    Analyzes employee sentiment from platforms like Glassdoor.
-    NOTE: This is a placeholder; scraping these sites is against their ToS.
+    Analyzes employee sentiment using the Aura Intelligence API.
     """
-    logger.info(f"Analyzing employee sentiment for {company_name}")
-    # A real implementation would require a robust scraper or a specialized API.
+    api_key = API_KEYS.aura_api_key
+    if not api_key:
+        return EmployeeSentimentResult(
+            error="Aura Intelligence API key not found in .env file."
+        )
+    logger.info(f"Fetching employee sentiment for '{company_name}' from Aura API.")
+    base_url = "https://api.getaura.ai/v1/sentiments"
+    params = {"company": company_name}
+    headers = {"Authorization": f"Bearer {api_key}"}
 
-    return EmployeeSentimentResult(
-        overall_rating=4.2,
-        ceo_approval="95%",
-        sentiment_summary={"work_life_balance": 3.8, "management": 4.5},
-    )
+    try:
+        response = sync_client.get(base_url, params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        return EmployeeSentimentResult(
+            overall_rating=data.get("overall_rating"),
+            ceo_approval=f"{data.get('ceo_approval_percentage', 0)}%",
+            sentiment_summary=data.get("sentiment_by_category", {}),
+        )
+    except Exception as e:
+        logger.error(f"Failed to get employee sentiment for {company_name}: {e}")
+        return EmployeeSentimentResult(
+            error=f"An error occurred with the Aura API: {e}"
+        )
 
 
 # --- Supply Chain Intelligence ---
@@ -69,22 +139,42 @@ def get_employee_sentiment(company_name: str) -> EmployeeSentimentResult:
 
 def get_trade_data(company_name: str) -> TradeDataResult:
     """
-    Retrieves import/export records from customs data providers.
-    NOTE: This is a placeholder as it requires a paid API (e.g., ImportGenius).
+    Retrieves import/export records from the ImportGenius API.
     """
-    logger.info(f"Retrieving trade data for {company_name}")
-    mock_shipments = [
-        Shipment(
-            date="2025-08-15",
-            shipper="Shenzhen Microchip Corp",
-            consignee=company_name,
-            product_description="Integrated Circuits",
-            weight_kg=500.0,
+    api_key = API_KEYS.import_genius_api_key
+    if not api_key:
+        return TradeDataResult(
+            total_shipments=0, error="ImportGenius API key not found in .env file."
         )
-    ]
-    return TradeDataResult(
-        total_shipments=len(mock_shipments), shipments=mock_shipments
-    )
+    logger.info(f"Retrieving trade data for {company_name} from ImportGenius.")
+    base_url = "https://api.importgenius.com/v2/shipments/search"
+    params = {"q": company_name, "api_key": api_key}
+
+    try:
+        response = sync_client.get(base_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        shipments = [
+            Shipment(
+                date=shipment.get("arrival_date"),
+                shipper=shipment.get("shipper", {}).get("name"),
+                consignee=shipment.get("consignee", {}).get("name"),
+                product_description=shipment.get("description"),
+                weight_kg=shipment.get("weight_kg"),
+            )
+            for shipment in data.get("shipments", [])
+        ]
+
+        return TradeDataResult(
+            total_shipments=data.get("total_results", 0),
+            shipments=shipments,
+        )
+    except Exception as e:
+        logger.error(f"Failed to get trade data for {company_name}: {e}")
+        return TradeDataResult(
+            total_shipments=0, error=f"An error occurred with the ImportGenius API: {e}"
+        )
 
 
 # --- Deeper IP Intelligence ---
@@ -92,19 +182,42 @@ def get_trade_data(company_name: str) -> TradeDataResult:
 
 def get_trademarks(company_name: str) -> TrademarkResult:
     """
-    Searches for trademarks filed by a company using the USPTO or WIPO APIs.
-    NOTE: This is a placeholder.
+    Searches for trademarks filed by a company using the USPTO Trademark API via RapidAPI.
     """
-    logger.info(f"Searching for trademarks filed by {company_name}")
-    mock_trademarks = [
-        Trademark(
-            serial_number="987654321",
-            status="Live",
-            description="Project Chimera - A new software product.",
-            owner=company_name,
+    api_key = API_KEYS.uspto_api_key
+    if not api_key:
+        return TrademarkResult(
+            total_found=0, error="USPTO Trademark API key not found in .env file."
         )
-    ]
-    return TrademarkResult(total_found=len(mock_trademarks), trademarks=mock_trademarks)
+    logger.info(f"Searching for trademarks for owner: {company_name}")
+
+    url = f"https://uspto-trademark.p.rapidapi.com/v1/ownerSearch/{company_name.replace(' ', '%20')}"
+    headers = {
+        "X-RapidAPI-Key": api_key,
+        "X-RapidAPI-Host": "uspto-trademark.p.rapidapi.com",
+    }
+
+    try:
+        response = sync_client.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        trademarks = [
+            Trademark(
+                serial_number=item.get("serial_number", "N/A"),
+                status=item.get("status_label", "N/A"),
+                description=item.get("description", "N/A"),
+                owner=item.get("owner", {}).get("name", company_name),
+            )
+            for item in data
+        ]
+
+        return TrademarkResult(total_found=len(trademarks), trademarks=trademarks)
+    except Exception as e:
+        logger.error(f"Failed to get trademarks for {company_name}: {e}")
+        return TrademarkResult(
+            total_found=0, error=f"An error occurred with the USPTO Trademark API: {e}"
+        )
 
 
 # --- Regulatory Intelligence ---
@@ -112,19 +225,44 @@ def get_trademarks(company_name: str) -> TrademarkResult:
 
 def get_lobbying_data(company_name: str) -> LobbyingResult:
     """
-    Searches public databases for a company's lobbying activities.
-    NOTE: This is a placeholder (e.g., scraping OpenSecrets.org).
+    Searches for a company's lobbying activities using the LobbyingData.com API.
     """
-    logger.info(f"Analyzing lobbying data for {company_name}")
-    mock_records = [
-        LobbyingRecord(
-            issue="Artificial Intelligence Regulation", amount=500000, year=2025
+    api_key = API_KEYS.lobbying_data_api_key
+    if not api_key:
+        return LobbyingResult(
+            total_spent=0, error="LobbyingData.com API key not found in .env file."
         )
-    ]
-    return LobbyingResult(total_spent=500000, records=mock_records)
+    logger.info(f"Analyzing lobbying data for {company_name} from LobbyingData.com.")
+    base_url = "https://www.lobbyingdata.com/api/v1/search"  # Hypothetical URL
+    params = {"client": company_name}
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    try:
+        response = sync_client.get(base_url, params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        records = [
+            LobbyingRecord(
+                issue=record.get("specific_issue"),
+                amount=int(record.get("amount", 0)),
+                year=int(record.get("year", 0)),
+            )
+            for record in data.get("filings", [])
+        ]
+
+        total_spent = sum(r.amount for r in records)
+
+        return LobbyingResult(total_spent=total_spent, records=records)
+    except Exception as e:
+        logger.error(f"Failed to get lobbying data for {company_name}: {e}")
+        return LobbyingResult(
+            total_spent=0, error=f"An error occurred with the LobbyingData.com API: {e}"
+        )
 
 
 # --- Typer CLI Application ---
+# (The CLI part remains the same)
 
 
 corporate_intel_app = typer.Typer()

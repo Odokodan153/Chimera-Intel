@@ -1,5 +1,3 @@
-# src/chimera_intel/core/offensive.py (new file)
-
 """
 Module for advanced offensive and reconnaissance operations.
 
@@ -10,7 +8,8 @@ enumerating hidden web content, and performing advanced cloud reconnaissance.
 import typer
 import asyncio
 import logging
-from typing import Optional
+import dns.resolver
+from typing import Optional, List, Set
 from .schemas import (
     APIDiscoveryResult,
     DiscoveredAPI,
@@ -20,7 +19,7 @@ from .schemas import (
     SubdomainTakeoverResult,
 )
 from .http_client import async_client
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
@@ -31,17 +30,15 @@ logger = logging.getLogger(__name__)
 async def discover_apis(domain: str) -> APIDiscoveryResult:
     """
     Searches for common API endpoints and documentation specifications.
-    NOTE: This is a simplified check. A real implementation would be more exhaustive.
     """
     logger.info(f"Starting API discovery for {domain}")
     discovered = []
-
-    # Common subdomains and paths to check
 
     endpoints_to_check = {
         "Swagger/OpenAPI": [
             f"https://{domain}/swagger.json",
             f"https://{domain}/openapi.json",
+            f"https://{domain}/api/docs",
         ],
         "GraphQL": [f"https://{domain}/graphql"],
         "REST": [f"https://api.{domain}/v1/", f"https://{domain}/api/v1/"],
@@ -57,7 +54,7 @@ async def discover_apis(domain: str) -> APIDiscoveryResult:
                     )
                 )
         except Exception:
-            pass  # Ignore connection errors for non-existent endpoints
+            pass
 
     tasks = [
         check_endpoint(url, api_type)
@@ -72,51 +69,134 @@ async def discover_apis(domain: str) -> APIDiscoveryResult:
 # --- Content Enumeration ---
 
 
-def enumerate_directories(domain: str) -> ContentEnumerationResult:
+async def enumerate_directories(domain: str) -> ContentEnumerationResult:
     """
-    Performs a simulated directory and file enumeration using a wordlist.
-    NOTE: This is a placeholder. A real implementation would use a large wordlist and async requests.
+    Performs directory and file enumeration using a small, common wordlist.
     """
     logger.info(f"Performing content enumeration on {domain}")
-    # In a real implementation, this would read from a wordlist (e.g., SecLists)
-    # and make thousands of async requests. We will mock the results.
 
-    mock_found = [
-        DiscoveredContent(
-            url=f"https://{domain}/admin", status_code=403, content_length=128
-        ),
-        DiscoveredContent(
-            url=f"https://{domain}/.git/config", status_code=200, content_length=512
-        ),
-        DiscoveredContent(
-            url=f"https://{domain}/backup.zip", status_code=200, content_length=10485760
-        ),
-    ]
-    return ContentEnumerationResult(
-        target_url=f"https://{domain}", found_content=mock_found
-    )
+    # A small but effective list of common paths
+
+    common_paths: Set[str] = {
+        "admin",
+        "login",
+        "dashboard",
+        "api",
+        "wp-admin",
+        "test",
+        "dev",
+        ".git/config",
+        ".env",
+        "config.json",
+        "backup.zip",
+        "robots.txt",
+    }
+
+    found_content: List[DiscoveredContent] = []
+    base_url = f"https://{domain}"
+
+    async def check_path(path: str):
+        url = f"{base_url}/{path}"
+        try:
+            response = await async_client.head(url, timeout=7, follow_redirects=False)
+            # We check for all status codes except 404 (Not Found)
+
+            if response.status_code != 404:
+                # We use 'content-length' from the headers if available
+
+                content_length_str = response.headers.get("content-length", "0")
+                found_content.append(
+                    DiscoveredContent(
+                        url=url,
+                        status_code=response.status_code,
+                        content_length=int(content_length_str),
+                    )
+                )
+        except Exception:
+            pass  # Ignore connection errors
+
+    tasks = [check_path(path) for path in common_paths]
+    await asyncio.gather(*tasks)
+
+    return ContentEnumerationResult(target_url=base_url, found_content=found_content)
 
 
 # --- Advanced Cloud Recon ---
 
 
-def check_subdomain_takeover(domain: str) -> AdvancedCloudResult:
+async def check_subdomain_takeover(domain: str) -> AdvancedCloudResult:
     """
     Checks for dangling DNS records pointing to de-provisioned cloud services.
-    NOTE: This is a complex task and is placeholder logic.
     """
     logger.info(f"Checking for potential subdomain takeovers on {domain}")
-    # A real implementation would resolve all subdomains, get CNAMEs,
-    # and check them against known fingerprints for vulnerable cloud services.
 
-    mock_takeovers = [
-        SubdomainTakeoverResult(
-            subdomain=f"assets.{domain}",
-            vulnerable_service="S3 Bucket",
-            details="CNAME points to a non-existent S3 bucket.",
-        )
+    # Fingerprints of vulnerable services
+
+    vulnerable_fingerprints = {
+        "S3 Bucket": ["NoSuchBucket"],
+        "Heroku": ["no such app"],
+        "GitHub Pages": ["There isn't a GitHub Pages site here."],
+        "Shopify": ["Sorry, this shop is currently unavailable."],
+        "Ghost": ["The thing you were looking for is no longer here"],
+    }
+
+    # Common subdomains to check
+
+    subdomains_to_check = [
+        "www",
+        "assets",
+        "blog",
+        "dev",
+        "staging",
+        "api",
+        "files",
+        "images",
     ]
-    return AdvancedCloudResult(target_domain=domain, potential_takeovers=mock_takeovers)
+
+    potential_takeovers: List[SubdomainTakeoverResult] = []
+
+    async def check_subdomain(sub: str):
+        full_domain = f"{sub}.{domain}"
+        try:
+            # 1. Check for a CNAME record
+
+            resolver = dns.resolver.Resolver()
+            cname_answers = await asyncio.to_thread(
+                resolver.resolve, full_domain, "CNAME"
+            )
+            cname_target = str(cname_answers[0].target)
+
+            # 2. Check the page content for fingerprints
+
+            response = await async_client.get(f"http://{full_domain}", timeout=10)
+            page_content = response.text.lower()
+
+            for service, fingerprints in vulnerable_fingerprints.items():
+                for fingerprint in fingerprints:
+                    if fingerprint.lower() in page_content:
+                        potential_takeovers.append(
+                            SubdomainTakeoverResult(
+                                subdomain=full_domain,
+                                vulnerable_service=service,
+                                details=f"CNAME points to '{cname_target}' and page contains fingerprint: '{fingerprint}'",
+                            )
+                        )
+                        return
+        except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+            # This is normal if the subdomain has no CNAME or does not exist
+
+            pass
+        except Exception:
+            # Ignore other errors (e.g., connection timeout)
+
+            pass
+
+    tasks = [check_subdomain(sub) for sub in subdomains_to_check]
+    await asyncio.gather(*tasks)
+
+    return AdvancedCloudResult(
+        target_domain=domain, potential_takeovers=potential_takeovers
+    )
 
 
 # --- Typer CLI Application ---
@@ -126,42 +206,83 @@ offensive_app = typer.Typer()
 
 
 @offensive_app.command("api-discover")
-def run_api_discovery(
+async def run_api_discovery(
     domain: str = typer.Argument(..., help="The target domain to scan for APIs."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Discovers potential API endpoints and specifications."""
-    results = asyncio.run(discover_apis(domain))
+    with console.status(f"[bold cyan]Discovering APIs on {domain}...[/bold cyan]"):
+        results = await discover_apis(domain)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_api_discover", data=results_dict)
 
 
 @offensive_app.command("enum-content")
-def run_content_enumeration(
+async def run_content_enumeration(
     domain: str = typer.Argument(..., help="The target domain to enumerate."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Enumerates common directories and files on a web server."""
-    results = enumerate_directories(domain)
+    with console.status(f"[bold cyan]Enumerating content on {domain}...[/bold cyan]"):
+        results = await enumerate_directories(domain)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_enum_content", data=results_dict)
 
 
 @offensive_app.command("cloud-takeover")
-def run_cloud_takeover_check(
+async def run_cloud_takeover_check(
     domain: str = typer.Argument(..., help="The root domain to check for takeovers."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Checks for potential subdomain takeovers."""
-    results = check_subdomain_takeover(domain)
+    with console.status(
+        f"[bold cyan]Checking for subdomain takeovers on {domain}...[/bold cyan]"
+    ):
+        results = await check_subdomain_takeover(domain)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_cloud_takeover", data=results_dict)
+
+
+# Change CLI functions to be async
+
+
+@offensive_app.callback()
+def callback():
+    """
+    Advanced offensive and reconnaissance operations.
+    """
+
+
+# Wrapper to run async CLI commands
+
+
+def main():
+    # Typer does not directly support async functions, so we use this wrapper
+    # for the commands in this file.
+
+    import asyncio
+
+    # Create a new event loop
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Run the Typer app within the event loop
+
+    try:
+        offensive_app()
+    finally:
+        loop.close()
+
+
+if __name__ == "__main__":
+    main()

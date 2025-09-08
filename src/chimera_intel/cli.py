@@ -1,6 +1,3 @@
-# src/chimera_intel/cli.py
-
-
 """
 Main Command-Line Interface (CLI) entry point for the Chimera Intel application.
 
@@ -38,9 +35,14 @@ from chimera_intel.core.internal import internal_app
 from chimera_intel.core.automation import automation_app
 from chimera_intel.core.automation import connect_app
 from chimera_intel.core.recon import recon_app
+from chimera_intel.core.blockchain_osint import blockchain_app
+from chimera_intel.core.code_intel import code_intel_app
+from chimera_intel.core.ttp_mapper import ttp_app
+from chimera_intel.core.physical_osint import physical_osint_app
 
-# --- NEW: Startup Banner ---
+# --- : Startup Banner ---
 # This will be printed every time the CLI is invoked.
+
 
 BANNER = """
   ____ _   _ ___ __  __ _____ ____      _       ___ _   _ _____ _____ _     
@@ -55,10 +57,12 @@ setup_logging()
 
 # Initialize the database to ensure the schema is ready.
 
+
 initialize_database()
 
 # --- Main Application Definition ---
 # This is the top-level Typer application.
+
 
 app = typer.Typer(
     name="Chimera Intel",
@@ -72,6 +76,7 @@ app = typer.Typer(
 # creating a hierarchical CLI structure like 'chimera <group> <command>'.
 
 # 1. 'scan' command group for offensive intelligence gathering.
+
 
 scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
 app.add_typer(scan_app, name="scan")
@@ -121,6 +126,7 @@ app.add_typer(
 )
 # 2. 'defensive' command group for internal security and counter-intelligence.
 
+
 defensive_group_app = typer.Typer(
     help="Run defensive and vulnerability scans on your own assets."
 )
@@ -139,6 +145,7 @@ defensive_group_app.add_typer(
 
 
 # 3. 'analysis' command group for AI-powered and historical data analysis.
+
 
 analysis_app = typer.Typer(help="Run AI-powered and historical analysis.")
 app.add_typer(analysis_app, name="analysis")
@@ -165,6 +172,7 @@ analysis_app.add_typer(
 
 # 4. 'report' command group for generating output files from saved data.
 
+
 report_app_group = typer.Typer(help="Generate reports from saved JSON scan data.")
 app.add_typer(report_app_group, name="report")
 report_app_group.add_typer(report_app, name="pdf", help="Generate a formal PDF report.")
@@ -173,6 +181,7 @@ report_app_group.add_typer(
 )
 
 # 5. 'corporate' command group for deep strategic intelligence.
+
 
 app.add_typer(
     corporate_intel_app,
@@ -208,6 +217,30 @@ app.add_typer(
     recon_app,
     name="recon",
     help="Run advanced reconnaissance for specific intelligence data.",
+)
+
+app.add_typer(
+    blockchain_app,
+    name="blockchain",
+    help="Run OSINT scans on cryptocurrency and blockchain assets.",
+)
+
+app.add_typer(
+    code_intel_app,
+    name="code-intel",
+    help="Run intelligence scans on code repositories.",
+)
+
+app.add_typer(
+    ttp_app,
+    name="ttp",
+    help="Map vulnerabilities to adversary Tactics, Techniques & Procedures.",
+)
+
+app.add_typer(
+    physical_osint_app,
+    name="physical",
+    help="Run OSINT scans for physical assets and locations.",
 )
 
 

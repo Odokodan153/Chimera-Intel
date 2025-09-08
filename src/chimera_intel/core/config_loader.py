@@ -62,6 +62,14 @@ class ApiKeys(BaseSettings):
 
     slack_webhook_url: Optional[str] = Field(None, alias="SLACK_WEBHOOK_URL")
 
+    # Corporate & Strategic Intelligence Keys
+
+    aura_api_key: Optional[str] = Field(None, alias="AURA_API_KEY")
+    lobbying_data_api_key: Optional[str] = Field(None, alias="LOBBYING_DATA_API_KEY")
+    spycloud_api_key: Optional[str] = Field(None, alias="SPYCLOUD_API_KEY")
+    etherscan_api_key: Optional[str] = Field(None, alias="ETHERSCAN_API_KEY")
+    google_maps_api_key: Optional[str] = Field(None, alias="GOOGLE_MAPS_API_KEY")
+
     class Config:
         """Pydantic-settings configuration."""
 

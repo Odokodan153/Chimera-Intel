@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
     """Checks a domain against the Have I Been Pwned (HIBP) database for data breaches.
-
     Args:
         domain (str): The company's domain to check.
         api_key (str): The HIBP API key.
@@ -84,7 +83,6 @@ def check_hibp_breaches(domain: str, api_key: str) -> HIBPResult:
 
 def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
     """Searches GitHub for potential secret leaks related to a query.
-
     Args:
         query (str): The search term (e.g., 'yourcompany.com "api key"').
         api_key (str): The GitHub Personal Access Token (PAT).
@@ -113,15 +111,12 @@ def search_github_leaks(query: str, api_key: str) -> GitHubLeaksResult:
 
 def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
     """Securely uses the dnstwist command-line tool to find potential typosquatting domains.
-
     Args:
         domain (str): The domain to check for typosquatting variations.
 
     Returns:
         TyposquatResult: A Pydantic model of the dnstwist JSON output, or an error.
     """
-    # Prevent command injection if a domain starts with a hyphen.
-
     if domain.startswith("-"):
         logger.error("Invalid domain format for dnstwist scan: '%s'", domain)
         return TyposquatResult(
@@ -148,7 +143,6 @@ def find_typosquatting_dnstwist(domain: str) -> TyposquatResult:
 
 def analyze_attack_surface_shodan(query: str, api_key: str) -> ShodanResult:
     """Uses Shodan to find devices and services exposed on the internet.
-
     Args:
         query (str): The Shodan search query (e.g., 'org:"My Company"').
         api_key (str): The Shodan API key.
@@ -179,7 +173,6 @@ def analyze_attack_surface_shodan(query: str, api_key: str) -> ShodanResult:
 
 def search_pastes_api(query: str) -> PasteResult:
     """Searches for pastes containing a specific query using the paste.ee API.
-
     Args:
         query (str): The keyword or domain to search for.
 
@@ -188,12 +181,10 @@ def search_pastes_api(query: str) -> PasteResult:
     """
     url = "https://api.paste.ee/v1/pastes"
     params: Dict[str, Union[str, int]] = {"query": query, "per_page": 20}
-
     try:
         response = sync_client.get(url, params=params)
         response.raise_for_status()
         data = response.json()
-
         pastes = [
             Paste(
                 id=p.get("id"),
@@ -213,7 +204,6 @@ def search_pastes_api(query: str) -> PasteResult:
 
 def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
     """Performs an in-depth SSL/TLS analysis using the SSL Labs API.
-
     Args:
         host (str): The hostname to scan (e.g., 'google.com').
 
@@ -244,7 +234,6 @@ def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
         with Progress() as progress:
             task = progress.add_task("[cyan]Starting SSL Labs scan...", total=None)
             initial_data = start_scan(host)
-
             if initial_data["status"] == "ERROR":
                 return SSLLabsResult(
                     error=initial_data.get(
@@ -265,7 +254,6 @@ def analyze_ssl_ssllabs(host: str) -> SSLLabsResult:
 
 def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> MobSFResult:
     """Uploads an Android APK to a running MobSF instance and retrieves the scan results.
-
     Args:
         file_path (str): The local path to the .apk file.
         mobsf_url (str): The URL of the running MobSF instance.
@@ -280,7 +268,6 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> MobSFResu
     if not mobsf_url or not api_key:
         return MobSFResult(error="MobSF URL and API Key are required.")
     headers = {"Authorization": api_key}
-
     try:
         with open(file_path, "rb") as f:
             files = {"file": (os.path.basename(file_path), f)}
@@ -289,21 +276,214 @@ def analyze_apk_mobsf(file_path: str, mobsf_url: str, api_key: str) -> MobSFResu
             )
             upload_response.raise_for_status()
         upload_data = upload_response.json()
-
         scan_response = sync_client.post(
             f"{mobsf_url}/api/v1/scan", headers=headers, data=upload_data
         )
         scan_response.raise_for_status()
-
         report_response = sync_client.post(
             f"{mobsf_url}/api/v1/report_json", headers=headers, data=upload_data
         )
         report_response.raise_for_status()
-
         return MobSFResult(report=report_response.json())
     except (HTTPStatusError, RequestError) as e:
         logger.error("An error occurred with MobSF API: %s", e)
         return MobSFResult(error=f"An error occurred with MobSF API: {e}")
+
+
+# --- : Certificate Transparency Monitoring ---
+
+
+def monitor_ct_logs(domain: str) -> CTMentorResult:
+    """Monitors Certificate Transparency logs for new SSL/TLS certificates via crt.sh.
+
+    This function queries the public crt.sh service, which aggregates certificate
+    transparency logs from multiple sources. It searches for any certificates
+    that have been issued for the specified domain and its subdomains.
+
+    Args:
+        domain (str): The domain to query for newly issued certificates (e.g., "example.com").
+
+    Returns:
+        CTMentorResult: A Pydantic model containing the list of found certificates
+                        or an error message if the request fails.
+    """
+    logger.info(f"Monitoring CT logs for new certificates for {domain}")
+    url = f"https://crt.sh/?q=%.{domain}&output=json"
+
+    try:
+        response = sync_client.get(url, timeout=30)
+        response.raise_for_status()
+        certs_data = response.json()
+
+        certs = [
+            Certificate(
+                issuer_name=cert.get("issuer_name", "N/A"),
+                not_before=cert.get("not_before", "N/A"),
+                not_after=cert.get("not_after", "N/A"),
+                subject_name=cert.get("name_value", "N/A"),
+            )
+            for cert in certs_data
+        ]
+        return CTMentorResult(domain=domain, total_found=len(certs), certificates=certs)
+    except Exception as e:
+        logger.error(f"Failed to fetch CT logs for {domain}: {e}")
+        return CTMentorResult(
+            domain=domain,
+            total_found=0,
+            error=f"An error occurred while fetching CT logs: {e}",
+        )
+
+
+# --- : IaC Scanning ---
+
+
+def scan_iac_files(directory: str) -> IaCScanResult:
+    """Scans Infrastructure as Code (IaC) files for security issues using tfsec.
+
+    This function executes the 'tfsec' command-line tool, which must be installed
+    on the system and available in the system's PATH. It scans the specified directory
+    for common misconfigurations in infrastructure files (like Terraform) and
+    parses the JSON output.
+
+    Args:
+        directory (str): The local file path to the directory containing IaC files.
+
+    Returns:
+        IaCScanResult: A Pydantic model containing a list of security issues found,
+                       or an error if tfsec is not found or fails to execute.
+    """
+    logger.info(f"Scanning IaC files in directory: {directory}")
+
+    if not os.path.isdir(directory):
+        return IaCScanResult(
+            target_path=directory,
+            total_issues=0,
+            error="Provided path is not a valid directory.",
+        )
+    try:
+        command = ["tfsec", directory, "--format", "json"]
+        process = subprocess.run(
+            command, capture_output=True, text=True, check=False, timeout=300
+        )
+
+        # tfsec exits with code 1 if issues are found, so we don't use check=True
+
+        if process.returncode != 0 and process.stderr:
+            # Check for "tfsec command not found" or similar
+
+            if (
+                "command not found" in process.stderr.lower()
+                or "no such file" in process.stderr.lower()
+            ):
+                raise FileNotFoundError("tfsec command not found.")
+        data = json.loads(process.stdout)
+
+        issues = [
+            IaCSecurityIssue(
+                file_path=result.get("location", {}).get("filename", "N/A"),
+                line_number=result.get("location", {}).get("start_line", 0),
+                issue_id=result.get("rule_id", "N/A"),
+                description=result.get("description", "N/A"),
+                severity=result.get("severity", "UNKNOWN"),
+            )
+            for result in data.get("results", [])
+        ]
+
+        return IaCScanResult(
+            target_path=directory, total_issues=len(issues), issues=issues
+        )
+    except FileNotFoundError:
+        logger.error(
+            "The 'tfsec' command was not found. Please ensure it is installed and in your PATH."
+        )
+        return IaCScanResult(
+            error="tfsec command not found. Please ensure it is installed."
+        )
+    except json.JSONDecodeError:
+        logger.error(f"Failed to parse tfsec JSON output. Error: {process.stderr}")
+        return IaCScanResult(error="Failed to parse tfsec JSON output.")
+    except Exception as e:
+        logger.critical(f"An unexpected error occurred while running tfsec: {e}")
+        return IaCScanResult(error=f"An unexpected error occurred: {e}")
+
+
+# --- : Secrets Scanning ---
+
+
+def scan_for_secrets(directory: str) -> SecretsScanResult:
+    """Scans a directory for hardcoded secrets using gitleaks.
+
+    This function executes the 'gitleaks' command-line tool, which must be
+    installed on the system and available in the system's PATH. It scans the specified
+    directory for secrets like API keys, passwords, and other sensitive credentials
+    and parses the JSON report that gitleaks generates.
+
+    Args:
+        directory (str): The local file path to the directory to scan.
+
+    Returns:
+        SecretsScanResult: A Pydantic model containing a list of found secrets,
+                           or an error if gitleaks is not found or fails to execute.
+    """
+
+    logger.info(f"Scanning for hardcoded secrets in directory: {directory}")
+
+    if not os.path.isdir(directory):
+        return SecretsScanResult(
+            target_path=directory,
+            total_found=0,
+            error="Provided path is not a valid directory.",
+        )
+    try:
+        report_path = "gitleaks-report.json"
+        command = [
+            "gitleaks",
+            "detect",
+            "--source",
+            directory,
+            "--report-path",
+            report_path,
+            "--report-format",
+            "json",
+            "--no-git",  # Scan the directory as-is, not as a git repo
+        ]
+        # Use check=False as gitleaks exits with a non-zero code if secrets are found
+
+        subprocess.run(
+            command, capture_output=True, text=True, check=False, timeout=300
+        )
+
+        if not os.path.exists(report_path):
+            return SecretsScanResult(target_path=directory, total_found=0, secrets=[])
+        with open(report_path, "r") as f:
+            data = json.load(f)
+        secrets = [
+            FoundSecret(
+                file_path=finding.get("File", "N/A"),
+                line_number=finding.get("StartLine", 0),
+                rule_id=finding.get("RuleID", "N/A"),
+                secret_type=finding.get("Description", "N/A"),
+            )
+            for finding in data
+        ]
+
+        # Clean up the report file
+
+        os.remove(report_path)
+
+        return SecretsScanResult(
+            target_path=directory, total_found=len(secrets), secrets=secrets
+        )
+    except FileNotFoundError:
+        logger.error(
+            "The 'gitleaks' command was not found. Please ensure it is installed and in your PATH."
+        )
+        return SecretsScanResult(
+            error="gitleaks command not found. Please ensure it is installed."
+        )
+    except Exception as e:
+        logger.critical(f"An unexpected error occurred while running gitleaks: {e}")
+        return SecretsScanResult(error=f"An unexpected error occurred: {e}")
 
 
 # --- Typer CLI Application ---
@@ -513,82 +693,6 @@ def run_mobsf_scan(
     )
 
 
-# --- Certificate Transparency Monitoring ---
-
-
-def monitor_ct_logs(domain: str) -> CTMentorResult:
-    """
-    Monitors Certificate Transparency logs for new SSL/TLS certificates.
-    NOTE: This is a placeholder; a real implementation would use an API like crt.sh.
-    """
-    logger.info(f"Monitoring CT logs for new certificates for {domain}")
-    # A real implementation would query a service like https://crt.sh/?q=example.com&output=json
-
-    mock_certs = [
-        Certificate(
-            issuer_name="C=US, O=Let's Encrypt, CN=R3",
-            not_before="2025-08-20T10:00:00",
-            not_after="2025-11-20T10:00:00",
-            subject_name=f"mail.{domain}",
-        )
-    ]
-    return CTMentorResult(
-        domain=domain, total_found=len(mock_certs), certificates=mock_certs
-    )
-
-
-# --- IaC Scanning ---
-
-
-def scan_iac_files(directory: str) -> IaCScanResult:
-    """
-    Scans Infrastructure as Code (IaC) files for security misconfigurations.
-    NOTE: This is a placeholder; a real implementation would use a tool like 'tfsec' or 'checkov'.
-    """
-    logger.info(f"Scanning IaC files in directory: {directory}")
-    # A real implementation would run a subprocess command for a tool like 'tfsec' and parse the JSON output.
-
-    mock_issues = [
-        IaCSecurityIssue(
-            file_path=f"{directory}/main.tf",
-            line_number=25,
-            issue_id="AWS006",
-            description="S3 bucket does not have encryption enabled.",
-            severity="High",
-        )
-    ]
-    return IaCScanResult(
-        target_path=directory, total_issues=len(mock_issues), issues=mock_issues
-    )
-
-
-# --- Secrets Scanning ---
-
-
-def scan_for_secrets(directory: str) -> SecretsScanResult:
-    """
-    Scans a directory for hardcoded secrets.
-    NOTE: This is a placeholder; a real implementation would use a tool like 'gitleaks' or 'trufflehog'.
-    """
-    logger.info(f"Scanning for hardcoded secrets in directory: {directory}")
-    # A real implementation would run a tool like 'gitleaks' and parse its output.
-
-    mock_secrets = [
-        FoundSecret(
-            file_path=f"{directory}/config/prod.yaml",
-            line_number=10,
-            rule_id="aws-access-key",
-            secret_type="AWS Access Key",
-        )
-    ]
-    return SecretsScanResult(
-        target_path=directory, total_found=len(mock_secrets), secrets=mock_secrets
-    )
-
-
-# (Add the new commands to the existing 'defensive_app' Typer application)
-
-
 @defensive_app.command("certs")
 def run_ct_log_check(
     domain: str = typer.Argument(..., help="The domain to check for new certificates."),
@@ -614,8 +718,6 @@ def run_iac_scan(
     results = scan_iac_files(directory)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
-    # Note: We might use the directory name as the "target" for DB storage
-
     save_scan_to_db(
         target=os.path.basename(directory),
         module="defensive_scan_iac",

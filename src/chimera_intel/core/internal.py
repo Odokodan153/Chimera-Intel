@@ -8,8 +8,17 @@ a compromised system, such as log files, malware samples, and forensic artifacts
 import typer
 import logging
 import hashlib
-from datetime import datetime
-from typing import Optional
+import re
+import os
+from typing import Optional, List, Dict
+
+try:
+    from MFT import MFT as MFTParser
+    from MFT import MFTError
+
+    MFT_AVAILABLE = True
+except ImportError:
+    MFT_AVAILABLE = False
 from .schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
@@ -25,25 +34,46 @@ logger = logging.getLogger(__name__)
 
 def analyze_log_file(file_path: str) -> LogAnalysisResult:
     """
-    Parses a log file to extract and flag suspicious events.
-    NOTE: This is a placeholder with basic pattern matching.
+    Parses a log file to extract and flag suspicious events using basic pattern matching.
     """
     logger.info(f"Analyzing log file: {file_path}")
 
-    # In a real implementation, this would read the file line by line.
-    # We will simulate this process.
-
-    mock_log_lines = 1500
-    mock_suspicious_events = {
-        "failed_login": 120,
-        "ssh_bruteforce": 45,
-        "error_spike": 12,
+    if not os.path.exists(file_path):
+        error_msg = f"Log file not found at path: {file_path}"
+        logger.error(error_msg)
+        return LogAnalysisResult(
+            total_lines_parsed=0, suspicious_events={}, error=error_msg
+        )
+    suspicious_patterns = {
+        "failed_login": re.compile(
+            r"fail(ed|ure) login|authentication failure", re.IGNORECASE
+        ),
+        "ssh_bruteforce": re.compile(
+            r"ssh.*(authentication failure|invalid user|disconnect)", re.IGNORECASE
+        ),
+        "error_spike": re.compile(r"error|critical|fatal", re.IGNORECASE),
     }
 
-    return LogAnalysisResult(
-        total_lines_parsed=mock_log_lines,
-        suspicious_events=mock_suspicious_events,
-    )
+    suspicious_events: Dict[str, int] = {key: 0 for key in suspicious_patterns}
+    lines_parsed = 0
+
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                lines_parsed += 1
+                for event, pattern in suspicious_patterns.items():
+                    if pattern.search(line):
+                        suspicious_events[event] += 1
+        return LogAnalysisResult(
+            total_lines_parsed=lines_parsed,
+            suspicious_events=suspicious_events,
+        )
+    except Exception as e:
+        error_msg = f"Failed to read or analyze log file: {e}"
+        logger.error(error_msg)
+        return LogAnalysisResult(
+            total_lines_parsed=0, suspicious_events={}, error=error_msg
+        )
 
 
 # --- Malware Analysis ---
@@ -52,23 +82,39 @@ def analyze_log_file(file_path: str) -> LogAnalysisResult:
 def perform_static_analysis(file_path: str) -> StaticAnalysisResult:
     """
     Performs basic static analysis on a given file without executing it.
-    NOTE: This is a placeholder. A real implementation would be more robust.
+    It calculates file hashes and extracts potential human-readable strings.
     """
     logger.info(f"Performing static analysis on: {file_path}")
-    # In a real implementation, we would safely read the file's bytes.
-    # Here, we simulate the results.
 
-    mock_file_content = b"This is a mock file content with some strings like API_KEY."
+    if not os.path.exists(file_path):
+        error_msg = f"File not found for static analysis: {file_path}"
+        logger.error(error_msg)
+        return StaticAnalysisResult(filename=file_path, file_size=0, error=error_msg)
+    try:
+        with open(file_path, "rb") as f:
+            content = f.read()
+        file_size = len(content)
+        hashes = {
+            "md5": hashlib.md5(content).hexdigest(),
+            "sha1": hashlib.sha1(content).hexdigest(),
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
 
-    md5_hash = hashlib.md5(mock_file_content).hexdigest()
-    sha256_hash = hashlib.sha256(mock_file_content).hexdigest()
+        string_pattern = re.compile(rb'[A-Za-z0-9\s.,!?:;"\'/\\-]{5,}')
+        found_strings = [
+            s.decode("utf-8", "ignore") for s in string_pattern.findall(content)
+        ]
 
-    return StaticAnalysisResult(
-        filename=file_path,
-        file_size=len(mock_file_content),
-        hashes={"md5": md5_hash, "sha256": sha256_hash},
-        embedded_strings=["API_KEY", "connect", "password"],
-    )
+        return StaticAnalysisResult(
+            filename=os.path.basename(file_path),
+            file_size=file_size,
+            hashes=hashes,
+            embedded_strings=list(set(found_strings))[:100],
+        )
+    except Exception as e:
+        error_msg = f"Failed during static analysis of {file_path}: {e}"
+        logger.error(error_msg)
+        return StaticAnalysisResult(filename=file_path, file_size=0, error=error_msg)
 
 
 # --- Forensic Artifact Analysis ---
@@ -76,38 +122,57 @@ def perform_static_analysis(file_path: str) -> StaticAnalysisResult:
 
 def parse_mft(file_path: str) -> MFTAnalysisResult:
     """
-    Parses a Master File Table ($MFT) to create a timeline of file activity.
-    NOTE: This is a placeholder. A real implementation requires a specialized library.
+    Parses a Master File Table ($MFT) to create a timeline of file activity
+    using the 'python-mft' library.
     """
-    logger.info(f"Parsing MFT file: {file_path}")
-    # Parsing an MFT is a highly complex forensic task. We will mock the output.
+    logger.info(f"Attempting to parse MFT file: {file_path}")
 
-    now = datetime.now().isoformat()
-    mock_entries = [
-        MFTEntry(
-            record_number=30,
-            filename="kernel32.dll",
-            creation_time=now,
-            modification_time=now,
-            is_directory=False,
-        ),
-        MFTEntry(
-            record_number=1523,
-            filename="evil.exe",
-            creation_time=now,
-            modification_time=now,
-            is_directory=False,
-        ),
-        MFTEntry(
-            record_number=1524,
-            filename="temp.dat",
-            creation_time=now,
-            modification_time=now,
-            is_directory=False,
-        ),
-    ]
+    if not MFT_AVAILABLE:
+        error_msg = "'python-mft' library not installed. Please add it to pyproject.toml and reinstall."
+        logger.error(error_msg)
+        return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
+    if not os.path.exists(file_path):
+        error_msg = f"MFT file not found at path: {file_path}"
+        logger.error(error_msg)
+        return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
+    entries: List[MFTEntry] = []
+    try:
+        mft_parser = MFTParser(file_path)
+        for record in mft_parser.get_records():
+            # Get all filenames associated with the record
 
-    return MFTAnalysisResult(total_records=len(mock_entries), entries=mock_entries)
+            filenames = record.get_filenames()
+            if not filenames:
+                continue
+            # We'll use the first available filename for simplicity
+
+            main_filename = filenames[0]
+
+            entry = MFTEntry(
+                record_number=record.entry_id,
+                filename=main_filename.get("filename", "N/A"),
+                creation_time=(
+                    main_filename.get("creation_time", "N/A").isoformat()
+                    if main_filename.get("creation_time")
+                    else "N/A"
+                ),
+                modification_time=(
+                    main_filename.get("modification_time", "N/A").isoformat()
+                    if main_filename.get("modification_time")
+                    else "N/A"
+                ),
+                is_directory=record.is_directory(),
+            )
+            entries.append(entry)
+        return MFTAnalysisResult(total_records=len(entries), entries=entries)
+    except MFTError as e:
+        error_msg = f"MFT parsing error for {file_path}: {e}. Is this a valid MFT file?"
+        logger.error(error_msg)
+        return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
+    except Exception as e:
+        error_msg = f"An unexpected error occurred during MFT parsing: {e}"
+        logger.error(error_msg)
+        return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
 
 
 # --- Typer CLI Application ---

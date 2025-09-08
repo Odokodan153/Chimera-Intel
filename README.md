@@ -10,18 +10,18 @@
 
 Chimera Intel is a command-line first OSINT (Open Source Intelligence) tool designed to solve a critical business problem: **information fragmentation**. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams into a single, unified, and actionable dossier.
 
-Chimera Intel is a **comprehensive Open Source Intelligence (OSINT) and cybersecurity platform** designed for both **offensive intelligence gathering** and **defensive monitoring**.  
-It is a modular, extensible tool that allows cybersecurity professionals, penetration testers, and threat analysts to perform thorough reconnaissance on corporate, organizational, and personal digital footprints.  
+Chimera Intel is a **comprehensive Open Source Intelligence (OSINT) and cybersecurity platform** designed for both **offensive intelligence gathering** and **defensive monitoring**.
+It is a modular, extensible tool that allows cybersecurity professionals, penetration testers, and threat analysts to perform thorough reconnaissance on corporate, organizational, and personal digital footprints.
 
-By combining multiple specialized modules—ranging from domain footprinting, web and business intelligence, to AI-driven analysis—Chimera Intel enables users to gather actionable insights efficiently.  
-It integrates various APIs, local scanning tools, and machine learning models to automate the collection, correlation, and analysis of large datasets, reducing manual effort while maintaining accuracy.  
+By combining multiple specialized modules—ranging from domain footprinting, web and business intelligence, to AI-driven analysis—Chimera Intel enables users to gather actionable insights efficiently.
+It integrates various APIs, local scanning tools, and machine learning models to automate the collection, correlation, and analysis of large datasets, reducing manual effort while maintaining accuracy.
 
-The platform is designed with **flexibility and modularity** in mind:  
-- Offensive modules provide detailed visibility into target infrastructure, public assets, and business-related data.  
-- Defensive modules allow organizations to monitor for potential breaches, data leaks, and malicious activity affecting their brand or digital assets.  
-- AI modules leverage state-of-the-art machine learning techniques to provide predictive insights, anomaly detection, and strategic recommendations.  
+The platform is designed with **flexibility and modularity** in mind:
+- Offensive modules provide detailed visibility into target infrastructure, public assets, and business-related data.
+- Defensive modules allow organizations to monitor for potential breaches, data leaks, and malicious activity affecting their brand or digital assets.
+- AI modules leverage state-of-the-art machine learning techniques to provide predictive insights, anomaly detection, and strategic recommendations.
 
-Chimera Intel is ideal for security researchers, OSINT enthusiasts, and IT teams looking to **strengthen their security posture**, **investigate incidents**, or **perform advanced competitive intelligence**.  
+Chimera Intel is ideal for security researchers, OSINT enthusiasts, and IT teams looking to **strengthen their security posture**, **investigate incidents**, or **perform advanced competitive intelligence**.
 
 ### ⚠️ Responsible Use & Legal Disclaimer
 
@@ -83,7 +83,10 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **connect** | `virustotal` | Integrates with VirusTotal for file and URL analysis. |
 | **report** | `pdf` | Generates professional PDF reports from scan data. |
 | | `graph` | Creates interactive HTML knowledge graphs. |
-
+| **Advanced Intel** | `blockchain wallet` | Analyzes a cryptocurrency wallet for balance and transactions. |
+| | `code-intel repo` | Gathers intelligence from a public code repository. |
+| | `ttp map-cve` | Maps CVEs to MITRE ATT&CK adversary techniques. |
+| | `physical locations` | Finds physical office locations for a company. |
 
 ---
 
@@ -158,7 +161,6 @@ The following diagram illustrates the typical data flow for a `scan` command.
 
 ```mermaid
 graph TD
-    graph TD
     subgraph User Interface
         A1[User runs 'chimera corporate hr-intel ...'] --> B{CLI Entrypoint};
         A2[User runs 'chimera offensive enum-content ...'] --> B;

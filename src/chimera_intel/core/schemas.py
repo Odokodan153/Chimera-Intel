@@ -1084,3 +1084,86 @@ class AppConfig(BaseModel):
     network: ConfigNetwork
     modules: ConfigModules
     reporting: ConfigReporting = ConfigReporting()
+
+
+# --- Blockchain & Cryptocurrency OSINT Models ---
+
+
+class WalletTransaction(BaseModel):
+    """Model for a single blockchain transaction."""
+
+    hash: str
+    from_address: str = Field(..., alias="from")
+    to_address: str = Field(..., alias="to")
+    value_eth: str
+    timestamp: str
+
+
+class WalletAnalysisResult(BaseModel):
+    """Model for the analysis of a single cryptocurrency wallet."""
+
+    address: str
+    balance_eth: str
+    total_transactions: int
+    recent_transactions: List[WalletTransaction] = []
+    error: Optional[str] = None
+
+    # --- Code & Repository Intelligence Models ---
+
+
+class CommitterInfo(BaseModel):
+    """Model for information about a single code committer."""
+
+    name: str
+    email: str
+    commit_count: int
+
+
+class RepoAnalysisResult(BaseModel):
+    """Model for the result of a full repository analysis."""
+
+    repository_url: str
+    total_commits: int
+    total_committers: int
+    top_committers: List[CommitterInfo] = []
+    commit_keywords: Dict[str, int] = {}
+    error: Optional[str] = None
+    # --- Adversary Emulation & TTP Mapping Models ---
+
+
+class MappedTechnique(BaseModel):
+    """Model for a single MITRE ATT&CK technique mapped to a CVE."""
+
+    cve_id: str
+    technique_id: str
+    technique_name: str
+    tactic: str
+
+
+class TTPMappingResult(BaseModel):
+    """Model for the result of a CVE to TTP mapping analysis."""
+
+    total_cves_analyzed: int
+    mapped_techniques: List[MappedTechnique] = []
+    error: Optional[str] = None
+
+
+# --- Physical Security OSINT Models ---
+
+
+class PhysicalLocation(BaseModel):
+    """Model for a single discovered physical location."""
+
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+    rating: Optional[float] = None
+
+
+class PhysicalSecurityResult(BaseModel):
+    """Model for the result of a physical security OSINT scan."""
+
+    query: str
+    locations_found: List[PhysicalLocation] = []
+    error: Optional[str] = None
