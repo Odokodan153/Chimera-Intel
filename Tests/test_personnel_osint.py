@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from httpx import Response
+from httpx import Response, RequestError
 from typer.testing import CliRunner
 
 from chimera_intel.cli import app
@@ -90,6 +90,16 @@ class TestPersonnelOsint(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
+
+    @patch("chimera_intel.core.personnel_osint.sync_client.get")
+    def test_find_employee_emails_http_error(self, mock_get):
+        """Tests exception handling for HTTP errors."""
+        mock_get.side_effect = RequestError("Network error")
+        with patch(
+            "chimera_intel.core.config_loader.API_KEYS.hunter_api_key", "fake_key"
+        ):
+            result = find_employee_emails("example.com")
+            self.assertIsNotNone(result.error)
 
 
 if __name__ == "__main__":

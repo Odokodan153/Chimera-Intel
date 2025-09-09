@@ -63,6 +63,16 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("SpyCloud API key not found", result.error)
 
+    @patch("chimera_intel.core.recon.sync_client.get")
+    def test_find_credential_leaks_exception(self, mock_get):
+        """Tests exception handling in find_credential_leaks."""
+        mock_get.side_effect = Exception("Test exception")
+        with patch(
+            "chimera_intel.core.config_loader.API_KEYS.spycloud_api_key", "fake_key"
+        ):
+            result = find_credential_leaks("example.com")
+            self.assertIsNotNone(result.error)
+
     # --- Tests for find_digital_assets ---
 
     @patch("chimera_intel.core.recon.asyncio.to_thread")

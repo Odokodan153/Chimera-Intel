@@ -6,11 +6,14 @@ that the application behaves as expected, including correct command routing,
 parameter validation, and output.
 """
 
+import subprocess
+import sys
 from typer.testing import CliRunner
 from unittest.mock import patch, AsyncMock, MagicMock
 from chimera_intel.cli import app
 
 # Create a runner instance to invoke commands
+
 
 runner = CliRunner()
 
@@ -27,6 +30,22 @@ def test_main_app_help():
     assert "defensive" in result.stdout
     assert "analysis" in result.stdout
     assert "report" in result.stdout
+
+
+# --- Test for main script entry ---
+
+
+def test_main_script_entry():
+    """
+    Tests running the CLI script directly.
+    """
+    result = subprocess.run(
+        [sys.executable, "-m", "chimera_intel.cli", "--help"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "Usage" in result.stdout
 
 
 # --- Tests for the 'scan' command group ---
