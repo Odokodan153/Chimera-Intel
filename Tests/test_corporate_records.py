@@ -3,8 +3,6 @@ import os
 from unittest.mock import patch, MagicMock, mock_open
 from httpx import Response
 from typer.testing import CliRunner
-
-from chimera_intel.cli import app
 from chimera_intel.core.corporate_records import (
     get_company_records,
     load_pep_list,
