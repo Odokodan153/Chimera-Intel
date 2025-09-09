@@ -1,7 +1,7 @@
 import unittest
 import os
 from unittest.mock import patch, MagicMock, mock_open
-from httpx import Response, RequestError
+from httpx import Response
 from typer.testing import CliRunner
 
 # Import the main Typer app to test CLI commands
