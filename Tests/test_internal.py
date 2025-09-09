@@ -63,7 +63,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         )
         # Use a context manager to mock the open call for reading the CSV
 
-        with patch("builtins.open", mock_open(read_data=mock_csv_data)) as mock_file:
+        with patch("builtins.open", mock_open(read_data=mock_csv_data)):
             result = parse_mft("MFT_dump")
         self.assertIsInstance(result, MFTAnalysisResult)
         self.assertEqual(result.total_records, 3)
