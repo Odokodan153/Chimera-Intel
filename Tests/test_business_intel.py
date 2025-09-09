@@ -54,7 +54,7 @@ from chimera_intel.core.schemas import (
 runner = CliRunner()
 
 
-class TestDefensive(unittest.TestCase):
+class TestBusinessIntel(unittest.TestCase):
     """Test cases for defensive scanning functions."""
 
     @patch("chimera_intel.core.http_client.sync_client.get")
@@ -627,9 +627,6 @@ class TestDefensive(unittest.TestCase):
     @patch("chimera_intel.core.business_intel.asyncio.run")
     def test_cli_business_intel_run_success(self, mock_asyncio_run):
         """Tests a successful run of the 'scan business run' command."""
-        # This is a high-level test to ensure the command runs and exits cleanly.
-        # The logic inside the async 'main' is tested in the unit tests above.
-
         result = runner.invoke(
             app, ["scan", "business", "run", "Apple", "--ticker", "AAPL"]
         )
@@ -648,10 +645,21 @@ class TestDefensive(unittest.TestCase):
         # but a successful exit code implies the logic was triggered.
 
     @patch("chimera_intel.core.business_intel.logger")
-    def test_cli_business_intel_filings_no_ticker(self, mock_logger):
+    @patch("chimera_intel.core.business_intel.API_KEYS")  # Mock the API_KEYS object
+    def test_cli_business_intel_filings_no_ticker(self, mock_api_keys, mock_logger):
         """Tests that a warning is logged if --filings is used without --ticker."""
+        # FIX: Provide a mock API key to prevent the "GNews API key not found"
+        # warning from interfering with the test.
+
+        mock_api_keys.gnews_api_key = "fake_gnews_key_for_test"
+
+        # The command's internal async function will be run.
+
         runner.invoke(app, ["scan", "business", "run", "Company", "--filings"])
-        mock_logger.warning.assert_called_with(
+
+        # Now, the correct warning should be logged and the assertion will pass.
+
+        mock_logger.warning.assert_any_call(
             "The --filings flag requires a --ticker to be provided."
         )
 

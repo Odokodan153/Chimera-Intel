@@ -2,17 +2,20 @@ import unittest
 import os
 from unittest.mock import patch, MagicMock, mock_open
 from httpx import Response, RequestError
+from typer.testing import CliRunner
 
+from chimera_intel.cli import app
 from chimera_intel.core.corporate_records import (
     get_company_records,
     screen_sanctions_list,
+    screen_pep_list,
     load_pep_list,
     PEP_FILE_PATH,
     PEP_LIST_CACHE,
 )
-from chimera_intel.core.schemas import CorporateRegistryResult
-from typer.testing import CliRunner
-from chimera_intel.cli import app
+from chimera_intel.core.schemas import (
+    CorporateRegistryResult,
+)
 
 runner = CliRunner()
 
@@ -21,11 +24,13 @@ class TestCorporateRecords(unittest.TestCase):
     """Extended test cases for the corporate_records module."""
 
     def setUp(self):
-        """Clear the in-memory cache before each test."""
+        """Clear the in-memory cache and remove the test file before each test."""
         PEP_LIST_CACHE.clear()
+        if os.path.exists(PEP_FILE_PATH):
+            os.remove(PEP_FILE_PATH)
 
     def tearDown(self):
-        """Ensure the test PEP file is removed after tests if it was created."""
+        """Clean up the test file after tests."""
         if os.path.exists(PEP_FILE_PATH):
             os.remove(PEP_FILE_PATH)
 
@@ -34,17 +39,34 @@ class TestCorporateRecords(unittest.TestCase):
     def test_get_company_records_success(self, mock_get, mock_api_keys):
         """Tests a successful company records search."""
         mock_api_keys.open_corporates_api_key = "fake_oc_key"
-        mock_response = MagicMock(spec=Response, status_code=200)
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 200
+        # FIX: Ensure the mock data structure exactly matches what the function expects.
+
         mock_response.json.return_value = {
             "results": {
                 "total_count": 1,
-                "companies": [{"company": {"name": "GOOGLE LLC"}}],
+                "companies": [
+                    {
+                        "company": {
+                            "name": "GOOGLE LLC",
+                            "company_number": "20231234567",
+                            "jurisdiction_code": "us_ca",
+                            "inactive": False,
+                            "officers": [],
+                        }
+                    }
+                ],
             }
         }
         mock_get.return_value = mock_response
+
         result = get_company_records("GOOGLE LLC")
+
         self.assertIsInstance(result, CorporateRegistryResult)
+        self.assertIsNone(result.error)
         self.assertEqual(result.total_found, 1)
+        self.assertEqual(len(result.records), 1)
 
     @patch("chimera_intel.core.corporate_records.sync_client.get")
     def test_screen_sanctions_list_request_error(self, mock_get):
@@ -63,9 +85,17 @@ class TestCorporateRecords(unittest.TestCase):
         mock_response.text = "JOHN DOE\nJANE SMITH"
         mock_get.return_value = mock_response
 
-        with patch("builtins.open", mock_open()) as mock_file:
+        # FIX: The mock_open needs to handle both the write and the subsequent read.
+
+        m = mock_open()
+        with patch("builtins.open", m):
             pep_list = load_pep_list()
-            mock_file.assert_called_with(PEP_FILE_PATH, "w", encoding="utf-8")
+            # Assert the file was opened for writing first.
+
+            m.assert_any_call(PEP_FILE_PATH, "w", encoding="utf-8")
+            # Then assert it was opened for reading.
+
+            m.assert_any_call(PEP_FILE_PATH, "r", encoding="utf-8")
             self.assertIn("JOHN DOE", pep_list)
 
     @patch("chimera_intel.core.corporate_records.sync_client.get")
@@ -78,10 +108,9 @@ class TestCorporateRecords(unittest.TestCase):
 
     def test_load_pep_list_uses_cache(self):
         """Tests that the PEP list loader uses the in-memory cache on subsequent calls."""
-        PEP_LIST_CACHE.add("CACHED NAME")
-        # We don't need to mock anything else because if the cache is hit,
-        # no file I/O or network calls should be made.
+        # FIX: Populate the cache before calling the function.
 
+        PEP_LIST_CACHE.add("CACHED NAME")
         pep_list = load_pep_list()
         self.assertIn("CACHED NAME", pep_list)
 
