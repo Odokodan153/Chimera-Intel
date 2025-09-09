@@ -17,11 +17,6 @@ from chimera_intel.core.corporate_intel import (
     get_sec_filings_analysis,
 )
 
-# Import schemas to apply a patch
-
-
-from chimera_intel.core import schemas
-
 
 class TestCorporateIntel(unittest.TestCase):
     """Test cases for the corporate_intel module."""
