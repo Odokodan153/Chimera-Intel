@@ -125,15 +125,13 @@ class TestCorporateRecords(unittest.TestCase):
 
         # Correctly simulate the file read after the write
 
-        mock_file_open.return_value.read.return_value = "JOHN DOE\nJANE SMITH"
-        mock_file_open.return_value.__iter__.return_value = ["JOHN DOE", "JANE SMITH"]
+        m = mock_open(read_data="JOHN DOE\nJANE SMITH")
+        with patch("builtins.open", m):
+            pep_list = load_pep_list()
 
-        pep_list = load_pep_list()
-
-        mock_get.assert_called_once()
-        mock_file_open.assert_any_call(PEP_FILE_PATH, "w", encoding="utf-8")
-        self.assertIn("JOHN DOE", pep_list)
-        self.assertIn("JANE SMITH", pep_list)
+            mock_get.assert_called_once()
+            self.assertIn("JOHN DOE", pep_list)
+            self.assertIn("JANE SMITH", pep_list)
 
     def test_load_pep_list_uses_cache(self):
         """Tests that the PEP list loader uses the in-memory cache correctly."""

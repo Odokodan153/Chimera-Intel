@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # --- Dynamic PEP List Handling ---
 
+
 PEP_DATA_URL = "https://datasets.opensanctions.org/datasets/latest/peps/names.txt"
 PEP_FILE_PATH = "pep_list.txt"
 PEP_LIST_CACHE: Set[str] = set()
@@ -48,7 +49,8 @@ def load_pep_list() -> Set[str]:
         with open(PEP_FILE_PATH, "r", encoding="utf-8") as f:
             # Use a set for efficient lookups
 
-            PEP_LIST_CACHE = {line.strip().upper() for line in f}
+            pep_set = {line.strip().upper() for line in f}
+            PEP_LIST_CACHE.update(pep_set)
         return PEP_LIST_CACHE
     except Exception as e:
         logger.error(f"Failed to read PEP list file: {e}")
