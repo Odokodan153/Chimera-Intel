@@ -133,11 +133,12 @@ class TestCorporateRecords(unittest.TestCase):
             self.assertIn("JOHN DOE", pep_list)
             self.assertIn("JANE SMITH", pep_list)
 
-    def test_load_pep_list_uses_cache(self):
+    @patch("chimera_intel.core.corporate_records.PEP_LIST_CACHE", new_callable=set)
+    def test_load_pep_list_uses_cache(self, mock_cache):
         """Tests that the PEP list loader uses the in-memory cache correctly."""
-        # Pre-populate the cache.
+        # Pre-populate the cache by patching it in the correct module.
 
-        PEP_LIST_CACHE.add("CACHED NAME")
+        mock_cache.add("CACHED NAME")
 
         # This call should hit the cache and not touch the file system.
 
