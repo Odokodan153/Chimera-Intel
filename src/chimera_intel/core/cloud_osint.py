@@ -1,6 +1,7 @@
 import typer
 import asyncio
 import logging
+from typing import cast
 from .schemas import (
     CloudOSINTResult,
     S3Bucket,
@@ -108,13 +109,19 @@ async def find_cloud_assets(keyword: str) -> CloudOSINTResult:
     all_tasks = s3_tasks + azure_tasks + gcs_tasks
     results = await asyncio.gather(*all_tasks)
 
-    # Filter out the None results for assets that were not found
+    # Filter out the None results for assets that were not found and cast to the correct type
 
-    found_s3 = [res for res in results[: len(s3_tasks)] if res]
+    found_s3 = [cast(S3Bucket, res) for res in results[: len(s3_tasks)] if res]
     found_azure = [
-        res for res in results[len(s3_tasks) : len(s3_tasks) + len(azure_tasks)] if res
+        cast(AzureBlobContainer, res)
+        for res in results[len(s3_tasks) : len(s3_tasks) + len(azure_tasks)]
+        if res
     ]
-    found_gcs = [res for res in results[len(s3_tasks) + len(azure_tasks) :] if res]
+    found_gcs = [
+        cast(GCSBucket, res)
+        for res in results[len(s3_tasks) + len(azure_tasks) :]
+        if res
+    ]
 
     return CloudOSINTResult(
         target_keyword=keyword,
