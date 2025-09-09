@@ -102,43 +102,44 @@ class TestCorporateRecords(unittest.TestCase):
 
     @patch("chimera_intel.core.corporate_records.sync_client.get")
     @patch("os.path.exists", return_value=False)
-    def test_load_pep_list_downloads_if_not_exists(self, mock_exists, mock_get):
+    @patch("builtins.open", new_callable=mock_open)
+    def test_load_pep_list_downloads_if_not_exists(
+        self, mock_file_open, mock_exists, mock_get
+    ):
         """Tests that the PEP list is downloaded, written, and then read correctly."""
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
         mock_response.text = "JOHN DOE\nJANE SMITH"
         mock_get.return_value = mock_response
 
-        # Use mock_open to simulate the file being written and then read.
+        # Simulate that after writing, the file exists for the read operation.
 
-        m = mock_open()
-        with patch("builtins.open", m):
-            # When open is called for reading, simulate the content that was "written".
+        def exists_side_effect(path):
+            if "pep_list.txt" in path:
+                # First check is False, then after "download" it's True
 
-            m.return_value.read.return_value = "JOHN DOE\nJANE SMITH"
-            m.return_value.__iter__.return_value = ["JOHN DOE", "JANE SMITH"]
+                return mock_exists.call_count > 1
+            return False
 
-            # The first call to load_pep_list should trigger the download and write.
+        mock_exists.side_effect = exists_side_effect
 
-            pep_list = load_pep_list()
+        # Correctly simulate the file read after the write
 
-            # Assert that the download happened.
+        mock_file_open.return_value.read.return_value = "JOHN DOE\nJANE SMITH"
+        mock_file_open.return_value.__iter__.return_value = ["JOHN DOE", "JANE SMITH"]
 
-            mock_get.assert_called_once()
-            # Assert that the file was opened for writing.
+        pep_list = load_pep_list()
 
-            m.assert_any_call(PEP_FILE_PATH, "w", encoding="utf-8")
-            # Assert that the list was loaded correctly.
+        mock_get.assert_called_once()
+        mock_file_open.assert_any_call(PEP_FILE_PATH, "w", encoding="utf-8")
+        self.assertIn("JOHN DOE", pep_list)
+        self.assertIn("JANE SMITH", pep_list)
 
-            self.assertIn("JOHN DOE", pep_list)
-            self.assertIn("JANE SMITH", pep_list)
-
-    @patch("chimera_intel.core.corporate_records.PEP_LIST_CACHE", new_callable=set)
-    def test_load_pep_list_uses_cache(self, mock_cache):
+    def test_load_pep_list_uses_cache(self):
         """Tests that the PEP list loader uses the in-memory cache correctly."""
-        # Pre-populate the cache by patching it in the correct module.
+        # Pre-populate the cache.
 
-        mock_cache.add("CACHED NAME")
+        PEP_LIST_CACHE.add("CACHED NAME")
 
         # This call should hit the cache and not touch the file system.
 
