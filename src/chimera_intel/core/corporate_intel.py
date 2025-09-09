@@ -8,13 +8,15 @@ employee sentiment, supply chain, intellectual property, and regulatory activiti
 import typer
 import logging
 from bs4 import BeautifulSoup
-from typing import List, Dict
+from typing import List, Dict, Optional
+from sec_api import QueryApi, ExtractorApi  # type: ignore
 from .schemas import (
     HiringTrendsResult,
     EmployeeSentimentResult,
     TradeDataResult,
     TrademarkResult,
     LobbyingResult,
+    SECFilingAnalysis,
     JobPosting,
     Shipment,
     Trademark,
@@ -88,10 +90,13 @@ def get_hiring_trends(domain: str) -> HiringTrendsResult:
                             trends["Data/Analytics"] = (
                                 trends.get("Data/Analytics", 0) + 1
                             )
+                    # Create a unique list of job postings
+
+                    unique_postings = {p.title: p for p in postings}.values()
                     return HiringTrendsResult(
                         total_postings=len(postings),
                         trends_by_department=trends,
-                        job_postings=list(set(postings)),
+                        job_postings=list(unique_postings),
                     )
         except Exception as e:
             logger.warning(f"Could not scrape hiring trends from {url}: {e}")
@@ -261,6 +266,61 @@ def get_lobbying_data(company_name: str) -> LobbyingResult:
         )
 
 
+def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
+    """
+    Finds the latest 10-K filing for a ticker and extracts the 'Risk Factors' section.
+    NOTE: This remains synchronous as the sec-api library does not support async.
+
+    Args:
+        ticker (str): The stock market ticker symbol.
+
+    Returns:
+        Optional[SECFilingAnalysis]: A Pydantic model with the analysis, or None.
+    """
+    api_key = API_KEYS.sec_api_io_key
+    if not api_key:
+        logger.warning("sec-api.io key not found. Skipping SEC filings analysis.")
+        return None
+    try:
+        queryApi = QueryApi(api_key=api_key)
+        query: Dict[str, any] = {
+            "query": f'ticker:{ticker} AND formType:"10-K"',
+            "from": "0",
+            "size": "1",
+            "sort": [{"filedAt": {"order": "desc"}}],
+        }
+        filings = queryApi.get_filings(query)
+
+        if not filings.get("filings"):
+            logger.warning("No 10-K filings found for ticker '%s'.", ticker)
+            return None
+        latest_filing_url = filings["filings"][0]["linkToFilingDetails"]
+
+        extractorApi = ExtractorApi(api_key=api_key)
+        risk_factors_text = extractorApi.get_section(
+            filing_url=latest_filing_url,
+            section="1A",
+            return_type="text",
+        )
+
+        summary = (
+            (risk_factors_text[:700] + "...")
+            if len(risk_factors_text) > 700
+            else risk_factors_text
+        )
+
+        return SECFilingAnalysis(
+            filing_url=latest_filing_url, risk_factors_summary=summary
+        )
+    except Exception as e:
+        logger.error(
+            "An error occurred during SEC filing analysis for ticker '%s': %s",
+            ticker,
+            e,
+        )
+        return SECFilingAnalysis(filing_url="", error=str(e))
+
+
 # --- Typer CLI Application ---
 # (The CLI part remains the same)
 
@@ -328,3 +388,18 @@ def run_regulatory_intel(
     results = lobbying_data.model_dump()
     save_or_print_results(results, output_file)
     save_scan_to_db(target=company_name, module="corporate_regulatory", data=results)
+
+
+@corporate_intel_app.command("sec-filings")
+def run_sec_filings_intel(
+    ticker: str = typer.Argument(..., help="The stock ticker of the company."),
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Analyzes a company's SEC filings for risk factors."""
+    filings_data = get_sec_filings_analysis(ticker)
+    if filings_data:
+        results = filings_data.model_dump()
+        save_or_print_results(results, output_file)
+        save_scan_to_db(target=ticker, module="corporate_sec_filings", data=results)

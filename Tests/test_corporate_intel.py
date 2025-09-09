@@ -37,20 +37,9 @@ class TestCorporateIntel(unittest.TestCase):
         mock_response.text = mock_html
         mock_get.return_value = mock_response
 
-        # FIX: Monkey-patch the JobPosting model to be hashable for this test.
-        # This is a workaround for a bug in get_hiring_trends where it tries
-        # to create a set of unhashable Pydantic objects, causing an exception.
-
-        original_hash = getattr(schemas.JobPosting, "__hash__", None)
-        schemas.JobPosting.__hash__ = lambda self: hash(self.title)
-
         # Act
 
         result = get_hiring_trends("example.com")
-
-        # Teardown: Restore the original hash function to avoid side effects
-
-        schemas.JobPosting.__hash__ = original_hash
 
         # Assert
 
@@ -176,8 +165,8 @@ class TestCorporateIntel(unittest.TestCase):
         self.assertGreater(result.total_spent, 0)
         self.assertEqual(result.records[0].year, 2025)
 
-    @patch("chimera_intel.core.business_intel.QueryApi")
-    @patch("chimera_intel.core.business_intel.ExtractorApi")
+    @patch("chimera_intel.core.corporate_intel.QueryApi")
+    @patch("chimera_intel.core.corporate_intel.ExtractorApi")
     def test_get_sec_filings_analysis_success(self, mock_extractor_api, mock_query_api):
         """Tests a successful SEC filing analysis."""
         # Arrange
@@ -195,7 +184,7 @@ class TestCorporateIntel(unittest.TestCase):
         # Act
 
         with patch(
-            "chimera_intel.core.business_intel.API_KEYS.sec_api_io_key", "fake_key"
+            "chimera_intel.core.corporate_intel.API_KEYS.sec_api_io_key", "fake_key"
         ):
             result = get_sec_filings_analysis("AAPL")
         # Assert

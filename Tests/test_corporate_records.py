@@ -136,15 +136,21 @@ class TestCorporateRecords(unittest.TestCase):
         self.assertEqual(result.hits_found, 0)
         self.assertEqual(len(result.entities), 0)
 
-    @patch("chimera_intel.core.corporate_records.PEP_LIST", {"JOHN SMITH"})
-    def test_screen_pep_list_with_hit(self):
+    @patch(
+        "chimera_intel.core.corporate_records.load_pep_list",
+        return_value={"JOHN SMITH"},
+    )
+    def test_screen_pep_list_with_hit(self, mock_load_pep):
         """Tests the PEP screening function with a matching name."""
         result = screen_pep_list("John Smith")
         self.assertIsInstance(result, PEPScreeningResult)
         self.assertTrue(result.is_pep)
 
-    @patch("chimera_intel.core.corporate_records.PEP_LIST", {"JANE DOE"})
-    def test_screen_pep_list_no_hit(self):
+    @patch(
+        "chimera_intel.core.corporate_records.load_pep_list",
+        return_value={"JANE DOE"},
+    )
+    def test_screen_pep_list_no_hit(self, mock_load_pep):
         """Tests the PEP screening function with a non-matching name."""
         result = screen_pep_list("John Smith")
         self.assertIsInstance(result, PEPScreeningResult)

@@ -1,7 +1,12 @@
 import typer
 import asyncio
 import logging
-from .schemas import CloudOSINTResult, S3Bucket
+from .schemas import (
+    CloudOSINTResult,
+    S3Bucket,
+    AzureBlobContainer,
+    GCSBucket,
+)
 from .http_client import async_client
 from .utils import save_or_print_results
 from .database import save_scan_to_db
@@ -40,9 +45,41 @@ async def check_s3_bucket(bucket_name: str) -> S3Bucket | None:
         return None
 
 
-async def find_s3_buckets(keyword: str) -> CloudOSINTResult:
+async def check_azure_blob(container_name: str) -> AzureBlobContainer | None:
     """
-    Generates potential S3 bucket names and checks for their existence.
+    Checks if a given Azure Blob Storage container is publicly accessible.
+    """
+    url = f"https://{container_name}.blob.core.windows.net/?restype=container"
+    try:
+        # Public Azure containers often respond to anonymous GET requests
+
+        response = await async_client.get(url, timeout=5)
+        if response.status_code == 200:
+            return AzureBlobContainer(name=container_name, url=url, is_public=True)
+        return None
+    except Exception:
+        return None
+
+
+async def check_gcs_bucket(bucket_name: str) -> GCSBucket | None:
+    """
+    Checks if a given Google Cloud Storage bucket is publicly accessible.
+    """
+    url = f"https://storage.googleapis.com/{bucket_name}"
+    try:
+        response = await async_client.get(url, timeout=5)
+        # Public GCS buckets will return 200 and often list contents
+
+        if response.status_code == 200:
+            return GCSBucket(name=bucket_name, url=url, is_public=True)
+        return None
+    except Exception:
+        return None
+
+
+async def find_cloud_assets(keyword: str) -> CloudOSINTResult:
+    """
+    Generates potential cloud storage names and checks for their existence.
 
     Args:
         keyword (str): The keyword to base permutations on (e.g., company name).
@@ -50,7 +87,7 @@ async def find_s3_buckets(keyword: str) -> CloudOSINTResult:
     Returns:
         CloudOSINTResult: A Pydantic model containing the scan results.
     """
-    logger.info("Starting S3 bucket search for keyword: %s", keyword)
+    logger.info("Starting cloud asset search for keyword: %s", keyword)
     # Common patterns for bucket names
 
     permutations = [
@@ -64,14 +101,27 @@ async def find_s3_buckets(keyword: str) -> CloudOSINTResult:
         f"{keyword}-dev",
     ]
 
-    tasks = [check_s3_bucket(name) for name in permutations]
-    results = await asyncio.gather(*tasks)
+    s3_tasks = [check_s3_bucket(name) for name in permutations]
+    azure_tasks = [check_azure_blob(name) for name in permutations]
+    gcs_tasks = [check_gcs_bucket(name) for name in permutations]
 
-    # Filter out the None results for buckets that were not found
+    all_tasks = s3_tasks + azure_tasks + gcs_tasks
+    results = await asyncio.gather(*all_tasks)
 
-    found_buckets = [res for res in results if res]
+    # Filter out the None results for assets that were not found
 
-    return CloudOSINTResult(target_keyword=keyword, found_buckets=found_buckets)
+    found_s3 = [res for res in results[: len(s3_tasks)] if res]
+    found_azure = [
+        res for res in results[len(s3_tasks) : len(s3_tasks) + len(azure_tasks)] if res
+    ]
+    found_gcs = [res for res in results[len(s3_tasks) + len(azure_tasks) :] if res]
+
+    return CloudOSINTResult(
+        target_keyword=keyword,
+        found_s3_buckets=found_s3,
+        found_azure_containers=found_azure,
+        found_gcs_buckets=found_gcs,
+    )
 
 
 # --- Typer CLI Application ---
@@ -80,8 +130,8 @@ async def find_s3_buckets(keyword: str) -> CloudOSINTResult:
 cloud_osint_app = typer.Typer()
 
 
-@cloud_osint_app.command("s3")
-def run_s3_scan(
+@cloud_osint_app.command("run")
+def run_cloud_scan(
     keyword: str = typer.Argument(
         ..., help="The keyword (e.g., company name) to search for."
     ),
@@ -90,11 +140,11 @@ def run_s3_scan(
     ),
 ):
     """
-    Searches for common S3 bucket misconfigurations for a given keyword.
+    Searches for exposed cloud storage assets (S3, Azure, GCP).
     """
-    results_model = asyncio.run(find_s3_buckets(keyword))
+    results_model = asyncio.run(find_cloud_assets(keyword))
 
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=keyword, module="cloud_osint_s3", data=results_dict)
-    logger.info("S3 bucket scan complete for keyword: %s", keyword)
+    save_scan_to_db(target=keyword, module="cloud_osint", data=results_dict)
+    logger.info("Cloud asset scan complete for keyword: %s", keyword)

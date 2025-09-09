@@ -1,5 +1,6 @@
 import typer
 import logging
+import os
 from bs4 import BeautifulSoup, Tag, ResultSet
 from .schemas import (
     CorporateRegistryResult,
@@ -7,13 +8,51 @@ from .schemas import (
     Officer,
     SanctionsScreeningResult,
     SanctionedEntity,
+    PEPScreeningResult,
 )
 from .config_loader import API_KEYS
 from .http_client import sync_client
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
+from typing import Set
 
 logger = logging.getLogger(__name__)
+
+# --- Dynamic PEP List Handling ---
+
+PEP_DATA_URL = "https://datasets.opensanctions.org/datasets/latest/peps/names.txt"
+PEP_FILE_PATH = "pep_list.txt"
+PEP_LIST_CACHE: Set[str] = set()
+
+
+def load_pep_list() -> Set[str]:
+    """
+    Loads the PEP list from a local file, downloading it if necessary.
+    Uses an in-memory cache to avoid reading the file on every call.
+    """
+    global PEP_LIST_CACHE
+    if PEP_LIST_CACHE:
+        return PEP_LIST_CACHE
+    if not os.path.exists(PEP_FILE_PATH):
+        logger.info(f"Local PEP list not found. Downloading from {PEP_DATA_URL}...")
+        try:
+            response = sync_client.get(PEP_DATA_URL, follow_redirects=True)
+            response.raise_for_status()
+            with open(PEP_FILE_PATH, "w", encoding="utf-8") as f:
+                f.write(response.text)
+            logger.info("Successfully downloaded PEP list.")
+        except Exception as e:
+            logger.error(f"Failed to download PEP list: {e}")
+            return set()
+    try:
+        with open(PEP_FILE_PATH, "r", encoding="utf-8") as f:
+            # Use a set for efficient lookups
+
+            PEP_LIST_CACHE = {line.strip().upper() for line in f}
+        return PEP_LIST_CACHE
+    except Exception as e:
+        logger.error(f"Failed to read PEP list file: {e}")
+        return set()
 
 
 def get_company_records(company_name: str) -> CorporateRegistryResult:
@@ -94,8 +133,6 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         results_table = soup.find("table", {"class": "table-bordered"})
         if not isinstance(results_table, Tag):
             return SanctionsScreeningResult(query=name, hits_found=0)
-        # FIX: Check if tbody exists before trying to find rows in it
-
         tbody = results_table.find("tbody")
         if not isinstance(tbody, Tag):
             return SanctionsScreeningResult(query=name, hits_found=0)
@@ -122,7 +159,23 @@ def screen_sanctions_list(name: str) -> SanctionsScreeningResult:
         )
 
 
+def screen_pep_list(name: str) -> PEPScreeningResult:
+    """
+    Screens a name against a list of Politically Exposed Persons (PEPs).
+
+    Args:
+        name (str): The name of the individual to screen.
+
+    Returns:
+        PEPScreeningResult: A Pydantic model indicating if the name is a PEP.
+    """
+    pep_list = load_pep_list()
+    is_pep = name.upper() in pep_list
+    return PEPScreeningResult(query=name, is_pep=is_pep)
+
+
 # --- Typer CLI Application ---
+
 
 corporate_records_app = typer.Typer()
 
@@ -146,7 +199,7 @@ def run_registry_search(
     save_scan_to_db(target=company, module="corporate_registry", data=results_dict)
 
 
-@corporate_records_app.command("screen")
+@corporate_records_app.command("sanctions")
 def run_sanctions_screening(
     name: str = typer.Argument(
         ..., help="The name of the individual or entity to screen."
@@ -162,3 +215,21 @@ def run_sanctions_screening(
         results_model = screen_sanctions_list(name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
+    save_scan_to_db(target=name, module="corporate_sanctions_screen", data=results_dict)
+
+
+@corporate_records_app.command("pep")
+def run_pep_screening(
+    name: str = typer.Argument(..., help="The name of the individual to screen."),
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Screens a name against a Politically Exposed Persons (PEP) list."""
+    with console.status(
+        f"[bold cyan]Screening '{name}' against PEP list...[/bold cyan]"
+    ):
+        results_model = screen_pep_list(name)
+    results_dict = results_model.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(target=name, module="corporate_pep_screen", data=results_dict)
