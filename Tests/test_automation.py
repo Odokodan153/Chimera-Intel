@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open, AsyncMock
+import subprocess
 from chimera_intel.core.automation import (
     enrich_iocs,
     enrich_cves,
@@ -172,7 +173,7 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.automation.subprocess.run")
     def test_run_workflow_error(self, mock_subprocess_run):
         """Tests workflow execution with a failing step."""
-        mock_subprocess_run.side_effect = Exception("Command failed")
+        mock_subprocess_run.side_effect = subprocess.CalledProcessError(1, "cmd")
         mock_yaml_content = (
             "target: example.com\n" "steps:\n" "  - run: scan footprint {target}\n"
         )
