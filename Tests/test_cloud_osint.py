@@ -1,7 +1,7 @@
 import unittest
 import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
-from httpx import Response
+from httpx import Response, RequestError
 from chimera_intel.core.cloud_osint import (
     check_s3_bucket,
     find_cloud_assets,
@@ -30,6 +30,22 @@ class TestCloudOsint(unittest.TestCase):
         self.assertTrue(result.is_public)
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
+    def test_check_s3_bucket_private(self, mock_async_client):
+        """Tests checking a bucket that exists but is private (e.g., returns 403)."""
+        # HEAD is successful (bucket exists), but GET fails (it's private)
+
+        mock_head_response = MagicMock(spec=Response, status_code=200)
+        mock_get_response = MagicMock(spec=Response, status_code=403)
+        mock_async_client.head.return_value = mock_head_response
+        mock_async_client.get.return_value = mock_get_response
+
+        result = asyncio.run(check_s3_bucket("private-bucket"))
+
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, S3Bucket)
+        self.assertFalse(result.is_public)
+
+    @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_azure_blob_public(self, mock_async_client):
         """Tests checking a public Azure blob container."""
         mock_response = MagicMock(spec=Response, status_code=200)
@@ -40,6 +56,15 @@ class TestCloudOsint(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIsInstance(result, AzureBlobContainer)
         self.assertTrue(result.is_public)
+
+    @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
+    def test_check_azure_blob_network_error(self, mock_async_client):
+        """Tests the Azure blob check when a network error occurs."""
+        mock_async_client.get.side_effect = RequestError("Connection timeout")
+
+        result = asyncio.run(check_azure_blob("some-container"))
+
+        self.assertIsNone(result)
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_gcs_bucket_public(self, mock_async_client):

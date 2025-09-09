@@ -13,8 +13,6 @@ from chimera_intel.core.schemas import (
 class TestTprEngine(unittest.TestCase):
     """Test cases for the TPRM engine module."""
 
-    # FIX: Correct the patch path to where the function is now located
-
     @patch("chimera_intel.core.tpr_engine.API_KEYS")
     @patch("chimera_intel.core.tpr_engine.generate_swot_from_data")
     @patch("chimera_intel.core.tpr_engine.check_hibp_breaches")
@@ -61,6 +59,81 @@ class TestTprEngine(unittest.TestCase):
         mock_vuln_scan.assert_called_once_with("vendor.com")
         self.assertIn("HIBP API key not configured", result.breach_results.error)
         self.assertIn("AI analysis skipped", result.ai_summary)
+
+    @patch("chimera_intel.core.tpr_engine.API_KEYS")
+    @patch("chimera_intel.core.tpr_engine.generate_swot_from_data")
+    @patch("chimera_intel.core.tpr_engine.check_hibp_breaches")
+    @patch("chimera_intel.core.tpr_engine.run_vulnerability_scan")
+    def test_run_tpr_scan_no_google_key(
+        self, mock_vuln_scan, mock_breach_check, mock_ai_summary, mock_api_keys
+    ):
+        """Tests the TPRM scan when only the Google API key is missing."""
+        # Arrange
+
+        mock_vuln_scan.return_value = VulnerabilityScanResult(
+            target_domain="vendor.com", scanned_hosts=[]
+        )
+        mock_breach_check.return_value = HIBPResult(breaches=[])
+        mock_api_keys.hibp_api_key = "fake_hibp_key"
+        mock_api_keys.google_api_key = None  # Simulate missing Google key
+
+        # Act
+
+        result = asyncio.run(run_full_tpr_scan("vendor.com"))
+
+        # Assert
+
+        self.assertIsInstance(result, TPRMReport)
+        self.assertIsNotNone(result.vulnerability_scan_results)
+        self.assertIsNotNone(result.breach_results)
+        # Ensure the AI summary reflects the skipped analysis
+
+        self.assertIn("AI analysis skipped", result.ai_summary)
+        # Ensure the AI function was NOT called
+
+        mock_ai_summary.assert_not_called()
+
+    @patch("chimera_intel.core.tpr_engine.API_KEYS")
+    @patch("chimera_intel.core.tpr_engine.generate_swot_from_data")
+    @patch("chimera_intel.core.tpr_engine.check_hibp_breaches")
+    @patch("chimera_intel.core.tpr_engine.run_vulnerability_scan")
+    def test_run_full_tpr_scan_vuln_scan_fails(
+        self, mock_vuln_scan, mock_breach_check, mock_ai_summary, mock_api_keys
+    ):
+        """Tests the TPRM scan's resilience when the vulnerability scan fails."""
+        # Arrange: Simulate a failure in the vulnerability scan
+
+        mock_vuln_scan.return_value = VulnerabilityScanResult(
+            target_domain="vendor.com",
+            scanned_hosts=[],
+            error="Nmap scan failed unexpectedly.",
+        )
+        # Other scans succeed
+
+        mock_breach_check.return_value = HIBPResult(breaches=[])
+        mock_ai_summary.return_value = SWOTAnalysisResult(
+            analysis_text="Risk Level: MEDIUM"
+        )
+        mock_api_keys.hibp_api_key = "fake_hibp_key"
+        mock_api_keys.google_api_key = "fake_google_key"
+
+        # Act
+
+        result = asyncio.run(run_full_tpr_scan("vendor.com"))
+
+        # Assert
+
+        self.assertIsInstance(result, TPRMReport)
+        # Check that the error from the vulnerability scan is correctly reported
+
+        self.assertIsNotNone(result.vulnerability_scan_results.error)
+        self.assertIn("Nmap scan failed", result.vulnerability_scan_results.error)
+        # Ensure that the breach check results are still present
+
+        self.assertIsNotNone(result.breach_results)
+        # Ensure the AI summary was still generated based on the partial data
+
+        self.assertIn("Risk Level: MEDIUM", result.ai_summary)
 
 
 if __name__ == "__main__":
