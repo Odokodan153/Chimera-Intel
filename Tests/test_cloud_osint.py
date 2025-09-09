@@ -112,6 +112,31 @@ class TestCloudOsint(unittest.TestCase):
         self.assertEqual(result.found_azure_containers[0].name, "mycompany-data")
         self.assertEqual(result.found_gcs_buckets[0].name, "mycompany-backup")
 
+    @patch("chimera_intel.core.cloud_osint.check_s3_bucket", new_callable=AsyncMock)
+    @patch("chimera_intel.core.cloud_osint.check_azure_blob", new_callable=AsyncMock)
+    @patch("chimera_intel.core.cloud_osint.check_gcs_bucket", new_callable=AsyncMock)
+    def test_find_cloud_assets_no_results(
+        self, mock_check_gcs, mock_check_azure, mock_check_s3
+    ):
+        """
+        Tests the asset finding logic when no cloud assets are found.
+        """
+        # Arrange: Simulate that all checks return None
+
+        mock_check_s3.return_value = None
+        mock_check_azure.return_value = None
+        mock_check_gcs.return_value = None
+
+        # Act
+
+        result = asyncio.run(find_cloud_assets("nonexistentcompany"))
+
+        # Assert
+
+        self.assertEqual(len(result.found_s3_buckets), 0)
+        self.assertEqual(len(result.found_azure_containers), 0)
+        self.assertEqual(len(result.found_gcs_buckets), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
