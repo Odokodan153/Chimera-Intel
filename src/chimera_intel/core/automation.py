@@ -227,8 +227,6 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
         return UEBAResult(
             total_anomalies_found=0, error=f"Log file not found: {log_file}"
         )
-    # Type aliases are now defined at the module's top level, fixing the error.
-
     user_ips: UserIPs = defaultdict(set)
     user_hours: UserHours = defaultdict(set)
 
@@ -236,29 +234,22 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
         # --- Stage 1: Build Baselines ---
 
         with open(log_file, "r", encoding="utf-8") as f:
-            # Use DictReader for robust column handling
-
             reader = csv.DictReader(f)
             logs = list(reader)
 
-            # Check for required headers
-
             required_headers = ["timestamp", "user", "source_ip"]
-            if reader.fieldnames and not all(
-                header in reader.fieldnames for header in required_headers
-            ):
+            if not all(h in reader.fieldnames for h in required_headers):
                 return UEBAResult(
                     total_anomalies_found=0,
                     error=f"Log file must contain headers: {', '.join(required_headers)}",
                 )
-            for row in logs:
+            # Establish baseline from the first half of the logs
+
+            baseline_logs = logs[: len(logs) // 2]
+            for row in baseline_logs:
                 user = row["user"]
                 user_ips[user].add(row["source_ip"])
-                # Robustly parse timestamp to get the hour
-
                 try:
-                    # Attempt to parse ISO format timestamp (e.g., 2025-08-21T03:15:00Z)
-
                     hour = int(row["timestamp"].split("T")[1].split(":")[0])
                     user_hours[user].add(hour)
                 except (IndexError, ValueError):
@@ -266,52 +257,37 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
                         f"Could not parse hour from timestamp: {row['timestamp']}. Skipping for baseline."
                     )
                     continue
-        # --- Stage 2: Detect Anomalies ---
+        # --- Stage 2: Detect Anomalies in the second half ---
 
         anomalies: List[BehavioralAnomaly] = []
-        # Create a temporary copy of baselines to modify during detection
-
-        temp_user_ips: UserIPs = defaultdict(set)
-        temp_user_hours: UserHours = defaultdict(set)
-
-        for row in logs:
+        detection_logs = logs[len(logs) // 2 :]
+        for row in detection_logs:
             user = row["user"]
             timestamp = row["timestamp"]
             source_ip = row["source_ip"]
 
-            # Anomaly Rule 1: Login from a new IP address
-            # If a user has more than one IP in the baseline and this is the first time we see this one, it's an anomaly.
-
-            if source_ip not in temp_user_ips[user]:
-                if temp_user_ips[
-                    user
-                ]:  # This ensures we don't flag the very first login
+            if source_ip not in user_ips[user]:
+                anomalies.append(
+                    BehavioralAnomaly(
+                        timestamp=timestamp,
+                        user=user,
+                        anomaly_description=f"Login from a new source IP address: {source_ip}.",
+                        severity="Medium",
+                    )
+                )
+            try:
+                hour = int(timestamp.split("T")[1].split(":")[0])
+                if hour not in user_hours[user]:
                     anomalies.append(
                         BehavioralAnomaly(
                             timestamp=timestamp,
                             user=user,
-                            anomaly_description=f"Login from a new source IP address: {source_ip}.",
-                            severity="Medium",
+                            anomaly_description=f"Login at an unusual time of day: {hour}:00.",
+                            severity="Low",
                         )
                     )
-                temp_user_ips[user].add(source_ip)
-            # Anomaly Rule 2: Login at an unusual hour of the day
-
-            try:
-                hour = int(timestamp.split("T")[1].split(":")[0])
-                if hour not in temp_user_hours[user]:
-                    if temp_user_hours[user]:  # Don't flag the first hour seen
-                        anomalies.append(
-                            BehavioralAnomaly(
-                                timestamp=timestamp,
-                                user=user,
-                                anomaly_description=f"Login at an unusual time of day: {hour}:00.",
-                                severity="Low",
-                            )
-                        )
-                    temp_user_hours[user].add(hour)
             except (IndexError, ValueError):
-                continue  # Skip anomaly check if timestamp is malformed
+                continue
         return UEBAResult(total_anomalies_found=len(anomalies), anomalies=anomalies)
     except Exception as e:
         logger.error(f"Failed to process log file for UEBA: {e}", exc_info=True)

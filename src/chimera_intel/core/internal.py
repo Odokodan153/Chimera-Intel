@@ -137,9 +137,8 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     entries: List[MFTEntry] = []
     try:
-        # The 'analyzeMFT' library's main function is mocked in the test.
-        # The original code incorrectly tried to instantiate a non-existent 'Options' class.
-        # The corrected approach calls the function directly, which works with the mock.
+        # The 'analyzeMFT' library requires an output file, so we'll create a dummy one
+        # that we can discard later.
 
         dummy_output = "mft_temp_output.csv"
 
