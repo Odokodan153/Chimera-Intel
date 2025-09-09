@@ -52,9 +52,9 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.analyzeMFT.main")
-    @patch("chimera_intel.core.internal.analyzeMFT.Options", MagicMock())
     def test_parse_mft(self, mock_main, mock_exists):
         """Tests the MFT parsing function."""
+
         mock_main.return_value = [
             {
                 "record_number": 1,
