@@ -8,7 +8,6 @@ from chimera_intel.cli import app
 from chimera_intel.core.corporate_records import (
     get_company_records,
     screen_sanctions_list,
-    screen_pep_list,
     load_pep_list,
     PEP_FILE_PATH,
     PEP_LIST_CACHE,
