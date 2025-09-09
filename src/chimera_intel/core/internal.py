@@ -10,6 +10,7 @@ import logging
 import hashlib
 import re
 import os
+import csv
 from typing import Optional, List, Dict
 
 try:
@@ -136,33 +137,38 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
         logger.error(error_msg)
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     entries: List[MFTEntry] = []
+    dummy_output = "mft_temp_output.csv"
     try:
-        # The 'analyzeMFT' library requires an output file, so we'll create a dummy one
-        # that we can discard later.
+        # The 'analyzeMFT.main' function writes to a file, it does not return data.
 
-        dummy_output = "mft_temp_output.csv"
+        analyzeMFT.main(filename=file_path, output_filename=dummy_output)
 
-        mft_results = analyzeMFT.main(filename=file_path, output_filename=dummy_output)
-
-        for record in mft_results:
-            entries.append(
-                MFTEntry(
-                    record_number=record.get("record_number", -1),
-                    filename=record.get("filename", "N/A"),
-                    creation_time=record.get("creation_time", "N/A"),
-                    modification_time=record.get("modification_time", "N/A"),
-                    is_directory=record.get("is_directory", False),
-                )
-            )
-        # Clean up the dummy output file
+        # We now need to read the CSV file it created.
 
         if os.path.exists(dummy_output):
-            os.remove(dummy_output)
+            with open(dummy_output, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    entries.append(
+                        MFTEntry(
+                            record_number=int(row.get("Record Number", -1)),
+                            filename=row.get("Filename", "N/A"),
+                            creation_time=row.get("Created", "N/A"),
+                            modification_time=row.get("Last Modified", "N/A"),
+                            is_directory=row.get("is_directory", "false").lower()
+                            == "true",
+                        )
+                    )
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"
         logger.error(error_msg)
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
+    finally:
+        # Clean up the dummy output file
+
+        if os.path.exists(dummy_output):
+            os.remove(dummy_output)
 
 
 # --- Typer CLI Application ---
