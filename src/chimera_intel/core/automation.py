@@ -269,35 +269,47 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
         # --- Stage 2: Detect Anomalies ---
 
         anomalies: List[BehavioralAnomaly] = []
+        # Create a temporary copy of baselines to modify during detection
+
+        temp_user_ips = defaultdict(set)
+        temp_user_hours = defaultdict(set)
+
         for row in logs:
             user = row["user"]
             timestamp = row["timestamp"]
             source_ip = row["source_ip"]
 
             # Anomaly Rule 1: Login from a new IP address
+            # If a user has more than one IP in the baseline and this is the first time we see this one, it's an anomaly.
 
-            if source_ip not in user_ips[user]:
-                anomalies.append(
-                    BehavioralAnomaly(
-                        timestamp=timestamp,
-                        user=user,
-                        anomaly_description=f"Login from a new source IP address: {source_ip}.",
-                        severity="Medium",
-                    )
-                )
-            # Anomaly Rule 2: Login at an unusual hour of the day
-
-            try:
-                hour = int(timestamp.split("T")[1].split(":")[0])
-                if hour not in user_hours[user]:
+            if source_ip not in temp_user_ips[user]:
+                if temp_user_ips[
+                    user
+                ]:  # This ensures we don't flag the very first login
                     anomalies.append(
                         BehavioralAnomaly(
                             timestamp=timestamp,
                             user=user,
-                            anomaly_description=f"Login at an unusual time of day: {hour}:00.",
-                            severity="Low",
+                            anomaly_description=f"Login from a new source IP address: {source_ip}.",
+                            severity="Medium",
                         )
                     )
+                temp_user_ips[user].add(source_ip)
+            # Anomaly Rule 2: Login at an unusual hour of the day
+
+            try:
+                hour = int(timestamp.split("T")[1].split(":")[0])
+                if hour not in temp_user_hours[user]:
+                    if temp_user_hours[user]:  # Don't flag the first hour seen
+                        anomalies.append(
+                            BehavioralAnomaly(
+                                timestamp=timestamp,
+                                user=user,
+                                anomaly_description=f"Login at an unusual time of day: {hour}:00.",
+                                severity="Low",
+                            )
+                        )
+                    temp_user_hours[user].add(hour)
             except (IndexError, ValueError):
                 continue  # Skip anomaly check if timestamp is malformed
         return UEBAResult(total_anomalies_found=len(anomalies), anomalies=anomalies)
