@@ -139,34 +139,26 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
     entries: List[MFTEntry] = []
     dummy_output = "mft_temp_output.csv"
     try:
-        # The 'analyzeMFT.main' function writes to a file, it does not return data.
-
         analyzeMFT.main(filename=file_path, output_filename=dummy_output)
 
-        # We now need to read the CSV file it created.
-
-        if os.path.exists(dummy_output):
-            with open(dummy_output, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    entries.append(
-                        MFTEntry(
-                            record_number=int(row.get("Record Number", -1)),
-                            filename=row.get("Filename", "N/A"),
-                            creation_time=row.get("Created", "N/A"),
-                            modification_time=row.get("Last Modified", "N/A"),
-                            is_directory=row.get("is_directory", "false").lower()
-                            == "true",
-                        )
+        with open(dummy_output, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                entries.append(
+                    MFTEntry(
+                        record_number=int(row.get("Record Number", -1)),
+                        filename=row.get("Filename", "N/A"),
+                        creation_time=row.get("Created", "N/A"),
+                        modification_time=row.get("Last Modified", "N/A"),
+                        is_directory=row.get("is_directory", "false").lower() == "true",
                     )
+                )
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"
         logger.error(error_msg)
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)
     finally:
-        # Clean up the dummy output file
-
         if os.path.exists(dummy_output):
             os.remove(dummy_output)
 

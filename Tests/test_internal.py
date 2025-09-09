@@ -52,27 +52,26 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.analyzeMFT.main")
-    def test_parse_mft(self, mock_main, mock_exists):
+    @patch("builtins.open", new_callable=mock_open)
+    def test_parse_mft(self, mock_open_file, mock_main, mock_exists):
         """Tests the MFT parsing function."""
-        # This CSV data simulates the output file created by analyzeMFT
-
         mock_csv_data = (
             '"Record Number","Filename","Created","Last Modified","is_directory"\n'
             '1,"file1.txt","2023-01-01T12:00:00","2023-01-01T12:00:00","false"\n'
             '2,"evil.exe","2023-01-01T12:01:00","2023-01-01T12:01:00","false"\n'
             '3,"folder","2023-01-01T12:02:00","2023-01-01T12:02:00","true"\n'
         )
+        # Configure the mock to handle the file operations
 
-        # Mock 'open' to return the CSV data when the temp file is read
+        m = mock_open(read_data=mock_csv_data)
+        mock_open_file.side_effect = m
 
-        with patch("builtins.open", mock_open(read_data=mock_csv_data)):
-            result = parse_mft("MFT_dump")
+        result = parse_mft("MFT_dump")
+
         self.assertIsInstance(result, MFTAnalysisResult)
         self.assertEqual(result.total_records, 3)
         self.assertEqual(result.entries[1].filename, "evil.exe")
         self.assertIsNone(result.error)
-        # Ensure the mocked main function was still called
-
         mock_main.assert_called_once()
 
 
