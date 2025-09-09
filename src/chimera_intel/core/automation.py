@@ -271,8 +271,8 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
         anomalies: List[BehavioralAnomaly] = []
         # Create a temporary copy of baselines to modify during detection
 
-        temp_user_ips = defaultdict(set)
-        temp_user_hours = defaultdict(set)
+        temp_user_ips: UserIPs = defaultdict(set)
+        temp_user_hours: UserHours = defaultdict(set)
 
         for row in logs:
             user = row["user"]
