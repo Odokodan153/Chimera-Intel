@@ -44,7 +44,14 @@ class TestCorporateRecords(unittest.TestCase):
         mock_response.json.return_value = {
             "results": {
                 "total_count": 1,
-                "companies": [{"company": {"name": "GOOGLE LLC", "officers": []}}],
+                "company": {
+                    "name": "GOOGLE LLC",
+                    "company_number": "20231234567",
+                    "jurisdiction_code": "us_ca",
+                    "inactive": False,
+                    "registered_address_in_full": "1600 Amphitheatre Parkway",
+                    "officers": [],
+                },
             }
         }
         mock_get.return_value = mock_response
