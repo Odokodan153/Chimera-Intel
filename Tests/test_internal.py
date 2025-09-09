@@ -74,6 +74,20 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
 
         mock_remove.assert_called_once_with("mft_temp_output.csv")
 
+    @patch("chimera_intel.core.internal.os.path.exists", return_value=False)
+    def test_analyze_log_file_not_found(self, mock_exists):
+        """Tests analyze_log_file when the log file does not exist."""
+        result = analyze_log_file("nonexistent.log")
+        self.assertIsNotNone(result.error)
+        self.assertIn("not found", result.error)
+
+    @patch("chimera_intel.core.internal.os.path.exists", return_value=False)
+    def test_perform_static_analysis_not_found(self, mock_exists):
+        """Tests perform_static_analysis when the file does not exist."""
+        result = perform_static_analysis("nonexistent.exe")
+        self.assertIsNotNone(result.error)
+        self.assertIn("not found", result.error)
+
 
 if __name__ == "__main__":
     unittest.main()

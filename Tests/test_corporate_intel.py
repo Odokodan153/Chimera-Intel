@@ -3,7 +3,7 @@
 
 import unittest
 from unittest.mock import patch, MagicMock
-from httpx import Response
+from httpx import Response, RequestError
 
 # Import the functions to be tested
 
@@ -186,6 +186,20 @@ class TestCorporateIntel(unittest.TestCase):
 
         self.assertIsNotNone(result)
         self.assertIn("risk factors", result.risk_factors_summary)
+
+    @patch("chimera_intel.core.corporate_intel.sync_client.get")
+    def test_get_hiring_trends_scrape_fails(self, mock_get):
+        """Tests that hiring trends gracefully fails when scraping errors out."""
+        mock_get.side_effect = RequestError("Failed to connect")
+        result = get_hiring_trends("example.com")
+        self.assertIsNotNone(result.error)
+
+    @patch("chimera_intel.core.corporate_intel.API_KEYS")
+    def test_get_employee_sentiment_no_api_key(self, mock_api_keys):
+        """Tests that get_employee_sentiment returns an error when the API key is missing."""
+        mock_api_keys.aura_api_key = None
+        result = get_employee_sentiment("Example Corp")
+        self.assertIsNotNone(result.error)
 
 
 if __name__ == "__main__":

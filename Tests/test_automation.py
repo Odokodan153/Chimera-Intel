@@ -169,6 +169,17 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
             first_call_args = mock_subprocess_run.call_args_list[0].args[0]
             self.assertIn("chimera scan footprint example.com", first_call_args)
 
+    @patch("chimera_intel.core.automation.subprocess.run")
+    def test_run_workflow_error(self, mock_subprocess_run):
+        """Tests workflow execution with a failing step."""
+        mock_subprocess_run.side_effect = Exception("Command failed")
+        mock_yaml_content = (
+            "target: example.com\n" "steps:\n" "  - run: scan footprint {target}\n"
+        )
+        with patch("builtins.open", mock_open(read_data=mock_yaml_content)):
+            run_workflow("workflow.yaml")
+            mock_subprocess_run.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
