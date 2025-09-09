@@ -1,5 +1,4 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
@@ -17,6 +16,7 @@ from chimera_intel.core.schemas import (
 )
 
 # Initialize the Typer runner for CLI tests
+
 
 runner = CliRunner()
 
