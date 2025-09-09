@@ -1,6 +1,6 @@
 import unittest
 import asyncio
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from chimera_intel.core.tpr_engine import run_full_tpr_scan
 from chimera_intel.core.schemas import (
     TPRMReport,
