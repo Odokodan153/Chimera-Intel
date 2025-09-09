@@ -49,11 +49,11 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertIn("some content API_KEY other content", result.embedded_strings)
         self.assertIsNone(result.error)
 
+    @patch("chimera_intel.core.internal.os.remove")
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.analyzeMFT.main")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_parse_mft(self, mock_open_file, mock_main, mock_exists):
+    def test_parse_mft(self, mock_main, mock_exists, mock_remove):
         """Tests the MFT parsing function."""
         mock_csv_data = (
             '"Record Number","Filename","Created","Last Modified","is_directory"\n'
@@ -61,18 +61,18 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
             '2,"evil.exe","2023-01-01T12:01:00","2023-01-01T12:01:00","false"\n'
             '3,"folder","2023-01-01T12:02:00","2023-01-01T12:02:00","true"\n'
         )
-        # Configure the mock to handle the file operations
+        # Use a context manager to mock the open call for reading the CSV
 
-        m = mock_open(read_data=mock_csv_data)
-        mock_open_file.side_effect = m
-
-        result = parse_mft("MFT_dump")
-
+        with patch("builtins.open", mock_open(read_data=mock_csv_data)) as mock_file:
+            result = parse_mft("MFT_dump")
         self.assertIsInstance(result, MFTAnalysisResult)
         self.assertEqual(result.total_records, 3)
         self.assertEqual(result.entries[1].filename, "evil.exe")
         self.assertIsNone(result.error)
         mock_main.assert_called_once()
+        # Verify that the cleanup function was called
+
+        mock_remove.assert_called_once_with("mft_temp_output.csv")
 
 
 if __name__ == "__main__":
