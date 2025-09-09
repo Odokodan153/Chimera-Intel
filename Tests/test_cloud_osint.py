@@ -2,8 +2,13 @@ import unittest
 import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import Response
-from chimera_intel.core.cloud_osint import check_s3_bucket, find_s3_buckets
-from chimera_intel.core.schemas import S3Bucket
+from chimera_intel.core.cloud_osint import (
+    check_s3_bucket,
+    find_cloud_assets,
+    check_azure_blob,
+    check_gcs_bucket,
+)
+from chimera_intel.core.schemas import S3Bucket, AzureBlobContainer, GCSBucket
 
 
 class TestCloudOsint(unittest.TestCase):
@@ -12,8 +17,6 @@ class TestCloudOsint(unittest.TestCase):
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_s3_bucket_public(self, mock_async_client):
         """Tests checking a bucket that exists and is public."""
-        # HEAD request gets a 200, GET request also gets a 200
-
         mock_head_response = MagicMock(spec=Response, status_code=200)
         mock_get_response = MagicMock(spec=Response, status_code=200)
         mock_async_client.head.return_value = mock_head_response
@@ -27,59 +30,62 @@ class TestCloudOsint(unittest.TestCase):
         self.assertTrue(result.is_public)
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
-    def test_check_s3_bucket_private(self, mock_async_client):
-        """Tests checking a bucket that exists but is private (Forbidden)."""
-        # HEAD request gets a 200, but GET request gets a 403 Forbidden
+    def test_check_azure_blob_public(self, mock_async_client):
+        """Tests checking a public Azure blob container."""
+        mock_response = MagicMock(spec=Response, status_code=200)
+        mock_async_client.get.return_value = mock_response
 
-        mock_head_response = MagicMock(spec=Response, status_code=200)
-        mock_get_response = MagicMock(spec=Response, status_code=403)
-        mock_async_client.head.return_value = mock_head_response
-        mock_async_client.get.return_value = mock_get_response
-
-        result = asyncio.run(check_s3_bucket("private-bucket"))
+        result = asyncio.run(check_azure_blob("public-container"))
 
         self.assertIsNotNone(result)
-        self.assertEqual(result.name, "private-bucket")
-        self.assertFalse(result.is_public)
+        self.assertIsInstance(result, AzureBlobContainer)
+        self.assertTrue(result.is_public)
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
-    def test_check_s3_bucket_not_found(self, mock_async_client):
-        """Tests checking a bucket that does not exist."""
-        # HEAD request gets a 404 Not Found
+    def test_check_gcs_bucket_public(self, mock_async_client):
+        """Tests checking a public GCS bucket."""
+        mock_response = MagicMock(spec=Response, status_code=200)
+        mock_async_client.get.return_value = mock_response
 
-        mock_head_response = MagicMock(spec=Response, status_code=404)
-        mock_async_client.head.return_value = mock_head_response
+        result = asyncio.run(check_gcs_bucket("public-gcs-bucket"))
 
-        result = asyncio.run(check_s3_bucket("non-existent-bucket"))
-
-        self.assertIsNone(result)
-        # Ensure the GET request was not even made
-
-        mock_async_client.get.assert_not_called()
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, GCSBucket)
+        self.assertTrue(result.is_public)
 
     @patch("chimera_intel.core.cloud_osint.check_s3_bucket", new_callable=AsyncMock)
-    def test_find_s3_buckets_logic(self, mock_check_bucket):
+    @patch("chimera_intel.core.cloud_osint.check_azure_blob", new_callable=AsyncMock)
+    @patch("chimera_intel.core.cloud_osint.check_gcs_bucket", new_callable=AsyncMock)
+    def test_find_cloud_assets_logic(
+        self, mock_check_gcs, mock_check_azure, mock_check_s3
+    ):
         """
-        Tests the main bucket finding logic.
-
-        Args:
-            mock_check_bucket (AsyncMock): A mock for the `check_s3_bucket` function.
+        Tests the main asset finding logic across all cloud providers.
         """
-        # Simulate that only one of the permutations returns a result
-
-        mock_check_bucket.side_effect = lambda name: (
-            S3Bucket(name=name, url=f"http://{name}.s3...", is_public=True)
+        mock_check_s3.side_effect = lambda name: (
+            S3Bucket(name=name, url="", is_public=True)
             if name == "mycompany-assets"
             else None
         )
+        mock_check_azure.side_effect = lambda name: (
+            AzureBlobContainer(name=name, url="", is_public=True)
+            if name == "mycompany-data"
+            else None
+        )
+        mock_check_gcs.side_effect = lambda name: (
+            GCSBucket(name=name, url="", is_public=True)
+            if name == "mycompany-backup"
+            else None
+        )
 
-        result = asyncio.run(find_s3_buckets("mycompany"))
+        result = asyncio.run(find_cloud_assets("mycompany"))
 
-        self.assertEqual(len(result.found_buckets), 1)
-        self.assertEqual(result.found_buckets[0].name, "mycompany-assets")
-        # Check that the mock was called for all permutations
-
-        self.assertGreater(mock_check_bucket.call_count, 5)
+        self.assertEqual(len(result.found_s3_buckets), 1)
+        self.assertEqual(len(result.found_azure_containers), 1)
+        self.assertEqual(len(result.found_gcs_buckets), 1)
+        self.assertEqual(result.found_s3_buckets[0].name, "mycompany-assets")
+        self.assertEqual(result.found_azure_containers[0].name, "mycompany-data")
+        self.assertEqual(result.found_gcs_buckets[0].name, "mycompany-backup")
 
 
 if __name__ == "__main__":

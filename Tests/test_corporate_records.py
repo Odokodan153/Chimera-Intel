@@ -4,11 +4,17 @@ from httpx import Response
 
 # --- FIXED: All necessary imports are now included ---
 
+
 from chimera_intel.core.corporate_records import (
     get_company_records,
     screen_sanctions_list,
+    screen_pep_list,
 )
-from chimera_intel.core.schemas import CorporateRegistryResult, SanctionsScreeningResult
+from chimera_intel.core.schemas import (
+    CorporateRegistryResult,
+    SanctionsScreeningResult,
+    PEPScreeningResult,
+)
 
 
 class TestCorporateRecords(unittest.TestCase):
@@ -129,6 +135,20 @@ class TestCorporateRecords(unittest.TestCase):
         result = screen_sanctions_list("John Doe")
         self.assertEqual(result.hits_found, 0)
         self.assertEqual(len(result.entities), 0)
+
+    @patch("chimera_intel.core.corporate_records.PEP_LIST", {"JOHN SMITH"})
+    def test_screen_pep_list_with_hit(self):
+        """Tests the PEP screening function with a matching name."""
+        result = screen_pep_list("John Smith")
+        self.assertIsInstance(result, PEPScreeningResult)
+        self.assertTrue(result.is_pep)
+
+    @patch("chimera_intel.core.corporate_records.PEP_LIST", {"JANE DOE"})
+    def test_screen_pep_list_no_hit(self):
+        """Tests the PEP screening function with a non-matching name."""
+        result = screen_pep_list("John Smith")
+        self.assertIsInstance(result, PEPScreeningResult)
+        self.assertFalse(result.is_pep)
 
 
 if __name__ == "__main__":

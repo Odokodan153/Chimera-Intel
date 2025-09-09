@@ -7,15 +7,18 @@ from httpx import Response
 
 # Import the functions to be tested
 
+
 from chimera_intel.core.corporate_intel import (
     get_hiring_trends,
     get_employee_sentiment,
     get_trade_data,
     get_trademarks,
     get_lobbying_data,
+    get_sec_filings_analysis,
 )
 
 # Import schemas to apply a patch
+
 
 from chimera_intel.core import schemas
 
@@ -172,6 +175,33 @@ class TestCorporateIntel(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertGreater(result.total_spent, 0)
         self.assertEqual(result.records[0].year, 2025)
+
+    @patch("chimera_intel.core.business_intel.QueryApi")
+    @patch("chimera_intel.core.business_intel.ExtractorApi")
+    def test_get_sec_filings_analysis_success(self, mock_extractor_api, mock_query_api):
+        """Tests a successful SEC filing analysis."""
+        # Arrange
+
+        mock_query_instance = mock_query_api.return_value
+        mock_extractor_instance = mock_extractor_api.return_value
+
+        mock_query_instance.get_filings.return_value = {
+            "filings": [{"linkToFilingDetails": "http://fake-url.com"}]
+        }
+        mock_extractor_instance.get_section.return_value = (
+            "This is a summary of the risk factors."
+        )
+
+        # Act
+
+        with patch(
+            "chimera_intel.core.business_intel.API_KEYS.sec_api_io_key", "fake_key"
+        ):
+            result = get_sec_filings_analysis("AAPL")
+        # Assert
+
+        self.assertIsNotNone(result)
+        self.assertIn("risk factors", result.risk_factors_summary)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
-from chimera_intel.core.dark_web_osint import search_dark_web
+from chimera_intel.core.dark_web_osint import search_dark_web_engine
 
 
 class TestDarkWebOsint(unittest.TestCase):
@@ -10,11 +10,9 @@ class TestDarkWebOsint(unittest.TestCase):
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
     @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
-    def test_search_dark_web_success(self, mock_async_client_constructor, mock_config):
-        """Tests a successful dark web search."""
-
+    def test_search_ahmia_success(self, mock_async_client_constructor, mock_config):
+        """Tests a successful dark web search on Ahmia."""
         mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
         mock_response.text = """
@@ -24,14 +22,11 @@ class TestDarkWebOsint(unittest.TestCase):
           <p>Test Description</p>
         </li>
         """
-
-        # Configure the mock for the async context manager
-
         mock_client = AsyncMock()
         mock_client.get.return_value = mock_response
         mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
-        result = asyncio.run(search_dark_web("test query"))
+        result = asyncio.run(search_dark_web_engine("test query", engine="ahmia"))
 
         self.assertEqual(len(result.found_results), 1)
         self.assertEqual(result.found_results[0].title, "Test Title")
@@ -39,16 +34,44 @@ class TestDarkWebOsint(unittest.TestCase):
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
     @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
+    def test_search_darksearch_success(
+        self, mock_async_client_constructor, mock_config
+    ):
+        """Tests a successful dark web search on Dark Search."""
+        mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
+        mock_response = MagicMock(spec=Response)
+        mock_response.status_code = 200
+        mock_response.text = """
+        <div class="card-body">
+          <h5>
+            <a href="#">Dark Search Title</a>
+            <small>http://darksearch.onion</small>
+          </h5>
+          <p class="text-break">Dark Search Description</p>
+        </div>
+        """
+        mock_client = AsyncMock()
+        mock_client.get.return_value = mock_response
+        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
+
+        result = asyncio.run(search_dark_web_engine("test query", engine="darksearch"))
+
+        self.assertEqual(len(result.found_results), 1)
+        self.assertEqual(result.found_results[0].title, "Dark Search Title")
+        self.assertEqual(result.found_results[0].url, "http://darksearch.onion")
+        self.assertEqual(result.found_results[0].description, "Dark Search Description")
+        self.assertIsNone(result.error)
+
+    @patch("chimera_intel.core.dark_web_osint.CONFIG")
+    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
     def test_search_dark_web_timeout(self, mock_async_client_constructor, mock_config):
         """Tests the dark web search when a timeout occurs."""
-
         mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-
         mock_client = AsyncMock()
         mock_client.get.side_effect = asyncio.TimeoutError
         mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
-        result = asyncio.run(search_dark_web("test query"))
+        result = asyncio.run(search_dark_web_engine("test query"))
 
         self.assertEqual(len(result.found_results), 0)
         self.assertIsNotNone(result.error)
@@ -60,14 +83,12 @@ class TestDarkWebOsint(unittest.TestCase):
         self, mock_async_client_constructor, mock_config
     ):
         """Tests the dark web search when a generic exception occurs."""
-
         mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-
         mock_client = AsyncMock()
         mock_client.get.side_effect = RequestError("Proxy error")
         mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
 
-        result = asyncio.run(search_dark_web("test query"))
+        result = asyncio.run(search_dark_web_engine("test query"))
 
         self.assertEqual(len(result.found_results), 0)
         self.assertIsNotNone(result.error)
