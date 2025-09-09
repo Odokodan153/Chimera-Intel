@@ -152,7 +152,6 @@ class BusinessIntelData(BaseModel):
     financials: Union[Financials, str]
     news: GNewsResult
     patents: PatentResult
-    sec_filings_analysis: Optional[SECFilingAnalysis] = None
 
 
 class BusinessIntelResult(BaseModel):
@@ -488,11 +487,29 @@ class S3Bucket(BaseModel):
     is_public: bool
 
 
+class AzureBlobContainer(BaseModel):
+    """Model for a single discovered Azure Blob container."""
+
+    name: str
+    url: str
+    is_public: bool
+
+
+class GCSBucket(BaseModel):
+    """Model for a single discovered Google Cloud Storage bucket."""
+
+    name: str
+    url: str
+    is_public: bool
+
+
 class CloudOSINTResult(BaseModel):
     """The main, top-level result model for a cloud OSINT scan."""
 
     target_keyword: str
-    found_buckets: List[S3Bucket] = []
+    found_s3_buckets: List[S3Bucket] = []
+    found_azure_containers: List[AzureBlobContainer] = []
+    found_gcs_buckets: List[GCSBucket] = []
     error: Optional[str] = None
 
 
@@ -566,6 +583,13 @@ class SanctionsScreeningResult(BaseModel):
     hits_found: int = 0
     entities: List[SanctionedEntity] = []
     error: Optional[str] = None
+
+
+class PEPScreeningResult(BaseModel):
+    """Model for the result of a PEP screening."""
+
+    query: str
+    is_pep: bool
 
 
 # --- Third-Party Risk Management (TPRM) Models ---

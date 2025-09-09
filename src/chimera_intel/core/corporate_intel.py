@@ -8,7 +8,7 @@ employee sentiment, supply chain, intellectual property, and regulatory activiti
 import typer
 import logging
 from bs4 import BeautifulSoup
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from sec_api import QueryApi, ExtractorApi  # type: ignore
 from .schemas import (
     HiringTrendsResult,
@@ -283,7 +283,7 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
         return None
     try:
         queryApi = QueryApi(api_key=api_key)
-        query: Dict[str, any] = {
+        query: Dict[str, Any] = {
             "query": f'ticker:{ticker} AND formType:"10-K"',
             "from": "0",
             "size": "1",
