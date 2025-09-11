@@ -1,6 +1,13 @@
 import unittest
 from unittest.mock import patch
+from typer.testing import CliRunner
+import typer
+
+from chimera_intel.cli import app
 from chimera_intel.core.forecaster import get_all_scans_for_target, run_prediction_rules
+from chimera_intel.core.schemas import ProjectConfig
+
+runner = CliRunner()
 
 
 class TestForecaster(unittest.TestCase):
@@ -82,6 +89,42 @@ class TestForecaster(unittest.TestCase):
         result = run_prediction_rules(historical_data, "business_intel")
         self.assertEqual(len(result.predictions), 0)
         self.assertIn("No strong predictive signals", result.notes)
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.forecaster.resolve_target")
+    @patch("chimera_intel.core.forecaster.get_all_scans_for_target")
+    def test_cli_forecast_with_project(self, mock_get_scans, mock_resolve_target):
+        """Tests the CLI command using the centralized target resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "project.com"
+        mock_get_scans.return_value = []  # Not enough data, but we check the logic
+
+        # Act
+
+        result = runner.invoke(app, ["analysis", "forecast", "run", "footprint"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
+        mock_get_scans.assert_called_with("project.com", "footprint")
+
+    @patch("chimera_intel.core.forecaster.resolve_target")
+    def test_cli_forecast_resolver_fails(self, mock_resolve_target):
+        """Tests the CLI command when the resolver raises an exit exception."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(app, ["analysis", "forecast", "run", "footprint"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

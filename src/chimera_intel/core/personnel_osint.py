@@ -1,12 +1,13 @@
 import typer
 import logging
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 from .schemas import PersonnelOSINTResult, EmployeeProfile
 from .config_loader import API_KEYS
 from .http_client import sync_client
 from .utils import save_or_print_results, is_valid_domain, console
 from .database import save_scan_to_db
 from rich.panel import Panel
+from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,15 @@ def find_employee_emails(domain: str) -> PersonnelOSINTResult:
 
 # --- Typer CLI Application ---
 
+
 personnel_osint_app = typer.Typer()
 
 
 @personnel_osint_app.command("emails")
 def run_email_search(
-    domain: str = typer.Argument(..., help="The domain to search for employee emails."),
+    domain: Optional[str] = typer.Argument(
+        None, help="The domain to search for. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
@@ -80,21 +84,38 @@ def run_email_search(
     """
     Searches for public employee email addresses for a given domain.
     """
-    if not is_valid_domain(domain):
+    target_domain = domain
+    if not target_domain:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_domain = active_project.domain
+            console.print(
+                f"[bold cyan]Using domain '{target_domain}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No domain provided and no active project set. Use 'chimera project use <name>' or specify a domain."
+            )
+            raise typer.Exit(code=1)
+    if not is_valid_domain(target_domain):
         logger.warning(
-            "Invalid domain format provided to 'personnel' command: %s", domain
+            "Invalid domain format provided to 'personnel' command: %s", target_domain
         )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    with console.status(f"[bold cyan]Searching for emails at {domain}...[/bold cyan]"):
-        results_model = find_employee_emails(domain)
+    with console.status(
+        f"[bold cyan]Searching for emails at {target_domain}...[/bold cyan]"
+    ):
+        results_model = find_employee_emails(target_domain)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="personnel_osint_emails", data=results_dict)
-    logger.info("Email search complete for domain: %s", domain)
+    save_scan_to_db(
+        target=target_domain, module="personnel_osint_emails", data=results_dict
+    )
+    logger.info("Email search complete for domain: %s", target_domain)

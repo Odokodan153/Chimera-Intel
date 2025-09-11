@@ -13,6 +13,7 @@ import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 from httpx import Response
+import typer
 
 from chimera_intel.cli import app
 from chimera_intel.core.web_analyzer import (
@@ -276,28 +277,46 @@ class TestWebAnalyzer(unittest.TestCase):
 
         asyncio.run(run_test())
 
+    @patch("chimera_intel.core.web_analyzer.resolve_target")
     @patch(
         "chimera_intel.core.web_analyzer.gather_web_analysis_data",
         new_callable=AsyncMock,
     )
-    def test_cli_web_run_success(self, mock_gather: AsyncMock):
-        """
-        Tests the 'scan web run' CLI command for a successful execution.
+    def test_cli_web_run_with_project(self, mock_gather_data, mock_resolve_target):
+        """Tests the CLI command using the centralized target resolver."""
+        # Arrange
 
-        Args:
-            mock_gather (AsyncMock): A mock for the `gather_web_analysis_data` function.
-        """
-        mock_result_model = MagicMock()
-        mock_result_model.model_dump.return_value = {
-            "domain": "example.com",
-            "web_analysis": {},
-        }
-        mock_gather.return_value = mock_result_model
+        mock_resolve_target.return_value = "project.com"
+        mock_gather_data.return_value.model_dump.return_value = {}
 
-        result = runner.invoke(app, ["scan", "web", "run", "example.com"])
+        # Act
+
+        result = runner.invoke(app, ["scan", "web", "run"])
+
+        # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('"domain": "example.com"', result.stdout)
+        # Verify that our new central function was called
+
+        mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
+        # Verify the core logic was called with the resolved target
+
+        mock_gather_data.assert_awaited_with("project.com")
+
+    @patch("chimera_intel.core.web_analyzer.resolve_target")
+    def test_cli_web_run_resolver_fails(self, mock_resolve_target):
+        """Tests the CLI command when the resolver raises an exit exception."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(app, ["scan", "web", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
     def test_cli_web_run_invalid_domain(self):
         """Tests the 'scan web run' CLI command with an invalid domain, expecting an error."""

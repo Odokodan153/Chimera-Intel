@@ -8,6 +8,7 @@ from chimera_intel.core.social_analyzer import discover_rss_feed, analyze_feed_c
 from chimera_intel.core.schemas import (
     SocialContentAnalysis,
     AnalyzedPost,
+    ProjectConfig,
 )
 
 runner = CliRunner()
@@ -102,7 +103,7 @@ class TestSocialAnalyzer(unittest.TestCase):
     @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
     @patch("chimera_intel.core.social_analyzer.analyze_feed_content")
     def test_cli_social_run_success(self, mock_analyze, mock_discover):
-        """Tests a successful 'social run' CLI command."""
+        """Tests a successful 'social run' CLI command with an explicit domain."""
         mock_discover.return_value = "http://fake.url/feed.xml"
         mock_analyze.return_value = SocialContentAnalysis(
             feed_title="Test Feed",
@@ -120,6 +121,9 @@ class TestSocialAnalyzer(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"feed_title": "Test Feed"', result.stdout)
+        # Ensure the discover function was called with the explicit domain
+
+        mock_discover.assert_called_with("example.com")
 
     def test_cli_social_run_invalid_domain(self):
         """Tests the 'social run' command with an invalid domain."""
@@ -132,6 +136,59 @@ class TestSocialAnalyzer(unittest.TestCase):
         mock_discover.return_value = None
         result = runner.invoke(app, ["scan", "social", "run", "example.com"])
         self.assertEqual(result.exit_code, 1)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.social_analyzer.get_active_project")
+    @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
+    @patch("chimera_intel.core.social_analyzer.analyze_feed_content")
+    def test_cli_social_run_with_active_project(
+        self, mock_analyze, mock_discover, mock_get_project
+    ):
+        """Tests the CLI command using an active project's context when no domain is provided."""
+        # Arrange: Mock the active project and the downstream functions
+
+        mock_project = ProjectConfig(
+            project_name="TestProject",
+            created_at="2025-01-01",
+            domain="project-domain.com",
+        )
+        mock_get_project.return_value = mock_project
+        mock_discover.return_value = "http://fake.url/feed.xml"
+        mock_analyze.return_value = SocialContentAnalysis(
+            feed_title="Project Feed", posts=[]
+        )
+
+        # Act: Run the command without an explicit domain
+
+        result = runner.invoke(app, ["scan", "social", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using domain 'project-domain.com' from active project", result.stdout
+        )
+        self.assertIn('"feed_title": "Project Feed"', result.stdout)
+        # Verify that the discover function was called with the domain from the project
+
+        mock_discover.assert_called_with("project-domain.com")
+
+    @patch("chimera_intel.core.social_analyzer.get_active_project")
+    def test_cli_social_run_no_domain_no_project(self, mock_get_project):
+        """Tests the CLI command fails when no domain is provided and no active project is set."""
+        # Arrange: Mock that there is no active project
+
+        mock_get_project.return_value = None
+
+        # Act: Run the command without a domain
+
+        result = runner.invoke(app, ["scan", "social", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No domain provided and no active project set", result.stdout)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,8 @@ Module for comparing historical scans to detect changes over time.
 This module provides the core logic for the 'diff' command. It fetches the two
 most recent scans for a given target and module from the database, compares them
 using the 'jsondiff' library, and formats the differences into a human-readable
-summary. It can also trigger notifications (e.g., to Slack) when changes are detected.
+summary. It can also trigger notifications (e.g., to Slack and Microsoft Teams)
+when changes are detected.
 """
 
 import typer
@@ -15,9 +16,10 @@ from jsondiff import diff, symbols  # type: ignore
 from typing import Tuple, Optional, Dict, Any, List
 from .database import DB_FILE, console
 from .schemas import FormattedDiff, DiffResult
-from .utils import send_slack_notification
+from .utils import send_slack_notification, send_teams_notification
 from .config_loader import API_KEYS
 import logging
+from .project_manager import get_active_project
 
 # Get a logger instance for this specific file
 
@@ -104,28 +106,42 @@ diff_app = typer.Typer()
 
 @diff_app.command("run")
 def run_diff_analysis(
-    target: str = typer.Argument(
-        ..., help="The target whose history you want to compare."
-    ),
     module: str = typer.Argument(
         ..., help="The specific scan module to compare (e.g., 'footprint')."
+    ),
+    target: Optional[str] = typer.Argument(
+        None, help="The target to compare. Uses active project if not provided."
     ),
 ):
     """
     Compares the last two scans of a target to detect changes and sends a notification.
-
-    Args:
-        target (str): The target whose history you want to compare.
-        module (str): The specific scan module to compare (e.g., 'footprint').
     """
+    target_name = target
+    if not target_name:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_name = active_project.domain
+            console.print(
+                f"[bold cyan]Using target '{target_name}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No target provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    if not target_name:
+        console.print(
+            "[bold red]Error:[/bold red] A target is required for this command."
+        )
+        raise typer.Exit(code=1)
     logger.info(
-        "Starting change detection for target '%s' in module '%s'", target, module
+        "Starting change detection for target '%s' in module '%s'", target_name, module
     )
-    latest, previous = get_last_two_scans(target, module)
+    latest, previous = get_last_two_scans(target_name, module)
     if not latest or not previous:
         logger.warning(
             "Not enough historical data to compare for '%s' in module '%s'. Found 0 or 1 scans.",
-            target,
+            target_name,
             module,
         )
         raise typer.Exit()
@@ -134,17 +150,18 @@ def run_diff_analysis(
     if not difference_json:
         logger.info(
             "No changes detected between the last two scans for '%s' in module '%s'.",
-            target,
+            target_name,
             module,
         )
         raise typer.Exit()
-    logger.info("Changes detected for '%s' in module '%s'.", target, module)
+    logger.info("Changes detected for '%s' in module '%s'.", target_name, module)
     formatted_changes = format_diff_simple(difference_json)
     full_result = DiffResult(
         comparison_summary=formatted_changes, raw_diff=difference_json
     )
     console.print("\n[bold]Comparison Results:[/bold]")
     pprint(full_result.raw_diff)
+
     # --- Send Slack Notification ---
 
     slack_url = API_KEYS.slack_webhook_url
@@ -153,9 +170,25 @@ def run_diff_analysis(
         removed_count = len(full_result.comparison_summary.removed)
         message = (
             f"🔔 *Chimera Intel Change Alert* 🔔\n\n"
-            f"Detected changes for target *{target}* in module *{module}*:\n"
+            f"Detected changes for target *{target_name}* in module *{module}*:\n"
             f"  - `Added`: {added_count} items\n"
             f"  - `Removed`: {removed_count} items\n\n"
             f"Please review the latest scan for details."
         )
         send_slack_notification(slack_url, message)
+    # --- Send Teams Notification ---
+
+    teams_url = API_KEYS.teams_webhook_url
+    if teams_url:
+        added_count = len(full_result.comparison_summary.added)
+        removed_count = len(full_result.comparison_summary.removed)
+        teams_title = "Chimera Intel Change Alert"
+        # Teams supports Markdown for rich formatting
+
+        teams_message = (
+            f"Detected changes for target **{target_name}** in module **{module}**:\n\n"
+            f"- **Added**: {added_count} items\n\n"
+            f"- **Removed**: {removed_count} items\n\n"
+            "Please review the latest scan for details."
+        )
+        send_teams_notification(teams_url, teams_title, teams_message)

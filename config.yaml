@@ -26,6 +26,15 @@ modules:
 
 # Settings for report generation
 reporting:
+  # Defines the list of scans to be executed by the 'project report' command.
+  # Add or remove module names to customize the report.
+  # Valid options include: "footprint", "web_analyzer", "business_intel",
+  # "defensive_breaches", "vulnerability_scan".
+  project_report_scans:
+    - "footprint"
+    - "web_analyzer"
+    - "defensive_breaches"
+
   graph: {} 
   pdf:
     # Path to your company's logo. This now points to your uploaded logo.

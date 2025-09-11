@@ -12,7 +12,7 @@ from datetime import datetime
 from .schemas import WalletAnalysisResult, WalletTransaction
 from .config_loader import API_KEYS
 from .http_client import sync_client
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
@@ -103,17 +103,25 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
 
 # --- Typer CLI Application ---
 
+
 blockchain_app = typer.Typer()
 
 
 @blockchain_app.command("wallet")
 def run_wallet_analysis(
-    address: str = typer.Argument(..., help="The Ethereum wallet address to analyze."),
+    address: Optional[str] = typer.Argument(
+        None, help="The Ethereum wallet address to analyze."
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes an Ethereum wallet for balance and recent transactions."""
+    if not address:
+        console.print(
+            "[bold red]Error:[/bold red] A wallet address must be provided for this command."
+        )
+        raise typer.Exit(code=1)
     results_model = get_wallet_analysis(address)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)

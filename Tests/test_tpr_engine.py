@@ -1,13 +1,19 @@
 import unittest
 import asyncio
 from unittest.mock import patch
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
 from chimera_intel.core.tpr_engine import run_full_tpr_scan
 from chimera_intel.core.schemas import (
     TPRMReport,
     VulnerabilityScanResult,
     HIBPResult,
     SWOTAnalysisResult,
+    ProjectConfig,
 )
+
+runner = CliRunner()
 
 
 class TestTprEngine(unittest.TestCase):
@@ -174,6 +180,59 @@ class TestTprEngine(unittest.TestCase):
         # Ensure the AI summary was still generated based on the partial data
 
         self.assertIn("Risk Level: UNKNOWN", result.ai_summary)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.tpr_engine.get_active_project")
+    @patch("chimera_intel.core.tpr_engine.run_full_tpr_scan")
+    def test_cli_tpr_run_with_project(self, mock_run_scan, mock_get_project):
+        """Tests the CLI command using an active project's domain."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="TPRTest",
+            created_at="2025-01-01",
+            domain="project-tpr.com",
+        )
+        mock_get_project.return_value = mock_project
+        # Mock the async function's Pydantic result model
+
+        mock_run_scan.return_value = TPRMReport(
+            target_domain="project-tpr.com",
+            ai_summary="All clear.",
+            vulnerability_scan_results=VulnerabilityScanResult(
+                target_domain="project-tpr.com", scanned_hosts=[]
+            ),
+            breach_results=HIBPResult(breaches=[]),
+        )
+
+        # Act
+
+        result = runner.invoke(app, ["tpr-scan", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using domain 'project-tpr.com' from active project", result.stdout
+        )
+        mock_run_scan.assert_called_with("project-tpr.com")
+
+    @patch("chimera_intel.core.tpr_engine.get_active_project")
+    def test_cli_tpr_run_no_domain_no_project(self, mock_get_project):
+        """Tests CLI failure when no domain is provided and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+
+        result = runner.invoke(app, ["tpr-scan", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No domain provided and no active project set", result.stdout)
 
 
 if __name__ == "__main__":

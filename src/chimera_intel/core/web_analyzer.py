@@ -18,12 +18,15 @@ from chimera_intel.core.schemas import (
     ScoredResult,
 )
 from chimera_intel.core.http_client import async_client
+from .project_manager import resolve_target
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
 # --- Simple In-Memory Cache ---
+
 
 API_CACHE: Dict[str, Any] = {}
 CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
@@ -275,33 +278,35 @@ web_app = typer.Typer()
 
 @web_app.command("run")
 def run_web_analysis(
-    domain: str = typer.Argument(..., help="The target domain to analyze."),
+    domain: Optional[str] = typer.Argument(
+        None, help="The target domain. Uses active project if not provided."
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
     """
     Analyzes web-specific data asynchronously, including taking a screenshot.
-
-    Args:
-        domain (str): The target domain to analyze.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    if not is_valid_domain(domain):
-        logger.warning("Invalid domain format provided to 'web' command: %s", domain)
+    target_domain = resolve_target(domain, required_assets=["domain"])
+
+    if not is_valid_domain(target_domain):
+        logger.warning(
+            "Invalid domain format provided to 'web' command: %s", target_domain
+        )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    logger.info("Starting asynchronous web analysis for %s", domain)
+    logger.info("Starting asynchronous web analysis for %s", target_domain)
 
-    results_model = asyncio.run(gather_web_analysis_data(domain))
+    results_model = asyncio.run(gather_web_analysis_data(target_domain))
     results_dict = results_model.model_dump()
 
-    logger.info("Web analysis complete for %s", domain)
+    logger.info("Web analysis complete for %s", target_domain)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="web_analyzer", data=results_dict)
+    save_scan_to_db(target=target_domain, module="web_analyzer", data=results_dict)

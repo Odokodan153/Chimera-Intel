@@ -1191,3 +1191,158 @@ class PhysicalSecurityResult(BaseModel):
     query: str
     locations_found: List[PhysicalLocation] = []
     error: Optional[str] = None
+
+# --- Ecosystem Intelligence Models ---
+
+class DiscoveredPartner(BaseModel):
+    """Model for a single discovered business partner."""
+    partner_name: str
+    source: str  # e.g., "Press Release", "Partner Page", "Tech Stack"
+    details: str
+    confidence: str # "High", "Medium", "Low"
+
+class DiscoveredCompetitor(BaseModel):
+    """Model for a single discovered competitor."""
+    competitor_name: str
+    source: str  # e.g., "SimilarWeb API", "Market Sector Analysis"
+    details: Optional[str] = None
+    confidence: str # "High", "Medium", "Low"
+
+class DiscoveredDistributor(BaseModel):
+    """Model for a single discovered distributor, retailer, or supply chain partner."""
+    distributor_name: str
+    location: Optional[str] = None # e.g., "Germany", "New York, USA"
+    source: str  # e.g., "Trade Data", "Website Scrape"
+    details: Optional[str] = None # e.g., "Consignee in 15 shipments"
+    confidence: str # "High", "Medium", "Low"
+
+class EcosystemData(BaseModel):
+    """Model for all discovered ecosystem relationships."""
+    partners: List[DiscoveredPartner] = []
+    competitors: List[DiscoveredCompetitor] = []
+    distributors: List[DiscoveredDistributor] = []
+
+
+class EcosystemResult(BaseModel):
+    """The main, top-level result model for an ecosystem intelligence scan."""
+    target_company: str
+    ecosystem_data: EcosystemData
+    error: Optional[str] = None
+class MozillaObservatoryResult(BaseModel):
+    """
+    A model to hold the summary of a Mozilla Observatory scan.
+    The full report can be very large, so we capture the key metrics.
+    """
+    scan_id: int
+    score: int
+    grade: str
+    state: str
+    tests_passed: int
+    tests_failed: int
+    report_url: str
+    error: Optional[str] = None
+
+# --- Cyber Intelligence (CYBINT) Models ---
+
+class AttackSurfaceReport(BaseModel):
+    """Model for a comprehensive, AI-analyzed attack surface report."""
+    target_domain: str
+    ai_risk_assessment: str
+    full_footprint_data: FootprintResult
+    vulnerability_scan_results: VulnerabilityScanResult
+    web_security_posture: Optional[MozillaObservatoryResult] = None
+    api_discovery_results: APIDiscoveryResult
+    error: Optional[str] = None
+class TTP(BaseModel):
+    """Model for a single Tactic, Technique, or Procedure used by an adversary."""
+    technique_id: str # e.g., T1566.001
+    tactic: str # e.g., Initial Access
+    description: str
+
+class ThreatActor(BaseModel):
+    """Model for a single threat actor profile."""
+    name: str # e.g., "APT28", "FIN7"
+    aliases: List[str] = []
+    targeted_industries: List[str] = []
+    known_ttps: List[TTP] = []
+    known_indicators: List[str] = [] # Malicious IPs, domains, hashes
+
+class ThreatActorIntelResult(BaseModel):
+    """The result of a threat actor intelligence gathering operation."""
+    actor: Optional[ThreatActor] = None
+    error: Optional[str] = None
+
+# --- Project Management Models ---
+
+class ProjectConfig(BaseModel):
+    """Model for validating a project's configuration file (project.yaml)."""
+    project_name: str
+    created_at: str
+    
+    # Core Assets
+    domain: Optional[str] = None
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    key_personnel: List[str] = []
+    known_ips: List[str] = []
+
+# --- Legal Intelligence (LEGINT) Models ---
+
+class CourtRecord(BaseModel):
+    """Model for a single court docket record from CourtListener."""
+
+    case_name: str = Field(..., alias="caseName")
+    date_filed: str = Field(..., alias="dateFiled")
+    court: str
+    docket_url: str = Field(..., alias="absolute_url")
+    docket_number: str = Field(..., alias="docketNumber")
+
+
+class DocketSearchResult(BaseModel):
+    """The main, top-level result model for a court docket search."""
+
+    query: str
+    total_found: int = 0
+    records: List[CourtRecord] = []
+    error: Optional[str] = None
+
+# --- Geo-Strategic Intelligence Models ---
+
+class OperationalCenter(BaseModel):
+    """Model for a single identified center of operations."""
+
+    location_name: Optional[str] = None
+    address: Optional[str] = None
+    location_type: str  # e.g., "Corporate Office", "Hiring Area", "Distribution Hub"
+    source_modules: List[str]
+    details: str
+
+
+class GeoStrategicReport(BaseModel):
+    """The main, top-level result model for a geo-strategic analysis."""
+
+    target: str
+    operational_centers: List[OperationalCenter] = []
+    error: Optional[str] = None
+
+
+# --- Financial Intelligence (FININT) Models ---
+
+class InsiderTransaction(BaseModel):
+    """Model for a single insider trading transaction."""
+
+    companyName: str
+    insiderName: str
+    transactionType: str
+    transactionDate: str
+    shares: int
+    value: Optional[int] = None
+
+
+class InsiderTradingResult(BaseModel):
+    """The main, top-level result model for an insider trading scan."""
+
+    ticker: str
+    total_transactions: int = 0
+    transactions: List[InsiderTransaction] = []
+    error: Optional[str] = None

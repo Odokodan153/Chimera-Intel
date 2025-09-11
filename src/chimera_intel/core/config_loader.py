@@ -61,6 +61,7 @@ class ApiKeys(BaseSettings):
     # Notification Keys
 
     slack_webhook_url: Optional[str] = Field(None, alias="SLACK_WEBHOOK_URL")
+    teams_webhook_url: Optional[str] = Field(None, alias="TEAMS_WEBHOOK_URL")
 
     # Corporate & Strategic Intelligence Keys
 
@@ -71,6 +72,8 @@ class ApiKeys(BaseSettings):
     google_maps_api_key: Optional[str] = Field(None, alias="GOOGLE_MAPS_API_KEY")
     import_genius_api_key: Optional[str] = Field(None, alias="IMPORT_GENIUS_API_KEY")
     uspto_api_key: Optional[str] = Field(None, alias="USPTO_API_KEY")
+    kaggle_api_key: Optional[str] = Field(None, alias="KAGGLE_API_KEY")
+    courtlistener_api_key: Optional[str] = Field(None, alias="COURTLISTENER_API_KEY")
 
     class Config:
         """Pydantic-settings configuration."""

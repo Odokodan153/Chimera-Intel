@@ -3,15 +3,18 @@ import sqlite3
 import json
 from rich.console import Console
 from rich.table import Table
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 from .database import DB_FILE
 from .schemas import Prediction, ForecastResult
+from .project_manager import resolve_target
 
 # Get a logger instance for this specific file
 
+
 logger = logging.getLogger(__name__)
 # We still need the console for rich table output
+
 
 console = Console()
 
@@ -157,24 +160,29 @@ def run_prediction_rules(
 
 # --- Typer CLI Application ---
 
+
 forecast_app = typer.Typer()
 
 
 @forecast_app.command("run")
 def run_forecast_analysis(
-    target: str = typer.Argument(..., help="The target to analyze for future signals."),
     module: str = typer.Argument(
         ..., help="The scan module to analyze (e.g., 'business_intel', 'web_analyzer')."
+    ),
+    target: Optional[str] = typer.Argument(
+        None, help="The target to analyze. Uses active project if not provided."
     ),
 ):
     """
     Analyzes historical data to forecast potential future events.
     """
+    target_name = resolve_target(target, required_assets=["domain"])
+
     logger.info(
-        "Starting forecast analysis for target '%s' in module '%s'", target, module
+        "Starting forecast analysis for target '%s' in module '%s'", target_name, module
     )
 
-    history = get_all_scans_for_target(target, module)
+    history = get_all_scans_for_target(target_name, module)
     forecast_result = run_prediction_rules(history, module)
 
     table = Table(title="Predictive Signals Detected")
@@ -187,7 +195,7 @@ def run_forecast_analysis(
     elif forecast_result.notes:
         logger.info(
             "No predictive signals found for '%s', notes: %s",
-            target,
+            target_name,
             forecast_result.notes,
         )
         table.add_row("Info", forecast_result.notes)

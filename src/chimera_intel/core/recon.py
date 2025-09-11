@@ -6,6 +6,12 @@ import typer
 import logging
 import asyncio
 from typing import Optional, List, Dict, Union
+
+# Add the Kaggle API client
+
+
+import kaggle  # type: ignore
+
 from google_play_scraper import search as search_google_play  # type: ignore
 from .schemas import (
     CredentialExposureResult,
@@ -15,10 +21,12 @@ from .schemas import (
     ThreatInfraResult,
     RelatedIndicator,
 )
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
 from .http_client import sync_client, async_client
+from .project_manager import get_active_project
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +89,7 @@ async def find_digital_assets(company_name: str) -> AssetIntelResult:
     """Discovers digital assets like mobile apps and public datasets.
 
     This function searches for mobile applications on the Google Play Store and
-    looks for public datasets associated with the company name.
+    looks for public datasets associated with the company name on Kaggle.
 
     Args:
         company_name (str): The company name to find assets for.
@@ -114,17 +122,28 @@ async def find_digital_assets(company_name: str) -> AssetIntelResult:
                 )
     except Exception as e:
         logger.error(f"Failed to scrape Google Play for '{company_name}': {e}")
-    # --- Find Public Datasets (Conceptual Search) ---
-    # This simulates a search on platforms like Kaggle, data.gov, etc.
+    # --- Find Public Datasets from Kaggle ---
 
-    mock_datasets = [
-        f"s3://{company_name.lower().replace(' ', '-')}-research-data-public"
-    ]
-
+    public_datasets = []
+    if API_KEYS.kaggle_api_key:
+        try:
+            api = kaggle.KaggleApi()
+            api.authenticate()
+            datasets = await asyncio.to_thread(
+                lambda: api.dataset_list(search=company_name)
+            )
+            for dataset in datasets:
+                public_datasets.append(f"kaggle://{dataset.ref}")
+        except Exception as e:
+            logger.error(
+                f"Failed to search Kaggle for datasets for '{company_name}': {e}"
+            )
+    else:
+        logger.warning("Kaggle API key not found. Skipping public dataset search.")
     return AssetIntelResult(
         target_company=company_name,
         mobile_apps=mobile_apps,
-        public_datasets=mock_datasets,
+        public_datasets=public_datasets,
     )
 
 
@@ -203,45 +222,90 @@ recon_app = typer.Typer()
 
 @recon_app.command("credentials")
 def run_credential_recon(
-    domain: str = typer.Argument(..., help="The domain to check for credential leaks."),
+    domain: Optional[str] = typer.Argument(
+        None, help="The domain to check. Uses active project if not provided."
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Searches breach data for compromised credentials associated with a domain."""
-    results = find_credential_leaks(domain)
+    target_domain = domain
+    if not target_domain:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_domain = active_project.domain
+            console.print(
+                f"[bold cyan]Using domain '{target_domain}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No domain provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    results = find_credential_leaks(target_domain)
     results_dict = results.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="recon_credentials", data=results_dict)
+    save_scan_to_db(target=target_domain, module="recon_credentials", data=results_dict)
 
 
 @recon_app.command("assets")
 def run_asset_intel(
-    company_name: str = typer.Argument(
-        ..., help="The company name to find assets for."
+    company_name: Optional[str] = typer.Argument(
+        None,
+        help="The company name to find assets for. Uses active project if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Discovers digital assets like mobile apps and public datasets."""
-    results = asyncio.run(find_digital_assets(company_name))
+    target_company = company_name
+    if not target_company:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_company = active_project.company_name
+            console.print(
+                f"[bold cyan]Using company name '{target_company}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No company name provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    results = asyncio.run(find_digital_assets(target_company))
     results_dict = results.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=company_name, module="recon_assets", data=results_dict)
+    save_scan_to_db(target=target_company, module="recon_assets", data=results_dict)
 
 
 @recon_app.command("threat-infra")
 def run_threat_infra_recon(
-    indicator: str = typer.Argument(
-        ..., help="A malicious IP or domain to investigate."
+    indicator: Optional[str] = typer.Argument(
+        None,
+        help="A malicious IP or domain. Uses active project's domain if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes and pivots on adversary threat infrastructure."""
-    results = asyncio.run(analyze_threat_infrastructure(indicator))
+    target_indicator = indicator
+    if not target_indicator:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_indicator = active_project.domain
+            console.print(
+                f"[bold cyan]Using indicator '{target_indicator}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No indicator provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    results = asyncio.run(analyze_threat_infrastructure(target_indicator))
     results_dict = results.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=indicator, module="recon_threat_infra", data=results_dict)
+    save_scan_to_db(
+        target=target_indicator, module="recon_threat_infra", data=results_dict
+    )

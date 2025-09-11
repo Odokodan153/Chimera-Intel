@@ -13,6 +13,7 @@ from chimera_intel.core.schemas import (
     CredentialExposureResult,
     AssetIntelResult,
     ThreatInfraResult,
+    ProjectConfig,
 )
 
 # Initialize the Typer runner for CLI tests
@@ -73,18 +74,43 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
             result = find_credential_leaks("example.com")
             self.assertIsNotNone(result.error)
 
-    # --- Tests for find_digital_assets ---
+    # --- Tests for find_digital_assets (Rewritten) ---
 
-    @patch("chimera_intel.core.recon.asyncio.to_thread")
-    async def test_find_digital_assets_success(self, mock_to_thread):
-        """Tests a successful digital asset discovery."""
-        mock_to_thread.return_value = [
+    @patch("chimera_intel.core.recon.API_KEYS")
+    @patch("chimera_intel.core.recon.kaggle.KaggleApi")
+    @patch("chimera_intel.core.recon.search_google_play")
+    async def test_find_digital_assets_success(
+        self, mock_search_play, mock_kaggle_api, mock_api_keys
+    ):
+        """Tests a successful digital asset discovery by mocking library calls."""
+        # Arrange
+
+        mock_api_keys.kaggle_api_key = "fake_kaggle_key"
+
+        # Mock the google-play-scraper call
+
+        mock_search_play.return_value = [
             {"title": "Test App", "appId": "com.test", "developer": "Example Corp"}
         ]
+
+        # Mock the Kaggle API calls
+
+        mock_kaggle_instance = mock_kaggle_api.return_value
+        mock_dataset = MagicMock()
+        mock_dataset.ref = "testuser/test-dataset"
+        mock_kaggle_instance.dataset_list.return_value = [mock_dataset]
+
+        # Act
+
         result = await find_digital_assets("Example Corp")
+
+        # Assert
+
         self.assertIsInstance(result, AssetIntelResult)
         self.assertEqual(len(result.mobile_apps), 1)
         self.assertEqual(result.mobile_apps[0].app_name, "Test App")
+        self.assertEqual(len(result.public_datasets), 1)
+        self.assertEqual(result.public_datasets[0], "kaggle://testuser/test-dataset")
 
     @patch("chimera_intel.core.recon.asyncio.to_thread")
     async def test_find_digital_assets_scraper_error(self, mock_to_thread):
@@ -135,7 +161,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.recon.find_credential_leaks")
     def test_cli_credentials_command_success(self, mock_find_leaks):
-        """Tests the 'recon credentials' CLI command."""
+        """Tests the 'recon credentials' CLI command with an explicit domain."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
             "target_domain": "example.com",
@@ -146,6 +172,23 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         cli_result = runner.invoke(app, ["recon", "credentials", "example.com"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"total_found": 5', cli_result.stdout)
+        mock_find_leaks.assert_called_with("example.com")
+
+    @patch("chimera_intel.core.recon.get_active_project")
+    @patch("chimera_intel.core.recon.find_credential_leaks")
+    def test_cli_credentials_with_project(self, mock_find_leaks, mock_get_project):
+        """Tests the 'recon credentials' command using an active project."""
+        mock_project = ProjectConfig(
+            project_name="Test", created_at="", domain="project.com"
+        )
+        mock_get_project.return_value = mock_project
+        mock_find_leaks.return_value.model_dump.return_value = {}
+
+        result = runner.invoke(app, ["recon", "credentials"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using domain 'project.com'", result.stdout)
+        mock_find_leaks.assert_called_with("project.com")
 
     @patch("chimera_intel.core.recon.asyncio.run")
     def test_cli_assets_command_success(self, mock_asyncio_run):

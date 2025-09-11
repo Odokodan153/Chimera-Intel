@@ -39,6 +39,14 @@ from chimera_intel.core.blockchain_osint import blockchain_app
 from chimera_intel.core.code_intel import code_intel_app
 from chimera_intel.core.ttp_mapper import ttp_app
 from chimera_intel.core.physical_osint import physical_osint_app
+from chimera_intel.core.ecosystem_intel import ecosystem_app
+from chimera_intel.core.cybint import cybint_app
+from chimera_intel.core.project_manager import project_app 
+from chimera_intel.core.geo_strategist import geo_strategist_app
+from chimera_intel.core.project_reporter import project_report_app 
+from chimera_intel.core.finint import finint_app
+from chimera_intel.core.legint import legint_app
+from chimera_intel.core.threat_hunter import threat_hunter_app
 
 # --- : Startup Banner ---
 # This will be printed every time the CLI is invoked.
@@ -165,8 +173,12 @@ analysis_app.add_typer(
     name="strategy",
     help="Generates an AI-powered strategic profile of a target.",
 )
-analysis_app.add_typer(
+project_app.add_typer(
     signal_app, name="signal", help="Analyzes data for unintentional strategic signals."
+)
+
+analysis_app.add_typer(
+    geo_strategist_app, name="geo-strategy", help="Generates a geographic intelligence report."
 )
 
 
@@ -241,6 +253,41 @@ app.add_typer(
     physical_osint_app,
     name="physical",
     help="Run OSINT scans for physical assets and locations.",
+)
+
+app.add_typer(
+    ecosystem_app,
+    name="ecosystem",
+    help="Analyze a company's business ecosystem (partners, competitors, etc.).",
+)
+
+app.add_typer(
+    cybint_app,
+    name="cybint",
+    help="Run the Cyber Intelligence suite for attack surface management and threat analysis.",
+)
+cybint_app.add_typer(
+    threat_hunter_app, name="threat-hunt", help="Hunt for threat actor IOCs in logs."
+)
+
+app.add_typer(
+    project_app,
+    name="project",
+    help="Manage and switch between intelligence projects.",
+)
+
+project_app.add_typer(project_report_app, name="report", help="Generate a comprehensive report for the active project.")
+
+app.add_typer(
+    finint_app,
+    name="finint",
+    help="Run Financial Intelligence (FININT) scans.",
+)
+
+app.add_typer(
+    legint_app,
+    name="legint",
+    help="Run Legal Intelligence (LEGINT) scans.",
 )
 
 

@@ -3,10 +3,12 @@ import json
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
 import logging
+from typing import Optional
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
 from chimera_intel.core.schemas import StrategicProfileResult
+from .project_manager import get_active_project
 
 # Get a logger instance for this specific file
 
@@ -72,19 +74,36 @@ strategy_app = typer.Typer()
 
 @strategy_app.command("run")
 def run_strategy_analysis(
-    target: str = typer.Argument(
-        ..., help="The target company to analyze (must have historical data)."
+    target: Optional[str] = typer.Argument(
+        None, help="The target to analyze. Uses active project if not provided."
     )
 ):
     """
     Generates an AI-powered strategic profile of a competitor by aggregating all known data.
-
-    Args:
-        target (str): The target company to analyze.
     """
-    logger.info("Generating strategic profile for target: %s", target)
+    target_name = target
+    if not target_name:
+        active_project = get_active_project()
+        if active_project:
+            # The "target" for aggregation can be a domain or company name
 
-    aggregated_data = get_aggregated_data_for_target(target)
+            target_name = active_project.company_name or active_project.domain
+            console.print(
+                f"[bold cyan]Using target '{target_name}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No target provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    if not target_name:
+        console.print(
+            "[bold red]Error:[/bold red] A target is required for this command."
+        )
+        raise typer.Exit(code=1)
+    logger.info("Generating strategic profile for target: %s", target_name)
+
+    aggregated_data = get_aggregated_data_for_target(target_name)
 
     if not aggregated_data:
         raise typer.Exit(code=1)

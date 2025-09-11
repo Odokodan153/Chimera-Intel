@@ -3,6 +3,9 @@ import os
 from unittest.mock import patch, MagicMock, mock_open
 from httpx import Response
 from typer.testing import CliRunner
+import typer
+
+from chimera_intel.cli import app
 from chimera_intel.core.corporate_records import (
     get_company_records,
     screen_sanctions_list,
@@ -15,6 +18,7 @@ from chimera_intel.core.schemas import (
     CorporateRegistryResult,
     SanctionsScreeningResult,
     PEPScreeningResult,
+    ProjectConfig,
 )
 
 runner = CliRunner()
@@ -149,6 +153,42 @@ class TestCorporateRecords(unittest.TestCase):
             # Assert that the cached item is in the result.
 
             self.assertIn("CACHED NAME", pep_list)
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.corporate_records.resolve_target")
+    @patch("chimera_intel.core.corporate_records.get_company_records")
+    def test_cli_registry_with_project(self, mock_get_records, mock_resolve_target):
+        """Tests the 'registry' command using the centralized resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "Project Corp"
+        mock_get_records.return_value.model_dump.return_value = {}
+
+        # Act
+
+        result = runner.invoke(app, ["compliance", "registry"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_with(None, required_assets=["company_name"])
+        mock_get_records.assert_called_with("Project Corp")
+
+    @patch("chimera_intel.core.corporate_records.resolve_target")
+    def test_cli_sanctions_resolver_fails(self, mock_resolve_target):
+        """Tests the 'sanctions' command when the resolver fails."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(app, ["compliance", "sanctions"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":
