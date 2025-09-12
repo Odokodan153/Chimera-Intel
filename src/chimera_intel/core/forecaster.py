@@ -8,13 +8,14 @@ import logging
 from .database import DB_FILE
 from .schemas import Prediction, ForecastResult
 from .project_manager import resolve_target
+import joblib
+import numpy as np
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
-# We still need the console for rich table output
 
+# We still need the console for rich table output
 
 console = Console()
 
@@ -150,12 +151,99 @@ def run_prediction_rules(
                     details=f"New marketing-related technology detected ({', '.join(new_marketing_tech)}). This could indicate a new marketing campaign or strategy.",
                 )
             )
+    # --- Machine Learning Predictions ---
+
+    breach_prediction = predict_breach_likelihood(latest_scan)
+    if breach_prediction:
+        predictions.append(breach_prediction)
+    acquisition_prediction = predict_acquisition_likelihood(latest_scan)
+    if acquisition_prediction:
+        predictions.append(acquisition_prediction)
     if not predictions:
         return ForecastResult(
             predictions=[],
             notes="No strong predictive signals detected based on the current rule set.",
         )
     return ForecastResult(predictions=predictions)
+
+
+def train_breach_prediction_model():
+    """
+    This function is a placeholder for training a breach prediction model.
+    It would load historical data from the database, featurize it, and train a model.
+    The trained model would then be saved to a file (e.g., 'breach_model.pkl').
+    """
+    # This is a placeholder. You would need to implement the following steps:
+    # 1. Load historical data from the database (all scans).
+    # 2. For each company, determine if a breach occurred after a given scan.
+    # 3. Featurize the scan data (e.g., number of vulnerabilities, open ports, etc.).
+    # 4. Train a classifier (e.g., Logistic Regression, Random Forest) on the data.
+    # 5. Save the trained model to a file using joblib.
+
+    pass
+
+
+def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]:
+    """
+    Predicts the likelihood of a data breach based on the company's security posture.
+
+    Args:
+        scan_data (Dict[str, Any]): The latest scan data for the target.
+
+    Returns:
+        Optional[Prediction]: A prediction if the model is available, otherwise None.
+    """
+    try:
+        model = joblib.load("breach_model.pkl")
+    except FileNotFoundError:
+        return None  # Model not trained yet
+    # Featurize the input data in the same way as the training data
+    # This is a simplified example. You would need to create a more robust
+    # feature extraction function.
+
+    features = np.array(
+        [
+            len(
+                scan_data.get("defensive_breaches", {}).get("breaches", [])
+            ),  # Existing breaches
+            len(
+                scan_data.get("vulnerability_scanner", {}).get("scanned_hosts", [])
+            ),  # Number of hosts
+        ]
+    ).reshape(1, -1)
+
+    prediction = model.predict_proba(features)[0][1]  # Probability of breach
+
+    if prediction > 0.75:
+        return Prediction(
+            signal="[bold red]High Likelihood of Data Breach[/bold red]",
+            details=f"The model predicts a {prediction:.0%} likelihood of a data breach based on the current security posture.",
+        )
+    return None
+
+
+def predict_acquisition_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]:
+    """
+    Predicts the potential for a company to be an acquisition target.
+
+    Args:
+        scan_data (Dict[str, Any]): The latest scan data for the target.
+
+    Returns:
+        Optional[Prediction]: A prediction if the conditions are met, otherwise None.
+    """
+    financials = scan_data.get("business_intel", {}).get("financials", {})
+    news = scan_data.get("business_intel", {}).get("news", {})
+
+    pe_ratio = financials.get("trailingPE")
+    news_volume = news.get("totalArticles")
+
+    if pe_ratio and news_volume and pe_ratio < 15 and news_volume > 10:
+        return Prediction(
+            signal="[bold yellow]Potential Acquisition Target[/bold yellow]",
+            details="Low P/E ratio and high news volume may indicate that the company is an attractive acquisition target.",
+        )
+    return None
 
 
 # --- Typer CLI Application ---

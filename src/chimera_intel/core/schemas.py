@@ -1433,3 +1433,21 @@ class BriefingResult(BaseModel):
     
     briefing_text: str
     error: Optional[str] = None
+
+# --- Real-Time Social Media Monitoring Models ---
+
+class Tweet(BaseModel):
+    """Model for a single tweet from the Twitter/X API."""
+
+    id: str
+    text: str
+    author_id: str
+    created_at: str
+
+class RealTimeMonitoringResult(BaseModel):
+    """The main, top-level result model for a real-time social media monitoring session."""
+
+    query: str
+    total_tweets_found: int = 0
+    tweets: List[Tweet] = []
+    error: Optional[str] = None

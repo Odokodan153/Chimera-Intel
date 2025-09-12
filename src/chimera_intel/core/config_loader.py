@@ -74,6 +74,7 @@ class ApiKeys(BaseSettings):
     uspto_api_key: Optional[str] = Field(None, alias="USPTO_API_KEY")
     kaggle_api_key: Optional[str] = Field(None, alias="KAGGLE_API_KEY")
     courtlistener_api_key: Optional[str] = Field(None, alias="COURTLISTENER_API_KEY")
+    twitter_bearer_token: Optional[str] = Field(None, alias="TWITTER_BEARER_TOKEN")
 
     class Config:
         """Pydantic-settings configuration."""

@@ -87,6 +87,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Connect** | `virustotal`    | Integrates with VirusTotal for file and URL analysis.                    |
 | **Report** | `pdf`           | Generates professional PDF reports from scan data.                       |
 |                    | `graph`         | Creates interactive HTML knowledge graphs.                               |
+| **Scan** | `social monitor`| Monitors Twitter/X in real-time for keywords or hashtags.          |
 
 ---
 
