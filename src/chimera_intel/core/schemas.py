@@ -1451,3 +1451,30 @@ class RealTimeMonitoringResult(BaseModel):
     total_tweets_found: int = 0
     tweets: List[Tweet] = []
     error: Optional[str] = None
+
+# --- Mobile Application Intelligence (APPINT) Models ---
+
+class StaticAppAnalysisResult(BaseModel):
+    """Model for the static analysis of a mobile application file."""
+
+    file_path: str
+    secrets_found: List[FoundSecret] = []
+    error: Optional[str] = None
+
+# --- Image & Video Intelligence (IMINT/VIDINT) Models ---
+
+class ExifData(BaseModel):
+    """Model for extracted EXIF metadata from an image."""
+
+    Make: Optional[str] = None
+    Model: Optional[str] = None
+    DateTime: Optional[str] = None
+    GPSInfo: Optional[Dict[str, Any]] = None
+
+class ImageAnalysisResult(BaseModel):
+    """The main, top-level result model for an image analysis."""
+    
+    file_path: str
+    exif_data: Optional[ExifData] = None
+    message: Optional[str] = None
+    error: Optional[str] = None
