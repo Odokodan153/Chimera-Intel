@@ -88,6 +88,10 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Report** | `pdf`           | Generates professional PDF reports from scan data.                       |
 |                    | `graph`         | Creates interactive HTML knowledge graphs.                               |
 | **Scan** | `social monitor`| Monitors Twitter/X in real-time for keywords or hashtags.          |
+| **AppInt** | `static`        | Performs static analysis on mobile application (.apk) files.             |
+| **Imint** | `analyze-image` | Extracts EXIF metadata from image files.                                 |
+| **Geoint** | `run`           | Analyzes a target's geographic footprint for geopolitical risks.         |
+
 
 ---
 

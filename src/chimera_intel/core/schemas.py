@@ -1473,8 +1473,43 @@ class ExifData(BaseModel):
 
 class ImageAnalysisResult(BaseModel):
     """The main, top-level result model for an image analysis."""
-    
+
     file_path: str
     exif_data: Optional[ExifData] = None
     message: Optional[str] = None
+    error: Optional[str] = None
+
+# --- Geopolitical Intelligence (GEOINT) Models ---
+
+class CountryRiskProfile(BaseModel):
+    """Model for a country's geopolitical and economic risk profile."""
+
+    country_name: str
+    region: Optional[str] = None
+    subregion: Optional[str] = None
+    population: Optional[int] = None
+    political_stability_index: Optional[float] = None
+    economic_freedom_index: Optional[float] = None
+
+class GeointReport(BaseModel):
+    """The main, top-level result model for a GEOINT analysis."""
+
+    target: str
+    country_risk_profiles: List[CountryRiskProfile] = []
+    error: Optional[str] = None
+
+# --- Operational Security (OPSEC) Models ---
+
+class CompromisedCommitter(BaseModel):
+    """Model for a code committer whose credentials may be compromised."""
+
+    email: str
+    source_repository: Optional[str] = None
+    related_breaches: List[str] = []
+
+class OpsecReport(BaseModel):
+    """The main, top-level result model for an OPSEC analysis."""
+    
+    target: str
+    compromised_committers: List[CompromisedCommitter] = []
     error: Optional[str] = None
