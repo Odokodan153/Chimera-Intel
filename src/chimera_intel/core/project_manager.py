@@ -11,7 +11,7 @@ import logging
 from datetime import datetime
 from typing import Optional, List
 
-from .schemas import ProjectConfig
+from .schemas import ProjectConfig, DaemonConfig
 from .utils import console
 
 logger = logging.getLogger(__name__)
@@ -84,11 +84,14 @@ def create_project(
         domain=domain,
         company_name=company_name,
         ticker=ticker,
+        daemon_config=DaemonConfig(),  # Add default daemon config
     )
 
     try:
         with open(config_file_path, "w") as f:
-            yaml.dump(project_data.model_dump(), f, default_flow_style=False)
+            yaml.dump(
+                project_data.model_dump(exclude_none=True), f, default_flow_style=False
+            )
         logger.info(f"Successfully created project '{project_name}' at {project_path}")
         return True
     except Exception as e:

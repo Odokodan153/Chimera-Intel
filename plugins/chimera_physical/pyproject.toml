@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-physical"
+version = "1.0.0"
+description = "Physical OSINT plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "googlemaps>=4.10.0,<5.0.0",
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+physical = "chimera_physical.main:PhysicalOsintPlugin"

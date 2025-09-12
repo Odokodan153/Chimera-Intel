@@ -1346,3 +1346,90 @@ class InsiderTradingResult(BaseModel):
     total_transactions: int = 0
     transactions: List[InsiderTransaction] = []
     error: Optional[str] = None
+
+# --- PESTEL Analysis Models ---
+
+class PESTELAnalysisResult(BaseModel):
+    """Model for the result of a PESTEL analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+# --- PESTEL Analysis Models ---
+
+class PESTELAnalysisResult(BaseModel):
+    """Model for the result of a PESTEL analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Competitive Analysis Models ---
+
+class CompetitiveAnalysisResult(BaseModel):
+    """Model for the result of a competitive analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+# --- Competitive Analysis Models ---
+
+class CompetitiveAnalysisResult(BaseModel):
+    """Model for the result of a competitive analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Lead Suggestion Models ---
+
+class LeadSuggestionResult(BaseModel):
+    """Model for the result of an AI-powered lead suggestion task."""
+
+    suggestions_text: str
+    error: Optional[str] = None
+
+# --- Project Management & Daemon Models ---
+
+class DaemonConfig(BaseModel):
+    """Configuration for the autonomous monitoring daemon."""
+
+    enabled: bool = False
+    monitoring_interval_hours: int = 24
+    workflow: List[str] = [
+        "scan footprint {target}",
+        "analysis diff run footprint {target}",
+    ]
+
+class ProjectConfig(BaseModel):
+    """Model for validating a project's configuration file (project.yaml)."""
+
+    project_name: str
+    created_at: str
+    
+    # Core Assets
+    domain: Optional[str] = None
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    key_personnel: List[str] = []
+    known_ips: List[str] = []
+
+    # Daemon Configuration
+    daemon_config: DaemonConfig = DaemonConfig()
+
+# --- Lead Suggestion Models ---
+
+class LeadSuggestionResult(BaseModel):
+    """Model for the result of an AI-powered lead suggestion task."""
+
+    suggestions_text: str
+    error: Optional[str] = None
+
+
+# --- Briefing Generator Models ---
+
+class BriefingResult(BaseModel):
+    """Model for a full, AI-generated intelligence briefing."""
+    
+    briefing_text: str
+    error: Optional[str] = None

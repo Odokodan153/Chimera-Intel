@@ -11,8 +11,8 @@ from chimera_intel.core.project_manager import (
     set_project_context,
     get_active_project,
     resolve_target,
-    list_projects,  # New import
-    get_project_config_by_name,  # New import
+    list_projects,
+    get_project_config_by_name,
     PROJECTS_DIR,
     CONTEXT_FILE,
 )
@@ -37,8 +37,11 @@ class TestProjectManager(unittest.TestCase):
     @patch("chimera_intel.core.project_manager.os.path.exists")
     @patch("chimera_intel.core.project_manager.os.makedirs")
     @patch("builtins.open", new_callable=mock_open)
-    def test_create_project_success(self, mock_file, mock_makedirs, mock_exists):
-        """Tests the successful creation of a new project."""
+    @patch("yaml.dump")
+    def test_create_project_success(
+        self, mock_yaml_dump, mock_file, mock_makedirs, mock_exists
+    ):
+        """Tests the successful creation of a new project and verifies its config."""
         mock_exists.return_value = False
         success = create_project(
             project_name="test_project",
@@ -51,9 +54,17 @@ class TestProjectManager(unittest.TestCase):
         mock_file.assert_called_with(
             os.path.join(PROJECTS_DIR, "test_project", "project.yaml"), "w"
         )
-        with patch("yaml.dump") as mock_yaml_dump:
-            create_project("test_project_2", "example.com", None, None)
-            self.assertTrue(mock_yaml_dump.called)
+
+        # Verify that yaml.dump was called
+
+        mock_yaml_dump.assert_called_once()
+        # Verify the content passed to yaml.dump
+
+        dumped_data = mock_yaml_dump.call_args[0][0]
+        self.assertEqual(dumped_data["project_name"], "test_project")
+        self.assertIn("daemon_config", dumped_data)
+        self.assertIn("enabled", dumped_data["daemon_config"])
+        self.assertFalse(dumped_data["daemon_config"]["enabled"])
 
     @patch("chimera_intel.core.project_manager.os.path.exists", return_value=True)
     def test_create_project_already_exists(self, mock_exists):
@@ -83,8 +94,14 @@ class TestProjectManager(unittest.TestCase):
             mock_open(read_data=mock_yaml_data).return_value,
         )
         with patch("builtins.open", m):
-            with patch("chimera_intel.core.project_manager.get_project_config_by_name") as mock_get_config:
-                mock_get_config.return_value = ProjectConfig(project_name="test_project", created_at="2025-01-01", domain="example.com")
+            with patch(
+                "chimera_intel.core.project_manager.get_project_config_by_name"
+            ) as mock_get_config:
+                mock_get_config.return_value = ProjectConfig(
+                    project_name="test_project",
+                    created_at="2025-01-01",
+                    domain="example.com",
+                )
                 active_project = get_active_project()
                 mock_get_config.assert_called_with("test_project")
                 self.assertIsNotNone(active_project)
@@ -96,13 +113,16 @@ class TestProjectManager(unittest.TestCase):
         self.assertIsNone(active_project)
 
     # --- NEW TEST CASES ---
+
     @patch("chimera_intel.core.project_manager.os.path.isdir")
     @patch("chimera_intel.core.project_manager.os.listdir")
     def test_list_projects(self, mock_listdir, mock_isdir):
         """Tests the function that lists all project directories."""
         # Simulate a directory with two projects and one file
+
         mock_listdir.return_value = ["project_a", "project_b", "a_file.txt"]
         # os.path.isdir will be called for each item, return True for dirs
+
         mock_isdir.side_effect = lambda path: "project" in path
 
         projects = list_projects()
@@ -114,16 +134,24 @@ class TestProjectManager(unittest.TestCase):
     @patch("chimera_intel.core.project_manager.os.path.exists", return_value=True)
     @patch("builtins.open")
     @patch("yaml.safe_load")
-    def test_get_project_config_by_name_success(self, mock_safe_load, mock_open, mock_exists):
+    def test_get_project_config_by_name_success(
+        self, mock_safe_load, mock_open, mock_exists
+    ):
         """Tests loading a project config successfully."""
-        mock_config_data = {"project_name": "my_project", "created_at": "now", "domain": "my.com"}
+        mock_config_data = {
+            "project_name": "my_project",
+            "created_at": "now",
+            "domain": "my.com",
+        }
         mock_safe_load.return_value = mock_config_data
-        
+
         config = get_project_config_by_name("my_project")
 
         self.assertIsInstance(config, ProjectConfig)
         self.assertEqual(config.project_name, "my_project")
-        mock_open.assert_called_with(os.path.join(PROJECTS_DIR, "my_project", "project.yaml"), "r")
+        mock_open.assert_called_with(
+            os.path.join(PROJECTS_DIR, "my_project", "project.yaml"), "r"
+        )
 
     @patch("chimera_intel.core.project_manager.os.path.exists", return_value=False)
     def test_get_project_config_by_name_not_found(self, mock_exists):
@@ -132,6 +160,7 @@ class TestProjectManager(unittest.TestCase):
         self.assertIsNone(config)
 
     # --- CLI Command Tests ---
+
     @patch("chimera_intel.core.project_manager.create_project", return_value=True)
     @patch("chimera_intel.core.project_manager.set_project_context")
     def test_cli_project_init_command(self, mock_set_context, mock_create):
