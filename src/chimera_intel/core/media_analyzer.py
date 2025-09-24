@@ -7,7 +7,7 @@ Provides tools to perform reverse image searches and transcribe audio files.
 import typer
 import logging
 from typing import Optional, List
-import speech_recognition as sr
+import speech_recognition as sr  # type: ignore
 from .schemas import (
     ReverseImageSearchResult,
     ReverseImageMatch,

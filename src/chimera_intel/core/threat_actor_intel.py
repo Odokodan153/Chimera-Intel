@@ -7,7 +7,7 @@ threat actor library within the Chimera Intel database.
 """
 
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import typer
 
@@ -42,7 +42,7 @@ def get_threat_actor_profile(group_name: str) -> ThreatActorIntelResult:
 
     url = "https://otx.alienvault.com/api/v1/search/pulses"
     headers = {"X-OTX-API-KEY": api_key}
-    params = {
+    params: Dict[str, Any] = {
         "q": group_name,
         "sort": "-modified",
         "limit": 10,

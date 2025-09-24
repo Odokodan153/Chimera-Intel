@@ -3,7 +3,7 @@
 
 import typer
 import logging
-import feedparser
+import feedparser  # type: ignore
 import os
 from typing import Optional
 from rich.markdown import Markdown
@@ -195,6 +195,7 @@ def analyze_podcast_episode(audio_url: str) -> PodcastAnalysisResult:
 
 
 # --- Typer CLI Application ---
+
 
 podcast_app = typer.Typer()
 

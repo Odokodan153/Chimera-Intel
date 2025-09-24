@@ -16,6 +16,7 @@ import psycopg2
 
 # Mock the database file as it's no longer used with PostgreSQL
 
+
 DB_FILE = "mock_db"
 
 
@@ -47,7 +48,8 @@ class TestDatabase(unittest.TestCase):
         """Tests initialization when a database error occurs."""
         mock_get_conn.side_effect = psycopg2.Error("Test connection error")
         with patch("rich.console.Console.print") as mock_print:
-            initialize_database()
+            with self.assertRaises(psycopg2.Error):
+                initialize_database()
             mock_print.assert_called()
 
     @patch("chimera_intel.core.database.get_db_connection")
@@ -178,14 +180,16 @@ class TestDatabase(unittest.TestCase):
         mock_get_conn.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchall.return_value = [
-            ({"step": 1},),
-            ({"step": 2},),
+            ('{"step": 1}', "footprint"),
+            ('{"step": 2}', "web_analyzer"),
         ]
 
         history = get_all_scans_for_target("target-a.com")
         self.assertEqual(len(history), 2)
-        self.assertEqual(history[0]["step"], 1)
-        self.assertEqual(history[1]["step"], 2)
+        self.assertEqual(history[0]["scan_data"], '{"step": 1}')
+        self.assertEqual(history[0]["module"], "footprint")
+        self.assertEqual(history[1]["scan_data"], '{"step": 2}')
+        self.assertEqual(history[1]["module"], "web_analyzer")
 
 
 if __name__ == "__main__":

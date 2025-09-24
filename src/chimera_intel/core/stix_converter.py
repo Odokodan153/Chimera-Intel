@@ -9,7 +9,7 @@ interoperability with other threat intelligence platforms like MISP.
 import logging
 from typing import Dict, Any, List
 import json
-from stix2 import (
+from stix2 import (  # type: ignore
     Indicator,
     Identity,
     Relationship,

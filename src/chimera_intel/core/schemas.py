@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pantic import BaseModel, Field
 
 # --- General Purpose Models ---
 
@@ -1795,3 +1795,23 @@ class User(BaseModel):
     id: int
     username: str
     hashed_password: str
+
+
+# --- Threat Hunter Models ---
+class DetectedIOC(BaseModel):
+    """Model for a single IOC detected in a log file."""
+
+    ioc: str
+    line_number: int
+    log_line: str
+
+
+class ThreatHuntResult(BaseModel):
+    """Model for the result of a threat hunt."""
+
+    log_file: str
+    threat_actor: str
+    total_iocs_found: int
+    detected_iocs: List[DetectedIOC] = []
+    message: Optional[str] = None
+    error: Optional[str] = None

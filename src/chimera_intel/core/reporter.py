@@ -1,6 +1,6 @@
 import typer
 import json
-from reportlab.platypus import (
+from reportlab.platypus import (  # type: ignore
     Paragraph,
     Spacer,
     Table,
@@ -11,9 +11,9 @@ from reportlab.platypus import (
     Frame,
     PageTemplate,
 )
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet  # type: ignore
+from reportlab.lib import colors  # type: ignore
+from reportlab.lib.units import inch  # type: ignore
 from typing import Dict, Any, List, Optional
 import logging
 from .utils import console
@@ -185,7 +185,7 @@ def create_pdf_report(
 
 def generate_graph_report(target: str, output_path: str):
     """Generates an HTML graph report for a target."""
-    from pyvis.network import Network
+    from pyvis.network import Network  # type: ignore
 
     graph_result = build_and_save_graph(target)
     if graph_result.error:

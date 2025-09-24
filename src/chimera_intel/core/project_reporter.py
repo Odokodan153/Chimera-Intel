@@ -34,6 +34,11 @@ async def generate_project_report(output_path: str):
         )
         raise typer.Exit(code=1)
     domain = active_project.domain
+    if not domain:
+        console.print(
+            "[bold red]Error:[/bold red] Active project has no domain set. A domain is required to generate a report."
+        )
+        raise typer.Exit(code=1)
     company_name = active_project.company_name or domain
 
     console.print(

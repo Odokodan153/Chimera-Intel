@@ -68,7 +68,7 @@ def analyze_sentiment(text: str) -> SentimentAnalysisResult:
         text (str): The text to analyze.
 
     Returns:
-        SentimentAnalysisResult: A Pydantic model containing the sentiment label, score, or an error.
+        SentimentAnalysisResult: A Pantic model containing the sentiment label, score, or an error.
     """
     if not sentiment_analyzer:
         return SentimentAnalysisResult(
@@ -120,7 +120,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
         api_key (str): The Google AI API key.
 
     Returns:
-        SWOTAnalysisResult: A Pydantic model containing the markdown-formatted SWOT analysis, or an error.
+        SWOTAnalysisResult: A Pantic model containing the markdown-formatted SWOT analysis, or an error.
     """
     if not api_key:
         return SWOTAnalysisResult(
@@ -147,7 +147,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
         traffic_data (List[float]): A list of numbers (e.g., monthly website visits).
 
     Returns:
-        AnomalyDetectionResult: A Pydantic model containing the original data, detected anomalies, or an error.
+        AnomalyDetectionResult: A Pantic model containing the original data, detected anomalies, or an error.
     """
     if not IsolationForest or not np:
         return AnomalyDetectionResult(
@@ -258,7 +258,7 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
         api_key (str): The Google AI API key.
 
     Returns:
-        GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
+        GraphNarrativeResult: A Pantic model containing the AI-generated narrative.
     """
     graph_result = build_and_save_graph(target)
     if graph_result.error:

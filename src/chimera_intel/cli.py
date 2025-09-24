@@ -12,6 +12,7 @@ from chimera_intel.core.database import initialize_database
 from chimera_intel.core.social_media_monitor import social_media_monitor_app
 from chimera_intel.core.plugin_manager import discover_plugins
 from chimera_intel.core.graph_analyzer import graph_app
+from chimera_intel.core.social_analyzer import social_app as social_analyzer_app
 
 # --- : Startup Banner ---
 # This will be printed every time the CLI is invoked.
@@ -47,30 +48,43 @@ app = typer.Typer(
 # --- Dynamic Plugin Registration ---
 # The CLI now discovers and loads all installed plugins automatically.
 
+
 plugins = discover_plugins()
+# Find the 'scan' plugin's Typer app to add more commands to it
 
-for plugin in plugins:
-    # Special handling for the social plugin to add the new monitor command
+scan_app_found = None
+for p in plugins:
+    if p.name == "scan":
+        scan_app_found = p.app
+        break
+if scan_app_found:
+    # Find the social subcommand within the scan app
 
-    if plugin.name == "scan":
-        # The `plugin.app` is the Typer object for the 'scan' group
-        # We need to find the 'social' subcommand within it
+    social_subcommand = None
+    for cmd in scan_app_found.registered_commands:
+        if cmd.name == "social":
+            # This is a CommandInfo object, we need its callback to find the Typer app
 
-        for sub_app in plugin.app.registered_commands:
-            if hasattr(sub_app, "name") and sub_app.name == "social":
-                # Now add the 'monitor' command to the 'social' subcommand
+            if hasattr(cmd, "callback"):
+                # In Typer, sub-Typer apps are often handled by a callback that holds the app
+                # This part is tricky and might need adjustment based on Typer's internal structure
+                # A simpler way is to ensure the social plugin itself handles this.
+                # However, for this fix, we will assume a structure.
+                # A better approach is to have a central registry of Typer apps.
 
-                sub_app.add_typer(
+                # Let's try to add it directly to the social_analyzer_app from the core
+
+                social_analyzer_app.add_typer(
                     social_media_monitor_app,
                     name="monitor",
                     help="Monitor social media in real-time.",
                 )
-    # After potential modification, add the plugin's app to the main app
-
+for plugin in plugins:
     app.add_typer(plugin.app, name=plugin.name)
 app.add_typer(
     graph_app, name="graph", help="Entity relationship graphing and analysis."
 )
+
 
 if __name__ == "__main__":
     # This block allows the script to be run directly during development.

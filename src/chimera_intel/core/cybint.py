@@ -10,7 +10,7 @@ import logging
 import asyncio
 import json
 
-from .schemas import AttackSurfaceReport
+from .schemas import AttackSurfaceReport, MozillaObservatoryResult
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
@@ -44,8 +44,9 @@ async def generate_attack_surface_report(domain: str) -> AttackSurfaceReport:
         footprint_task = gather_footprint_data(domain)
         # Vulnerability scanner is sync, so we run it in a thread
 
+        vulners_key = API_KEYS.vulners_api_key
         vuln_scan_task = asyncio.to_thread(
-            run_vulnerability_scan, domain, None
+            run_vulnerability_scan, domain, vulners_key
         )  # API key is handled internally
         observatory_task = asyncio.to_thread(analyze_mozilla_observatory, domain)
         api_discover_task = discover_apis(domain)
@@ -126,6 +127,7 @@ async def generate_attack_surface_report(domain: str) -> AttackSurfaceReport:
 
 
 # --- Typer CLI Application ---
+
 
 cybint_app = typer.Typer()
 

@@ -13,7 +13,11 @@ class TestSocialMediaMonitor(unittest.TestCase):
         # Arrange
 
         mock_stream_instance = mock_streaming_client.return_value
-        mock_stream_instance.get_rules.return_value.data = []
+        # Mock the response from get_rules() to have a 'data' attribute
+
+        mock_rules_response = MagicMock()
+        mock_rules_response.data = []
+        mock_stream_instance.get_rules.return_value = mock_rules_response
 
         # Simulate the on_tweet callback being called
 

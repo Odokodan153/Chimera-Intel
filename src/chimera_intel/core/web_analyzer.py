@@ -222,18 +222,18 @@ def analyze_tech_stack_risk(technologies: List[str]) -> TechStackRisk:
 
     risk_rules = {
         "outdated_jquery": {
-            "pattern": "jquery 1\\.|jquery 2\\.",
+            "pattern": r"jquery 1\.|jquery 2\.",
             "score": 20,
             "level": "Medium",
         },
         "vulnerable_cms": {
-            "pattern": "wordpress 4\\.|joomla 3\\.",
+            "pattern": r"wordpress 4\.|joomla 3\.",
             "score": 40,
             "level": "High",
         },
-        "php_version": {"pattern": "php 5\\.", "score": 30, "level": "High"},
+        "php_version": {"pattern": r"php 5\.", "score": 30, "level": "High"},
         "exposed_server": {
-            "pattern": "apache 2\\.2|nginx 1\\.1",
+            "pattern": r"apache 2\.2|nginx 1\.1",
             "score": 15,
             "level": "Medium",
         },

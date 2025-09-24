@@ -24,8 +24,10 @@ def build_and_save_graph(target: str) -> EntityGraphResult:
     nodes[target] = GraphNode(id=target, node_type="Target", label=target)
 
     for scan in scans:
-        module = scan["module"]
-        data = json.loads(scan["scan_data"])
+        module = scan.get("module")
+        if not module:
+            continue
+        data = json.loads(scan.get("scan_data", "{}"))
 
         if module == "footprint":
             # Extract IPs and subdomains

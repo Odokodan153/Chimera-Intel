@@ -8,7 +8,7 @@ insights, such as insider trading activity.
 import typer
 import logging
 from typing import Optional
-from sec_api import InsiderTradingApi
+from sec_api import InsiderTradingApi  # type: ignore
 from .schemas import InsiderTradingResult, InsiderTransaction
 from .utils import save_or_print_results
 from .database import save_scan_to_db

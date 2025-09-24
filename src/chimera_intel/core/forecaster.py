@@ -6,7 +6,7 @@ import logging
 from .database import get_all_scans_for_target
 from .schemas import Prediction, ForecastResult, ExpectedEvent
 from .project_manager import resolve_target
-import joblib
+import joblib  # type: ignore
 import numpy as np
 
 # Get a logger instance for this specific file
