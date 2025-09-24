@@ -1455,7 +1455,7 @@ class Tweet(BaseModel):
     created_at: str
 
 
-class RealTimeMonitoringResult(BaseModel):
+class TwitterMonitoringResult(BaseModel):
     """The main, top-level result model for a real-time social media monitoring session."""
 
     query: str

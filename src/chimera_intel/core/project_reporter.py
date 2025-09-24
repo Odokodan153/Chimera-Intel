@@ -8,8 +8,7 @@ aggregates the results, and generates a unified PDF dossier.
 import typer
 import asyncio
 import logging
-from typing import Dict, Any, List, Union
-
+from typing import Dict, Any, List, Union, cast
 from .project_manager import get_active_project
 from .config_loader import CONFIG, API_KEYS
 from .utils import console
@@ -68,8 +67,9 @@ async def generate_project_report(output_path: str):
     # --- Execute scans concurrently ---
 
     with console.status("[bold green]Executing intelligence modules...[/bold green]"):
-        scan_results: List[Union[FootprintResult, WebAnalysisResult, HIBPResult]] = (
-            list(await asyncio.gather(*tasks))
+        scan_results = cast(
+            List[Union[FootprintResult, WebAnalysisResult, HIBPResult]],
+            list(await asyncio.gather(*tasks)),
         )
     # --- Aggregate results into a single dictionary ---
 

@@ -3,9 +3,9 @@ Module for real-time, live monitoring of various social media platforms.
 """
 
 import typer
-import tweepy
+import tweepy # type: ignore
 from typing import List, Optional
-from googleapiclient.discovery import build
+from googleapiclient.discovery import build # type: ignore
 from chimera_intel.core.schemas import (
     TwitterMonitoringResult,
     Tweet,
