@@ -24,13 +24,13 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.cybint.gather_footprint_data", new_callable=AsyncMock)
     @patch("chimera_intel.core.cybint.run_vulnerability_scan")
     @patch("chimera_intel.core.cybint.discover_apis", new_callable=AsyncMock)
-    @patch("chimera_intel.core.defensive.analyze_mozilla_observatory")
+    @patch("chimera_intel.core.cybint.analyze_mozilla_observatory")
     async def test_generate_attack_surface_report(
         self,
-        mock_mozilla_scan,
-        mock_api_discover,
-        mock_vuln_scan,
-        mock_footprint,
+        mock_mozilla_scan: MagicMock,
+        mock_api_discover: AsyncMock,
+        mock_vuln_scan: MagicMock,
+        mock_footprint: AsyncMock,
     ):
         """Tests the main report generation orchestrator by mocking its sub-scans."""
         # Arrange: Mock the return values of all the individual scans
@@ -63,7 +63,7 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         "chimera_intel.core.cybint.generate_attack_surface_report",
         new_callable=AsyncMock,
     )
-    def test_cli_attack_surface_success_with_arg(self, mock_generate_report):
+    def test_cli_attack_surface_success_with_arg(self, mock_generate_report: AsyncMock):
         """Tests the CLI command with an explicit domain argument."""
         # Arrange
 
@@ -87,7 +87,7 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         new_callable=AsyncMock,
     )
     def test_cli_attack_surface_with_active_project(
-        self, mock_generate_report, mock_get_project
+        self, mock_generate_report: AsyncMock, mock_get_project: MagicMock
     ):
         """Tests the CLI command using an active project's context."""
         # Arrange
@@ -110,12 +110,14 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using domain 'project-cybint.com' from active project", result.stdout)
+        self.assertIn(
+            "Using domain 'project-cybint.com' from active project", result.stdout
+        )
         self.assertIn('"target_domain": "project-cybint.com"', result.stdout)
         mock_generate_report.assert_awaited_with("project-cybint.com")
 
     @patch("chimera_intel.core.cybint.get_active_project")
-    def test_cli_attack_surface_no_domain_no_project(self, mock_get_project):
+    def test_cli_attack_surface_no_domain_no_project(self, mock_get_project: MagicMock):
         """Tests the CLI fails when no domain is provided and no project is active."""
         # Arrange
 

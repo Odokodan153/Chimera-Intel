@@ -8,7 +8,7 @@ aggregates the results, and generates a unified PDF dossier.
 import typer
 import asyncio
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Union
 
 from .project_manager import get_active_project
 from .config_loader import CONFIG, API_KEYS
@@ -17,6 +17,7 @@ from .reporter import generate_pdf_report
 from .footprint import gather_footprint_data
 from .web_analyzer import gather_web_analysis_data
 from .defensive import check_hibp_breaches
+from .schemas import FootprintResult, WebAnalysisResult, HIBPResult
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,9 @@ async def generate_project_report(output_path: str):
     # --- Execute scans concurrently ---
 
     with console.status("[bold green]Executing intelligence modules...[/bold green]"):
-        scan_results = await asyncio.gather(*tasks)
+        scan_results: List[Union[FootprintResult, WebAnalysisResult, HIBPResult]] = (
+            await asyncio.gather(*tasks)
+        )
     # --- Aggregate results into a single dictionary ---
 
     aggregated_data: Dict[str, Any] = {

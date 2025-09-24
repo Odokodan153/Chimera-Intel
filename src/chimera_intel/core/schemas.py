@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
-from pantic import BaseModel, Field
+from pydantic import BaseModel, Field
 
 # --- General Purpose Models ---
 

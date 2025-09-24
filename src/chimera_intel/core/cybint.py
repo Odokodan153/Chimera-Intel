@@ -14,11 +14,14 @@ from .schemas import AttackSurfaceReport
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
+from typing import Optional
 from .footprint import gather_footprint_data
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import analyze_mozilla_observatory
 from .offensive import discover_apis
 from .ai_core import generate_swot_from_data  # Re-using this for AI analysis
+from .project_manager import get_active_project
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +47,8 @@ async def generate_attack_surface_report(domain: str) -> AttackSurfaceReport:
         footprint_task = gather_footprint_data(domain)
         # Vulnerability scanner is sync, so we run it in a thread
 
-        vulners_key = API_KEYS.vulners_api_key
         vuln_scan_task = asyncio.to_thread(
-            run_vulnerability_scan, domain, vulners_key
+            run_vulnerability_scan, domain
         )  # API key is handled internally
         observatory_task = asyncio.to_thread(analyze_mozilla_observatory, domain)
         api_discover_task = discover_apis(domain)
@@ -134,7 +136,9 @@ cybint_app = typer.Typer()
 
 @cybint_app.command("attack-surface")
 async def run_attack_surface_analysis(
-    domain: str = typer.Argument(..., help="The root domain to assess."),
+    domain: Optional[str] = typer.Argument(
+        None, help="The root domain to assess. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save the full report to a JSON file."
     ),
@@ -142,11 +146,27 @@ async def run_attack_surface_analysis(
     """
     Runs a comprehensive attack surface analysis and generates an AI risk assessment.
     """
-    results_model = await generate_attack_surface_report(domain)
+    target_domain = domain
+    if not target_domain:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_domain = active_project.domain
+            console.print(
+                f"[bold cyan]Using domain '{target_domain}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No domain provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    if not target_domain:
+        console.print("[bold red]Error:[/bold red] A domain is required for this scan.")
+        raise typer.Exit(code=1)
+    results_model = await generate_attack_surface_report(target_domain)
 
     console.print("\n" + "=" * 50)
     console.print(
-        f"[bold green]Attack Surface Risk Assessment for: {domain}[/bold green]"
+        f"[bold green]Attack Surface Risk Assessment for: {target_domain}[/bold green]"
     )
     console.print("=" * 50 + "\n")
     console.print(results_model.ai_risk_assessment)
@@ -157,5 +177,5 @@ async def run_attack_surface_analysis(
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
         save_scan_to_db(
-            target=domain, module="cybint_attack_surface", data=results_dict
+            target=target_domain, module="cybint_attack_surface", data=results_dict
         )

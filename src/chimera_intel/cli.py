@@ -9,7 +9,6 @@ from the various core modules. It also initializes the logging system and databa
 import typer
 from chimera_intel.core.logger_config import setup_logging
 from chimera_intel.core.database import initialize_database
-from chimera_intel.core.social_media_monitor import social_media_monitor_app
 from chimera_intel.core.plugin_manager import discover_plugins
 from chimera_intel.core.graph_analyzer import graph_app
 from chimera_intel.core.social_analyzer import social_app as social_analyzer_app
@@ -50,35 +49,7 @@ app = typer.Typer(
 
 
 plugins = discover_plugins()
-# Find the 'scan' plugin's Typer app to add more commands to it
 
-scan_app_found = None
-for p in plugins:
-    if p.name == "scan":
-        scan_app_found = p.app
-        break
-if scan_app_found:
-    # Find the social subcommand within the scan app
-
-    social_subcommand = None
-    for cmd in scan_app_found.registered_commands:
-        if cmd.name == "social":
-            # This is a CommandInfo object, we need its callback to find the Typer app
-
-            if hasattr(cmd, "callback"):
-                # In Typer, sub-Typer apps are often handled by a callback that holds the app
-                # This part is tricky and might need adjustment based on Typer's internal structure
-                # A simpler way is to ensure the social plugin itself handles this.
-                # However, for this fix, we will assume a structure.
-                # A better approach is to have a central registry of Typer apps.
-
-                # Let's try to add it directly to the social_analyzer_app from the core
-
-                social_analyzer_app.add_typer(
-                    social_media_monitor_app,
-                    name="monitor",
-                    help="Monitor social media in real-time.",
-                )
 for plugin in plugins:
     app.add_typer(plugin.app, name=plugin.name)
 app.add_typer(

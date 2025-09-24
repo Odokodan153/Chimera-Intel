@@ -7,38 +7,40 @@ footprint from an attacker's perspective. It includes checks for data breaches
 exposed assets (Shodan), and more.
 """
 
-import typer
-import os
 import json
-import subprocess
-import shodan  # type: ignore
-import time
-from rich.panel import Panel
-from rich.progress import Progress
-from typing import Dict, Any, Optional, Union
 import logging
-from httpx import RequestError, HTTPStatusError
-from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
-from chimera_intel.core.database import save_scan_to_db
+import os
+import subprocess
+import time
+from typing import Any, Dict, Optional, Union
+
+import shodan  # type: ignore
+import typer
 from chimera_intel.core.config_loader import API_KEYS
+from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.schemas import (
-    HIBPResult,
-    GitHubLeaksResult,
-    TyposquatResult,
-    ShodanResult,
-    ShodanHost,
-    PasteResult,
-    Paste,
-    SSLLabsResult,
-    MobSFResult,
-    CTMentorResult,
     Certificate,
+    CTMentorResult,
+    FoundSecret,
+    GitHubLeaksResult,
+    HIBPResult,
     IaCScanResult,
     IaCSecurityIssue,
+    MobSFResult,
+    MozillaObservatoryResult,
+    Paste,
+    PasteResult,
     SecretsScanResult,
-    FoundSecret,
+    ShodanHost,
+    ShodanResult,
+    SSLLabsResult,
+    TyposquatResult,
 )
+from chimera_intel.core.utils import console, is_valid_domain, save_or_print_results
+from httpx import HTTPStatusError, RequestError
+from rich.panel import Panel
+from rich.progress import Progress
 
 # Get a logger instance for this specific file
 
@@ -500,6 +502,76 @@ def scan_for_secrets(directory: str) -> SecretsScanResult:
             total_found=0,
             error=f"An unexpected error occurred: {e}",
         )
+
+
+def analyze_mozilla_observatory(domain: str) -> Optional[MozillaObservatoryResult]:
+    """
+    Analyzes a domain's security headers using the public Mozilla Observatory API.
+
+    Args:
+        domain (str): The domain to analyze.
+
+    Returns:
+        Optional[MozillaObservatoryResult]: A Pydantic model with the scan summary, or None on error.
+    """
+    base_url = "https://http-observatory.security.mozilla.org/api/v1"
+    analyze_url = f"{base_url}/analyze"
+    logger.info(f"Initiating Mozilla Observatory scan for {domain}")
+
+    try:
+        # Step 1: Initiate the scan
+
+        initial_response = sync_client.post(
+            analyze_url, data={"host": domain, "hidden": "true"}
+        )
+        initial_response.raise_for_status()
+        scan_data = initial_response.json()
+
+        scan_id = scan_data.get("scan_id")
+        if not scan_id:
+            logger.error(f"Could not get scan_id from Observatory for {domain}")
+            return None
+        # Step 2: Poll for results
+
+        start_time = time.time()
+        while time.time() - start_time < 180:  # 3-minute timeout
+            time.sleep(5)
+            scan_response = sync_client.get(analyze_url, params={"scan": scan_id})
+            scan_response.raise_for_status()
+            scan_data = scan_response.json()
+
+            state = scan_data.get("state")
+            if state == "FINISHED":
+                logger.info(f"Observatory scan for {domain} finished.")
+                return MozillaObservatoryResult(
+                    scan_id=scan_data.get("scan_id"),
+                    score=scan_data.get("score"),
+                    grade=scan_data.get("grade"),
+                    state=scan_data.get("state"),
+                    tests_passed=scan_data.get("tests_passed"),
+                    tests_failed=scan_data.get("tests_failed"),
+                    report_url=f"https://observatory.mozilla.org/analyze/{domain}",
+                )
+            elif state == "FAILED":
+                logger.error(f"Observatory scan for {domain} failed.")
+                return MozillaObservatoryResult(
+                    scan_id=scan_id,
+                    score=0,
+                    grade="F",
+                    state="FAILED",
+                    tests_passed=0,
+                    tests_failed=12,
+                    report_url=f"https://observatory.mozilla.org/analyze/{domain}",
+                    error="Scan failed on the server side.",
+                )
+            logger.debug(f"Observatory scan for {domain} is in state: {state}")
+        logger.warning(f"Observatory scan for {domain} timed out after 3 minutes.")
+        return None
+    except Exception as e:
+        logger.error(
+            f"An API error occurred with Mozilla Observatory for {domain}: {e}"
+        )
+        return None
 
 
 # --- Typer CLI Application ---

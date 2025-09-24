@@ -7,40 +7,43 @@ responses from external APIs and command-line tools, ensuring that the tests
 are reliable and do not depend on network access.
 """
 
+import subprocess
+import time
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
-from httpx import RequestError, HTTPStatusError, Response
+from unittest.mock import MagicMock, mock_open, patch
+
+from chimera_intel.cli import app
+from chimera_intel.core.defensive import (
+    analyze_apk_mobsf,
+    analyze_attack_surface_shodan,
+    analyze_mozilla_observatory,
+    analyze_ssl_ssllabs,
+    check_hibp_breaches,
+    find_typosquatting_dnstwist,
+    monitor_ct_logs,
+    scan_for_secrets,
+    scan_iac_files,
+    search_github_leaks,
+    search_pastes_api,
+)
+from chimera_intel.core.schemas import (
+    GitHubLeaksResult,
+    HIBPResult,
+    MobSFResult,
+    MozillaObservatoryResult,
+    PasteResult,
+    ShodanResult,
+    SSLLabsResult,
+    TyposquatResult,
+)
+from httpx import HTTPStatusError, RequestError, Response
 from typer.testing import CliRunner
 
 # Import the main app to test commands
 
 
-from chimera_intel.cli import app
-from chimera_intel.core.defensive import (
-    monitor_ct_logs,
-    scan_iac_files,
-    scan_for_secrets,
-    check_hibp_breaches,
-    find_typosquatting_dnstwist,
-    search_github_leaks,
-    analyze_attack_surface_shodan,
-    search_pastes_api,
-    analyze_ssl_ssllabs,
-    analyze_apk_mobsf,
-)
-
 # Import all necessary Pydantic models for testing
 
-
-from chimera_intel.core.schemas import (
-    HIBPResult,
-    TyposquatResult,
-    GitHubLeaksResult,
-    ShodanResult,
-    PasteResult,
-    SSLLabsResult,
-    MobSFResult,
-)
 
 # CliRunner to simulate CLI commands
 
@@ -405,6 +408,74 @@ class TestDefensive(unittest.TestCase):
                 # Verify the temporary report file was cleaned up
 
                 mock_remove.assert_called_once_with("gitleaks-report.json")
+
+    # --- NEW: Tests for Mozilla Observatory ---
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    @patch("chimera_intel.core.defensive.sync_client.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to make the test run instantly
+    def test_analyze_mozilla_observatory_success(self, mock_sleep, mock_get, mock_post):
+        """Tests a successful Mozilla Observatory scan with polling."""
+        # 1. Mock the initial POST to start the scan
+        mock_post_response = MagicMock(spec=Response)
+        mock_post_response.raise_for_status.return_value = None
+        mock_post_response.json.return_value = {"scan_id": 12345, "state": "PENDING"}
+        mock_post.return_value = mock_post_response
+
+        # 2. Mock the polling GET requests
+        mock_poll_pending = MagicMock(spec=Response)
+        mock_poll_pending.raise_for_status.return_value = None
+        mock_poll_pending.json.return_value = {"state": "RUNNING"}
+
+        mock_poll_finished = MagicMock(spec=Response)
+        mock_poll_finished.raise_for_status.return_value = None
+        mock_poll_finished.json.return_value = {
+            "scan_id": 12345,
+            "state": "FINISHED",
+            "score": 80,
+            "grade": "B",
+            "tests_passed": 10,
+            "tests_failed": 2,
+        }
+        mock_get.side_effect = [mock_poll_pending, mock_poll_finished]
+
+        # Act
+        result = analyze_mozilla_observatory("example.com")
+
+        # Assert
+        self.assertIsInstance(result, MozillaObservatoryResult)
+        self.assertEqual(result.grade, "B")
+        self.assertEqual(result.score, 80)
+        self.assertIsNone(result.error)
+        mock_post.assert_called_once()
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    @patch("chimera_intel.core.defensive.sync_client.get")
+    @patch("time.sleep", return_value=None)
+    def test_analyze_mozilla_observatory_scan_failed(
+        self, mock_sleep, mock_get, mock_post
+    ):
+        """Tests the handling of a 'FAILED' state from the Observatory API."""
+        mock_post.return_value.json.return_value = {
+            "scan_id": 12345,
+            "state": "PENDING",
+        }
+        mock_get.return_value.json.return_value = {"state": "FAILED"}
+
+        result = analyze_mozilla_observatory("example.com")
+
+        self.assertIsInstance(result, MozillaObservatoryResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Scan failed on the server side", result.error)
+
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    def test_analyze_mozilla_observatory_api_error(self, mock_post):
+        """Tests error handling when the initial API call fails."""
+        mock_post.side_effect = RequestError("Connection Refused")
+
+        result = analyze_mozilla_observatory("example.com")
+
+        self.assertIsNone(result)
 
     # --- CLI COMMAND TESTS ---
 

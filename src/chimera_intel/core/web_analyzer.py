@@ -4,7 +4,7 @@ import time
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List, Optional, Any, cast
+from typing import Dict, List, Optional, Any, cast, Union
 import os
 import re
 from playwright.async_api import async_playwright
@@ -220,7 +220,7 @@ def analyze_tech_stack_risk(technologies: List[str]) -> TechStackRisk:
 
     # Simple rule-based risk assessment
 
-    risk_rules = {
+    risk_rules: Dict[str, Dict[str, Union[str, int]]] = {
         "outdated_jquery": {
             "pattern": r"jquery 1\.|jquery 2\.",
             "score": 20,
@@ -241,8 +241,8 @@ def analyze_tech_stack_risk(technologies: List[str]) -> TechStackRisk:
 
     for tech in technologies:
         for rule_name, rule in risk_rules.items():
-            if re.search(rule["pattern"], tech, re.IGNORECASE):
-                risk_score += rule["score"]
+            if re.search(str(rule["pattern"]), tech, re.IGNORECASE):
+                risk_score += int(rule["score"])
                 details.append(
                     f"Detected potentially {rule['level']} risk technology: {tech}"
                 )
