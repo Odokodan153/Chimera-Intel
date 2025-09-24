@@ -51,6 +51,8 @@ dependencies = [
     "python-whois>=0.8.0,<0.9.0",
     "GitPython>=3.1.43,<4.0.0",
     "jsondiff==2.0.0",
+    "google-generativeai>=0.2.2,<0.3.0",
+    "shodan>=1.28.0,<2.0.0",
     # Associated types for core libraries
     "types-PyYAML>=6.0.12.12,<7.0.0.0",
     "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
