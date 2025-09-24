@@ -54,6 +54,8 @@ dependencies = [
     "google-generativeai>=0.2.2,<0.3.0",
     "shodan>=1.28.0,<2.0.0",
     "sherlock-project>=0.14.3,<0.15.0",
+    "tweepy>=4.14.0,<5.0.0",
+    "googlemaps>=4.10.0,<5.0.0",
     # Associated types for core libraries
     "types-PyYAML>=6.0.12.12,<7.0.0.0",
     "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
