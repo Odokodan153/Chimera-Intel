@@ -1,5 +1,5 @@
 import unittest
-import sqlite3
+import psycopg2
 from unittest.mock import patch
 from chimera_intel.core.differ import (
     get_last_two_scans,
@@ -17,10 +17,11 @@ runner = CliRunner(mix_stderr=False)
 class TestDiffer(unittest.TestCase):
     """Extended test cases for the differ module."""
 
-    @patch("chimera_intel.core.differ.sqlite3.connect")
-    def test_get_last_two_scans_success(self, mock_connect):
+    @patch("chimera_intel.core.differ.get_db_connection")
+    def test_get_last_two_scans_success(self, mock_get_conn):
         """Tests retrieving the last two scans from the database."""
-        mock_cursor = mock_connect.return_value.cursor.return_value
+        mock_conn = mock_get_conn.return_value
+        mock_cursor = mock_conn.cursor.return_value
         # Simulate the database returning two records, with the latest first
 
         scan1_latest = '{"subdomains": ["a.com", "b.com"]}'
@@ -34,22 +35,23 @@ class TestDiffer(unittest.TestCase):
         self.assertEqual(latest["subdomains"], ["a.com", "b.com"])
         self.assertEqual(previous["subdomains"], ["a.com"])
 
-    @patch("chimera_intel.core.differ.sqlite3.connect")
-    def test_get_last_two_scans_not_enough_data(self, mock_connect):
+    @patch("chimera_intel.core.differ.get_db_connection")
+    def test_get_last_two_scans_not_enough_data(self, mock_get_conn):
         """Tests retrieval when there are fewer than two scans."""
-        mock_cursor = mock_connect.return_value.cursor.return_value
+        mock_conn = mock_get_conn.return_value
+        mock_cursor = mock_conn.cursor.return_value
         mock_cursor.fetchall.return_value = [('{"key": "value"}',)]  # Only one record
 
         latest, previous = get_last_two_scans("example.com", "footprint")
         self.assertIsNone(latest)
         self.assertIsNone(previous)
 
-    @patch("chimera_intel.core.differ.sqlite3.connect")
-    def test_get_last_two_scans_db_error(self, mock_connect):
-        """Tests retrieval when a specific sqlite3.Error occurs."""
+    @patch("chimera_intel.core.differ.get_db_connection")
+    def test_get_last_two_scans_db_error(self, mock_get_conn):
+        """Tests retrieval when a specific psycopg2.Error occurs."""
         # Simulate a database-level error
 
-        mock_connect.side_effect = sqlite3.Error("Test DB Error")
+        mock_get_conn.side_effect = psycopg2.Error("Test DB Error")
 
         with patch("chimera_intel.core.differ.logger.error") as mock_logger:
             latest, previous = get_last_two_scans("example.com", "footprint")
@@ -60,7 +62,7 @@ class TestDiffer(unittest.TestCase):
             mock_logger.assert_called_with(
                 "Database error fetching last two scans for '%s': %s",
                 "example.com",
-                mock_connect.side_effect,
+                mock_get_conn.side_effect,
             )
 
     def test_format_diff_simple_add_and_remove(self):

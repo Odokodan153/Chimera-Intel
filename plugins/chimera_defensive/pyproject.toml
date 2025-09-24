@@ -10,6 +10,7 @@ requires-python = ">=3.9"
 dependencies = [
     "python-nmap>=0.7.1,<0.8.0",
     "shodan>=1.28.0,<2.0.0",
+    "dnstwist>=20200531"
 ]
 
 # This section registers the package as a Chimera Intel plugin

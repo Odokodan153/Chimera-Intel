@@ -75,6 +75,13 @@ class ApiKeys(BaseSettings):
     kaggle_api_key: Optional[str] = Field(None, alias="KAGGLE_API_KEY")
     courtlistener_api_key: Optional[str] = Field(None, alias="COURTLISTENER_API_KEY")
     twitter_bearer_token: Optional[str] = Field(None, alias="TWITTER_BEARER_TOKEN")
+    youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
+
+    # ---: Database Credentials ---
+    db_name: Optional[str] = Field(None, alias="DB_NAME")
+    db_user: Optional[str] = Field(None, alias="DB_USER")
+    db_password: Optional[str] = Field(None, alias="DB_PASSWORD")
+    db_host: Optional[str] = Field(None, alias="DB_HOST")
 
     class Config:
         """Pydantic-settings configuration."""

@@ -5,23 +5,28 @@ from typing import Dict, Any, Optional, List
 
 from . import correlation_engine
 from .schemas import User
+from .config_loader import API_KEYS  # Import the centralized API key loader
 
 console = Console()
 
-# Database connection details would typically be in a secure config file
-
-
-DB_NAME = "chimera_intel"
-DB_USER = "chimera_user"
-DB_PASSWORD = "your_secure_password"  # Replace with a secure password
-DB_HOST = "localhost"
-
 
 def get_db_connection():
-    """Establishes a connection to the PostgreSQL database."""
+    """Establishes a connection to the PostgreSQL database using credentials from the environment."""
+    # Securely load credentials from the API_KEYS object
+
+    db_name = getattr(API_KEYS, "db_name", None)
+    db_user = getattr(API_KEYS, "db_user", None)
+    db_password = getattr(API_KEYS, "db_password", None)
+    db_host = getattr(API_KEYS, "db_host", None)
+
+    if not all([db_name, db_user, db_password, db_host]):
+        console.print(
+            "[bold red]Database Configuration Error:[/bold red] One or more database connection variables (DB_NAME, DB_USER, DB_PASSWORD, DB_HOST) are not set in your .env file."
+        )
+        raise ConnectionError("Database credentials not configured.")
     try:
         return psycopg2.connect(
-            dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD, host=DB_HOST
+            dbname=db_name, user=db_user, password=db_password, host=db_host
         )
     except psycopg2.OperationalError as e:
         console.print(
@@ -32,7 +37,7 @@ def get_db_connection():
 
 def initialize_database() -> None:
     """
-    Creates the PostgreSQL database and the necessary tables if they don't already exist.
+    Creates the necessary tables in the PostgreSQL database if they don't already exist.
     """
     try:
         conn = get_db_connection()
@@ -85,7 +90,7 @@ def initialize_database() -> None:
         conn.commit()
         cursor.close()
         conn.close()
-    except Exception as e:
+    except (Exception, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not initialize database: {e}"
         )
@@ -103,7 +108,7 @@ def create_user_in_db(username: str, hashed_password: str) -> None:
         conn.commit()
         cursor.close()
         conn.close()
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not create user: {e}"
         )
@@ -124,7 +129,7 @@ def get_user_from_db(username: str) -> Optional[User]:
         if record:
             return User(id=record[0], username=record[1], hashed_password=record[2])
         return None
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(f"[bold red]Database Error:[/bold red] Could not fetch user: {e}")
         return None
 
@@ -156,7 +161,7 @@ def save_scan_to_db(
         # --- TRIGGER CORRELATION ENGINE ---
 
         correlation_engine.run_correlations(target, module, data)
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not save scan to database: {e}"
         )
@@ -212,7 +217,7 @@ def get_aggregated_data_for_target(target: str) -> Optional[Dict[str, Any]]:
             )
             return None
         return aggregated_data
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not aggregate data for target: {e}"
         )
@@ -236,7 +241,7 @@ def get_scan_history() -> List[Dict[str, Any]]:
             {"id": r[0], "target": r[1], "module": r[2], "timestamp": r[3].isoformat()}
             for r in records
         ]
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not fetch scan history: {e}"
         )
@@ -261,7 +266,7 @@ def get_scan_history_for_target(target: str) -> List[Dict[str, Any]]:
             {"id": r[0], "target": r[1], "module": r[2], "timestamp": r[3].isoformat()}
             for r in records
         ]
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not fetch scan history for target '{target}': {e}"
         )
@@ -291,7 +296,7 @@ def get_all_scans_for_target(
         cursor.close()
         conn.close()
         return [r[0] for r in records]
-    except psycopg2.Error as e:
+    except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not fetch scans for target: {e}"
         )

@@ -4,7 +4,11 @@ from chimera_intel.core.stix_converter import (
     convert_footprint_to_stix,
     create_stix_bundle,
     convert_threat_actor_to_stix,
-    convert_web_analysis_to_stix,  # Import new function
+    convert_web_analysis_to_stix,
+    convert_tweet_to_stix,
+    convert_youtube_video_to_stix,
+    convert_twitter_monitoring_to_stix,
+    convert_youtube_monitoring_to_stix,
 )
 from chimera_intel.core.schemas import (
     FootprintResult,
@@ -14,11 +18,15 @@ from chimera_intel.core.schemas import (
     ThreatIntelResult,
     ThreatActorIntelResult,
     ThreatActor,
-    WebAnalysisResult,  # Import new schema
+    WebAnalysisResult,
     WebAnalysisData,
     TechStackReport,
+    Tweet,
+    YouTubeVideo,
+    TwitterMonitoringResult,
+    YouTubeMonitoringResult,
 )
-from stix2 import Identity  # Import for creating identity object for tests
+from stix2 import Identity
 
 
 class TestStixConverter(unittest.TestCase):
@@ -30,6 +38,75 @@ class TestStixConverter(unittest.TestCase):
             name="example.com",
             identity_class="organization",
         )
+
+    def test_convert_tweet_to_stix(self):
+        """Tests the conversion of a Tweet to STIX objects."""
+        tweet = Tweet(
+            id="12345",
+            text="Check out this new malware at bad-domain.com and 1.2.3.4",
+            author_id="98765",
+            created_at="2025-01-01T12:00:00Z",
+        )
+        stix_objects = convert_tweet_to_stix(tweet)
+        self.assertGreater(len(stix_objects), 4)
+        types = {obj["type"] for obj in stix_objects}
+        self.assertIn("identity", types)
+        self.assertIn("note", types)
+        self.assertIn("indicator", types)
+        self.assertIn("ipv4-addr", types)
+        self.assertIn("domain-name", types)
+        self.assertIn("relationship", types)
+
+    def test_convert_youtube_video_to_stix(self):
+        """Tests the conversion of a YouTubeVideo to STIX objects."""
+        video = YouTubeVideo(
+            id="abcdef123",
+            title="How to Hack Everything",
+            channel_id="channel123",
+            channel_title="Hackerman",
+            published_at="2025-01-01T12:00:00Z",
+        )
+        stix_objects = convert_youtube_video_to_stix(video)
+        self.assertEqual(len(stix_objects), 3)
+        types = {obj["type"] for obj in stix_objects}
+        self.assertIn("identity", types)
+        self.assertIn("report", types)
+        self.assertIn("relationship", types)
+
+    def test_convert_twitter_monitoring_to_stix(self):
+        """Tests the conversion of a TwitterMonitoringResult to STIX objects."""
+        twitter_result = TwitterMonitoringResult(
+            query="test",
+            total_tweets_found=1,
+            tweets=[
+                Tweet(
+                    id="12345",
+                    text="Test tweet",
+                    author_id="67890",
+                    created_at="2025-01-01T12:00:00Z",
+                )
+            ],
+        )
+        stix_objects = convert_twitter_monitoring_to_stix(twitter_result)
+        self.assertGreaterEqual(len(stix_objects), 2)
+
+    def test_convert_youtube_monitoring_to_stix(self):
+        """Tests the conversion of a YouTubeMonitoringResult to STIX objects."""
+        youtube_result = YouTubeMonitoringResult(
+            query="test",
+            total_videos_found=1,
+            videos=[
+                YouTubeVideo(
+                    id="abcdef123",
+                    title="Test Video",
+                    channel_id="channel123",
+                    channel_title="Test Channel",
+                    published_at="2025-01-01T12:00:00Z",
+                )
+            ],
+        )
+        stix_objects = convert_youtube_monitoring_to_stix(youtube_result)
+        self.assertGreaterEqual(len(stix_objects), 3)
 
     def test_convert_footprint_to_stix(self):
         """Tests the conversion of a FootprintResult to STIX objects."""

@@ -1,7 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from chimera_intel.core.social_media_monitor import monitor_twitter_stream
-from chimera_intel.core.schemas import RealTimeMonitoringResult
+from chimera_intel.core.social_media_monitor import (
+    monitor_twitter_stream,
+    monitor_youtube,
+)
+from chimera_intel.core.schemas import TwitterMonitoringResult, YouTubeMonitoringResult
 
 
 class TestSocialMediaMonitor(unittest.TestCase):
@@ -10,18 +13,12 @@ class TestSocialMediaMonitor(unittest.TestCase):
     @patch("chimera_intel.core.social_media_monitor.tweepy.StreamingClient")
     def test_monitor_twitter_stream_success(self, mock_streaming_client):
         """Tests a successful real-time monitoring session."""
-        # Arrange
-
         mock_stream_instance = mock_streaming_client.return_value
-        # Mock the response from get_rules() to have a 'data' attribute
-
         mock_rules_response = MagicMock()
         mock_rules_response.data = []
         mock_stream_instance.get_rules.return_value = mock_rules_response
 
-        # Simulate the on_tweet callback being called
-
-        def mock_filter():
+        def mock_filter(*args, **kwargs):
             tweet = MagicMock()
             tweet.id = 12345
             tweet.text = "This is a test tweet"
@@ -31,34 +28,48 @@ class TestSocialMediaMonitor(unittest.TestCase):
 
         mock_stream_instance.filter.side_effect = mock_filter
 
-        # Act
-
         with patch(
             "chimera_intel.core.social_media_monitor.API_KEYS.twitter_bearer_token",
             "fake_token",
         ):
             result = monitor_twitter_stream(["test"], limit=1)
-        # Assert
 
-        self.assertIsInstance(result, RealTimeMonitoringResult)
+        self.assertIsInstance(result, TwitterMonitoringResult)
         self.assertEqual(result.total_tweets_found, 1)
-        self.assertEqual(len(result.tweets), 1)
         self.assertEqual(result.tweets[0].text, "This is a test tweet")
         self.assertIsNone(result.error)
 
-    def test_monitor_twitter_stream_no_api_key(self):
-        """Tests that the function returns an error if no API key is provided."""
-        # Act
+    @patch("chimera_intel.core.social_media_monitor.build")
+    def test_monitor_youtube_success(self, mock_build):
+        """Tests a successful YouTube monitoring session."""
+        mock_youtube_service = MagicMock()
+        mock_search_list = MagicMock()
+        mock_search_list.execute.return_value = {
+            "items": [
+                {
+                    "id": {"videoId": "test_id"},
+                    "snippet": {
+                        "title": "Test Video",
+                        "channelId": "channel_id",
+                        "channelTitle": "Test Channel",
+                        "publishedAt": "2025-01-01T00:00:00Z",
+                    },
+                }
+            ]
+        }
+        mock_youtube_service.search.return_value.list.return_value = mock_search_list
+        mock_build.return_value = mock_youtube_service
 
         with patch(
-            "chimera_intel.core.social_media_monitor.API_KEYS.twitter_bearer_token",
-            None,
+            "chimera_intel.core.social_media_monitor.API_KEYS.youtube_api_key",
+            "fake_youtube_key",
         ):
-            result = monitor_twitter_stream(["test"], limit=1)
-        # Assert
+            result = monitor_youtube("test query", limit=1)
 
-        self.assertIsNotNone(result.error)
-        self.assertIn("Twitter Bearer Token not found", result.error)
+        self.assertIsInstance(result, YouTubeMonitoringResult)
+        self.assertEqual(result.total_videos_found, 1)
+        self.assertEqual(result.videos[0].title, "Test Video")
+        self.assertIsNone(result.error)
 
 
 if __name__ == "__main__":

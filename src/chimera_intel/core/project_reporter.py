@@ -69,7 +69,7 @@ async def generate_project_report(output_path: str):
 
     with console.status("[bold green]Executing intelligence modules...[/bold green]"):
         scan_results: List[Union[FootprintResult, WebAnalysisResult, HIBPResult]] = (
-            await asyncio.gather(*tasks)
+            list(await asyncio.gather(*tasks))
         )
     # --- Aggregate results into a single dictionary ---
 

@@ -1463,6 +1463,20 @@ class RealTimeMonitoringResult(BaseModel):
     tweets: List[Tweet] = []
     error: Optional[str] = None
 
+class YouTubeVideo(BaseModel):
+    """Model for a single YouTube video."""
+    id: str
+    title: str
+    channel_id: str
+    channel_title: str
+    published_at: str
+
+class YouTubeMonitoringResult(BaseModel):
+    """The main, top-level result model for a real-time YouTube monitoring session."""
+    query: str
+    total_videos_found: int = 0
+    videos: List[YouTubeVideo] = []
+    error: Optional[str] = None
 
 # --- Mobile Application Intelligence (APPINT) Models ---
 

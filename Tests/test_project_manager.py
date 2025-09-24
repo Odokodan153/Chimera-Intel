@@ -9,6 +9,9 @@ from chimera_intel.core.project_manager import (
     get_active_project,
     list_projects,
     CONTEXT_FILE,
+    get_project_config_by_name,
+    set_project_context,
+    add_user_to_project,
 )
 from chimera_intel.core.schemas import ProjectConfig, User
 

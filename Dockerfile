@@ -31,13 +31,10 @@ COPY --from=builder /app/dnstwist /app/dnstwist
 
 # Optimize caching for dependencies by copying only the dependency file first
 COPY pyproject.toml .
-
 # Install all project dependencies defined in pyproject.toml
 RUN pip install --no-cache-dir .
-
 # Now, copy the rest of your application's source code
 COPY . .
-
 # Change the ownership of all files to the new non-root user
 RUN chown -R appuser:appgroup /app
 
