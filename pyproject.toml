@@ -49,6 +49,8 @@ dependencies = [
     "pyvis>=0.3.2,<0.4.0",
     "feedparser>=6.0.10,<7.0.0",
     "python-whois>=0.8.0,<0.9.0",
+    "GitPython>=3.1.43,<4.0.0",
+    "jsondiff==2.0.0",
     # Associated types for core libraries
     "types-PyYAML>=6.0.12.12,<7.0.0.0",
     "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
