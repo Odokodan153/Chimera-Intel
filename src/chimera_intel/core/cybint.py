@@ -10,7 +10,7 @@ import logging
 import asyncio
 import json
 
-from .schemas import AttackSurfaceReport, MozillaObservatoryResult
+from .schemas import AttackSurfaceReport
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS

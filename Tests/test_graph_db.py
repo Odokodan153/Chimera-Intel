@@ -1,6 +1,5 @@
 import unittest
 import os
-import json
 from chimera_intel.core.graph_db import build_and_save_graph, DB_FILE
 from chimera_intel.core.database import initialize_database, save_scan_to_db
 
