@@ -15,6 +15,12 @@ from chimera_intel.core.ai_core import (
     analyze_sentiment,
     generate_swot_from_data,
     detect_traffic_anomalies,
+    generate_narrative_from_graph,
+)
+from chimera_intel.core.schemas import (
+    SWOTAnalysisResult,
+    EntityGraphResult,
+    GraphNarrativeResult,
 )
 
 runner = CliRunner()
@@ -207,3 +213,32 @@ class TestAiCore(unittest.TestCase):
 
         result = runner.invoke(app, ["analysis", "core", "swot", "input.json"])
         self.assertEqual(result.exit_code, 0)
+
+    @patch("chimera_intel.core.ai_core.generate_swot_from_data")
+    @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    def test_generate_narrative_from_graph_success(
+        self, mock_build_graph, mock_gen_swot
+    ):
+        """Tests successful graph narrative generation."""
+        mock_build_graph.return_value = EntityGraphResult(
+            target="example.com", total_nodes=2, total_edges=1, nodes=[], edges=[]
+        )
+        mock_gen_swot.return_value = SWOTAnalysisResult(analysis_text="Test narrative")
+
+        result = generate_narrative_from_graph("example.com", "fake_api_key")
+
+        self.assertIsInstance(result, GraphNarrativeResult)
+        self.assertEqual(result.narrative_text, "Test narrative")
+        self.assertIsNone(result.error)
+
+    @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    def test_generate_narrative_from_graph_error(self, mock_build_graph):
+        """Tests graph narrative generation when the graph build fails."""
+        mock_build_graph.return_value = EntityGraphResult(
+            target="example.com", total_nodes=0, total_edges=0, error="DB error"
+        )
+
+        result = generate_narrative_from_graph("example.com", "fake_api_key")
+
+        self.assertIsNotNone(result.error)
+        self.assertEqual(result.narrative_text, "")

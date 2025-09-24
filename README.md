@@ -44,49 +44,62 @@ Its command-line interface ensures scriptable workflows, automation of repetitiv
 
 Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
 
-# Command Reference
+| Command Group      | Feature Command | Description                                                              |
+| :----------------- | :-------------- | :----------------------------------------------------------------------- |
+| **Project** | `init`, `use`, `status` | Manages intelligence projects for organized, long-term tracking.          |
+|                    | `report`        | Generates a comprehensive PDF dossier for the active project.            |
+|                    | `signal`        | Analyzes data for unintentional strategic signals (e.g., hiring trends). |
+| **Scan** | `footprint`     | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence.     |
+|                    | `web`           | Analyzes website technology stacks, traffic, and tech stack risk.         |
+|                    | `business`      | Retrieves public financial data, news, and patents.                      |
+|                    | `cloud`         | Scans for misconfigured cloud assets like S3 buckets.                    |
+|                    | `personnel`     | Finds, validates, and enriches public employee email addresses.          |
+|                    | `profiles`      | Identifies social media profiles via usernames.                          |
+|                    | `geo`           | Retrieves geolocation information for IP addresses.                      |
+| **Recon** | `credentials`   | Searches breach data for compromised credentials.                        |
+|                    | `assets`        | Discovers digital assets like mobile apps and public datasets.           |
+|                    | `threat-infra`  | Pivots on malicious indicators to map adversary infrastructure.          |
+| **Defensive** | `checks`        | Audits security posture for breaches and code leaks.                     |
+|                    | `vuln`          | Scans for CVEs and open ports on discovered assets.                      |
+|                    | `darkweb`       | Searches the dark web for relevant queries via Tor.                      |
+|                    | `certs`         | Monitors new SSL/TLS certificate issuance.                               |
+|                    | `scan-iac`      | Checks Infrastructure-as-Code (e.g., Terraform) for security flaws.      |
+|                    | `scan-secrets`  | Detects leaked secrets in code repositories.                             |
+| **Offensive** | `api-discover`  | Finds exposed APIs through active reconnaissance.                        |
+|                    | `enum-content`  | Enumerates hidden web content (directories, files).                      |
+|                    | `cloud-takeover`| Checks for subdomain and cloud service takeovers.                        |
+| **Internal** | `analyze-log`   | Analyzes local logs for incident response.                               |
+|                    | `static-analysis`| Performs malware or code static analysis.                                |
+|                    | `parse-mft`     | Parses Master File Tables for forensic insights.                         |
+| **Corporate** | `hr-intel`      | Gathers strategic intelligence on hiring trends and employee sentiment.  |
+|                    | `supplychain`   | Collects trade data and supply chain insights.                           |
+|                    | `ip-deep`       | Tracks trademarks, patents, and IP activity.                             |
+|                    | `regulatory`    | Monitors lobbying and regulatory activities.                             |
+| **Analysis** | `core`          | Performs AI-assisted SWOT analysis and sentiment analysis.               |
+|                    | `diff`          | Detects and interprets changes by comparing historical scans.            |
+|                    | `forecast`      | Predicts potential future events from historical data.                   |
+|                    | `strategy`      | Generates a high-level AI-powered strategic profile.                     |
+|                    | `temporal`      | Analyzes historical web snapshots to track a company's "Shifting Identity". |
+|                    | `behavioral`    | Builds a corporate "psycho-profile" from public communications.          |
+|                    | `wsa`           | Amplifies weak signals into high-confidence events using evidence theory. |
+|                    | `deception`     | Uncovers hidden corporate networks and mimicry.                          |
+| **Auto** | `enrich-ioc`    | Automatically enriches Indicators of Compromise.                         |
+|                    | `enrich-cve`    | Enriches CVE data for vulnerability management.                          |
+|                    | `threat-model`  | Automates threat modeling based on aggregated scan data.                 |
+|                    | `ueba`          | Performs User and Entity Behavior Analytics on log files.                |
+|                    | `workflow`      | Executes multi-step automated security workflows from a YAML file.       |
+| **Connect** | `virustotal`    | Integrates with VirusTotal for file and URL analysis.                    |
+| **Report** | `pdf`           | Generates professional PDF reports from scan data.                       |
+|                    | `graph`         | Creates interactive HTML knowledge graphs.                               |
+| **Media** | `reverse-search`| Performs a reverse image search to find where an image is used online.   |
+|                    | `transcribe`    | Transcribes audio files to text using an offline Whisper model.         |
+| **AppInt** | `static`        | Performs static analysis on mobile application (.apk) files.             |
+| **Imint** | `analyze-image` | Extracts EXIF metadata from image files.                                 |
+| **Geoint** | `run`           | Analyzes a target's geographic footprint for geopolitical risks.         |
 
-| Command Group | Feature Command | Description |
-| :--- | :--- | :--- |
-| **corporate** | `hr-intel` | Gathers strategic intelligence on hiring trends. |
-| | `supplychain` | Collects trade data and supply chain insights. |
-| | `ip-deep` | Tracks trademarks, patents, and IP activity. |
-| | `regulatory` | Monitors lobbying and regulatory activities. |
-| **scan** | `footprint` | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence. |
-| | `web` | Analyzes website technology stacks and traffic estimates. |
-| | `business` | Retrieves public financial data, news, and patents. |
-| | `cloud` | Scans for misconfigured cloud assets like S3 buckets. |
-| | `personnel` | Finds public employee email addresses. |
-| | `profiles` | Identifies social media profiles via usernames. |
-| **offensive** | `api-discover` | Finds exposed APIs through active reconnaissance. |
-| | `enum-content` | Enumerates hidden web content. |
-| | `cloud-takeover` | Checks for subdomain and cloud takeovers. |
-| **defensive** | `checks` | Audits security posture for breaches and leaks. |
-| | `vuln` | Scans for CVEs and open ports. |
-| | `darkweb` | Searches the dark web for relevant queries. |
-| | `certs` | Monitors new SSL/TLS certificate issuance. |
-| | `scan-iac` | Checks Infrastructure-as-Code for security flaws. |
-| | `scan-secrets` | Detects leaked secrets in code repositories. |
-| **internal** | `analyze-log` | Analyzes local logs for incident response. |
-| | `static-analysis` | Performs malware or code static analysis. |
-| | `parse-mft` | Parses Master File Tables for forensic insights. |
-| **analysis** | `core` | Performs AI-assisted SWOT analysis and strategic evaluation. |
-| | `diff` | Detects changes by comparing historical scans. |
-| | `forecast` | Predicts potential future events from historical data. |
-| | `strategy` | Generates a high-level AI-powered strategic profile. |
-| | `signal` | Detects emerging trends and anomalies. |
-| **auto** | `enrich-ioc` | Automatically enriches Indicators of Compromise. |
-| | `enrich-cve` | Enriches CVE data for vulnerability management. |
-| | `threat-model` | Automates threat modeling processes. |
-| | `ueba` | Performs User and Entity Behavior Analytics. |
-| | `workflow` | Executes multi-step automated security workflows. |
-| **connect** | `virustotal` | Integrates with VirusTotal for file and URL analysis. |
-| **report** | `pdf` | Generates professional PDF reports from scan data. |
-| | `graph` | Creates interactive HTML knowledge graphs. |
-| **Advanced Intel** | `blockchain wallet` | Analyzes a cryptocurrency wallet for balance and transactions. |
-| | `code-intel repo` | Gathers intelligence from a public code repository. |
-| | `ttp map-cve` | Maps CVEs to MITRE ATT&CK adversary techniques. |
-| | `physical locations` | Finds physical office locations for a company. |
+
+---
+
 
 ---
 
@@ -136,6 +149,21 @@ source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 # Install the project and all dependencies in editable mode
 pip install -e .
 
+Before running, copy the .env.example file to .env and fill in your API keys.
+cp .env.example .env
+# Now edit the .env file with your keys
+nano .env
+
+# Example: Install the 'footprint' scanning plugin
+cd plugins/chimera_footprint
+pip install -e .
+cd ../..
+
+# Example: Install the 'analysis' plugin suite
+cd plugins/chimera_analysis
+pip install -e .
+cd ../..
+
 ## Usage Examples
 
 Once installed, you can run the tool from anywhere using the `chimera` command.
@@ -162,34 +190,29 @@ The following diagram illustrates the typical data flow for a `scan` command.
 ```mermaid
 graph TD
     subgraph User Interface
-        A1[User runs 'chimera corporate hr-intel ...'] --> B{CLI Entrypoint};
-        A2[User runs 'chimera offensive enum-content ...'] --> B;
-        A3[User runs 'chimera internal analyze-log ...'] --> B;
+        A[User runs 'chimera scan footprint google.com'] --> B{CLI Entrypoint (cli.py)};
     end
 
-    subgraph Core Logic Modules
-        B --> C1[Corporate Intel];
-        B --> C2[Offensive Recon];
-        B --> C3[Internal & Forensic];
-        B --> C4[Defensive & Proactive];
-        B --> C5[AI & Automation];
-
-        C1 -- Queries --> D1[Strategic Data APIs];
-        C2 -- Actively Probes --> D2[Target Systems];
-        C3 -- Analyzes --> D3[Local Files (Logs, Artifacts)];
-        C4 -- Audits & Monitors --> D4[Public Logs & Local Configs];
-        C5 -- Synthesizes Data --> D5[AI Models & Workflow Engine];
+    subgraph Core Logic
+        B --> C[Footprint Module (footprint.py)];
+        C --> D{gather_footprint_data()};
+        D -- Calls --> E[External APIs (VirusTotal, etc.)];
+        D -- Calls --> F[Local Libraries (whois, dnspython)];
+        E --> G[Pydantic Models (schemas.py)];
+        F --> G;
+        G --> H[Aggregated FootprintResult];
     end
 
-    subgraph Data Persistence
-        C1 & C2 & C3 & C4 --> E[Pydantic Models (schemas.py)];
-        E --> F[Database Module (database.py)];
-        F --> G[Save to chimera_intel.db];
+    subgraph Output & Persistence
+        H --> I[Utils (utils.py)];
+        I -- Output File? --> J{Save to JSON};
+        I -- No Output File --> K[Print to Console];
+        H --> L[Database Module (database.py)];
+        L --> M[Save to chimera_intel.db];
     end
 
-    subgraph Output & Integration
-        E --> H[Utils (utils.py)];
-        H -- Output File? --> I{Save to JSON/PDF};
-        H -- No Output File --> J[Print to Console];
-        C5 -- Can Orchestrate --> K[External Tools (VirusTotal)];
+    subgraph Analysis (Later Stage)
+        M --> N[Analysis Modules (strategist.py, differ.py)];
+        N --> O[AI Models / Historical Comparison];
+        O --> P[Final Report/Analysis];
     end

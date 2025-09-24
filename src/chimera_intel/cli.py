@@ -9,36 +9,9 @@ from the various core modules. It also initializes the logging system and databa
 import typer
 from chimera_intel.core.logger_config import setup_logging
 from chimera_intel.core.database import initialize_database
-from chimera_intel.core.footprint import footprint_app
-from chimera_intel.core.web_analyzer import web_app
-from chimera_intel.core.business_intel import business_app
-from chimera_intel.core.defensive import defensive_app
-from chimera_intel.core.ai_core import ai_app
-from chimera_intel.core.differ import diff_app
-from chimera_intel.core.forecaster import forecast_app
-from chimera_intel.core.strategist import strategy_app
-from chimera_intel.core.signal_analyzer import signal_app
-from chimera_intel.core.reporter import report_app
-from chimera_intel.core.grapher import graph_app
-from chimera_intel.core.social_analyzer import social_app
-from chimera_intel.core.vulnerability_scanner import vulnerability_app
-from chimera_intel.core.social_osint import social_osint_app
-from chimera_intel.core.dark_web_osint import dark_web_app
-from chimera_intel.core.cloud_osint import cloud_osint_app
-from chimera_intel.core.personnel_osint import personnel_osint_app
-from chimera_intel.core.corporate_records import corporate_records_app
-from chimera_intel.core.tpr_engine import tpr_app
-from chimera_intel.core.geo_osint import geo_osint_app
-from chimera_intel.core.corporate_intel import corporate_intel_app
-from chimera_intel.core.offensive import offensive_app
-from chimera_intel.core.internal import internal_app
-from chimera_intel.core.automation import automation_app
-from chimera_intel.core.automation import connect_app
-from chimera_intel.core.recon import recon_app
-from chimera_intel.core.blockchain_osint import blockchain_app
-from chimera_intel.core.code_intel import code_intel_app
-from chimera_intel.core.ttp_mapper import ttp_app
-from chimera_intel.core.physical_osint import physical_osint_app
+from chimera_intel.core.social_media_monitor import social_media_monitor_app
+from chimera_intel.core.plugin_manager import discover_plugins
+from chimera_intel.core.graph_analyzer import graph_app
 
 # --- : Startup Banner ---
 # This will be printed every time the CLI is invoked.
@@ -61,7 +34,7 @@ setup_logging()
 initialize_database()
 
 # --- Main Application Definition ---
-# This is the top-level Typer application.
+# This is the top--level Typer application.
 
 
 app = typer.Typer(
@@ -71,178 +44,33 @@ app = typer.Typer(
     rich_markup_mode="markdown",  # Allows for rich formatting in help text.
 )
 
-# --- Command Group Registration ---
-# The following sections register the imported applications as command groups,
-# creating a hierarchical CLI structure like 'chimera <group> <command>'.
+# --- Dynamic Plugin Registration ---
+# The CLI now discovers and loads all installed plugins automatically.
 
-# 1. 'scan' command group for offensive intelligence gathering.
+plugins = discover_plugins()
 
+for plugin in plugins:
+    # Special handling for the social plugin to add the new monitor command
 
-scan_app = typer.Typer(help="Run offensive intelligence scans on a target.")
-app.add_typer(scan_app, name="scan")
-scan_app.add_typer(
-    footprint_app,
-    name="footprint",
-    help="Gathers basic digital footprint (WHOIS, DNS, Subdomains).",
-)
-scan_app.add_typer(
-    web_app, name="web", help="Analyzes web-specific data (Tech Stack, Traffic)."
-)
-scan_app.add_typer(
-    business_app,
-    name="business",
-    help="Gathers business intelligence (Financials, News, Patents).",
-)
-scan_app.add_typer(
-    social_app, name="social", help="Analyzes content from a target's RSS feed."
-)
-scan_app.add_typer(
-    social_osint_app, name="profiles", help="Finds social media profiles by username."
-)
-scan_app.add_typer(
-    cloud_osint_app,
-    name="cloud",
-    help="Scans for exposed cloud assets like S3 buckets.",
-)
-scan_app.add_typer(
-    personnel_osint_app,
-    name="personnel",
-    help="Gathers intelligence on company employees.",
-)
-scan_app.add_typer(
-    geo_osint_app,
-    name="geo",
-    help="Retrieves geolocation information for IP addresses.",
-)
+    if plugin.name == "scan":
+        # The `plugin.app` is the Typer object for the 'scan' group
+        # We need to find the 'social' subcommand within it
+
+        for sub_app in plugin.app.registered_commands:
+            if hasattr(sub_app, "name") and sub_app.name == "social":
+                # Now add the 'monitor' command to the 'social' subcommand
+
+                sub_app.add_typer(
+                    social_media_monitor_app,
+                    name="monitor",
+                    help="Monitor social media in real-time.",
+                )
+    # After potential modification, add the plugin's app to the main app
+
+    app.add_typer(plugin.app, name=plugin.name)
 app.add_typer(
-    corporate_records_app,
-    name="compliance",
-    help="Run corporate compliance and due diligence checks.",
+    graph_app, name="graph", help="Entity relationship graphing and analysis."
 )
-app.add_typer(
-    tpr_app,
-    name="tpr-scan",
-    help="Runs a comprehensive Third-Party Risk Management scan.",
-)
-# 2. 'defensive' command group for internal security and counter-intelligence.
-
-
-defensive_group_app = typer.Typer(
-    help="Run defensive and vulnerability scans on your own assets."
-)
-app.add_typer(defensive_group_app, name="defensive")
-defensive_group_app.add_typer(
-    defensive_app,
-    name="checks",
-    help="Run standard defensive checks (breaches, leaks, etc.).",
-)
-defensive_group_app.add_typer(
-    vulnerability_app, name="vuln", help="Run vulnerability scans on discovered assets."
-)
-defensive_group_app.add_typer(
-    dark_web_app, name="darkweb", help="Searches the dark web for leaked data."
-)
-
-
-# 3. 'analysis' command group for AI-powered and historical data analysis.
-
-
-analysis_app = typer.Typer(help="Run AI-powered and historical analysis.")
-app.add_typer(analysis_app, name="analysis")
-analysis_app.add_typer(
-    ai_app, name="core", help="Run basic AI analysis (Sentiment, SWOT)."
-)
-analysis_app.add_typer(
-    diff_app, name="diff", help="Compare two historical scans to detect changes."
-)
-analysis_app.add_typer(
-    forecast_app,
-    name="forecast",
-    help="Forecasts potential future events from historical data.",
-)
-analysis_app.add_typer(
-    strategy_app,
-    name="strategy",
-    help="Generates an AI-powered strategic profile of a target.",
-)
-analysis_app.add_typer(
-    signal_app, name="signal", help="Analyzes data for unintentional strategic signals."
-)
-
-
-# 4. 'report' command group for generating output files from saved data.
-
-
-report_app_group = typer.Typer(help="Generate reports from saved JSON scan data.")
-app.add_typer(report_app_group, name="report")
-report_app_group.add_typer(report_app, name="pdf", help="Generate a formal PDF report.")
-report_app_group.add_typer(
-    graph_app, name="graph", help="Generate a visual, interactive HTML graph."
-)
-
-# 5. 'corporate' command group for deep strategic intelligence.
-
-
-app.add_typer(
-    corporate_intel_app,
-    name="corporate",
-    help="Run deep corporate and strategic intelligence scans.",
-)
-
-app.add_typer(
-    offensive_app,
-    name="offensive",
-    help="Run active reconnaissance and offensive security scans.",
-)
-
-app.add_typer(
-    internal_app,
-    name="internal",
-    help="Run internal analysis, IR, and forensic scans on local files.",
-)
-
-app.add_typer(
-    automation_app,
-    name="auto",
-    help="Run automation, enrichment, and advanced analysis tasks.",
-)
-
-app.add_typer(
-    connect_app,
-    name="connect",
-    help="Integrate and orchestrate with external security tools.",
-)
-
-app.add_typer(
-    recon_app,
-    name="recon",
-    help="Run advanced reconnaissance for specific intelligence data.",
-)
-
-app.add_typer(
-    blockchain_app,
-    name="blockchain",
-    help="Run OSINT scans on cryptocurrency and blockchain assets.",
-)
-
-app.add_typer(
-    code_intel_app,
-    name="code-intel",
-    help="Run intelligence scans on code repositories.",
-)
-
-app.add_typer(
-    ttp_app,
-    name="ttp",
-    help="Map vulnerabilities to adversary Tactics, Techniques & Procedures.",
-)
-
-app.add_typer(
-    physical_osint_app,
-    name="physical",
-    help="Run OSINT scans for physical assets and locations.",
-)
-
 
 if __name__ == "__main__":
     # This block allows the script to be run directly during development.

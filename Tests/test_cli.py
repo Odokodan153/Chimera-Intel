@@ -30,6 +30,7 @@ def test_main_app_help():
     assert "defensive" in result.stdout
     assert "analysis" in result.stdout
     assert "report" in result.stdout
+    assert "graph" in result.stdout
 
 
 # --- Test for main script entry ---

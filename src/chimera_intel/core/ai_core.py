@@ -2,20 +2,23 @@
 Core AI functionalities for sentiment analysis, SWOT generation, and anomaly detection.
 
 This module initializes and provides access to various AI models. It uses local
-'transformers' for sentiment analysis, Google's Generative AI (Gemini Pro) for
-SWOT analysis from structured data, and 'scikit-learn' for traffic anomaly detection.
-Models are loaded lazily and conditionally to prevent crashes if optional dependencies
-are not installed.
+'transformers' for sentiment analysis and zero-shot classification, Google's
+Generative AI (Gemini Pro) for SWOT analysis from structured data, and
+'scikit-learn' for traffic anomaly detection. Models are loaded lazily and
+conditionally to prevent crashes if optional dependencies are not installed.
 """
 
 import typer
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
 from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+from .graph_db import build_and_save_graph
+from .graph_schemas import GraphNarrativeResult
+import json
 
 # Get a logger instance for this specific file
 
@@ -28,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 sentiment_analyzer: Optional[Any] = None
+classifier: Optional[Any] = None
 IsolationForest: Optional[Any] = None
 np: Optional[Any] = None
 
@@ -37,9 +41,10 @@ try:
     sentiment_analyzer = pipeline(  # type: ignore
         "sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english"
     )
+    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 except (ImportError, OSError):
     logger.warning(
-        "Could not import 'transformers' or load model. Sentiment analysis will be unavailable."
+        "Could not import 'transformers' or load models. AI analysis will be unavailable."
     )
 try:
     import numpy
@@ -77,6 +82,33 @@ def analyze_sentiment(text: str) -> SentimentAnalysisResult:
         return SentimentAnalysisResult(
             label="ERROR", score=0.0, error=f"Sentiment analysis error: {e}"
         )
+
+
+def classify_text_zero_shot(
+    text: str, candidate_labels: List[str]
+) -> Optional[Dict[str, Any]]:
+    """
+    Classifies a given text against a list of candidate labels using a zero-shot model.
+
+    Args:
+        text (str): The text to classify.
+        candidate_labels (List[str]): The list of labels to classify against.
+
+    Returns:
+        Optional[Dict[str, Any]]: A dictionary with labels and scores, or None on error.
+    """
+    if not classifier:
+        logger.warning("Zero-shot classifier not available. Skipping classification.")
+        return None
+    try:
+        # Truncate text to avoid model errors with very long inputs
+
+        return classifier(text[:512], candidate_labels)
+    except Exception as e:
+        logger.error(
+            "Zero-shot classification failed for text '%s...': %s", text[:50], e
+        )
+        return None
 
 
 def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisResult:
@@ -215,3 +247,36 @@ def run_anomaly_detection(data_points: str):
         logger.error(
             "Invalid data points for anomaly detection: %s. Error: %s", data_points, e
         )
+
+
+def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeResult:
+    """
+    Uses a Generative AI model to create a narrative from an entity graph.
+
+    Args:
+        target (str): The target for which to generate the narrative.
+        api_key (str): The Google AI API key.
+
+    Returns:
+        GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
+    """
+    graph_result = build_and_save_graph(target)
+    if graph_result.error:
+        return GraphNarrativeResult(narrative_text="", error=graph_result.error)
+    # Simplified representation for the prompt
+
+    prompt_data = {
+        "nodes": [node.model_dump() for node in graph_result.nodes],
+        "edges": [edge.model_dump() for edge in graph_result.edges],
+    }
+
+    # Generate narrative using the existing SWOT function's underlying model
+
+    swot_result = generate_swot_from_data(
+        f"Analyze the following entity graph and provide a brief intelligence summary:\n{json.dumps(prompt_data, indent=2)}",
+        api_key,
+    )
+
+    return GraphNarrativeResult(
+        narrative_text=swot_result.analysis_text, error=swot_result.error
+    )

@@ -12,6 +12,7 @@ from .schemas import PhysicalSecurityResult, PhysicalLocation
 from .config_loader import API_KEYS
 from .utils import save_or_print_results
 from .database import save_scan_to_db
+from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +70,20 @@ physical_osint_app = typer.Typer()
 
 @physical_osint_app.command("locations")
 def run_location_search(
-    query: str = typer.Argument(
-        ..., help="The company name or search query for locations."
+    query: Optional[str] = typer.Argument(
+        None,
+        help="The company name or search query. Uses active project's company name if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Finds physical office locations related to a target."""
-    results_model = find_physical_locations(query)
+    target_query = resolve_target(query, required_assets=["company_name", "domain"])
+
+    results_model = find_physical_locations(target_query)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=query, module="physical_osint_locations", data=results_dict)
+    save_scan_to_db(
+        target=target_query, module="physical_osint_locations", data=results_dict
+    )

@@ -1,13 +1,12 @@
-# tests/test_corporate_intel.py
-
-
 import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
+from typer.testing import CliRunner
 
-# Import the functions to be tested
+# Import the main CLI app and the functions to be tested
 
 
+from chimera_intel.cli import app
 from chimera_intel.core.corporate_intel import (
     get_hiring_trends,
     get_employee_sentiment,
@@ -16,6 +15,9 @@ from chimera_intel.core.corporate_intel import (
     get_lobbying_data,
     get_sec_filings_analysis,
 )
+from chimera_intel.core.schemas import ProjectConfig
+
+runner = CliRunner()
 
 
 class TestCorporateIntel(unittest.TestCase):
@@ -133,18 +135,24 @@ class TestCorporateIntel(unittest.TestCase):
     @patch("chimera_intel.core.corporate_intel.API_KEYS")
     @patch("chimera_intel.core.corporate_intel.sync_client.get")
     def test_get_lobbying_data(self, mock_get, mock_api_keys):
-        """Tests the lobbying data analysis by mocking the LobbyingData.com API."""
+        """Tests the lobbying data analysis by mocking the ProPublica API."""
         # Arrange
 
         mock_api_keys.lobbying_data_api_key = "fake_lobby_key"
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
+        # **UPDATED MOCK RESPONSE** to match ProPublica's structure
+
         mock_response.json.return_value = {
-            "filings": [
+            "results": [
                 {
-                    "specific_issue": "Artificial Intelligence Regulation",
-                    "amount": 500000,
-                    "year": 2025,
+                    "lobbying_represents": [
+                        {
+                            "specific_issue": "Artificial Intelligence Regulation",
+                            "amount": "500000",
+                            "year": "2025",
+                        }
+                    ]
                 }
             ]
         }
@@ -200,6 +208,54 @@ class TestCorporateIntel(unittest.TestCase):
         mock_api_keys.aura_api_key = None
         result = get_employee_sentiment("Example Corp")
         self.assertIsNotNone(result.error)
+
+    # --- NEW: Project-Aware CLI Command Tests ---
+
+    @patch("chimera_intel.core.corporate_intel.get_active_project")
+    @patch("chimera_intel.core.corporate_intel.get_hiring_trends")
+    @patch("chimera_intel.core.corporate_intel.get_employee_sentiment")
+    def test_cli_hr_intel_with_project(
+        self, mock_sentiment, mock_hiring, mock_get_project
+    ):
+        """Tests the 'corporate hr-intel' command using an active project."""
+        mock_project = ProjectConfig(
+            project_name="Test",
+            created_at="",
+            company_name="ProjectCorp",
+            domain="project.com",
+        )
+        mock_get_project.return_value = mock_project
+        mock_hiring.return_value.model_dump.return_value = {}
+        mock_sentiment.return_value.model_dump.return_value = {}
+
+        result = runner.invoke(app, ["corporate", "hr-intel"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using target 'ProjectCorp' from active project", result.stdout)
+        mock_hiring.assert_called_with("project.com")
+        mock_sentiment.assert_called_with("ProjectCorp")
+
+    @patch("chimera_intel.core.corporate_intel.get_active_project")
+    def test_cli_sec_filings_no_project(self, mock_get_project):
+        """Tests that 'sec-filings' fails without a ticker or project."""
+        mock_get_project.return_value = None
+        result = runner.invoke(app, ["corporate", "sec-filings"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No ticker provided and no active project", result.stdout)
+
+    @patch("chimera_intel.core.corporate_intel.get_active_project")
+    @patch("chimera_intel.core.corporate_intel.get_sec_filings_analysis")
+    def test_cli_sec_filings_with_project(self, mock_sec_filings, mock_get_project):
+        """Tests the 'sec-filings' command using a project's ticker."""
+        mock_project = ProjectConfig(project_name="Test", created_at="", ticker="PRJT")
+        mock_get_project.return_value = mock_project
+        mock_sec_filings.return_value.model_dump.return_value = {}
+
+        result = runner.invoke(app, ["corporate", "sec-filings"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using ticker 'PRJT' from active project", result.stdout)
+        mock_sec_filings.assert_called_with("PRJT")
 
 
 if __name__ == "__main__":

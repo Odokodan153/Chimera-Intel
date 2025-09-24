@@ -1,8 +1,13 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import git
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
 from chimera_intel.core.code_intel import analyze_git_repository
 from chimera_intel.core.schemas import RepoAnalysisResult
+
+runner = CliRunner()
 
 
 class TestCodeIntel(unittest.TestCase):
@@ -90,6 +95,17 @@ class TestCodeIntel(unittest.TestCase):
         self.assertIn("An unexpected error occurred", result.error)
         self.assertEqual(result.total_committers, 0)
         mock_rmtree.assert_called_once()
+
+    def test_cli_repo_no_url_fails(self):
+        """Tests that the CLI command fails if no repository URL is provided."""
+        # Act
+
+        result = runner.invoke(app, ["code-intel", "repo"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("A repository URL must be provided", result.stdout)
 
 
 if __name__ == "__main__":

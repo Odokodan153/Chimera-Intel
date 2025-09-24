@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from chimera_intel.cli import app
 from chimera_intel.core.personnel_osint import find_employee_emails
-from chimera_intel.core.schemas import PersonnelOSINTResult
+from chimera_intel.core.schemas import PersonnelOSINTResult, ProjectConfig
 
 runner = CliRunner()
 
@@ -71,7 +71,7 @@ class TestPersonnelOsint(unittest.TestCase):
 
     @patch("chimera_intel.core.personnel_osint.find_employee_emails")
     def test_cli_personnel_emails_success(self, mock_find_emails):
-        """Tests the 'personnel emails' CLI command successfully."""
+        """Tests the 'personnel emails' CLI command successfully with an explicit domain."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
             "domain": "example.com",
@@ -83,6 +83,7 @@ class TestPersonnelOsint(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_emails_found": 1', result.stdout)
+        mock_find_emails.assert_called_with("example.com")
 
     def test_cli_personnel_emails_invalid_domain(self):
         """Tests the 'personnel emails' CLI command with an invalid domain."""
@@ -100,6 +101,56 @@ class TestPersonnelOsint(unittest.TestCase):
         ):
             result = find_employee_emails("example.com")
             self.assertIsNotNone(result.error)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.personnel_osint.get_active_project")
+    @patch("chimera_intel.core.personnel_osint.find_employee_emails")
+    def test_cli_emails_with_active_project(self, mock_find_emails, mock_get_project):
+        """Tests the CLI command using an active project's context."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="PersonnelTest",
+            created_at="2025-01-01",
+            domain="project-domain.com",
+        )
+        mock_get_project.return_value = mock_project
+
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "domain": "project-domain.com",
+            "total_emails_found": 5,
+        }
+        mock_find_emails.return_value = mock_result
+
+        # Act: Run command without an explicit domain
+
+        result = runner.invoke(app, ["scan", "personnel", "emails"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using domain 'project-domain.com' from active project", result.stdout
+        )
+        mock_find_emails.assert_called_with("project-domain.com")
+
+    @patch("chimera_intel.core.personnel_osint.get_active_project")
+    def test_cli_emails_no_domain_no_project(self, mock_get_project):
+        """Tests the CLI fails when no domain is provided and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+
+        result = runner.invoke(app, ["scan", "personnel", "emails"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No domain provided and no active project set", result.stdout)
 
 
 if __name__ == "__main__":

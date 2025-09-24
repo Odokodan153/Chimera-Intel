@@ -1,8 +1,13 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
 from chimera_intel.core.blockchain_osint import get_wallet_analysis
 from chimera_intel.core.schemas import WalletAnalysisResult
+
+runner = CliRunner()
 
 
 class TestBlockchainOsint(unittest.TestCase):
@@ -46,7 +51,7 @@ class TestBlockchainOsint(unittest.TestCase):
 
         # Act
 
-        result = get_wallet_analysis("0x...")
+        result = get_wallet_analysis("0x123abc")
 
         # Assert
 
@@ -55,6 +60,17 @@ class TestBlockchainOsint(unittest.TestCase):
         self.assertEqual(result.balance_eth, "15.0000")
         self.assertEqual(len(result.recent_transactions), 1)
         self.assertEqual(result.recent_transactions[0].value_eth, "1.0")
+
+    def test_cli_wallet_no_address_fails(self):
+        """Tests that the CLI command fails if no address is provided."""
+        # Act
+
+        result = runner.invoke(app, ["blockchain", "wallet"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("A wallet address must be provided", result.stdout)
 
 
 if __name__ == "__main__":

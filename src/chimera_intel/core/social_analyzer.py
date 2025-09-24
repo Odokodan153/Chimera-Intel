@@ -14,23 +14,16 @@ from chimera_intel.core.schemas import (
     SocialAnalysisResult,
     AnalyzedPost,
 )
-from transformers import pipeline, Pipeline  # # type: ignore
+from chimera_intel.core.ai_core import (
+    classify_text_zero_shot,
+)  # Import the centralized classifier function
+from .project_manager import get_active_project
 
 # Get a logger instance for this specific file
 
 
 logger = logging.getLogger(__name__)
 
-# --- AI Model Initialization ---
-
-
-classifier: Optional[Pipeline] = None  # Add Optional type hint
-try:
-    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-except (ImportError, OSError):
-    # This assignment is now valid because of the Optional type hint
-
-    classifier = None
 # --- Core Functions ---
 
 
@@ -88,12 +81,6 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
     Returns:
         SocialContentAnalysis: A Pydantic model containing the analysis results or an error.
     """
-    if not classifier:
-        return SocialContentAnalysis(
-            feed_title="N/A",
-            posts=[],
-            error="AI analysis skipped. 'transformers' not installed.",
-        )
     try:
         feed = feedparser.parse(feed_url)
         if feed.bozo:
@@ -121,9 +108,16 @@ def analyze_feed_content(feed_url: str, num_posts: int = 5) -> SocialContentAnal
                 clean_content = BeautifulSoup(
                     content_to_analyze, "html.parser"
                 ).get_text(separator=" ", strip=True)
-            classification = classifier(
-                f"{title}. {clean_content[:512]}", candidate_labels
+            classification = classify_text_zero_shot(
+                f"{title}. {clean_content}", candidate_labels
             )
+
+            if not classification:
+                return SocialContentAnalysis(
+                    feed_title="N/A",
+                    posts=[],
+                    error="AI analysis skipped. 'transformers' not installed or model failed.",
+                )
             posts_analysis.append(
                 AnalyzedPost(
                     title=title,
@@ -152,8 +146,8 @@ social_app = typer.Typer()
 
 @social_app.command("run")
 def run_social_analysis(
-    domain: str = typer.Argument(
-        ..., help="The target domain to find and analyze a blog/RSS feed for."
+    domain: Optional[str] = typer.Argument(
+        None, help="The target domain to find and analyze a blog/RSS feed for."
     ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
@@ -166,29 +160,44 @@ def run_social_analysis(
         domain (str): The target domain to find and analyze a blog/RSS feed for.
         output_file (str, optional): Optional path to save the results to a JSON file.
     """
-    if not is_valid_domain(domain):
-        logger.warning("Invalid domain format provided to 'social' command: %s", domain)
+    target_domain = domain
+    if not target_domain:
+        active_project = get_active_project()
+        if active_project and active_project.domain:
+            target_domain = active_project.domain
+            console.print(
+                f"[bold cyan]Using domain '{target_domain}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No domain provided and no active project set. Use 'chimera project use <name>' or specify a domain."
+            )
+            raise typer.Exit(code=1)
+    if not is_valid_domain(target_domain):
+        logger.warning(
+            "Invalid domain format provided to 'social' command: %s", target_domain
+        )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    if not classifier:
-        logger.warning("AI libraries not found. AI content analysis will be skipped.")
-    logger.info("Starting social content analysis for %s", domain)
-    feed_url = discover_rss_feed(domain)
+    logger.info("Starting social content analysis for %s", target_domain)
+    feed_url = discover_rss_feed(target_domain)
     if not feed_url:
-        logger.error("Could not automatically discover an RSS feed for %s.", domain)
+        logger.error(
+            "Could not automatically discover an RSS feed for %s.", target_domain
+        )
         raise typer.Exit(code=1)
     logger.info("Feed found: %s", feed_url)
     analysis_results = analyze_feed_content(feed_url)
     results_model = SocialAnalysisResult(
-        domain=domain, social_content_analysis=analysis_results
+        domain=target_domain, social_content_analysis=analysis_results
     )
     results_dict = results_model.model_dump()
-    logger.info("Social content analysis complete for %s", domain)
+    logger.info("Social content analysis complete for %s", target_domain)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="social_analyzer", data=results_dict)
+    save_scan_to_db(target=target_domain, module="social_analyzer", data=results_dict)

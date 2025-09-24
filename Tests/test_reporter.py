@@ -1,6 +1,11 @@
 import unittest
 from unittest.mock import patch, mock_open
-from chimera_intel.core.reporter import generate_pdf_report, create_pdf_report
+from chimera_intel.core.reporter import (
+    generate_pdf_report,
+    create_pdf_report,
+    generate_graph_report,
+)
+from chimera_intel.core.schemas import EntityGraphResult
 
 
 class TestReporter(unittest.TestCase):
@@ -89,6 +94,24 @@ class TestReporter(unittest.TestCase):
                 # Check if Image was called with a width in inches (144.0 = 2 * 72)
 
                 mock_image.assert_called_with("logo.png", width=144.0, height=144.0)
+
+    @patch("chimera_intel.core.reporter.Network")
+    @patch("chimera_intel.core.reporter.build_and_save_graph")
+    def test_generate_graph_report_success(self, mock_build_graph, mock_network):
+        """Tests the HTML graph report generation."""
+        mock_net_instance = mock_network.return_value
+        mock_build_graph.return_value = EntityGraphResult(
+            target="example.com",
+            total_nodes=1,
+            total_edges=0,
+            nodes=[{"id": "example.com"}],
+        )
+
+        generate_graph_report("example.com", "graph.html")
+
+        mock_build_graph.assert_called_once_with("example.com")
+        mock_net_instance.add_node.assert_called()
+        mock_net_instance.save_graph.assert_called_with("graph.html")
 
 
 if __name__ == "__main__":

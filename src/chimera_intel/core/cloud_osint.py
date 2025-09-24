@@ -1,7 +1,7 @@
 import typer
 import asyncio
 import logging
-from typing import cast
+from typing import cast, Optional
 from .schemas import (
     CloudOSINTResult,
     S3Bucket,
@@ -9,8 +9,9 @@ from .schemas import (
     GCSBucket,
 )
 from .http_client import async_client
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
+from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +140,9 @@ cloud_osint_app = typer.Typer()
 
 @cloud_osint_app.command("run")
 def run_cloud_scan(
-    keyword: str = typer.Argument(
-        ..., help="The keyword (e.g., company name) to search for."
+    keyword: Optional[str] = typer.Argument(
+        None,
+        help="The keyword to search for. Uses active project's company name if not provided.",
     ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -149,9 +151,27 @@ def run_cloud_scan(
     """
     Searches for exposed cloud storage assets (S3, Azure, GCP).
     """
-    results_model = asyncio.run(find_cloud_assets(keyword))
+    target_keyword = keyword
+    if not target_keyword:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_keyword = active_project.company_name.lower().replace(" ", "")
+            console.print(
+                f"[bold cyan]Using keyword '{target_keyword}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No keyword provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_keyword:
+        console.print(
+            "[bold red]Error:[/bold red] A keyword is required for this scan."
+        )
+        raise typer.Exit(code=1)
+    results_model = asyncio.run(find_cloud_assets(target_keyword))
 
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=keyword, module="cloud_osint", data=results_dict)
-    logger.info("Cloud asset scan complete for keyword: %s", keyword)
+    save_scan_to_db(target=target_keyword, module="cloud_osint", data=results_dict)
+    logger.info("Cloud asset scan complete for keyword: %s", target_keyword)

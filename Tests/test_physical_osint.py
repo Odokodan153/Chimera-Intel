@@ -1,8 +1,13 @@
 import unittest
 from unittest.mock import patch
+from typer.testing import CliRunner
+import typer
 
+from chimera_intel.cli import app
 from chimera_intel.core.physical_osint import find_physical_locations
 from chimera_intel.core.schemas import PhysicalSecurityResult
+
+runner = CliRunner()
 
 
 class TestPhysicalOsint(unittest.TestCase):
@@ -39,6 +44,44 @@ class TestPhysicalOsint(unittest.TestCase):
         self.assertEqual(len(result.locations_found), 1)
         self.assertEqual(result.locations_found[0].name, "Googleplex")
         self.assertEqual(result.locations_found[0].latitude, 37.422)
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.physical_osint.resolve_target")
+    @patch("chimera_intel.core.physical_osint.find_physical_locations")
+    def test_cli_locations_with_project(self, mock_find_locations, mock_resolve_target):
+        """Tests the CLI command using the centralized target resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "Project Corp"
+        mock_find_locations.return_value.model_dump.return_value = {}
+
+        # Act
+
+        result = runner.invoke(app, ["physical", "locations"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_with(
+            None, required_assets=["company_name", "domain"]
+        )
+        mock_find_locations.assert_called_with("Project Corp")
+
+    @patch("chimera_intel.core.physical_osint.resolve_target")
+    def test_cli_locations_resolver_fails(self, mock_resolve_target):
+        """Tests CLI failure when the resolver raises an exit exception."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(app, ["physical", "locations"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,13 @@ import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
+from typer.testing import CliRunner
+
+from chimera_intel.cli import app
 from chimera_intel.core.dark_web_osint import search_dark_web_engine
+from chimera_intel.core.schemas import ProjectConfig
+
+runner = CliRunner()
 
 
 class TestDarkWebOsint(unittest.TestCase):
@@ -94,6 +100,47 @@ class TestDarkWebOsint(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("Is the Tor Browser running?", result.error)
 
+    # --- NEW: Project-Aware CLI Tests ---
 
-if __name__ == "__main__":
-    unittest.main()
+    @patch("chimera_intel.core.dark_web_osint.get_active_project")
+    @patch(
+        "chimera_intel.core.dark_web_osint.search_dark_web_engine",
+        new_callable=AsyncMock,
+    )
+    def test_cli_dark_web_with_project(self, mock_search_engine, mock_get_project):
+        """Tests the CLI command using an active project's company name as the query."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="DarkWebTest",
+            created_at="2025-01-01",
+            company_name="ProjectCorp",
+        )
+        mock_get_project.return_value = mock_project
+        mock_search_engine.return_value.model_dump.return_value = {}
+
+        # Act
+
+        result = runner.invoke(app, ["defensive", "darkweb", "search"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using query 'ProjectCorp' from active project", result.stdout)
+        mock_search_engine.assert_awaited_with("ProjectCorp", "ahmia")
+
+    @patch("chimera_intel.core.dark_web_osint.get_active_project")
+    def test_cli_dark_web_no_query_no_project(self, mock_get_project):
+        """Tests CLI failure when no query is given and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+
+        result = runner.invoke(app, ["defensive", "darkweb", "search"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No query provided and no active project", result.stdout)

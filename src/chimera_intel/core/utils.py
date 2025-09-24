@@ -95,3 +95,34 @@ def send_slack_notification(webhook_url: str, message: str) -> None:
         logger.info("Successfully sent Slack notification.")
     except Exception as e:
         logger.error("Failed to send Slack notification: %s", e)
+
+
+def send_teams_notification(webhook_url: str, title: str, message: str) -> None:
+    """
+    Sends a message to a Microsoft Teams channel using an incoming webhook.
+
+    Args:
+        webhook_url (str): The Teams incoming webhook URL.
+        title (str): The title of the notification card.
+        message (str): The message content to send (supports Markdown).
+    """
+    if not webhook_url:
+        logger.warning("Teams webhook URL not configured. Skipping notification.")
+        return
+    try:
+        # Teams uses a structured format called "MessageCard"
+
+        payload = {
+            "@type": "MessageCard",
+            "@context": "http://schema.org/extensions",
+            "themeColor": "0076D7",  # Blue color for a professional look
+            "summary": title,
+            "sections": [
+                {"activityTitle": f"**{title}**", "text": message, "markdown": True}
+            ],
+        }
+        response = sync_client.post(webhook_url, json=payload)
+        response.raise_for_status()
+        logger.info("Successfully sent Teams notification.")
+    except Exception as e:
+        logger.error("Failed to send Teams notification: %s", e)

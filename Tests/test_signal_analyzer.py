@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
+import typer
 
 from chimera_intel.cli import app
 from chimera_intel.core.signal_analyzer import (
@@ -233,6 +234,47 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         self.assertNotIn("Potential Strategic Signals Detected", result.stdout)
         self.assertIn("No strong strategic signals detected", result.stderr)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.signal_analyzer.resolve_target")
+    @patch("chimera_intel.core.signal_analyzer.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.signal_analyzer.scrape_job_postings")
+    def test_cli_signal_with_project(
+        self, mock_scrape, mock_get_data, mock_resolve_target
+    ):
+        """Tests the CLI command using the centralized target resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "project-signal.com"
+        mock_get_data.return_value = {"modules": {}}
+        mock_scrape.return_value = JobPostingsResult(job_postings=[])
+
+        # Act
+
+        result = runner.invoke(app, ["analysis", "signal", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
+        mock_get_data.assert_called_with("project-signal.com")
+        mock_scrape.assert_called_with("project-signal.com")
+
+    @patch("chimera_intel.core.signal_analyzer.resolve_target")
+    def test_cli_signal_resolver_fails(self, mock_resolve_target):
+        """Tests CLI failure when the resolver raises an exit exception."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(app, ["analysis", "signal", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

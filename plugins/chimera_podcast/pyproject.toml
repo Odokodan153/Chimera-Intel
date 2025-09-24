@@ -1,0 +1,17 @@
+# plugins/chimera_podcast/pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-podcast"
+version = "1.0.0"
+description = "Podcast OSINT plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "feedparser>=6.0.10,<7.0.0",
+]
+
+# Тази секция регистрира пакета като Chimera Intel плъгин
+[project.entry-points."chimera_intel.plugins"]
+podcast = "chimera_podcast.main:PodcastPlugin"

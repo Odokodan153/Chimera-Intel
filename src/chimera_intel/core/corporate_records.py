@@ -2,6 +2,7 @@ import typer
 import logging
 import os
 from bs4 import BeautifulSoup, Tag, ResultSet
+from typing import Set, Optional
 from .schemas import (
     CorporateRegistryResult,
     CompanyRecord,
@@ -14,7 +15,8 @@ from .config_loader import API_KEYS
 from .http_client import sync_client
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-from typing import Set
+from .project_manager import resolve_target
+
 
 logger = logging.getLogger(__name__)
 
@@ -184,54 +186,70 @@ corporate_records_app = typer.Typer()
 
 @corporate_records_app.command("registry")
 def run_registry_search(
-    company: str = typer.Argument(
-        ..., help="The company name to search in the corporate registry."
+    company: Optional[str] = typer.Argument(
+        None, help="The company name to search. Uses active project if not provided."
     ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Searches official company registries for a given company name."""
+    target_company = resolve_target(company, required_assets=["company_name"])
+
     with console.status(
-        f"[bold cyan]Searching corporate registry for '{company}'...[/bold cyan]"
+        f"[bold cyan]Searching corporate registry for '{target_company}'...[/bold cyan]"
     ):
-        results_model = get_company_records(company)
+        results_model = get_company_records(target_company)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=company, module="corporate_registry", data=results_dict)
+    save_scan_to_db(
+        target=target_company, module="corporate_registry", data=results_dict
+    )
 
 
 @corporate_records_app.command("sanctions")
 def run_sanctions_screening(
-    name: str = typer.Argument(
-        ..., help="The name of the individual or entity to screen."
+    name: Optional[str] = typer.Argument(
+        None,
+        help="The name to screen. Uses active project's company name if not provided.",
     ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Screens a name against the OFAC sanctions and watchlists."""
+    target_name = resolve_target(name, required_assets=["company_name"])
+
     with console.status(
-        f"[bold cyan]Screening '{name}' against sanctions lists...[/bold cyan]"
+        f"[bold cyan]Screening '{target_name}' against sanctions lists...[/bold cyan]"
     ):
-        results_model = screen_sanctions_list(name)
+        results_model = screen_sanctions_list(target_name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=name, module="corporate_sanctions_screen", data=results_dict)
+    save_scan_to_db(
+        target=target_name, module="corporate_sanctions_screen", data=results_dict
+    )
 
 
 @corporate_records_app.command("pep")
 def run_pep_screening(
-    name: str = typer.Argument(..., help="The name of the individual to screen."),
+    name: Optional[str] = typer.Argument(
+        None,
+        help="The name to screen. Uses active project's company name if not provided.",
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Screens a name against a Politically Exposed Persons (PEP) list."""
+    target_name = resolve_target(name, required_assets=["company_name"])
+
     with console.status(
-        f"[bold cyan]Screening '{name}' against PEP list...[/bold cyan]"
+        f"[bold cyan]Screening '{target_name}' against PEP list...[/bold cyan]"
     ):
-        results_model = screen_pep_list(name)
+        results_model = screen_pep_list(target_name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=name, module="corporate_pep_screen", data=results_dict)
+    save_scan_to_db(
+        target=target_name, module="corporate_pep_screen", data=results_dict
+    )

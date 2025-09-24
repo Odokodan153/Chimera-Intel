@@ -12,6 +12,7 @@ from unittest.mock import patch, MagicMock, mock_open, AsyncMock
 import subprocess
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
+import typer
 
 # Import the main app to test commands
 
@@ -46,6 +47,8 @@ from chimera_intel.core.schemas import (
     PasteResult,
     SSLLabsResult,
     MobSFResult,
+    PatentResult,
+    ProjectConfig,
 )
 
 # CliRunner to simulate CLI commands
@@ -601,6 +604,30 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("500", result.error)
 
+    async def test_get_news_gnews_no_api_key(self):
+        """Tests the GNews lookup when the API key is missing."""
+        result = await get_news_gnews("Apple", "")
+        self.assertIsNotNone(result.error)
+        self.assertIn("GNews API key not found", result.error)
+
+    @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
+    async def test_scrape_google_patents_success(self, mock_async_get):
+        """Tests a successful scrape of Google Patents."""
+        mock_html = """
+        <article class="search-result">
+            <h4 class="title">Test Patent</h4>
+            <a class="abs-url" href="/patent/US123/en"></a>
+        </article>
+        """
+        mock_response = MagicMock(spec=Response)
+        mock_response.raise_for_status.return_value = None
+        mock_response.text = mock_html
+        mock_async_get.return_value = mock_response
+        result = await scrape_google_patents("Apple")
+        self.assertIsInstance(result, PatentResult)
+        self.assertEqual(len(result.patents), 1)
+        self.assertEqual(result.patents[0].title, "Test Patent")
+
     @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
     async def test_scrape_google_patents_network_error(self, mock_async_get):
         """Tests the patent scraper when a network error occurs."""
@@ -662,6 +689,41 @@ class TestBusinessIntel(unittest.TestCase):
         mock_logger.warning.assert_any_call(
             "The --filings flag requires a --ticker to be provided."
         )
+
+    @patch("chimera_intel.core.business_intel.resolve_target")
+    @patch("chimera_intel.core.business_intel.get_active_project")
+    @patch("chimera_intel.core.business_intel.asyncio.run")
+    def test_cli_business_intel_with_project(
+        self, mock_asyncio_run, mock_get_project, mock_resolve_target
+    ):
+        """Tests the CLI command using the centralized resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "ProjectCorp"
+        mock_project = ProjectConfig(project_name="Test", created_at="", ticker="PCRP")
+        mock_get_project.return_value = mock_project
+
+        # Act
+
+        result = runner.invoke(app, ["scan", "business", "run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_once_with(
+            None, required_assets=["company_name"]
+        )
+        # The test can't easily inspect the `target_ticker` inside the async `main`,
+        # but a successful run after the resolver is called implies the logic is working.
+
+        mock_asyncio_run.assert_called_once()
+
+    @patch("chimera_intel.core.business_intel.resolve_target")
+    def test_cli_business_intel_resolver_fails(self, mock_resolve_target):
+        """Tests the CLI command when the resolver raises an exit exception."""
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+        result = runner.invoke(app, ["scan", "business", "run"])
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

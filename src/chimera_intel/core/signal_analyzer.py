@@ -3,13 +3,14 @@ from bs4 import BeautifulSoup
 from rich.panel import Panel
 from rich.table import Table
 from rich.console import Console
-from typing import List
+from typing import List, Optional
 import logging
 from httpx import RequestError, HTTPStatusError
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.utils import is_valid_domain, console
 from chimera_intel.core.schemas import JobPostingsResult, StrategicSignal
+from .project_manager import resolve_target
 
 # Get a logger instance for this specific file
 
@@ -168,40 +169,40 @@ console_err = Console(stderr=True, style="bold yellow")
 
 @signal_app.command("run")
 def run_signal_analysis(
-    target: str = typer.Argument(
-        ..., help="The target domain to analyze for strategic signals."
+    target: Optional[str] = typer.Argument(
+        None, help="The target domain to analyze. Uses active project if not provided."
     )
 ):
     """
     Analyzes a target's public footprint for unintentional strategic signals.
-
-    This command aggregates historical data, performs a live scrape for job postings,
-    and then analyzes the combined data to detect potential strategic movements
-    based on a predefined set of keywords and rules.
     """
-    if not is_valid_domain(target):
-        logger.warning("Invalid domain format provided to 'signal' command: %s", target)
+    target_name = resolve_target(target, required_assets=["domain"])
+
+    if not is_valid_domain(target_name):
+        logger.warning(
+            "Invalid domain format provided to 'signal' command: %s", target_name
+        )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{target}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_name}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    logger.info("Analyzing strategic signals for: %s", target)
+    logger.info("Analyzing strategic signals for: %s", target_name)
 
-    aggregated_data = get_aggregated_data_for_target(target)
+    aggregated_data = get_aggregated_data_for_target(target_name)
 
     if not aggregated_data:
         # FIX: Use the dedicated stderr console
 
         console_err.print(
-            f"No historical data found for '{target}'. Run a full scan first."
+            f"No historical data found for '{target_name}'. Run a full scan first."
         )
         raise typer.Exit(code=1)
-    logger.info("Performing a live scrape for job postings for %s.", target)
-    job_results = scrape_job_postings(target)
+    logger.info("Performing a live scrape for job postings for %s.", target_name)
+    job_results = scrape_job_postings(target_name)
     aggregated_data["job_postings"] = job_results.model_dump()
 
     logger.info("Analyzing data for strategic signals.")
@@ -210,7 +211,7 @@ def run_signal_analysis(
     if not detected_signals:
         logger.info(
             "No strong strategic signals detected for %s based on the current rule set.",
-            target,
+            target_name,
         )
         # FIX: Use the dedicated stderr console
 
@@ -218,7 +219,7 @@ def run_signal_analysis(
             "No strong strategic signals detected based on the current rule set."
         )
         raise typer.Exit()
-    table = Table(title=f"Potential Strategic Signals Detected for {target}")
+    table = Table(title=f"Potential Strategic Signals Detected for {target_name}")
     table.add_column("Category", style="magenta")
     table.add_column("Signal Detected", style="cyan")
     table.add_column("Source", style="green")
