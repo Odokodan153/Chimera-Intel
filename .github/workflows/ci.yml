@@ -5,7 +5,7 @@ name: Python Quality Assurance
 on:
   # Run on every push to the 'main' or 'master' branch
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "20250924_DeeperIntel"]
   # Also run on every pull request that targets 'main' or 'master'
   pull_request:
     branches: [ "main", "master" ]
