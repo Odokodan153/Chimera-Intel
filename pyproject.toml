@@ -31,11 +31,30 @@ dependencies = [
     "jinja2>=3.1.2,<4.0.0",
     "pydantic>=2.4.2,<3.0.0",
     "pydantic-settings>=2.0.3,<3.0.0",
-    "rich>=13.0.0,<14.0.0", # Added for console output
+    "rich>=13.0.0,<14.0.0",
     "lxml>=5.2.2,<6.0.0",
-    # Associated types for core libraries
+    "stix2>=3.0.1,<4.0.0",
+    "psycopg2-binary>=2.9.9,<3.0.0",
+    "passlib[bcrypt]>=1.7.4,<2.0.0",
+    "playwright>=1.44.0,<2.0.0",
+    "dnspython>=2.4.2,<3.0.0",
+    "SpeechRecognition>=3.10.0,<4.0.0",
+    "Pillow>=10.0.0,<11.0.0",
+    "joblib>=1.4.2,<2.0.0",
+    "numpy>=1.26.4,<2.0.0",
+    "scikit-learn>=1.5.0,<2.0.0",
+    "sec-api>=1.0.17,<2.0.0",
+    "python-nmap>=0.7.1,<0.8.0",
+    "reportlab>=4.2.0,<5.0.0",
+    "pyvis>=0.3.2,<0.4.0",
+    "feedparser>=6.0.10,<7.0.0",
+    "python-whois>=0.8.0,<0.9.0",
     "types-PyYAML>=6.0.12.12,<7.0.0.0",
     "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
+    "types-psycopg2>=2.9.21.20240523,<2.10.0.0",
+    "types-passlib>=1.7.4.20240106,<1.8.0.0",
+    "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
+    "types-reportlab>=4.0.4.20240417,<4.1.0.0",
 ]
 
 [project.optional-dependencies]

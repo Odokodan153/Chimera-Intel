@@ -1381,16 +1381,30 @@ class CompetitiveAnalysisResult(BaseModel):
 # --- Project Management & Daemon Models ---
 
 
+
+class ScheduledWorkflow(BaseModel):
+    """A single, named workflow with a cron schedule."""
+
+    name: str
+    schedule: str  # e.g., "0 * * * *" for hourly
+    steps: List[str]
+
+
 class DaemonConfig(BaseModel):
     """Configuration for the autonomous monitoring daemon."""
 
     enabled: bool = False
-    monitoring_interval_hours: int = 24
-    workflow: List[str] = [
-        "scan footprint {target}",
-        "analysis diff run footprint {target}",
+    # Replaces monitoring_interval_hours and workflow
+    workflows: List[ScheduledWorkflow] = [
+        ScheduledWorkflow(
+            name="daily_footprint_diff",
+            schedule="0 8 * * *",  # Default: 8 AM every day
+            steps=[
+                "scan footprint {target}",
+                "analysis diff run footprint {target}",
+            ],
+        )
     ]
-
 
 class ProjectConfig(BaseModel):
     """Model for validating a project's configuration file (project.yaml)."""
@@ -1772,33 +1786,6 @@ class GraphNarrativeResult(BaseModel):
     narrative_text: str
     error: Optional[str] = None
 
-
-# --- Project Management & Daemon Models ---
-
-
-class ScheduledWorkflow(BaseModel):
-    """A single, named workflow with a cron schedule."""
-
-    name: str
-    schedule: str  # e.g., "0 * * * *" for hourly
-    steps: List[str]
-
-
-class DaemonConfig(BaseModel):
-    """Configuration for the autonomous monitoring daemon."""
-
-    enabled: bool = False
-    # Replaces monitoring_interval_hours and workflow
-    workflows: List[ScheduledWorkflow] = [
-        ScheduledWorkflow(
-            name="daily_footprint_diff",
-            schedule="0 8 * * *",  # Default: 8 AM every day
-            steps=[
-                "scan footprint {target}",
-                "analysis diff run footprint {target}",
-            ],
-        )
-    ]
 
 
 # ---: User Management Models ---

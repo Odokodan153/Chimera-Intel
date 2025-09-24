@@ -9,13 +9,12 @@ when changes are detected.
 """
 
 import typer
-import sqlite3
 import json
 from rich.pretty import pprint
 from rich.table import Table
 from jsondiff import diff, symbols, insert  # type: ignore
 from typing import Tuple, Optional, Dict, Any, List
-from .database import DB_FILE, console
+from .database import console, get_db_connection
 from .schemas import FormattedDiff, DiffResult, MicroSignal
 from .utils import send_slack_notification, send_teams_notification
 from .config_loader import API_KEYS
@@ -43,10 +42,10 @@ def get_last_two_scans(
         Returns (None, None) if not enough scans are found.
     """
     try:
-        conn = sqlite3.connect(DB_FILE, timeout=10.0)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT scan_data FROM scans WHERE target = ? AND module = ? ORDER BY timestamp DESC LIMIT 2",
+            "SELECT scan_data FROM scans WHERE target = %s AND module = %s ORDER BY timestamp DESC LIMIT 2",
             (target, module),
         )
         records = cursor.fetchall()
@@ -56,13 +55,8 @@ def get_last_two_scans(
         latest_scan = json.loads(records[0][0])
         previous_scan = json.loads(records[1][0])
         return latest_scan, previous_scan
-    except sqlite3.Error as e:
-        logger.error("Database error fetching last two scans for '%s': %s", target, e)
-        return None, None
     except Exception as e:
-        logger.critical(
-            "Unexpected error fetching last two scans for '%s': %s", target, e
-        )
+        logger.error("Database error fetching last two scans for '%s': %s", target, e)
         return None, None
 
 

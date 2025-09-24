@@ -10,6 +10,7 @@ console = Console()
 
 # Database connection details would typically be in a secure config file
 
+
 DB_NAME = "chimera_intel"
 DB_USER = "chimera_user"
 DB_PASSWORD = "your_secure_password"  # Replace with a secure password
