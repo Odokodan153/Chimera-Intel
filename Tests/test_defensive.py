@@ -7,8 +7,6 @@ responses from external APIs and command-line tools, ensuring that the tests
 are reliable and do not depend on network access.
 """
 
-import subprocess
-import time
 import unittest
 from unittest.mock import MagicMock, mock_open, patch
 

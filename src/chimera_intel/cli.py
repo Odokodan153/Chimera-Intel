@@ -11,7 +11,6 @@ from chimera_intel.core.logger_config import setup_logging
 from chimera_intel.core.database import initialize_database
 from chimera_intel.core.plugin_manager import discover_plugins
 from chimera_intel.core.graph_analyzer import graph_app
-from chimera_intel.core.social_analyzer import social_app as social_analyzer_app
 
 # --- : Startup Banner ---
 # This will be printed every time the CLI is invoked.
