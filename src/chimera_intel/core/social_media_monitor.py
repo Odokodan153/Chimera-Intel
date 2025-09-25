@@ -3,9 +3,9 @@ Module for real-time, live monitoring of various social media platforms.
 """
 
 import typer
-import tweepy # type: ignore
+import tweepy  # type: ignore
 from typing import List, Optional
-from googleapiclient.discovery import build # type: ignore
+from googleapiclient.discovery import build  # type: ignore
 from chimera_intel.core.schemas import (
     TwitterMonitoringResult,
     Tweet,
@@ -22,12 +22,12 @@ social_media_app = typer.Typer()
 class TwitterStreamListener(tweepy.StreamingClient):
     """A listener class for handling incoming tweets from the Twitter stream."""
 
-    def __init__(self, bearer_token, limit=10):
+    def __init__(self, bearer_token: str, limit: int = 10):
         super().__init__(bearer_token)
         self.tweets: List[Tweet] = []
         self.limit = limit
 
-    def on_tweet(self, tweet):
+    def on_tweet(self, tweet: tweepy.Tweet) -> None:
         """This function is called when a new tweet is found."""
         self.tweets.append(
             Tweet(
@@ -43,7 +43,7 @@ class TwitterStreamListener(tweepy.StreamingClient):
         if len(self.tweets) >= self.limit:
             self.disconnect()
 
-    def on_errors(self, errors):
+    def on_errors(self, errors: dict) -> None:
         console.print(f"[bold red]Twitter Stream Error:[/] {errors}")
         self.disconnect()
 

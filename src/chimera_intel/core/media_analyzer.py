@@ -40,7 +40,7 @@ async def reverse_image_search(image_path: str) -> ReverseImageSearchResult:
 
     try:
         with open(image_path, "rb") as f:
-            multipart = {"encoded_image": (image_path, f), "image_content": ""}
+            multipart = {"encoded_image": (image_path, f.read(), "image/jpeg")}
 
             # Make a POST request to upload the image
 
