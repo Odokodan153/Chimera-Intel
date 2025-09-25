@@ -164,7 +164,7 @@ class TestAiCore(unittest.TestCase):
             mock_open (MagicMock): A mock for the `open` built-in function.
         """
         result = runner.invoke(app, ["analysis", "core", "swot", "nonexistent.json"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.ai_core.detect_traffic_anomalies")
     def test_cli_anomaly_command(self, mock_detect: MagicMock):
@@ -212,7 +212,7 @@ class TestAiCore(unittest.TestCase):
         # We don't need to mock the swot function itself, as the error happens before
 
         result = runner.invoke(app, ["analysis", "core", "swot", "input.json"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")

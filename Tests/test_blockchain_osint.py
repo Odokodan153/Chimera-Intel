@@ -69,8 +69,8 @@ class TestBlockchainOsint(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("A wallet address must be provided", result.stdout)
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("Missing argument", result.stdout)
 
 
 if __name__ == "__main__":

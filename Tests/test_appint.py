@@ -38,9 +38,12 @@ class TestAppint(unittest.TestCase):
         mock_subprocess.assert_called_once()
         mock_rmtree.assert_called_once()  # Verify cleanup
 
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
+    @patch("chimera_intel.core.appint.shutil.rmtree")
     @patch("chimera_intel.core.appint.subprocess.run")
-    def test_analyze_apk_static_apktool_not_found(self, mock_subprocess, mock_exists):
+    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
+    def test_analyze_apk_static_apktool_not_found(
+        self, mock_exists, mock_subprocess, mock_rmtree
+    ):
         """Tests the error handling when apktool is not installed."""
         # Arrange
 
@@ -54,6 +57,9 @@ class TestAppint(unittest.TestCase):
 
         self.assertIsNotNone(result.error)
         self.assertIn("apktool not found", result.error)
+        # Ensure cleanup is not called if the directory was never created
+
+        mock_rmtree.assert_not_called()
 
     @patch("chimera_intel.core.appint.os.path.exists", return_value=False)
     def test_analyze_apk_static_file_not_found(self, mock_exists):

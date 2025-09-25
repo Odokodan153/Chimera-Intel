@@ -3,8 +3,10 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
 import typer
+import os
 
 # Import the main app to test commands
+
 from chimera_intel.cli import app
 from chimera_intel.core.business_intel import (
     get_financials_yfinance,
@@ -14,6 +16,7 @@ from chimera_intel.core.business_intel import (
 )
 
 # Import all necessary Pydantic models for testing
+
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -22,6 +25,7 @@ from chimera_intel.core.schemas import (
 )
 
 # CliRunner to simulate CLI commands
+
 runner = CliRunner()
 
 
@@ -50,6 +54,7 @@ class TestBusinessIntel(unittest.TestCase):
         """Tests yfinance lookup when the API returns incomplete data."""
         mock_instance = mock_ticker.return_value
         # Simulate a response that is missing a key field
+
         mock_instance.info = {"longName": "Incomplete Inc."}
         result = get_financials_yfinance("INCOMPLETE")
         self.assertIsNotNone(result.error)
@@ -153,16 +158,19 @@ class TestBusinessIntel(unittest.TestCase):
         )
         self.assertEqual(result.exit_code, 0)
 
-    @patch("chimera_intel.core.business_intel.logger")
     @patch("chimera_intel.core.business_intel.API_KEYS")
-    def test_cli_business_intel_filings_no_ticker(self, mock_api_keys, mock_logger):
+    def test_cli_business_intel_filings_no_ticker(self, mock_api_keys):
         """Tests that a warning is logged if --filings is used without --ticker."""
         mock_api_keys.gnews_api_key = "fake_gnews_key_for_test"
-
+        log_file = "chimera_intel.log"
+        if os.path.exists(log_file):
+            os.remove(log_file)
         runner.invoke(app, ["scan", "business", "run", "Company", "--filings"])
 
-        mock_logger.warning.assert_any_call(
-            "The --filings flag requires a --ticker to be provided."
+        with open(log_file, "r") as f:
+            log_content = f.read()
+        self.assertIn(
+            "The --filings flag requires a --ticker to be provided.", log_content
         )
 
     @patch("chimera_intel.core.business_intel.resolve_target")
