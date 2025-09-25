@@ -10,7 +10,7 @@ from chimera_intel.core.schemas import (
     ThreatHuntResult,
 )
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestThreatHunter(unittest.TestCase):

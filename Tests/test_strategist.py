@@ -11,7 +11,7 @@ from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 # This is the corrected initialization.
 
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestStrategist(unittest.TestCase):

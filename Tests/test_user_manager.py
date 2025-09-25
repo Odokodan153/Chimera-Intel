@@ -14,7 +14,7 @@ from chimera_intel.core.user_manager import (
 )
 from chimera_intel.core.schemas import User
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestUserManager(unittest.TestCase):

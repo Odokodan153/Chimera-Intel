@@ -13,7 +13,7 @@ from chimera_intel.core.schemas import (
     ProjectConfig,
 )
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestTprEngine(unittest.TestCase):
