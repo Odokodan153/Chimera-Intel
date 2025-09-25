@@ -8,45 +8,75 @@ geographic distribution, such as political instability or infrastructure depende
 import typer
 import logging
 from typing import Optional, List, Set
+import asyncio
+from datetime import datetime
 
 from .schemas import GeointReport, CountryRiskProfile
 from .utils import save_or_print_results, console
 from .database import get_aggregated_data_for_target, save_scan_to_db
 from .http_client import sync_client
 from .project_manager import resolve_target
+from .geo_osint import get_geolocation_data
 
 logger = logging.getLogger(__name__)
 
 
 def get_country_risk_data(country_name: str) -> Optional[CountryRiskProfile]:
     """
-    Fetches a risk profile for a given country.
-
-    NOTE: This is a placeholder for a real risk data provider API.
-    This example uses a public API for general country data.
+    Fetches a risk profile for a given country using the restcountries.com and World Bank APIs.
+    NOTE: A dedicated risk intelligence API would be required for production environments
+    to get a wider range of metrics.
     """
     try:
-        # Using a public API for demonstration purposes.
-        # A real implementation would use a dedicated risk intelligence API.
+        # --- Get general country data ---
 
-        response = sync_client.get(
-            f"https://restcountries.com/v3.1/name/{country_name}"
+        country_response = sync_client.get(
+            f"https://restcountries.com/v3.1/name/{country_name}?fullText=true"
         )
-        response.raise_for_status()
-        data = response.json()[0]
+        country_response.raise_for_status()
+        country_data = country_response.json()[0]
+        country_code = country_data.get(
+            "cca2"
+        )  # Get ISO 3166-1 alpha-2 country code for World Bank API
 
+        # --- Get Political Stability Index from World Bank API ---
+
+        political_stability = None
+        if country_code:
+            current_year = datetime.now().year - 1
+            wb_url = f"http://api.worldbank.org/v2/country/{country_code}/indicator/PV.EST?date={current_year}:{current_year}&format=json"
+            wb_response = sync_client.get(wb_url)
+            wb_response.raise_for_status()
+            wb_data = wb_response.json()
+            if wb_data and len(wb_data) > 1 and wb_data[1]:
+                political_stability = wb_data[1][0].get("value")
         return CountryRiskProfile(
-            country_name=data.get("name", {}).get("common"),
-            region=data.get("region"),
-            subregion=data.get("subregion"),
-            population=data.get("population"),
-            # Placeholder for real risk scores
-            political_stability_index=6.5,  # Example static value
-            economic_freedom_index=7.0,  # Example static value
+            country_name=country_data.get("name", {}).get("common"),
+            region=country_data.get("region"),
+            subregion=country_data.get("subregion"),
+            population=country_data.get("population"),
+            political_stability_index=(
+                round(political_stability, 2)
+                if political_stability is not None
+                else None
+            ),
         )
     except Exception as e:
-        logger.warning(f"Could not retrieve risk data for {country_name}: {e}")
+        logger.warning(f"Could not retrieve full risk data for {country_name}: {e}")
         return None
+
+
+async def _get_countries_from_ips(ips: List[str]) -> Set[str]:
+    """
+    Asynchronously gets country names from a list of IP addresses.
+    """
+    tasks = [get_geolocation_data(ip) for ip in ips]
+    results = await asyncio.gather(*tasks)
+    countries = set()
+    for res in results:
+        if res and res.country:
+            countries.add(res.country)
+    return countries
 
 
 def generate_geoint_report(target: str) -> GeointReport:
@@ -71,14 +101,16 @@ def generate_geoint_report(target: str) -> GeointReport:
         country = loc.get("address", "").split(",")[-1].strip()
         if country:
             countries.add(country)
-    # Extract countries from IP address geolocation
+    # Extract countries from IP address geolocation from footprint data
 
-    ip_intel = modules.get("footprint", {}).get("ip_threat_intelligence", [])
-    for intel in ip_intel:
-        # This assumes a geo-intel module has run and saved data previously
-        # For a full implementation, this would need to query the geo_osint data
-
-        pass  # Placeholder for more advanced correlation
+    footprint_data = modules.get("footprint", {})
+    if footprint_data:
+        dns_records = footprint_data.get("dns_records", {})
+        if dns_records:
+            ip_addresses = dns_records.get("A", [])
+            if ip_addresses:
+                ip_countries = asyncio.run(_get_countries_from_ips(ip_addresses))
+                countries.update(ip_countries)
     # Fetch risk profiles for each unique country
 
     risk_profiles: List[CountryRiskProfile] = []

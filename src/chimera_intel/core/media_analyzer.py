@@ -16,6 +16,9 @@ from .schemas import (
 )
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
+from .http_client import sync_client
+from bs4 import BeautifulSoup
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +36,58 @@ async def reverse_image_search(image_path: str) -> ReverseImageSearchResult:
     """
     logger.info(f"Performing reverse image search for {image_path}")
     matches: List[ReverseImageMatch] = []
+    search_url = "http://www.google.com/searchbyimage/upload"
 
-    # This is a simplified example. A robust implementation would use a dedicated
-    # API or a more advanced scraping library like Playwright to handle JavaScript.
-    # For the purpose of this project, we'll focus on the structure.
+    try:
+        with open(image_path, "rb") as f:
+            multipart = {"encoded_image": (image_path, f), "image_content": ""}
 
-    # Placeholder implementation
+            # Make a POST request to upload the image
 
-    matches.append(
-        ReverseImageMatch(
-            page_url="http://example.com/similar-image",
-            page_title="Example Page with Similar Image",
-            image_url="http://example.com/image.jpg",
-            source_engine="Google Images (Simulated)",
+            response = sync_client.post(
+                search_url, files=multipart, follow_redirects=False
+            )
+
+            # Get the redirect URL
+
+            redirect_url = response.headers.get("Location")
+
+            if not redirect_url:
+                raise Exception("Could not get redirect URL from Google.")
+            # Follow the redirect to get the search results
+
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            search_response = sync_client.get(redirect_url, headers=headers)
+            search_response.raise_for_status()
+
+            # Parse the search results
+
+            soup = BeautifulSoup(search_response.text, "html.parser")
+
+            for g in soup.find_all("div", class_="g"):
+                a_tag = g.find("a")
+                h3_tag = g.find("h3")
+                if a_tag and h3_tag:
+                    link = a_tag.get("href")
+                    title = h3_tag.text
+                    matches.append(
+                        ReverseImageMatch(
+                            page_url=link,
+                            page_title=title,
+                            image_url="",  # Not easily available from search results page
+                            source_engine="Google Images",
+                        )
+                    )
+    except Exception as e:
+        logger.error(f"Failed to perform reverse image search for {image_path}: {e}")
+        return ReverseImageSearchResult(
+            source_image_path=image_path,
+            matches_found=0,
+            matches=[],
+            error=f"An error occurred during reverse image search: {e}",
         )
-    )
-
     return ReverseImageSearchResult(
         source_image_path=image_path, matches_found=len(matches), matches=matches
     )

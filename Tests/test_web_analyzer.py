@@ -9,7 +9,6 @@ live network conditions. It also includes tests for the CLI commands.
 
 import unittest
 import time
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 from httpx import Response

@@ -3,11 +3,16 @@ from rich.console import Console
 from rich.table import Table
 from typing import List, Dict, Any, Optional
 import logging
-from .database import get_all_scans_for_target
+from .database import get_all_scans_for_target, get_scan_history
 from .schemas import Prediction, ForecastResult, ExpectedEvent
 from .project_manager import resolve_target
 import joblib  # type: ignore
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from datetime import datetime, timedelta
 
 # Get a logger instance for this specific file
 
@@ -36,39 +41,44 @@ def check_for_missed_events(
     target: str, historical_data: List[Dict[str, Any]], module: str
 ) -> List[str]:
     """
-    Checks if any expected recurring events have been missed.
+    Checks if any expected recurring events have been missed by analyzing scan timestamps.
     """
     missed_events: List[str] = []
     if not historical_data:
         return missed_events
+    now = datetime.now()
+
     for event_def in EXPECTED_EVENTS_LIBRARY:
         if event_def.module == module:
-            # Find the last time this event was observed
+            last_observed_date = None
+            # Find the last time this event was observed by checking scans in reverse
 
             for scan in reversed(historical_data):
-                # Use json path logic to check if the field exists
+                scan_data = scan.get("scan_data", {})
+                timestamp = scan.get("timestamp")
+                if not timestamp:
+                    continue
+                # Check if the expected data field exists in the scan
 
                 field_parts = event_def.field_to_check.split(".")
-                data = scan
+                data = scan_data
                 field_found = True
                 for part in field_parts:
                     if isinstance(data, dict) and part in data:
-                        data = data[part]
+                        data = data.get(part)
                     else:
                         field_found = False
                         break
                 if field_found:
-                    # Find the timestamp of the scan where the data was found
-                    # This requires getting timestamps from the DB query, which get_all_scans needs to be updated to do
-                    # For now, we'll simulate this logic.
-                    # A full implementation would require get_all_scans_for_target to also return timestamps.
+                    last_observed_date = timestamp
+                    break  # Found the most recent occurrence
+            if last_observed_date:
+                # If the last event was too long ago, flag it as missed
 
-                    pass  # Placeholder
-    # Placeholder logic since we don't have timestamps easily accessible here
-    # This demonstrates the concept.
-
-    if module == "business_intel" and len(historical_data) > 1:
-        missed_events.append("Potential missed quarterly report (simulation).")
+                if (now - last_observed_date).days > event_def.expected_frequency_days:
+                    missed_events.append(
+                        f"Expected '{event_def.event_type}' was not observed in the last {event_def.expected_frequency_days} days. Last seen: {last_observed_date.date()}"
+                    )
     return missed_events
 
 
@@ -86,7 +96,7 @@ def run_prediction_rules(
         module (str): The name of the module being analyzed.
 
     Returns:
-        ForecastResult: A Pydantic model containing a list of predictions or notes.
+        ForecastResult: A Pantic model containing a list of predictions or notes.
     """
     predictions: List[Prediction] = []
 
@@ -95,8 +105,8 @@ def run_prediction_rules(
             predictions=[],
             notes="Not enough historical data to make predictions. Need at least 2 scans.",
         )
-    latest_scan = historical_data[-1]
-    previous_scan = historical_data[-2]
+    latest_scan = historical_data[-1].get("scan_data", {})
+    previous_scan = historical_data[-2].get("scan_data", {})
 
     # --- Rule Set for the 'business_intel' module ---
 
@@ -198,18 +208,95 @@ def run_prediction_rules(
 
 def train_breach_prediction_model():
     """
-    This function is a placeholder for training a breach prediction model.
-    It would load historical data from the database, featurize it, and train a model.
-    The trained model would then be saved to a file (e.g., 'breach_model.pkl').
+    Trains a machine learning model to predict data breaches based on historical scan data.
     """
-    # This is a placeholder. You would need to implement the following steps:
-    # 1. Load historical data from the database (all scans).
-    # 2. For each company, determine if a breach occurred after a given scan.
-    # 3. Featurize the scan data (e.g., number of vulnerabilities, open ports, etc.).
-    # 4. Train a classifier (e.g., Logistic Regression, Random Forest) on the data.
-    # 5. Save the trained model to a file using joblib.
+    console.print("[bold cyan]Starting breach prediction model training...[/bold cyan]")
 
-    pass
+    # 1. Load all historical scan data from the database
+
+    with console.status("[bold green]Loading historical scan data...[/bold green]"):
+        all_scans = get_scan_history()
+        if not all_scans:
+            console.print(
+                "[bold red]Error:[/bold red] No historical scan data found to train the model."
+            )
+            raise typer.Exit(code=1)
+    # 2. Featurize the scan data
+
+    with console.status("[bold green]Featurizing data...[/bold green]"):
+        records = []
+        for scan in all_scans:
+            scan_data = scan.get("scan_data", {})
+            if not isinstance(scan_data, dict):
+                continue
+            num_vulns = 0
+            if "vulnerability_scanner" in scan_data:
+                for host in scan_data["vulnerability_scanner"].get("scanned_hosts", []):
+                    for port in host.get("open_ports", []):
+                        num_vulns += len(port.get("vulnerabilities", []))
+            records.append(
+                {
+                    "target": scan["target"],
+                    "timestamp": scan["timestamp"],
+                    "num_breaches": len(
+                        scan_data.get("defensive_breaches", {}).get("breaches", [])
+                    ),
+                    "num_hosts": len(
+                        scan_data.get("vulnerability_scanner", {}).get(
+                            "scanned_hosts", []
+                        )
+                    ),
+                    "num_vulns": num_vulns,
+                }
+            )
+        if not records:
+            console.print(
+                "[bold red]Error:[/bold red] No valid records found after featurizing data."
+            )
+            raise typer.Exit(code=1)
+        df = pd.DataFrame(records)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+    # 3. Create labels
+
+    with console.status("[bold green]Creating labels...[/bold green]"):
+        df["breach_occurred"] = (
+            df.sort_values(by="timestamp")
+            .groupby("target")["num_breaches"]
+            .diff()
+            .fillna(0)
+        )
+        df["breach_occurred"] = (df["breach_occurred"] > 0).astype(int)
+
+        # Shift the label to predict future breaches
+
+        df["breach_occurred"] = (
+            df.groupby("target")["breach_occurred"].shift(-1).fillna(0)
+        )
+    # 4. Train the model
+
+    with console.status("[bold green]Training model...[/bold green]"):
+        features = ["num_hosts", "num_vulns"]
+        X = df[features]
+        y = df["breach_occurred"]
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        model = RandomForestClassifier(
+            n_estimators=100, random_state=42, class_weight="balanced"
+        )
+        model.fit(X_train, y_train)
+    # 5. Evaluate and save the model
+
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    console.print(f"Model accuracy: [bold green]{accuracy:.2f}[/bold green]")
+
+    joblib.dump(model, "breach_model.pkl")
+    console.print(
+        "[bold green]✅ Model trained and saved to breach_model.pkl[/bold green]"
+    )
 
 
 def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]:
@@ -227,19 +314,14 @@ def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]
     except FileNotFoundError:
         return None  # Model not trained yet
     # Featurize the input data in the same way as the training data
-    # This is a simplified example. You would need to create a more robust
-    # feature extraction function.
 
-    features = np.array(
-        [
-            len(
-                scan_data.get("defensive_breaches", {}).get("breaches", [])
-            ),  # Existing breaches
-            len(
-                scan_data.get("vulnerability_scanner", {}).get("scanned_hosts", [])
-            ),  # Number of hosts
-        ]
-    ).reshape(1, -1)
+    num_hosts = len(scan_data.get("vulnerability_scanner", {}).get("scanned_hosts", []))
+    num_vulns = 0
+    if "vulnerability_scanner" in scan_data:
+        for host in scan_data["vulnerability_scanner"].get("scanned_hosts", []):
+            for port in host.get("open_ports", []):
+                num_vulns += len(port.get("vulnerabilities", []))
+    features = np.array([num_hosts, num_vulns]).reshape(1, -1)
 
     prediction = model.predict_proba(features)[0][1]  # Probability of breach
 
@@ -323,3 +405,11 @@ def run_forecast_analysis(
             forecast_result.notes,
         )
         console.print(f"[dim]{forecast_result.notes}[/dim]")
+
+
+@forecast_app.command("train-breach-model")
+def train_breach_model_command():
+    """
+    Trains and saves the breach prediction model.
+    """
+    train_breach_prediction_model()

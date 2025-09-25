@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 
 from chimera_intel.core.media_analyzer import (
     reverse_image_search,
@@ -11,16 +11,44 @@ from chimera_intel.core.schemas import ReverseImageSearchResult, MediaAnalysisRe
 class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
     """Test cases for the media_analyzer module."""
 
-    # Note: Reverse image search is a placeholder, so we test its structure.
+    @patch("chimera_intel.core.media_analyzer.sync_client")
+    @patch("builtins.open", new_callable=mock_open, read_data=b"image data")
+    async def test_reverse_image_search_success(self, mock_file, mock_sync_client):
+        """Tests a successful reverse image search."""
+        # Arrange
 
-    async def test_reverse_image_search_structure(self):
-        """Tests the basic structure of the reverse image search result."""
+        mock_post_response = MagicMock()
+        mock_post_response.headers = {
+            "Location": "https://www.google.com/search?q=test"
+        }
+
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 200
+        mock_get_response.text = """
+        <html><body>
+            <div class="g">
+                <a href="http://example.com/page1"><h3>Page Title 1</h3></a>
+            </div>
+            <div class="g">
+                <a href="http://example.com/page2"><h3>Page Title 2</h3></a>
+            </div>
+        </body></html>
+        """
+
+        mock_sync_client.post.return_value = mock_post_response
+        mock_sync_client.get.return_value = mock_get_response
+
+        # Act
+
         result = await reverse_image_search("test.jpg")
+
+        # Assert
+
         self.assertIsInstance(result, ReverseImageSearchResult)
         self.assertIsNone(result.error)
-        # Check that the placeholder returns its expected simulated result
-
-        self.assertEqual(result.matches_found, 1)
+        self.assertEqual(result.matches_found, 2)
+        self.assertEqual(result.matches[0].page_title, "Page Title 1")
+        self.assertEqual(result.matches[1].page_url, "http://example.com/page2")
 
     @patch("chimera_intel.core.media_analyzer.sr.Recognizer")
     @patch("chimera_intel.core.media_analyzer.sr.AudioFile")

@@ -3,6 +3,9 @@ from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import typer
 import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from datetime import datetime, timedelta
 
 from chimera_intel.cli import app
 from chimera_intel.core.forecaster import (
@@ -11,6 +14,7 @@ from chimera_intel.core.forecaster import (
     predict_breach_likelihood,
     predict_acquisition_likelihood,
     check_for_missed_events,
+    train_breach_prediction_model,
 )
 
 runner = CliRunner()
@@ -19,23 +23,23 @@ runner = CliRunner()
 class TestForecaster(unittest.TestCase):
     """Test cases for the forecaster module."""
 
-    @patch("chimera_intel.core.forecaster.sqlite3.connect")
-    def test_get_all_scans_for_target_success(self, mock_connect):
+    @patch("chimera_intel.core.forecaster.get_all_scans_for_target")
+    def test_get_all_scans_for_target_success(self, mock_get_scans):
         """Tests retrieving all historical scans for a target."""
-        mock_cursor = mock_connect.return_value.cursor.return_value
-        mock_cursor.fetchall.return_value = [
-            ('{"news": {"totalArticles": 10}}',),
-            ('{"news": {"totalArticles": 5}}',),
+        # This function is now expected to return a list of dicts
+
+        mock_get_scans.return_value = [
+            {"scan_data": {"news": {"totalArticles": 10}}, "timestamp": datetime.now()}
         ]
 
         scans = get_all_scans_for_target("example.com", "business_intel")
-        self.assertEqual(len(scans), 2)
-        self.assertEqual(scans[0]["news"]["totalArticles"], 10)
+        self.assertEqual(len(scans), 1)
+        self.assertEqual(scans[0]["scan_data"]["news"]["totalArticles"], 10)
 
-    @patch("chimera_intel.core.forecaster.sqlite3.connect")
-    def test_get_all_scans_for_target_db_error(self, mock_connect):
+    @patch("chimera_intel.core.forecaster.get_all_scans_for_target")
+    def test_get_all_scans_for_target_db_error(self, mock_get_scans):
         """Tests scan retrieval when a database error occurs."""
-        mock_connect.side_effect = Exception("DB connection failed")
+        mock_get_scans.side_effect = Exception("DB connection failed")
         scans = get_all_scans_for_target("example.com", "business_intel")
         self.assertEqual(scans, [])
 
@@ -47,8 +51,8 @@ class TestForecaster(unittest.TestCase):
     def test_run_prediction_rules_high_news_volume(self):
         """Tests the 'High News Volume' prediction rule."""
         historical_data = [
-            {"business_intel": {"news": {"totalArticles": 5}}},
-            {"business_intel": {"news": {"totalArticles": 15}}},
+            {"scan_data": {"business_intel": {"news": {"totalArticles": 5}}}},
+            {"scan_data": {"business_intel": {"news": {"totalArticles": 15}}}},
         ]
         result = run_prediction_rules(historical_data, "business_intel")
         self.assertEqual(len(result.predictions), 1)
@@ -57,11 +61,22 @@ class TestForecaster(unittest.TestCase):
     def test_run_prediction_rules_new_patents(self):
         """Tests the 'Innovation Signal' prediction rule for new patents."""
         historical_data = [
-            {"business_intel": {"patents": {"patents": [{"title": "Old Patent"}]}}},
             {
-                "business_intel": {
-                    "patents": {
-                        "patents": [{"title": "Old Patent"}, {"title": "New Patent"}]
+                "scan_data": {
+                    "business_intel": {
+                        "patents": {"patents": [{"title": "Old Patent"}]}
+                    }
+                }
+            },
+            {
+                "scan_data": {
+                    "business_intel": {
+                        "patents": {
+                            "patents": [
+                                {"title": "Old Patent"},
+                                {"title": "New Patent"},
+                            ]
+                        }
                     }
                 }
             },
@@ -73,11 +88,22 @@ class TestForecaster(unittest.TestCase):
     def test_run_prediction_rules_new_marketing_tech(self):
         """Tests the 'Marketing Expansion Signal' prediction rule."""
         historical_data = [
-            {"web_analysis": {"tech_stack": {"results": [{"technology": "React"}]}}},
             {
-                "web_analysis": {
-                    "tech_stack": {
-                        "results": [{"technology": "React"}, {"technology": "HubSpot"}]
+                "scan_data": {
+                    "web_analysis": {
+                        "tech_stack": {"results": [{"technology": "React"}]}
+                    }
+                }
+            },
+            {
+                "scan_data": {
+                    "web_analysis": {
+                        "tech_stack": {
+                            "results": [
+                                {"technology": "React"},
+                                {"technology": "HubSpot"},
+                            ]
+                        }
                     }
                 }
             },
@@ -89,22 +115,80 @@ class TestForecaster(unittest.TestCase):
     def test_run_prediction_rules_no_signals(self):
         """Tests prediction rules when no strong signals are detected."""
         historical_data = [
-            {"business_intel": {"news": {"totalArticles": 5}}},
-            {"business_intel": {"news": {"totalArticles": 6}}},
+            {"scan_data": {"business_intel": {"news": {"totalArticles": 5}}}},
+            {"scan_data": {"business_intel": {"news": {"totalArticles": 6}}}},
         ]
         result = run_prediction_rules(historical_data, "business_intel")
         self.assertEqual(len(result.predictions), 0)
         self.assertIn("No strong predictive signals", result.notes)
 
-    def test_check_for_missed_events(self):
-        """Tests the OSINT via Negative Space logic."""
-        # This is a placeholder test as the current implementation is simulated
+    def test_check_for_missed_events_is_missed(self):
+        """Tests that a missed event is correctly identified."""
+        # Arrange: Mock data where the last financial report was 100 days ago
 
-        historical_data = [{"scan1": "data"}, {"scan2": "data"}]
+        historical_data = [
+            {
+                "scan_data": {
+                    "business_intel": {"financials": {"companyName": "TestCorp"}}
+                },
+                "timestamp": datetime.now() - timedelta(days=100),
+            }
+        ]
+
+        # Act
+
         missed = check_for_missed_events(
             "example.com", historical_data, "business_intel"
         )
-        self.assertGreater(len(missed), 0)
+
+        # Assert
+
+        self.assertEqual(len(missed), 1)
+        self.assertIn("was not observed in the last 95 days", missed[0])
+
+    def test_check_for_missed_events_not_missed(self):
+        """Tests that a recent event is not flagged as missed."""
+        # Arrange: Mock data where the last financial report was 30 days ago
+
+        historical_data = [
+            {
+                "scan_data": {
+                    "business_intel": {"financials": {"companyName": "TestCorp"}}
+                },
+                "timestamp": datetime.now() - timedelta(days=30),
+            }
+        ]
+
+        # Act
+
+        missed = check_for_missed_events(
+            "example.com", historical_data, "business_intel"
+        )
+
+        # Assert
+
+        self.assertEqual(len(missed), 0)
+
+    def test_check_for_missed_events_no_prior_data(self):
+        """Tests that no missed events are flagged if no prior occurrences exist."""
+        # Arrange: Mock data that doesn't contain the expected event field
+
+        historical_data = [
+            {
+                "scan_data": {"some_other_module": {"data": "value"}},
+                "timestamp": datetime.now() - timedelta(days=100),
+            }
+        ]
+
+        # Act
+
+        missed = check_for_missed_events(
+            "example.com", historical_data, "business_intel"
+        )
+
+        # Assert
+
+        self.assertEqual(len(missed), 0)
 
     @patch("chimera_intel.core.forecaster.joblib.load")
     def test_predict_breach_likelihood_high_risk(self, mock_joblib_load):
@@ -114,8 +198,9 @@ class TestForecaster(unittest.TestCase):
         mock_joblib_load.return_value = mock_model
 
         scan_data = {
-            "defensive_breaches": {"breaches": ["breach1"]},
-            "vulnerability_scanner": {"scanned_hosts": ["host1"]},
+            "vulnerability_scanner": {
+                "scanned_hosts": [{"open_ports": [{"vulnerabilities": [1, 2]}]}]
+            }
         }
         prediction = predict_breach_likelihood(scan_data)
 
@@ -159,6 +244,54 @@ class TestForecaster(unittest.TestCase):
 
         self.assertIsNone(prediction)
 
+    @patch("chimera_intel.core.forecaster.joblib.dump")
+    @patch("chimera_intel.core.forecaster.get_scan_history")
+    def test_train_breach_prediction_model_success(
+        self, mock_get_history, mock_joblib_dump
+    ):
+        """Tests that the breach prediction model training process runs and saves a model."""
+        # Arrange: Create mock scan data that can be featurized
+
+        mock_get_history.return_value = [
+            {
+                "target": "companya.com",
+                "timestamp": "2025-01-01T12:00:00Z",
+                "scan_data": {
+                    "vulnerability_scanner": {"scanned_hosts": [1, 2, 3]},
+                    "defensive_breaches": {"breaches": []},
+                },
+            },
+            {
+                "target": "companya.com",
+                "timestamp": "2025-02-01T12:00:00Z",
+                "scan_data": {
+                    "defensive_breaches": {
+                        "breaches": ["new_breach"]
+                    }  # This creates a label for the previous scan
+                },
+            },
+            {
+                "target": "companyb.com",
+                "timestamp": "2025-01-01T12:00:00Z",
+                "scan_data": {"defensive_breaches": {"breaches": []}},
+            },
+        ]
+
+        # Act
+
+        train_breach_prediction_model()
+
+        # Assert
+
+        mock_get_history.assert_called_once()
+        mock_joblib_dump.assert_called_once()
+        # Check that the first argument is a trained model
+
+        self.assertIsInstance(mock_joblib_dump.call_args[0][0], RandomForestClassifier)
+        # Check that the second argument is the correct filename
+
+        self.assertEqual(mock_joblib_dump.call_args[0][1], "breach_model.pkl")
+
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.forecaster.resolve_target")
@@ -194,6 +327,18 @@ class TestForecaster(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 1)
+
+    @patch("chimera_intel.core.forecaster.train_breach_prediction_model")
+    def test_cli_train_breach_model_command(self, mock_train_model):
+        """Tests that the 'train-breach-model' CLI command calls the correct function."""
+        # Act
+
+        result = runner.invoke(app, ["analysis", "forecast", "train-breach-model"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_train_model.assert_called_once()
 
 
 if __name__ == "__main__":

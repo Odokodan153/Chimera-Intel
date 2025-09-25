@@ -222,13 +222,19 @@ def get_scan_history() -> List[Dict[str, Any]]:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, target, module, timestamp FROM scans ORDER BY timestamp DESC"
+            "SELECT id, target, module, timestamp, scan_data FROM scans ORDER BY timestamp DESC"
         )
         records = cursor.fetchall()
         cursor.close()
         conn.close()
         return [
-            {"id": r[0], "target": r[1], "module": r[2], "timestamp": r[3].isoformat()}
+            {
+                "id": r[0],
+                "target": r[1],
+                "module": r[2],
+                "timestamp": r[3],
+                "scan_data": r[4],
+            }
             for r in records
         ]
     except (psycopg2.Error, ConnectionError) as e:
@@ -274,18 +280,18 @@ def get_all_scans_for_target(
         cursor = conn.cursor()
         if module:
             cursor.execute(
-                "SELECT scan_data FROM scans WHERE target = %s AND module = %s ORDER BY timestamp ASC",
+                "SELECT scan_data, timestamp FROM scans WHERE target = %s AND module = %s ORDER BY timestamp ASC",
                 (target, module),
             )
         else:
             cursor.execute(
-                "SELECT scan_data FROM scans WHERE target = %s ORDER BY timestamp ASC",
+                "SELECT scan_data, timestamp FROM scans WHERE target = %s ORDER BY timestamp ASC",
                 (target,),
             )
         records = cursor.fetchall()
         cursor.close()
         conn.close()
-        return [r[0] for r in records]
+        return [{"scan_data": r[0], "timestamp": r[1]} for r in records]
     except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not fetch scans for target: {e}"
