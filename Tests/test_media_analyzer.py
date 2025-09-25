@@ -77,11 +77,16 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         mock_rec_instance.recognize_whisper.assert_called_once()
 
     @patch("chimera_intel.core.media_analyzer.sr.Recognizer")
-    def test_transcribe_audio_file_exception(self, mock_recognizer):
+    @patch("chimera_intel.core.media_analyzer.sr.AudioFile")
+    def test_transcribe_audio_file_exception(self, mock_audio_file, mock_recognizer):
         """Tests error handling during transcription."""
         # Arrange
 
-        mock_recognizer.side_effect = Exception("Whisper model not found")
+        mock_rec_instance = mock_recognizer.return_value
+        mock_rec_instance.recognize_whisper.side_effect = Exception(
+            "Whisper model not found"
+        )
+        mock_audio_file.return_value.__enter__.return_value = MagicMock()
 
         # Act
 

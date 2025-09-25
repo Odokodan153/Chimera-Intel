@@ -239,7 +239,7 @@ def get_lobbying_data(company_name: str) -> LobbyingResult:
             total_spent=0, error="Lobbying data API key not found in .env file."
         )
     logger.info(f"Analyzing lobbying data for {company_name}.")
-    base_url = "https://api.propublica.org/congress/v1/lobbying/search.json"  # More realistic placeholder
+    base_url = "https://api.propublica.org/congress/v1/lobbying/search.json"  
     params = {"query": company_name}
     headers = {"X-API-Key": api_key}
 

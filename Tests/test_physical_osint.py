@@ -4,7 +4,10 @@ from typer.testing import CliRunner
 import typer
 
 from chimera_intel.cli import app
-from chimera_intel.core.physical_osint import find_physical_locations
+from chimera_intel.core.physical_osint import (
+    find_physical_locations,
+    physical_osint_app,
+)
 from chimera_intel.core.schemas import PhysicalSecurityResult
 
 runner = CliRunner()
@@ -58,7 +61,7 @@ class TestPhysicalOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["physical", "locations"])
+        result = runner.invoke(physical_osint_app, ["locations"])
 
         # Assert
 
@@ -77,7 +80,7 @@ class TestPhysicalOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["physical", "locations"])
+        result = runner.invoke(physical_osint_app, ["locations"])
 
         # Assert
 

@@ -3,8 +3,7 @@ from unittest.mock import patch, MagicMock
 import git
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.code_intel import analyze_git_repository
+from chimera_intel.core.code_intel import analyze_git_repository, code_intel_app
 from chimera_intel.core.schemas import RepoAnalysisResult
 
 runner = CliRunner()
@@ -99,10 +98,12 @@ class TestCodeIntel(unittest.TestCase):
     def test_cli_repo_no_url_fails(self):
         """Tests that the CLI command fails if no repository URL is provided."""
         # Act
+        # Test the specific Typer app for this module to isolate the test from the main app
 
-        result = runner.invoke(app, ["code-intel", "repo"])
+        result = runner.invoke(code_intel_app, ["repo"])
 
         # Assert
+        # The command's internal logic should exit with code 1
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("A repository URL must be provided", result.stdout)

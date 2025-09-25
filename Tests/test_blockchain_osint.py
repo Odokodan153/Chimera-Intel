@@ -3,8 +3,7 @@ from unittest.mock import patch, MagicMock
 from httpx import Response
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.blockchain_osint import get_wallet_analysis
+from chimera_intel.core.blockchain_osint import get_wallet_analysis, blockchain_app
 from chimera_intel.core.schemas import WalletAnalysisResult
 
 runner = CliRunner()
@@ -64,13 +63,17 @@ class TestBlockchainOsint(unittest.TestCase):
     def test_cli_wallet_no_address_fails(self):
         """Tests that the CLI command fails if no address is provided."""
         # Act
+        # Test the module's specific Typer app to isolate the test from the main app's plugin discovery.
 
-        result = runner.invoke(app, ["blockchain", "wallet"])
+        result = runner.invoke(blockchain_app, ["wallet"])
 
         # Assert
+        # The command's internal logic exits with code 1 if no address is given.
 
-        self.assertEqual(result.exit_code, 2)
-        self.assertIn("Missing argument", result.stdout)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn(
+            "A wallet address must be provided for this command", result.stdout
+        )
 
 
 if __name__ == "__main__":

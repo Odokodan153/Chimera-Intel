@@ -6,6 +6,7 @@ from chimera_intel.core.daemon import (
     _get_daemon_status,
     _run_workflow,
 )
+import typer
 
 
 class TestDaemon(unittest.TestCase):
@@ -39,15 +40,11 @@ class TestDaemon(unittest.TestCase):
 
     @patch("chimera_intel.core.daemon._get_daemon_status", return_value=None)
     @patch("chimera_intel.core.daemon.get_active_project")
-    @patch("chimera_intel.core.daemon.os.fork")
-    @patch("chimera_intel.core.daemon.sys.exit")
-    def test_start_daemon_no_project(
-        self, mock_exit, mock_fork, mock_get_project, mock_status
-    ):
+    def test_start_daemon_no_project(self, mock_get_project, mock_status):
         """Tests that the daemon fails to start without a configured project."""
         mock_get_project.return_value = None
-        start_daemon()
-        mock_exit.assert_called_with(1)
+        with self.assertRaises(typer.Exit):
+            start_daemon()
 
 
 if __name__ == "__main__":

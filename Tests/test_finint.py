@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 import typer
 
 from chimera_intel.cli import app
-from chimera_intel.core.finint import track_insider_trading
+from chimera_intel.core.finint import track_insider_trading, finint_app
 from chimera_intel.core.schemas import InsiderTradingResult
 
 runner = CliRunner()
@@ -102,7 +102,7 @@ class TestFinint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["finint", "insider-tracking"])
+        result = runner.invoke(finint_app, ["insider-tracking"])
 
         # Assert
 
@@ -119,7 +119,7 @@ class TestFinint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["finint", "insider-tracking"])
+        result = runner.invoke(finint_app, ["insider-tracking"])
 
         # Assert
 

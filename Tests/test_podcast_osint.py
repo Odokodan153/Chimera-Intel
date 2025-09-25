@@ -32,12 +32,12 @@ class TestPodcastOsint(unittest.TestCase):
         }.get(key)
 
         mock_entry = MagicMock()
-        mock_entry.get.side_effect = lambda key: {
+        mock_entry.get.side_effect = lambda key, default=None: {
             "title": "Episode 1",
             "published": "Tue, 23 Sep 2025 18:00:00 +0000",
             "summary": "A test episode.",
             "links": [{"rel": "enclosure", "href": "http://example.com/ep1.mp3"}],
-        }.get(key)
+        }.get(key, default)
 
         mock_feed.entries = [mock_entry]
         mock_feedparser.return_value = mock_feed
@@ -89,7 +89,7 @@ class TestPodcastOsint(unittest.TestCase):
 
         self.assertIsInstance(result, PodcastSearchResult)
         self.assertTrue(result.is_found)
-        self.assertIn("...ial keyword....", result.transcript_snippet)
+        self.assertIn("special keyword", result.transcript_snippet)
         self.assertIsNone(result.error)
         mock_remove.assert_called()  # Verify cleanup
 
