@@ -3,7 +3,6 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 import typer
 
-from chimera_intel.cli import app
 from chimera_intel.core.physical_osint import (
     find_physical_locations,
     physical_osint_app,

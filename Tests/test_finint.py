@@ -3,7 +3,6 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 import typer
 
-from chimera_intel.cli import app
 from chimera_intel.core.finint import track_insider_trading, finint_app
 from chimera_intel.core.schemas import InsiderTradingResult
 

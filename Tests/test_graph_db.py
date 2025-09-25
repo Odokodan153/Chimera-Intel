@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch
 from chimera_intel.core.graph_db import build_and_save_graph
 
