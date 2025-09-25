@@ -14,6 +14,7 @@ from chimera_intel.core.schemas import (
     TradeDataResult,
     Shipment,
     ProjectConfig,
+    NewsArticle,
 )
 
 runner = CliRunner()
@@ -32,7 +33,14 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         # Arrange
 
         mock_get_news.return_value = GNewsResult(
-            articles=[{"title": "TestCorp Announces Partnership With PartnerInc"}]
+            articles=[
+                NewsArticle(
+                    title="TestCorp Announces Partnership With PartnerInc",
+                    description="",
+                    url="",
+                    source={},
+                )
+            ]
         )
         mock_get_tech.return_value = ["Salesforce CRM"]
 

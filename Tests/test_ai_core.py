@@ -21,9 +21,11 @@ from chimera_intel.core.schemas import (
     SWOTAnalysisResult,
     EntityGraphResult,
     GraphNarrativeResult,
+    SentimentAnalysisResult,
+    AnomalyDetectionResult,
 )
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestAiCore(unittest.TestCase):
@@ -129,10 +131,7 @@ class TestAiCore(unittest.TestCase):
         Args:
             mock_analyze (MagicMock): A mock for the `analyze_sentiment` function.
         """
-        mock_analyze.return_value.model_dump.return_value = {
-            "label": "POSITIVE",
-            "score": 0.9,
-        }
+        mock_analyze.return_value = SentimentAnalysisResult(label="POSITIVE", score=0.9)
         result = runner.invoke(app, ["analysis", "core", "sentiment", "I love this!"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"label": "POSITIVE"', result.stdout)
@@ -148,8 +147,9 @@ class TestAiCore(unittest.TestCase):
             mock_swot (MagicMock): A mock for the `generate_swot_from_data` function.
             mock_file (MagicMock): A mock for the `open` built-in function.
         """
-        mock_swot.return_value.analysis_text = "SWOT Text"
-        mock_swot.return_value.error = None
+        mock_swot.return_value = SWOTAnalysisResult(
+            analysis_text="SWOT Text", error=None
+        )
         result = runner.invoke(app, ["analysis", "core", "swot", "input.json"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("SWOT Text", result.stdout)
@@ -174,9 +174,9 @@ class TestAiCore(unittest.TestCase):
         Args:
             mock_detect (MagicMock): A mock for the `detect_traffic_anomalies` function.
         """
-        mock_detect.return_value.model_dump.return_value = {
-            "detected_anomalies": [500.0]
-        }
+        mock_detect.return_value = AnomalyDetectionResult(
+            data_points=[], detected_anomalies=[500.0]
+        )
         result = runner.invoke(app, ["analysis", "core", "anomaly", "100,200,500"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"detected_anomalies":', result.stdout)
@@ -242,3 +242,7 @@ class TestAiCore(unittest.TestCase):
 
         self.assertIsNotNone(result.error)
         self.assertEqual(result.narrative_text, "")
+
+
+if __name__ == "__main__":
+    unittest.main()

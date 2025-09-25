@@ -28,26 +28,29 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
                 return FootprintResult(
                     domain=domain,
                     footprint=FootprintData(
-                        dns_records={"A": ["1.1.1.1"]},
                         whois_info={"emails": ["contact@shared.com"]},
+                        dns_records={"A": ["1.1.1.1"]},
                         subdomains=SubdomainReport(total_unique=0, results=[]),
+                        ip_threat_intelligence=[],
                     ),
                 )
             if domain == "company-b.com":
                 return FootprintResult(
                     domain=domain,
                     footprint=FootprintData(
-                        dns_records={"A": ["2.2.2.2"]},
                         whois_info={"emails": ["contact@shared.com"]},
+                        dns_records={"A": ["2.2.2.2"]},
                         subdomains=SubdomainReport(total_unique=0, results=[]),
+                        ip_threat_intelligence=[],
                     ),
                 )
             return FootprintResult(
                 domain=domain,
                 footprint=FootprintData(
-                    dns_records={"A": [domain.replace(".", "") + ".0"]},  # unique ip
                     whois_info={"emails": [f"admin@{domain}"]},
+                    dns_records={"A": [domain.replace(".", "") + ".0"]},  # unique ip
                     subdomains=SubdomainReport(total_unique=0, results=[]),
+                    ip_threat_intelligence=[],
                 ),
             )
 
@@ -55,13 +58,11 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
 
         # We need to simulate the "discovery" of company-b.com from company-a.com's IP.
         # For this test, we'll manually provide it.
-
         with patch(
             "chimera_intel.core.deception_detector.potential_related_domains",
             {"company-a.com", "company-b.com"},
         ):
             # Act
-
             result = await analyze_for_deception("company-a.com")
         # Assert
 

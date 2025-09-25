@@ -12,7 +12,7 @@ import time
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
-from httpx import Response
+from httpx import Response, RequestError
 import typer
 
 from chimera_intel.cli import app
@@ -25,6 +25,8 @@ from chimera_intel.core.web_analyzer import (
     API_CACHE,
     CACHE_TTL_SECONDS,
 )
+from chimera_intel.core.schemas import ProjectConfig
+
 
 runner = CliRunner()
 
@@ -124,7 +126,6 @@ class TestWebAnalyzer(unittest.TestCase):
             self.assertEqual(mock_async_get.call_count, 1)
 
             # Manually expire the cache entry
-            # FIX: Removed the unnecessary 'f' prefix from the string.
 
             url = "https://api.builtwith.com/v21/api.json?KEY=fake_key&LOOKUP=anotherexample.com"
             API_CACHE[url]["timestamp"] = time.time() - CACHE_TTL_SECONDS - 1
@@ -246,11 +247,13 @@ class TestWebAnalyzer(unittest.TestCase):
 
         async def run_test():
             """Executes the asynchronous test logic."""
+            mock_playwright_manager = AsyncMock()
+            mock_playwright.return_value = mock_playwright_manager
             mock_browser = AsyncMock()
-            mock_page = AsyncMock()
-            mock_playwright.return_value.__aenter__.return_value.chromium.launch.return_value = (
+            mock_playwright_manager.__aenter__.return_value.chromium.launch.return_value = (
                 mock_browser
             )
+            mock_page = AsyncMock()
             mock_browser.new_page.return_value = mock_page
 
             result = await take_screenshot("example.com")
@@ -269,7 +272,9 @@ class TestWebAnalyzer(unittest.TestCase):
 
         async def run_test():
             """Executes the asynchronous test logic."""
-            mock_playwright.return_value.__aenter__.return_value.chromium.launch.side_effect = Exception(
+            mock_playwright_manager = AsyncMock()
+            mock_playwright.return_value = mock_playwright_manager
+            mock_playwright_manager.__aenter__.return_value.chromium.launch.side_effect = Exception(
                 "Browser launch failed"
             )
             result = await take_screenshot("example.com")

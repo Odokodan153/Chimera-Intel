@@ -22,6 +22,7 @@ classifiers = [
 # Core dependencies required for the framework to run
 dependencies = [
     "typer[all]>=0.9.0,<0.10.0",
+    "click<8.2.0",
     "python-dotenv>=1.0.0,<2.0.0",
     "beautifulsoup4>=4.12.2,<5.0.0",
     "httpx>=0.24.1,<0.25.0",
