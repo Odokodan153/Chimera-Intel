@@ -1,13 +1,11 @@
 import psycopg2
 import json
-from rich.console import Console
 from typing import Dict, Any, Optional, List
 
 from . import correlation_engine
 from .schemas import User
 from .config_loader import API_KEYS  # Import the centralized API key loader
-
-console = Console()
+from .utils import console
 
 
 def get_db_connection():

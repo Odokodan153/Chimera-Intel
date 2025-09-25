@@ -14,9 +14,9 @@ from rich.pretty import pprint
 from rich.table import Table
 from jsondiff import diff, symbols, insert  # type: ignore
 from typing import Tuple, Optional, Dict, Any, List
-from .database import console, get_db_connection
+from .database import get_db_connection
 from .schemas import FormattedDiff, DiffResult, MicroSignal
-from .utils import send_slack_notification, send_teams_notification
+from .utils import send_slack_notification, send_teams_notification, console
 from .config_loader import API_KEYS
 import logging
 from .project_manager import get_active_project
@@ -68,7 +68,7 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
         diff_result (dict): The raw diff output from the jsondiff library.
 
     Returns:
-        FormattedDiff: A Pydantic model showing added and removed items.
+        FormattedDiff: A Pantic model showing added and removed items.
     """
     changes: Dict[str, List[str]] = {"added": [], "removed": []}
     for key, value in diff_result.items():

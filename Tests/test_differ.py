@@ -11,7 +11,7 @@ from typer.testing import CliRunner
 from chimera_intel.cli import app
 from jsondiff import diff, insert
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestDiffer(unittest.TestCase):
