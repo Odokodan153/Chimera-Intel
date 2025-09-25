@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import typer
 import numpy as np
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from datetime import datetime, timedelta
 

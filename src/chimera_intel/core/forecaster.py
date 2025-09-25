@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Get a logger instance for this specific file
 
