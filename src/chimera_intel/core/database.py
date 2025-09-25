@@ -2,16 +2,13 @@ import psycopg2
 import json
 from typing import Dict, Any, Optional, List
 
-from . import correlation_engine
 from .schemas import User
-from .config_loader import API_KEYS  # Import the centralized API key loader
+from .config_loader import API_KEYS
 from .utils import console
 
 
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database using credentials from the environment."""
-    # Securely load credentials from the API_KEYS object
-
     db_name = getattr(API_KEYS, "db_name", None)
     db_user = getattr(API_KEYS, "db_user", None)
     db_password = getattr(API_KEYS, "db_password", None)
@@ -156,9 +153,6 @@ def save_scan_to_db(
         console.print(
             f" [dim cyan]>[/dim cyan] [dim]Scan results for '{target}' saved to historical database.[/dim]"
         )
-        # --- TRIGGER CORRELATION ENGINE ---
-
-        correlation_engine.run_correlations(target, module, data)
     except (psycopg2.Error, ConnectionError) as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not save scan to database: {e}"
@@ -192,8 +186,6 @@ def get_aggregated_data_for_target(target: str) -> Optional[Dict[str, Any]]:
         conn = get_db_connection()
         cursor = conn.cursor()
         for module in modules_to_fetch:
-            # Use DISTINCT ON to get the latest record for each module
-
             cursor.execute(
                 """
                 SELECT scan_data FROM scans
