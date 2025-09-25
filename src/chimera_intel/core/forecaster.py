@@ -8,10 +8,10 @@ from .schemas import Prediction, ForecastResult, ExpectedEvent
 from .project_manager import resolve_target
 import joblib  # type: ignore
 import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+import pandas as pd  # type: ignore
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.ensemble import RandomForestClassifier  # type: ignore
+from sklearn.metrics import accuracy_score  # type: ignore
 from datetime import datetime
 
 # Get a logger instance for this specific file
