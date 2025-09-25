@@ -1,9 +1,12 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
+from typer.testing import CliRunner
 
 from chimera_intel.core.threat_actor_intel import get_threat_actor_profile
 from chimera_intel.core.schemas import ThreatActorIntelResult, ThreatActor
+
+runner = CliRunner(mix_stderr=False)
 
 
 class TestThreatActorIntel(unittest.TestCase):

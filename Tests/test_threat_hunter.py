@@ -10,7 +10,7 @@ from chimera_intel.core.schemas import (
     ThreatHuntResult,
 )
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestThreatHunter(unittest.TestCase):
@@ -48,8 +48,9 @@ class TestThreatHunter(unittest.TestCase):
         self.assertEqual(result.detected_iocs[0].ioc, "evil.com")
         self.assertEqual(result.detected_iocs[1].ioc, "1.2.3.4")
 
+    @patch("chimera_intel.core.threat_hunter.os.path.exists", return_value=True)
     @patch("chimera_intel.core.threat_hunter.get_threat_actor_profile")
-    def test_hunt_for_iocs_actor_not_found(self, mock_get_profile):
+    def test_hunt_for_iocs_actor_not_found(self, mock_get_profile, mock_exists):
         """Tests the case where the threat actor profile cannot be found."""
         # Arrange
 
@@ -57,8 +58,8 @@ class TestThreatHunter(unittest.TestCase):
 
         # Act
 
-        result = hunt_for_iocs_in_log("fake.log", "UnknownAPT")
-
+        with patch("builtins.open", mock_open(read_data="log data")):
+            result = hunt_for_iocs_in_log("fake.log", "UnknownAPT")
         # Assert
 
         self.assertIsNotNone(result.error)
@@ -91,6 +92,7 @@ class TestThreatHunter(unittest.TestCase):
             [
                 "cybint",
                 "threat-hunt",
+                "run",
                 "--log-file",
                 "test.log",
                 "--actor",

@@ -14,7 +14,7 @@ from chimera_intel.core.user_manager import (
 )
 from chimera_intel.core.schemas import User
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestUserManager(unittest.TestCase):
@@ -71,7 +71,7 @@ class TestUserManager(unittest.TestCase):
     def test_cli_user_add_success(self, mock_create_user, mock_get_user):
         """Tests the 'user add' CLI command."""
         result = runner.invoke(
-            app, ["user", "add", "newuser"], input="password\npassword\n"
+            app, ["user", "add", "newuser", "--password", "password"]
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Successfully created user 'newuser'", result.stdout)

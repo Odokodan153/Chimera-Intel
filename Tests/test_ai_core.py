@@ -23,7 +23,7 @@ from chimera_intel.core.schemas import (
     GraphNarrativeResult,
 )
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestAiCore(unittest.TestCase):

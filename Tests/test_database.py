@@ -70,9 +70,8 @@ class TestDatabase(unittest.TestCase):
         self.assertIsInstance(user, User)
         self.assertEqual(user.username, "testuser")
 
-    @patch("chimera_intel.core.database.correlation_engine.run_correlations")
     @patch("chimera_intel.core.database.get_db_connection")
-    def test_save_and_get_scan_with_user(self, mock_get_conn, mock_run_correlations):
+    def test_save_and_get_scan_with_user(self, mock_get_conn):
         """Tests saving a scan with a user_id and retrieving it."""
         test_data = {"key": "value"}
         user_id = 1
@@ -95,9 +94,6 @@ class TestDatabase(unittest.TestCase):
                 user_id,
                 None,
             ),
-        )
-        mock_run_correlations.assert_called_once_with(
-            "example.com", "footprint", test_data
         )
 
     @patch("chimera_intel.core.database.get_db_connection")

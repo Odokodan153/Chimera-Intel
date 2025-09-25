@@ -11,7 +11,7 @@ from chimera_intel.core.schemas import (
     ProjectConfig,
 )
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestSocialAnalyzer(unittest.TestCase):
@@ -54,8 +54,8 @@ class TestSocialAnalyzer(unittest.TestCase):
         self.assertIsNone(feed_url)
 
     @patch("chimera_intel.core.social_analyzer.feedparser")
-    @patch("chimera_intel.core.social_analyzer.classifier")
-    def test_analyze_feed_content_success(self, mock_classifier, mock_feedparser):
+    @patch("chimera_intel.core.social_analyzer.classify_text_zero_shot")
+    def test_analyze_feed_content_success(self, mock_classify, mock_feedparser):
         """Tests a successful analysis of a feed."""
         mock_feed = MagicMock()
         mock_feed.bozo = 0
@@ -74,7 +74,7 @@ class TestSocialAnalyzer(unittest.TestCase):
         mock_feed.entries = [mock_entry]
         mock_feedparser.parse.return_value = mock_feed
 
-        mock_classifier.return_value = {"labels": ["Product Launch"], "scores": [0.99]}
+        mock_classify.return_value = {"labels": ["Product Launch"], "scores": [0.99]}
 
         result = analyze_feed_content("http://fake.url/feed.xml")
         self.assertEqual(result.feed_title, "Test Feed Title")
@@ -84,10 +84,10 @@ class TestSocialAnalyzer(unittest.TestCase):
 
     def test_analyze_feed_content_no_classifier(self):
         """Tests feed analysis when the AI classifier (transformers) is not installed."""
-        with patch("chimera_intel.core.social_analyzer.classifier", None):
+        with patch("chimera_intel.core.social_analyzer.classify_text_zero_shot", None):
             result = analyze_feed_content("http://fake.url/feed.xml")
             self.assertIsNotNone(result.error)
-            self.assertIn("not installed", result.error)
+            self.assertIn("AI analysis skipped", result.error)
 
     @patch("chimera_intel.core.social_analyzer.feedparser")
     def test_analyze_feed_content_parse_error(self, mock_feedparser):
