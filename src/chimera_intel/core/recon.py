@@ -10,8 +10,6 @@ from typing import Optional, List, Dict, Union
 # Add the Kaggle API client
 
 
-import kaggle  # type: ignore
-
 from google_play_scraper import search as search_google_play  # type: ignore
 from .schemas import (
     CredentialExposureResult,
@@ -127,6 +125,8 @@ async def find_digital_assets(company_name: str) -> AssetIntelResult:
     public_datasets = []
     if API_KEYS.kaggle_api_key:
         try:
+            import kaggle  # type: ignore
+
             api = kaggle.KaggleApi()
             api.authenticate()
             datasets = await asyncio.to_thread(
