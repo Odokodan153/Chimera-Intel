@@ -12,7 +12,7 @@ import time
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
-from httpx import Response, RequestError
+from httpx import Response
 import typer
 
 from chimera_intel.cli import app
@@ -25,7 +25,6 @@ from chimera_intel.core.web_analyzer import (
     API_CACHE,
     CACHE_TTL_SECONDS,
 )
-from chimera_intel.core.schemas import ProjectConfig
 
 
 runner = CliRunner()
