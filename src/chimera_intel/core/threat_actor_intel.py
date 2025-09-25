@@ -65,26 +65,27 @@ def get_threat_actor_profile(group_name: str) -> ThreatActorIntelResult:
         known_ttps: Dict[str, TTP] = {}  # Use a dict to store unique TTPs
         known_indicators = set()
 
+        industry_keywords = [
+            "government",
+            "energy",
+            "financial",
+            "healthcare",
+            "defense",
+        ]
+
         for pulse in data.get("results", []):
             for tag in pulse.get("tags", []):
-                # OTX tags can sometimes contain aliases or industry info
+                tag_lower = tag.lower()
+                if group_name.lower() in tag_lower:
+                    continue  # Skip the primary name itself
+                is_industry = any(keyword in tag_lower for keyword in industry_keywords)
 
-                if group_name.lower() not in tag.lower():
-                    if any(
-                        keyword in tag.lower() for keyword in ["apt", "fin", "group"]
-                    ):
-                        aliases.add(tag)
-                    elif any(
-                        keyword in tag.lower()
-                        for keyword in [
-                            "government",
-                            "energy",
-                            "financial",
-                            "healthcare",
-                            "defense",
-                        ]
-                    ):
-                        targeted_industries.add(tag.capitalize())
+                if is_industry:
+                    targeted_industries.add(tag.capitalize())
+                else:
+                    # If it's not the primary name and not an industry, it's likely an alias.
+
+                    aliases.add(tag)
             # Extract TTPs from ATT&CK IDs
 
             for attack_id in pulse.get("attack_ids", []):

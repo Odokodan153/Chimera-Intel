@@ -106,7 +106,10 @@ class TestDarkWebOsint(unittest.TestCase):
         "chimera_intel.core.dark_web_osint.search_dark_web_engine",
         new_callable=AsyncMock,
     )
-    def test_cli_dark_web_with_project(self, mock_search_engine, mock_get_project):
+    @patch("chimera_intel.core.dark_web_osint.save_scan_to_db")
+    def test_cli_dark_web_with_project(
+        self, mock_save_db, mock_search_engine, mock_get_project
+    ):
         """Tests the CLI command using an active project's company name as the query."""
         # Arrange
 
@@ -127,6 +130,7 @@ class TestDarkWebOsint(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using query 'ProjectCorp' from active project", result.stdout)
         mock_search_engine.assert_awaited_with("ProjectCorp", "ahmia")
+        mock_save_db.assert_called_once()
 
     @patch("chimera_intel.core.dark_web_osint.get_active_project")
     def test_cli_dark_web_no_query_no_project(self, mock_get_project):

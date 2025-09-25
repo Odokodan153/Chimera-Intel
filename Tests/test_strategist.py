@@ -1,17 +1,14 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
-from chimera_intel.cli import app
 from chimera_intel.core.strategist import (
     generate_strategic_profile,
+    strategy_app,
 )
 from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 
-# FIX: Do not mix stderr to allow for separate checking of stderr
-# This is the corrected initialization.
 
-
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestStrategist(unittest.TestCase):
@@ -97,7 +94,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["run", "example.com"])
 
         # --- Assert ---
 
@@ -120,7 +117,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "nonexistent.com"])
+        result = runner.invoke(strategy_app, ["run", "nonexistent.com"])
 
         # --- Assert ---
         # The command should exit with a non-zero status code to indicate failure
@@ -142,7 +139,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["run", "example.com"])
 
         # --- Assert ---
 
@@ -169,7 +166,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["run", "example.com"])
 
         # --- Assert ---
         # The command should exit cleanly, but log an error to stderr
@@ -203,7 +200,7 @@ class TestStrategist(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["analysis", "strategy", "run"])
+        result = runner.invoke(strategy_app, ["run"])
 
         # Assert
 
@@ -222,7 +219,7 @@ class TestStrategist(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["analysis", "strategy", "run"])
+        result = runner.invoke(strategy_app, ["run"])
 
         # Assert
 

@@ -4,14 +4,14 @@ from httpx import Response, RequestError
 from typer.testing import CliRunner
 import typer
 
-from chimera_intel.cli import app
 from chimera_intel.core.signal_analyzer import (
     scrape_job_postings,
     analyze_signals,
+    signal_app,
 )
 from chimera_intel.core.schemas import JobPostingsResult
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 class TestSignalAnalyzer(unittest.TestCase):
@@ -169,7 +169,7 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["run", "example.com"])
 
         # --- Assert ---
 
@@ -185,7 +185,7 @@ class TestSignalAnalyzer(unittest.TestCase):
         """
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "invalid-domain"])
+        result = runner.invoke(signal_app, ["run", "invalid-domain"])
 
         # --- Assert ---
 
@@ -203,7 +203,7 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["run", "example.com"])
 
         # --- Assert ---
         # The command should exit with a non-zero code to indicate no data was found
@@ -224,7 +224,7 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["run", "example.com"])
 
         # --- Assert ---
         # The command should exit cleanly
@@ -252,7 +252,7 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["analysis", "signal", "run"])
+        result = runner.invoke(signal_app, ["run"])
 
         # Assert
 
@@ -270,7 +270,7 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["analysis", "signal", "run"])
+        result = runner.invoke(signal_app, ["run"])
 
         # Assert
 

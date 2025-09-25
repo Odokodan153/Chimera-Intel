@@ -4,7 +4,11 @@ from httpx import Response, RequestError
 from typer.testing import CliRunner
 
 from chimera_intel.cli import app
-from chimera_intel.core.social_analyzer import discover_rss_feed, analyze_feed_content
+from chimera_intel.core.social_analyzer import (
+    discover_rss_feed,
+    analyze_feed_content,
+    social_app,
+)
 from chimera_intel.core.schemas import (
     SocialContentAnalysis,
     AnalyzedPost,
@@ -82,12 +86,31 @@ class TestSocialAnalyzer(unittest.TestCase):
         self.assertEqual(result.posts[0].top_category, "Product Launch")
         self.assertIsNone(result.error)
 
-    def test_analyze_feed_content_no_classifier(self):
+    @patch("chimera_intel.core.social_analyzer.feedparser")
+    @patch("chimera_intel.core.social_analyzer.classify_text_zero_shot")
+    def test_analyze_feed_content_no_classifier(self, mock_classify, mock_feedparser):
         """Tests feed analysis when the AI classifier (transformers) is not installed."""
-        with patch("chimera_intel.core.social_analyzer.classify_text_zero_shot", None):
-            result = analyze_feed_content("http://fake.url/feed.xml")
-            self.assertIsNotNone(result.error)
-            self.assertIn("AI analysis skipped", result.error)
+        # Arrange
+
+        mock_classify.return_value = None  # Simulate the classifier not being available
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = 0
+        mock_feed.feed.get.return_value = "Test Feed Title"
+        mock_entry = MagicMock()
+        mock_entry.summary = "This is the summary content."
+        mock_feed.entries = [mock_entry]
+        mock_feedparser.parse.return_value = mock_feed
+
+        # Act
+
+        result = analyze_feed_content("http://fake.url/feed.xml")
+
+        # Assert
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("AI analysis skipped", result.error)
 
     @patch("chimera_intel.core.social_analyzer.feedparser")
     def test_analyze_feed_content_parse_error(self, mock_feedparser):
@@ -117,7 +140,7 @@ class TestSocialAnalyzer(unittest.TestCase):
             ],
         )
 
-        result = runner.invoke(app, ["scan", "social", "run", "example.com"])
+        result = runner.invoke(social_app, ["run", "example.com"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"feed_title": "Test Feed"', result.stdout)
@@ -127,14 +150,14 @@ class TestSocialAnalyzer(unittest.TestCase):
 
     def test_cli_social_run_invalid_domain(self):
         """Tests the 'social run' command with an invalid domain."""
-        result = runner.invoke(app, ["scan", "social", "run", "invalid-domain"])
+        result = runner.invoke(social_app, ["run", "invalid-domain"])
         self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
     def test_cli_social_run_no_feed(self, mock_discover):
         """Tests the 'social run' command when no RSS feed is found."""
         mock_discover.return_value = None
-        result = runner.invoke(app, ["scan", "social", "run", "example.com"])
+        result = runner.invoke(social_app, ["run", "example.com"])
         self.assertEqual(result.exit_code, 1)
 
     # --- NEW: Project-Aware CLI Tests ---
@@ -161,7 +184,7 @@ class TestSocialAnalyzer(unittest.TestCase):
 
         # Act: Run the command without an explicit domain
 
-        result = runner.invoke(app, ["scan", "social", "run"])
+        result = runner.invoke(social_app, ["run"])
 
         # Assert
 
@@ -183,7 +206,7 @@ class TestSocialAnalyzer(unittest.TestCase):
 
         # Act: Run the command without a domain
 
-        result = runner.invoke(app, ["scan", "social", "run"])
+        result = runner.invoke(social_app, ["run"])
 
         # Assert
 

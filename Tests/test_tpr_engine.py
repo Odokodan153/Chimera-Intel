@@ -3,8 +3,7 @@ import asyncio
 from unittest.mock import patch
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.tpr_engine import run_full_tpr_scan
+from chimera_intel.core.tpr_engine import run_full_tpr_scan, tpr_app
 from chimera_intel.core.schemas import (
     TPRMReport,
     VulnerabilityScanResult,
@@ -208,7 +207,7 @@ class TestTprEngine(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["tpr-scan", "run"])
+        result = runner.invoke(tpr_app, ["run"])
 
         # Assert
 
@@ -227,7 +226,7 @@ class TestTprEngine(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["tpr-scan", "run"])
+        result = runner.invoke(tpr_app, ["run"])
 
         # Assert
 

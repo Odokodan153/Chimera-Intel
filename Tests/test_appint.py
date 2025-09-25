@@ -40,13 +40,18 @@ class TestAppint(unittest.TestCase):
 
     @patch("chimera_intel.core.appint.shutil.rmtree")
     @patch("chimera_intel.core.appint.subprocess.run")
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
+    @patch("chimera_intel.core.appint.os.path.exists")
     def test_analyze_apk_static_apktool_not_found(
         self, mock_exists, mock_subprocess, mock_rmtree
     ):
         """Tests the error handling when apktool is not installed."""
         # Arrange
+        # Simulate that the input APK exists, but the output directory is never created.
 
+        def exists_side_effect(path):
+            return path == "test.apk"
+
+        mock_exists.side_effect = exists_side_effect
         mock_subprocess.side_effect = FileNotFoundError
 
         # Act

@@ -3,11 +3,11 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
 from chimera_intel.core.recon import (
     find_credential_leaks,
     find_digital_assets,
     analyze_threat_infrastructure,
+    recon_app,
 )
 from chimera_intel.core.schemas import (
     CredentialExposureResult,
@@ -18,11 +18,9 @@ from chimera_intel.core.schemas import (
 
 # Initialize the Typer runner for CLI tests
 
-
 runner = CliRunner()
 
 
-@patch("kaggle.api.kaggle_api.KaggleApi.authenticate")
 class TestRecon(unittest.IsolatedAsyncioTestCase):
     """Extended test cases for the advanced reconnaissance module."""
 
@@ -30,9 +28,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.recon.API_KEYS")
     @patch("chimera_intel.core.recon.sync_client.get")
-    def test_find_credential_leaks_success(
-        self, mock_get, mock_api_keys, mock_kaggle_auth
-    ):
+    def test_find_credential_leaks_success(self, mock_get, mock_api_keys):
         """Tests a successful credential leak discovery."""
         mock_api_keys.spycloud_api_key = "fake_key"
         mock_response = MagicMock(spec=Response)
@@ -50,9 +46,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.recon.API_KEYS")
     @patch("chimera_intel.core.recon.sync_client.get")
-    def test_find_credential_leaks_api_error(
-        self, mock_get, mock_api_keys, mock_kaggle_auth
-    ):
+    def test_find_credential_leaks_api_error(self, mock_get, mock_api_keys):
         """Tests credential leak discovery when the API returns an error."""
         mock_api_keys.spycloud_api_key = "fake_key"
         mock_get.side_effect = RequestError("API is down")
@@ -62,7 +56,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         self.assertIn("An error occurred with the SpyCloud API", result.error)
 
     @patch("chimera_intel.core.recon.API_KEYS")
-    def test_find_credential_leaks_no_api_key(self, mock_api_keys, mock_kaggle_auth):
+    def test_find_credential_leaks_no_api_key(self, mock_api_keys):
         """Tests credential leak discovery with a missing API key."""
         mock_api_keys.spycloud_api_key = None
         result = find_credential_leaks("example.com")
@@ -70,7 +64,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         self.assertIn("SpyCloud API key not found", result.error)
 
     @patch("chimera_intel.core.recon.sync_client.get")
-    def test_find_credential_leaks_exception(self, mock_get, mock_kaggle_auth):
+    def test_find_credential_leaks_exception(self, mock_get):
         """Tests exception handling in find_credential_leaks."""
         mock_get.side_effect = Exception("Test exception")
         with patch(
@@ -82,10 +76,10 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
     # --- Tests for find_digital_assets (Rewritten) ---
 
     @patch("chimera_intel.core.recon.API_KEYS")
-    @patch("chimera_intel.core.recon.kaggle.KaggleApi")
+    @patch("chimera_intel.core.recon.kaggle")
     @patch("chimera_intel.core.recon.search_google_play")
     async def test_find_digital_assets_success(
-        self, mock_search_play, mock_kaggle_api, mock_api_keys, mock_kaggle_auth
+        self, mock_search_play, mock_kaggle, mock_api_keys
     ):
         """Tests a successful digital asset discovery by mocking library calls."""
         # Arrange
@@ -100,7 +94,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
         # Mock the Kaggle API calls
 
-        mock_kaggle_instance = mock_kaggle_api.return_value
+        mock_kaggle_instance = mock_kaggle.KaggleApi.return_value
         mock_dataset = MagicMock()
         mock_dataset.ref = "testuser/test-dataset"
         mock_kaggle_instance.dataset_list.return_value = [mock_dataset]
@@ -118,9 +112,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.public_datasets[0], "kaggle://testuser/test-dataset")
 
     @patch("chimera_intel.core.recon.asyncio.to_thread")
-    async def test_find_digital_assets_scraper_error(
-        self, mock_to_thread, mock_kaggle_auth
-    ):
+    async def test_find_digital_assets_scraper_error(self, mock_to_thread):
         """Tests digital asset discovery when the scraper raises an exception."""
         mock_to_thread.side_effect = Exception("Scraper failed")
         result = await find_digital_assets("Example Corp")
@@ -131,7 +123,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.recon.API_KEYS")
     @patch("chimera_intel.core.recon.async_client.get", new_callable=AsyncMock)
     async def test_analyze_threat_infra_success_domain(
-        self, mock_async_get, mock_api_keys, mock_kaggle_auth
+        self, mock_async_get, mock_api_keys
     ):
         """Tests a successful threat infrastructure analysis for a domain."""
         mock_api_keys.virustotal_api_key = "fake_key"
@@ -148,9 +140,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.recon.API_KEYS")
     @patch("chimera_intel.core.recon.async_client.get", new_callable=AsyncMock)
-    async def test_analyze_threat_infra_api_error(
-        self, mock_async_get, mock_api_keys, mock_kaggle_auth
-    ):
+    async def test_analyze_threat_infra_api_error(self, mock_async_get, mock_api_keys):
         """Tests threat infra analysis when the API returns an error."""
         mock_api_keys.virustotal_api_key = "fake_key"
         mock_async_get.side_effect = RequestError("VT API down")
@@ -159,9 +149,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         self.assertIn("An error occurred with the VirusTotal API", result.error)
 
     @patch("chimera_intel.core.recon.API_KEYS")
-    async def test_analyze_threat_infra_no_api_key(
-        self, mock_api_keys, mock_kaggle_auth
-    ):
+    async def test_analyze_threat_infra_no_api_key(self, mock_api_keys):
         """Tests threat infrastructure analysis with a missing API key."""
         mock_api_keys.virustotal_api_key = None
         result = await analyze_threat_infrastructure("example.com")
@@ -171,7 +159,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
     # --- CLI Command Tests ---
 
     @patch("chimera_intel.core.recon.find_credential_leaks")
-    def test_cli_credentials_command_success(self, mock_find_leaks, mock_kaggle_auth):
+    def test_cli_credentials_command_success(self, mock_find_leaks):
         """Tests the 'recon credentials' CLI command with an explicit domain."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -180,16 +168,14 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_find_leaks.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "credentials", "example.com"])
+        cli_result = runner.invoke(recon_app, ["credentials", "example.com"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"total_found": 5', cli_result.stdout)
         mock_find_leaks.assert_called_with("example.com")
 
     @patch("chimera_intel.core.recon.get_active_project")
     @patch("chimera_intel.core.recon.find_credential_leaks")
-    def test_cli_credentials_with_project(
-        self, mock_find_leaks, mock_get_project, mock_kaggle_auth
-    ):
+    def test_cli_credentials_with_project(self, mock_find_leaks, mock_get_project):
         """Tests the 'recon credentials' command using an active project."""
         mock_project = ProjectConfig(
             project_name="Test", created_at="", domain="project.com"
@@ -197,14 +183,14 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         mock_get_project.return_value = mock_project
         mock_find_leaks.return_value.model_dump.return_value = {}
 
-        result = runner.invoke(app, ["recon", "credentials"])
+        result = runner.invoke(recon_app, ["credentials"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using domain 'project.com'", result.stdout)
         mock_find_leaks.assert_called_with("project.com")
 
     @patch("chimera_intel.core.recon.asyncio.run")
-    def test_cli_assets_command_success(self, mock_asyncio_run, mock_kaggle_auth):
+    def test_cli_assets_command_success(self, mock_asyncio_run):
         """Tests the 'recon assets' CLI command."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -213,12 +199,12 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_asyncio_run.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "assets", "Example Corp"])
+        cli_result = runner.invoke(recon_app, ["assets", "Example Corp"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"target_company": "Example Corp"', cli_result.stdout)
 
     @patch("chimera_intel.core.recon.asyncio.run")
-    def test_cli_threat_infra_command_success(self, mock_asyncio_run, mock_kaggle_auth):
+    def test_cli_threat_infra_command_success(self, mock_asyncio_run):
         """Tests the 'recon threat-infra' CLI command."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -227,7 +213,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_asyncio_run.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "threat-infra", "1.2.3.4"])
+        cli_result = runner.invoke(recon_app, ["threat-infra", "1.2.3.4"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"initial_indicator": "1.2.3.4"', cli_result.stdout)
 

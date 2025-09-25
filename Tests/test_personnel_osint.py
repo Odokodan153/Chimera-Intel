@@ -3,8 +3,7 @@ from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.personnel_osint import find_employee_emails
+from chimera_intel.core.personnel_osint import find_employee_emails, personnel_osint_app
 from chimera_intel.core.schemas import PersonnelOSINTResult, ProjectConfig
 
 runner = CliRunner()
@@ -79,7 +78,7 @@ class TestPersonnelOsint(unittest.TestCase):
         }
         mock_find_emails.return_value = mock_result
 
-        result = runner.invoke(app, ["scan", "personnel", "emails", "example.com"])
+        result = runner.invoke(personnel_osint_app, ["emails", "example.com"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_emails_found": 1', result.stdout)
@@ -87,7 +86,7 @@ class TestPersonnelOsint(unittest.TestCase):
 
     def test_cli_personnel_emails_invalid_domain(self):
         """Tests the 'personnel emails' CLI command with an invalid domain."""
-        result = runner.invoke(app, ["scan", "personnel", "emails", "invalid-domain"])
+        result = runner.invoke(personnel_osint_app, ["emails", "invalid-domain"])
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
@@ -126,7 +125,7 @@ class TestPersonnelOsint(unittest.TestCase):
 
         # Act: Run command without an explicit domain
 
-        result = runner.invoke(app, ["scan", "personnel", "emails"])
+        result = runner.invoke(personnel_osint_app, ["emails"])
 
         # Assert
 
@@ -145,7 +144,7 @@ class TestPersonnelOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(app, ["scan", "personnel", "emails"])
+        result = runner.invoke(personnel_osint_app, ["emails"])
 
         # Assert
 

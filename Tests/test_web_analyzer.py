@@ -14,7 +14,6 @@ from typer.testing import CliRunner
 from httpx import Response
 import typer
 
-from chimera_intel.cli import app
 from chimera_intel.core.web_analyzer import (
     get_tech_stack_builtwith,
     get_tech_stack_wappalyzer,
@@ -23,6 +22,7 @@ from chimera_intel.core.web_analyzer import (
     take_screenshot,
     API_CACHE,
     CACHE_TTL_SECONDS,
+    web_app,
 )
 
 
@@ -254,7 +254,7 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
         # Act
 
-        result = runner.invoke(app, ["scan", "web", "run"])
+        result = runner.invoke(web_app, ["run"])
 
         # Assert
 
@@ -275,7 +275,7 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
         # Act
 
-        result = runner.invoke(app, ["scan", "web", "run"])
+        result = runner.invoke(web_app, ["run"])
 
         # Assert
 
@@ -283,7 +283,7 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
     def test_cli_web_run_invalid_domain(self):
         """Tests the 'scan web run' CLI command with an invalid domain, expecting an error."""
-        result = runner.invoke(app, ["scan", "web", "run", "invalid-domain"])
+        result = runner.invoke(web_app, ["run", "invalid-domain"])
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
