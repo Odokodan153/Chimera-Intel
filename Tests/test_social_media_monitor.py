@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import tweepy
 from chimera_intel.core.social_media_monitor import (
     monitor_twitter_stream,
     monitor_youtube,
+    TwitterStreamListener,
 )
 from chimera_intel.core.schemas import TwitterMonitoringResult, YouTubeMonitoringResult
 
@@ -18,13 +20,38 @@ class TestSocialMediaMonitor(unittest.TestCase):
         mock_rules_response.data = []
         mock_stream_instance.get_rules.return_value = mock_rules_response
 
+        # We need to capture the listener instance to call its on_tweet method
+
+        listener_instance = []
+
+        def mock_init(bearer_token, limit=10):
+            # The actual listener is instantiated inside the function we're testing.
+            # We'll create a real one here to capture it.
+
+            real_listener = TwitterStreamListener(bearer_token, limit=limit)
+            listener_instance.append(real_listener)
+            # We still return the main mock instance for other calls like filter, get_rules etc.
+
+            return mock_stream_instance
+
+        mock_streaming_client.side_effect = mock_init
+
         def mock_filter(*args, **kwargs):
-            tweet = MagicMock()
-            tweet.id = 12345
-            tweet.text = "This is a test tweet"
-            tweet.author_id = 67890
-            tweet.created_at = "2025-09-13T00:00:00Z"
-            mock_stream_instance.on_tweet(tweet)
+            # Now we have the listener instance, we can call its methods
+
+            if listener_instance:
+                tweet = tweepy.Tweet(
+                    data={
+                        "id": "12345",
+                        "text": "This is a test tweet",
+                        "author_id": "67890",
+                        "created_at": "2025-09-13T00:00:00Z",
+                    }
+                )
+                listener_instance[0].on_tweet(tweet)
+                # This will stop the stream after one tweet, as intended
+
+                listener_instance[0].disconnect()
 
         mock_stream_instance.filter.side_effect = mock_filter
 
@@ -33,7 +60,6 @@ class TestSocialMediaMonitor(unittest.TestCase):
             "fake_token",
         ):
             result = monitor_twitter_stream(["test"], limit=1)
-
         self.assertIsInstance(result, TwitterMonitoringResult)
         self.assertEqual(result.total_tweets_found, 1)
         self.assertEqual(result.tweets[0].text, "This is a test tweet")
@@ -65,7 +91,6 @@ class TestSocialMediaMonitor(unittest.TestCase):
             "fake_youtube_key",
         ):
             result = monitor_youtube("test query", limit=1)
-
         self.assertIsInstance(result, YouTubeMonitoringResult)
         self.assertEqual(result.total_videos_found, 1)
         self.assertEqual(result.videos[0].title, "Test Video")

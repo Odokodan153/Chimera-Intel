@@ -75,7 +75,3 @@ class TestBlockchainOsint(unittest.TestCase):
         self.assertIn(
             "A wallet address must be provided for this command", result.stdout
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

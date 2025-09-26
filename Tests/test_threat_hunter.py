@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import patch, mock_open
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.threat_hunter import hunt_for_iocs_in_log
+from chimera_intel.core.threat_hunter import hunt_for_iocs_in_log, threat_hunter_app
 from chimera_intel.core.schemas import (
     ThreatActorIntelResult,
     ThreatActor,
@@ -88,10 +87,8 @@ class TestThreatHunter(unittest.TestCase):
         # Act
 
         result = runner.invoke(
-            app,
+            threat_hunter_app,
             [
-                "cybint",
-                "threat-hunt",
                 "run",
                 "--log-file",
                 "test.log",
