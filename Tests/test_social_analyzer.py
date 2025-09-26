@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
 from chimera_intel.core.social_analyzer import (
     discover_rss_feed,
     analyze_feed_content,
