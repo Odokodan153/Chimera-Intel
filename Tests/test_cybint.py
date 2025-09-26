@@ -13,6 +13,8 @@ from chimera_intel.core.schemas import (
     VulnerabilityScanResult,
     APIDiscoveryResult,
     ProjectConfig,
+    FootprintData,
+    SubdomainReport,
 )
 
 runner = CliRunner()
@@ -35,9 +37,22 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         """Tests the main report generation orchestrator by mocking its sub-scans."""
         # Arrange: Mock the return values of all the individual scans
 
-        mock_footprint.return_value = MagicMock(spec=FootprintResult)
+        # FIX: Create a mock that correctly mimics the nested data structure
+
+        mock_footprint_result = MagicMock(spec=FootprintResult)
+        mock_footprint_data = MagicMock(spec=FootprintData)
+        mock_subdomain_report = MagicMock(spec=SubdomainReport)
+        mock_subdomain_report.total_unique = 0
+        mock_footprint_data.subdomains = mock_subdomain_report
+        mock_footprint_data.dns_records = {"A": ["1.2.3.4"]}
+        mock_footprint_data.ip_threat_intelligence = []
+        mock_footprint_result.footprint = mock_footprint_data
+        mock_footprint.return_value = mock_footprint_result
+
         mock_vuln_scan.return_value = MagicMock(spec=VulnerabilityScanResult)
+        mock_vuln_scan.return_value.scanned_hosts = []
         mock_api_discover.return_value = MagicMock(spec=APIDiscoveryResult)
+        mock_api_discover.return_value.discovered_apis = []
         mock_mozilla_scan.return_value = MagicMock(spec=MozillaObservatoryResult)
 
         # Act

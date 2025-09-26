@@ -152,8 +152,11 @@ def run_diff_analysis(
     module: str = typer.Argument(
         ..., help="The specific scan module to compare (e.g., 'footprint')."
     ),
-    target: Optional[str] = typer.Argument(
-        None, help="The target to compare. Uses active project if not provided."
+    target: Optional[str] = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="The target to compare. Uses active project if not provided.",
     ),
 ):
     """

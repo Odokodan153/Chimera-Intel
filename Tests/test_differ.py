@@ -123,7 +123,15 @@ class TestDiffer(unittest.TestCase):
             # Act
 
             result = runner.invoke(
-                app, ["analysis", "diff", "run", "footprint", "example.com"]
+                app,
+                [
+                    "analysis",
+                    "diff",
+                    "run",
+                    "footprint",
+                    "--target",
+                    "example.com",
+                ],
             )
 
             # Assert
@@ -151,7 +159,17 @@ class TestDiffer(unittest.TestCase):
 
             # Act
 
-            runner.invoke(app, ["analysis", "diff", "run", "footprint", "example.com"])
+            runner.invoke(
+                app,
+                [
+                    "analysis",
+                    "diff",
+                    "run",
+                    "footprint",
+                    "--target",
+                    "example.com",
+                ],
+            )
 
             # Assert: Verify no notification functions were called
 
@@ -168,7 +186,7 @@ class TestDiffer(unittest.TestCase):
         # Act
 
         result = runner.invoke(
-            app, ["analysis", "diff", "run", "footprint", "example.com"]
+            app, ["analysis", "diff", "run", "footprint", "--target", "example.com"]
         )
 
         # Assert
@@ -186,7 +204,7 @@ class TestDiffer(unittest.TestCase):
         # Act
 
         result = runner.invoke(
-            app, ["analysis", "diff", "run", "footprint", "example.com"]
+            app, ["analysis", "diff", "run", "footprint", "--target", "example.com"]
         )
 
         # Assert: The command should exit with a non-zero code to indicate an issue.

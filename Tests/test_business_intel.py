@@ -7,6 +7,7 @@ import os
 
 # Import the main app to test commands
 
+
 from chimera_intel.cli import app
 from chimera_intel.core.business_intel import (
     get_financials_yfinance,
@@ -17,6 +18,7 @@ from chimera_intel.core.business_intel import (
 
 # Import all necessary Pydantic models for testing
 
+
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -25,6 +27,7 @@ from chimera_intel.core.schemas import (
 )
 
 # CliRunner to simulate CLI commands
+
 
 runner = CliRunner()
 

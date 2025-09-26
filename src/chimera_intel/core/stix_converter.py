@@ -321,7 +321,9 @@ def create_stix_bundle(target: str, all_scans: List[Dict[str, Any]]) -> str:
     )
     all_stix_objects[report.id] = report
 
-    bundle = Bundle(list(all_stix_objects.values()), allow_custom=True)
+    bundle = Bundle(
+        list(all_stix_objects.values()), spec_version="2.1", allow_custom=True
+    )
     return bundle.serialize(pretty=True)
 
 

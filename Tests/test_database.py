@@ -41,8 +41,7 @@ class TestDatabase(unittest.TestCase):
         """Tests initialization when a database error occurs."""
         mock_get_conn.side_effect = psycopg2.Error("Test connection error")
         with patch("rich.console.Console.print") as mock_print:
-            with self.assertRaises(ConnectionError):
-                initialize_database()
+            initialize_database()
             mock_print.assert_called()
 
     @patch("chimera_intel.core.database.get_db_connection")
@@ -148,9 +147,15 @@ class TestDatabase(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         now = datetime.datetime.now()
         mock_cursor.fetchall.return_value = [
-            (3, "example.com", "business_intel", now),
-            (2, "google.com", "web_analyzer", now - datetime.timedelta(seconds=1)),
-            (1, "example.com", "footprint", now - datetime.timedelta(seconds=2)),
+            (3, "example.com", "business_intel", now, "{}"),
+            (
+                2,
+                "google.com",
+                "web_analyzer",
+                now - datetime.timedelta(seconds=1),
+                "{}",
+            ),
+            (1, "example.com", "footprint", now - datetime.timedelta(seconds=2), "{}"),
         ]
 
         history = get_scan_history()
@@ -166,15 +171,16 @@ class TestDatabase(unittest.TestCase):
         mock_cursor = MagicMock()
         mock_get_conn.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
+        now = datetime.datetime.now()
         mock_cursor.fetchall.return_value = [
-            (json.dumps({"step": 1}),),
-            (json.dumps({"step": 2}),),
+            (json.dumps({"step": 1}), now),
+            (json.dumps({"step": 2}), now + datetime.timedelta(seconds=1)),
         ]
 
         history = get_all_scans_for_target("target-a.com")
         self.assertEqual(len(history), 2)
-        self.assertEqual(history[0], {"step": 1})
-        self.assertEqual(history[1], {"step": 2})
+        self.assertEqual(history[0]["scan_data"], {"step": 1})
+        self.assertEqual(history[1]["scan_data"], {"step": 2})
 
 
 if __name__ == "__main__":

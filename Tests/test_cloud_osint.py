@@ -4,12 +4,12 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
+from chimera_intel.cli import app
 from chimera_intel.core.cloud_osint import (
     check_s3_bucket,
     find_cloud_assets,
     check_azure_blob,
     check_gcs_bucket,
-    cloud_osint_app,
 )
 from chimera_intel.core.schemas import (
     S3Bucket,
@@ -165,7 +165,7 @@ class TestCloudOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(cloud_osint_app, ["run"])
+        result = runner.invoke(app, ["scan", "cloud", "run"])
 
         # Assert
 
@@ -184,7 +184,7 @@ class TestCloudOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(cloud_osint_app, ["run"])
+        result = runner.invoke(app, ["scan", "cloud", "run"])
 
         # Assert
 

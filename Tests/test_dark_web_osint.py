@@ -4,7 +4,8 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.core.dark_web_osint import search_dark_web_engine, dark_web_app
+from chimera_intel.cli import app
+from chimera_intel.core.dark_web_osint import search_dark_web_engine
 from chimera_intel.core.schemas import ProjectConfig
 
 runner = CliRunner()
@@ -123,7 +124,7 @@ class TestDarkWebOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(dark_web_app, ["search"])
+        result = runner.invoke(app, ["defensive", "darkweb", "search"])
 
         # Assert
 
@@ -141,7 +142,7 @@ class TestDarkWebOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(dark_web_app, ["search"])
+        result = runner.invoke(app, ["defensive", "darkweb", "search"])
 
         # Assert
 

@@ -408,18 +408,21 @@ class TestDefensive(unittest.TestCase):
                 mock_remove.assert_called_once_with("gitleaks-report.json")
 
     # --- NEW: Tests for Mozilla Observatory ---
+
     @patch("chimera_intel.core.defensive.sync_client.post")
     @patch("chimera_intel.core.defensive.sync_client.get")
     @patch("time.sleep", return_value=None)  # Mock sleep to make the test run instantly
     def test_analyze_mozilla_observatory_success(self, mock_sleep, mock_get, mock_post):
         """Tests a successful Mozilla Observatory scan with polling."""
         # 1. Mock the initial POST to start the scan
+
         mock_post_response = MagicMock(spec=Response)
         mock_post_response.raise_for_status.return_value = None
         mock_post_response.json.return_value = {"scan_id": 12345, "state": "PENDING"}
         mock_post.return_value = mock_post_response
 
         # 2. Mock the polling GET requests
+
         mock_poll_pending = MagicMock(spec=Response)
         mock_poll_pending.raise_for_status.return_value = None
         mock_poll_pending.json.return_value = {"state": "RUNNING"}
@@ -437,9 +440,11 @@ class TestDefensive(unittest.TestCase):
         mock_get.side_effect = [mock_poll_pending, mock_poll_finished]
 
         # Act
+
         result = analyze_mozilla_observatory("example.com")
 
         # Assert
+
         self.assertIsInstance(result, MozillaObservatoryResult)
         self.assertEqual(result.grade, "B")
         self.assertEqual(result.score, 80)

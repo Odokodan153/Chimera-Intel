@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
+from chimera_intel.cli import app
 from chimera_intel.core.strategist import (
     generate_strategic_profile,
-    strategy_app,
 )
 from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 
@@ -94,7 +94,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(strategy_app, ["run", "example.com"])
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
 
         # --- Assert ---
 
@@ -117,7 +117,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(strategy_app, ["run", "nonexistent.com"])
+        result = runner.invoke(app, ["analysis", "strategy", "run", "nonexistent.com"])
 
         # --- Assert ---
         # The command should exit with a non-zero status code to indicate failure
@@ -139,7 +139,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(strategy_app, ["run", "example.com"])
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
 
         # --- Assert ---
 
@@ -166,7 +166,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(strategy_app, ["run", "example.com"])
+        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
 
         # --- Assert ---
         # The command should exit cleanly, but log an error to stderr
@@ -200,7 +200,7 @@ class TestStrategist(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(strategy_app, ["run"])
+        result = runner.invoke(app, ["analysis", "strategy", "run"])
 
         # Assert
 
@@ -219,7 +219,7 @@ class TestStrategist(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(strategy_app, ["run"])
+        result = runner.invoke(app, ["analysis", "strategy", "run"])
 
         # Assert
 
