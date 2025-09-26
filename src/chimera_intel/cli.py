@@ -23,6 +23,13 @@ BANNER = """
  \____|_| |_|___|_|  |_|_____|_| \_\/_/   \_\  |___|_| \_| |_| |_____|_____|
 """
 
+app = typer.Typer(
+    name="Chimera Intel",
+    help="A modular OSINT platform powered by an AI analysis core.",
+    add_completion=False,  # Shell completion can be noisy; disabled by default.
+    rich_markup_mode="markdown",  # Allows for rich formatting in help text.
+)
+
 
 def main():
     """
@@ -32,13 +39,6 @@ def main():
     print(BANNER)
     setup_logging()
     initialize_database()
-
-    app = typer.Typer(
-        name="Chimera Intel",
-        help="A modular OSINT platform powered by an AI analysis core.",
-        add_completion=False,
-        rich_markup_mode="markdown",
-    )
 
     plugins = discover_plugins()
     # Group plugins by their top-level command name
