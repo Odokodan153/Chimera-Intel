@@ -195,8 +195,6 @@ class TestAiCore(unittest.TestCase):
         Tests the 'swot' command when the GOOGLE_API_KEY is not set.
         """
         result = runner.invoke(app, ["analysis", "core", "swot", "input.json"])
-        # The command should exit with code 1 as defined in the source
-
         self.assertEqual(result.exit_code, 1)
 
     @patch("builtins.open", new_callable=mock_open, read_data="invalid json")
@@ -209,8 +207,6 @@ class TestAiCore(unittest.TestCase):
         Args:
             mock_file (MagicMock): A mock for the `open` built-in function.
         """
-        # We don't need to mock the swot function itself, as the error happens before
-
         result = runner.invoke(app, ["analysis", "core", "swot", "input.json"])
         self.assertEqual(result.exit_code, 1)
 

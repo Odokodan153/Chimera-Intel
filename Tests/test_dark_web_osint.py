@@ -148,3 +148,7 @@ class TestDarkWebOsint(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No query provided and no active project", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

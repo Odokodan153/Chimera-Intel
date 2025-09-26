@@ -23,7 +23,6 @@ from .project_manager import get_active_project
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +51,8 @@ def get_last_two_scans(
         conn.close()
         if len(records) < 2:
             return None, None
+        # The records are returned as tuples, so we need to access the first element
+
         latest_scan = json.loads(records[0][0])
         previous_scan = json.loads(records[1][0])
         return latest_scan, previous_scan
@@ -64,32 +65,32 @@ def format_diff_simple(diff_result: dict) -> FormattedDiff:
     """
     Simplifies the output from jsondiff into a more human-readable format.
 
+    This function recursively traverses the diff dictionary and flattens the paths
+    to clearly show what was added, removed, or changed.
+
     Args:
         diff_result (dict): The raw diff output from the jsondiff library.
 
     Returns:
-        FormattedDiff: A Pantic model showing added and removed items.
+        FormattedDiff: A Pydantic model showing added, removed, and changed items.
     """
-    changes: Dict[str, List[str]] = {"added": [], "removed": []}
-    for key, value in diff_result.items():
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                if sub_value == symbols.add:
-                    changes["added"].append(f"{key}.{sub_key}")
-                elif sub_value == symbols.delete:
-                    changes["removed"].append(f"{key}.{sub_key}")
-        # This handles cases where a list has changed
+    changes: Dict[str, List[str]] = {"added": [], "removed": [], "changed": []}
 
-        elif isinstance(value, list) and len(value) == 2:
-            old_val, new_val = value
-            # If a dictionary becomes empty, treat it as a deletion of its keys.
+    def recurse_diff(d, path=""):
+        for key, value in d.items():
+            current_path = f"{path}.{key}" if path else key
+            if isinstance(value, dict):
+                recurse_diff(value, current_path)
+            elif value == symbols.add:
+                changes["added"].append(current_path)
+            elif value == symbols.delete:
+                changes["removed"].append(current_path)
+            elif isinstance(value, list) and len(value) == 2:
+                changes["changed"].append(
+                    f"{current_path}: '{value[0]}' -> '{value[1]}'"
+                )
 
-            if isinstance(old_val, dict) and new_val == {}:
-                for sub_key in old_val.keys():
-                    changes["removed"].append(f"{key}.{sub_key}")
-            else:
-                changes["removed"].append(f"{key}: {value[0]}")
-                changes["added"].append(f"{key}: {value[1]}")
+    recurse_diff(diff_result)
     return FormattedDiff(**changes)
 
 
@@ -106,7 +107,11 @@ def analyze_diff_for_signals(diff_result: dict) -> List[MicroSignal]:
     signals: List[MicroSignal] = []
     # Rule 1: New IP Address Added
 
-    if "A" in diff_result.get("footprint", {}).get("dns_records", {}):
+    if (
+        "footprint" in diff_result
+        and "dns_records" in diff_result["footprint"]
+        and "A" in diff_result["footprint"]["dns_records"]
+    ):
         if insert in diff_result["footprint"]["dns_records"]["A"]:
             new_ips = diff_result["footprint"]["dns_records"]["A"][insert]
             signals.append(
@@ -119,7 +124,7 @@ def analyze_diff_for_signals(diff_result: dict) -> List[MicroSignal]:
             )
     # Rule 2: New Technology Detected
 
-    if "tech_stack" in diff_result.get("web_analysis", {}):
+    if "web_analysis" in diff_result and "tech_stack" in diff_result["web_analysis"]:
         tech_changes = diff_result["web_analysis"]["tech_stack"].get("results", {})
         added_tech = []
         for key, value in tech_changes.items():
@@ -143,7 +148,6 @@ def analyze_diff_for_signals(diff_result: dict) -> List[MicroSignal]:
 
 # --- Typer CLI Application ---
 
-
 diff_app = typer.Typer()
 
 
@@ -161,6 +165,10 @@ def run_diff_analysis(
 ):
     """
     Compares the last two scans of a target to detect changes and sends a notification.
+
+    Args:
+        module (str): The specific scan module to compare (e.g., 'footprint').
+        target (Optional[str]): The target to compare. Uses active project if not provided.
     """
     target_name = target
     if not target_name:
@@ -190,25 +198,31 @@ def run_diff_analysis(
             target_name,
             module,
         )
+        console.print(
+            "[bold yellow]Not enough historical data to perform a comparison.[/bold yellow]"
+        )
         raise typer.Exit()
-    raw_difference = diff(previous, latest, syntax="symmetric", dump=True)
-    difference_json = json.loads(raw_difference)
-    if not difference_json:
+    # Use the jsondiff library to compare the two scans
+
+    raw_difference = diff(previous, latest, syntax="symmetric")
+
+    if not raw_difference:
         logger.info(
             "No changes detected between the last two scans for '%s' in module '%s'.",
             target_name,
             module,
         )
+        console.print("[bold green]No changes detected.[/bold green]")
         raise typer.Exit()
     logger.info("Changes detected for '%s' in module '%s'.", target_name, module)
 
-    formatted_changes = format_diff_simple(difference_json)
-    detected_signals = analyze_diff_for_signals(difference_json)
+    formatted_changes = format_diff_simple(raw_difference)
+    detected_signals = analyze_diff_for_signals(raw_difference)
 
     full_result = DiffResult(
         comparison_summary=formatted_changes,
         detected_signals=detected_signals,
-        raw_diff=difference_json,
+        raw_diff=raw_difference,
     )
 
     console.print("\n[bold]Comparison Results:[/bold]")
@@ -244,8 +258,6 @@ def run_diff_analysis(
         added_count = len(full_result.comparison_summary.added)
         removed_count = len(full_result.comparison_summary.removed)
         teams_title = "Chimera Intel Change Alert"
-        # Teams supports Markdown for rich formatting
-
         teams_message = (
             f"Detected changes for target **{target_name}** in module **{module}**:\n\n"
             f"- **Added**: {added_count} items\n\n"

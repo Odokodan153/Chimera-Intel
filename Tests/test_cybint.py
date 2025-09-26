@@ -37,8 +37,6 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         """Tests the main report generation orchestrator by mocking its sub-scans."""
         # Arrange: Mock the return values of all the individual scans
 
-        # FIX: Create a mock that correctly mimics the nested data structure
-
         mock_footprint_result = MagicMock(spec=FootprintResult)
         mock_footprint_data = MagicMock(spec=FootprintData)
         mock_subdomain_report = MagicMock(spec=SubdomainReport)
@@ -53,7 +51,12 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         mock_vuln_scan.return_value.scanned_hosts = []
         mock_api_discover.return_value = MagicMock(spec=APIDiscoveryResult)
         mock_api_discover.return_value.discovered_apis = []
-        mock_mozilla_scan.return_value = MagicMock(spec=MozillaObservatoryResult)
+
+        # FIX: Ensure the mock object has the 'grade' attribute
+
+        mock_mozilla_result = MagicMock(spec=MozillaObservatoryResult)
+        mock_mozilla_result.grade = "A"
+        mock_mozilla_scan.return_value = mock_mozilla_result
 
         # Act
 

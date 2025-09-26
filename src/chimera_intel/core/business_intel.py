@@ -29,9 +29,9 @@ from chimera_intel.core.schemas import (
     SECFilingAnalysis,
 )
 from .project_manager import resolve_target, get_active_project
+from ..core.logger_config import setup_logging
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 def get_financials_yfinance(ticker_symbol: str) -> Financials:
     """
     Retrieves key financial data for a public company from Yahoo Finance.
-    NOTE: This remains synchronous as yfinance does not support async.
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
@@ -164,7 +163,6 @@ async def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResul
 def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
     """
     Finds the latest 10-K filing for a ticker and extracts the 'Risk Factors' section.
-    NOTE: This remains synchronous as the sec-api library does not support async.
 
     Args:
         ticker (str): The stock market ticker symbol.
@@ -218,7 +216,6 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
 
 # --- Typer CLI Application ---
 
-
 business_app = typer.Typer()
 
 
@@ -241,9 +238,8 @@ def run_business_intel(
     """
     Gathers business intelligence: financials, news, patents, and SEC filings.
     """
+    setup_logging()  # Ensure log file is created
     target_company = resolve_target(company_name, required_assets=["company_name"])
-
-    # Special handling for the optional 'ticker' which can also come from the project
 
     target_ticker = ticker
     if not target_ticker:

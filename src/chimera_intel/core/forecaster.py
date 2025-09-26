@@ -16,23 +16,20 @@ from datetime import datetime
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 # We still need the console for rich table output
-
 
 console = Console()
 
 # Define a library of expected events for "OSINT via Negative Space"
 
-
 EXPECTED_EVENTS_LIBRARY: List[ExpectedEvent] = [
     ExpectedEvent(
         event_type="Quarterly Financial Report",
         module="business_intel",
-        field_to_check="financials.companyName",  # A proxy for a new financial pull
-        expected_frequency_days=95,  # A bit more than a quarter
+        field_to_check="business_intel.financials.companyName",
+        expected_frequency_days=95,
     )
 ]
 
@@ -42,6 +39,14 @@ def check_for_missed_events(
 ) -> List[str]:
     """
     Checks if any expected recurring events have been missed by analyzing scan timestamps.
+
+    Args:
+        target (str): The primary target of the scan (e.g., a domain name).
+        historical_data (List[Dict[str, Any]]): A list of scan results, ordered from oldest to newest.
+        module (str): The name of the module being analyzed.
+
+    Returns:
+        List[str]: A list of strings describing any missed events.
     """
     missed_events: List[str] = []
     if not historical_data:
@@ -51,14 +56,12 @@ def check_for_missed_events(
     for event_def in EXPECTED_EVENTS_LIBRARY:
         if event_def.module == module:
             last_observed_date = None
-            # Find the last time this event was observed by checking scans in reverse
-
             for scan in reversed(historical_data):
                 scan_data = scan.get("scan_data", {})
                 timestamp = scan.get("timestamp")
                 if not timestamp:
                     continue
-                # Check if the expected data field exists in the scan
+                # Correctly traverse nested data to check for the field's existence
 
                 field_parts = event_def.field_to_check.split(".")
                 data = scan_data
@@ -69,12 +72,10 @@ def check_for_missed_events(
                     else:
                         field_found = False
                         break
-                if field_found:
+                if field_found and data is not None:
                     last_observed_date = timestamp
-                    break  # Found the most recent occurrence
+                    break
             if last_observed_date:
-                # If the last event was too long ago, flag it as missed
-
                 if (now - last_observed_date).days > event_def.expected_frequency_days:
                     missed_events.append(
                         f"Expected '{event_def.event_type}' was not observed in the last {event_def.expected_frequency_days} days. Last seen: {last_observed_date.date()}"
@@ -92,11 +93,11 @@ def run_prediction_rules(
     be predictive of future events.
 
     Args:
-        historical_data (list[dict]): A list of scan results, ordered from oldest to newest.
+        historical_data (List[Dict[str, Any]]): A list of scan results, ordered from oldest to newest.
         module (str): The name of the module being analyzed.
 
     Returns:
-        ForecastResult: A Pantic model containing a list of predictions or notes.
+        ForecastResult: A Pydantic model containing a list of predictions or notes.
     """
     predictions: List[Prediction] = []
 
@@ -107,8 +108,6 @@ def run_prediction_rules(
         )
     latest_scan = historical_data[-1].get("scan_data", {})
     previous_scan = historical_data[-2].get("scan_data", {})
-
-    # --- Rule Set for the 'business_intel' module ---
 
     if module == "business_intel":
         latest_news_count = (
@@ -148,8 +147,6 @@ def run_prediction_rules(
                     details=f"{len(new_patents)} new patent(s) detected, suggesting R&D activity. Example: '{list(new_patents)[0]}'",
                 )
             )
-    # --- Rule Set for the 'web_analyzer' module ---
-
     if module == "web_analyzer":
         latest_tech = {
             t["technology"]
@@ -184,16 +181,12 @@ def run_prediction_rules(
                     details=f"New marketing-related technology detected ({', '.join(new_marketing_tech)}). This could indicate a new marketing campaign or strategy.",
                 )
             )
-    # --- Machine Learning Predictions ---
-
     breach_prediction = predict_breach_likelihood(latest_scan)
     if breach_prediction:
         predictions.append(breach_prediction)
     acquisition_prediction = predict_acquisition_likelihood(latest_scan)
     if acquisition_prediction:
         predictions.append(acquisition_prediction)
-    # --- OSINT via Negative Space ---
-
     missed_events = check_for_missed_events(
         latest_scan.get("target", ""), historical_data, module
     )
@@ -211,9 +204,6 @@ def train_breach_prediction_model():
     Trains a machine learning model to predict data breaches based on historical scan data.
     """
     console.print("[bold cyan]Starting breach prediction model training...[/bold cyan]")
-
-    # 1. Load all historical scan data from the database
-
     with console.status("[bold green]Loading historical scan data...[/bold green]"):
         all_scans = get_scan_history()
         if not all_scans:
@@ -221,19 +211,22 @@ def train_breach_prediction_model():
                 "[bold red]Error:[/bold red] No historical scan data found to train the model."
             )
             raise typer.Exit(code=1)
-    # 2. Featurize the scan data
-
     with console.status("[bold green]Featurizing data...[/bold green]"):
         records = []
         for scan in all_scans:
             scan_data = scan.get("scan_data", {})
             if not isinstance(scan_data, dict):
                 continue
+            # Safely extract vulnerability count
+
             num_vulns = 0
-            if "vulnerability_scanner" in scan_data:
-                for host in scan_data["vulnerability_scanner"].get("scanned_hosts", []):
-                    for port in host.get("open_ports", []):
-                        num_vulns += len(port.get("vulnerabilities", []))
+            vuln_data = scan_data.get("vulnerability_scanner", {})
+            if isinstance(vuln_data, dict):
+                for host in vuln_data.get("scanned_hosts", []):
+                    if isinstance(host, dict):
+                        for port in host.get("open_ports", []):
+                            if isinstance(port, dict):
+                                num_vulns += len(port.get("vulnerabilities", []))
             records.append(
                 {
                     "target": scan["target"],
@@ -256,8 +249,6 @@ def train_breach_prediction_model():
             raise typer.Exit(code=1)
         df = pd.DataFrame(records)
         df["timestamp"] = pd.to_datetime(df["timestamp"])
-    # 3. Create labels
-
     with console.status("[bold green]Creating labels...[/bold green]"):
         df["breach_occurred"] = (
             df.sort_values(by="timestamp")
@@ -266,14 +257,9 @@ def train_breach_prediction_model():
             .fillna(0)
         )
         df["breach_occurred"] = (df["breach_occurred"] > 0).astype(int)
-
-        # Shift the label to predict future breaches
-
         df["breach_occurred"] = (
             df.groupby("target")["breach_occurred"].shift(-1).fillna(0)
         )
-    # 4. Train the model
-
     with console.status("[bold green]Training model...[/bold green]"):
         features = ["num_hosts", "num_vulns"]
         X = df[features]
@@ -287,8 +273,6 @@ def train_breach_prediction_model():
             n_estimators=100, random_state=42, class_weight="balanced"
         )
         model.fit(X_train, y_train)
-    # 5. Evaluate and save the model
-
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     console.print(f"Model accuracy: [bold green]{accuracy:.2f}[/bold green]")
@@ -307,23 +291,23 @@ def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]
         scan_data (Dict[str, Any]): The latest scan data for the target.
 
     Returns:
-        Optional[Prediction]: A prediction if the model is available, otherwise None.
+        Optional[Prediction]: A prediction if the model is available and risk is high, otherwise None.
     """
     try:
         model = joblib.load("breach_model.pkl")
     except FileNotFoundError:
-        return None  # Model not trained yet
-    # Featurize the input data in the same way as the training data
-
+        return None
     num_hosts = len(scan_data.get("vulnerability_scanner", {}).get("scanned_hosts", []))
     num_vulns = 0
-    if "vulnerability_scanner" in scan_data:
-        for host in scan_data["vulnerability_scanner"].get("scanned_hosts", []):
-            for port in host.get("open_ports", []):
-                num_vulns += len(port.get("vulnerabilities", []))
+    vuln_data = scan_data.get("vulnerability_scanner", {})
+    if isinstance(vuln_data, dict):
+        for host in vuln_data.get("scanned_hosts", []):
+            if isinstance(host, dict):
+                for port in host.get("open_ports", []):
+                    if isinstance(port, dict):
+                        num_vulns += len(port.get("vulnerabilities", []))
     features = np.array([num_hosts, num_vulns]).reshape(1, -1)
-
-    prediction = model.predict_proba(features)[0][1]  # Probability of breach
+    prediction = model.predict_proba(features)[0][1]
 
     if prediction > 0.75:
         return Prediction(
@@ -357,9 +341,6 @@ def predict_acquisition_likelihood(scan_data: Dict[str, Any]) -> Optional[Predic
     return None
 
 
-# --- Typer CLI Application ---
-
-
 forecast_app = typer.Typer()
 
 
@@ -376,7 +357,6 @@ def run_forecast_analysis(
     Analyzes historical data to forecast potential future events.
     """
     target_name = resolve_target(target, required_assets=["domain"])
-
     logger.info(
         "Starting forecast analysis for target '%s' in module '%s'", target_name, module
     )

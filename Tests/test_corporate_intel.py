@@ -2,9 +2,9 @@ import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
+import os
 
 # Import the main CLI app and the functions to be tested
-
 
 from chimera_intel.cli import app
 from chimera_intel.core.corporate_intel import (
@@ -16,6 +16,7 @@ from chimera_intel.core.corporate_intel import (
     get_sec_filings_analysis,
 )
 from chimera_intel.core.schemas import ProjectConfig
+from chimera_intel.core.logger_config import setup_logging
 
 runner = CliRunner()
 
@@ -141,8 +142,6 @@ class TestCorporateIntel(unittest.TestCase):
         mock_api_keys.lobbying_data_api_key = "fake_lobby_key"
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
-        # **UPDATED MOCK RESPONSE** to match ProPublica's structure
-
         mock_response.json.return_value = {
             "results": [
                 {
@@ -256,6 +255,22 @@ class TestCorporateIntel(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using ticker 'PRJT' from active project", result.stdout)
         mock_sec_filings.assert_called_with("PRJT")
+
+    @patch("chimera_intel.core.business_intel.API_KEYS")
+    def test_cli_business_intel_filings_no_ticker(self, mock_api_keys):
+        """Tests that a warning is logged if --filings is used without --ticker."""
+        setup_logging()  # Ensure log file is created
+        mock_api_keys.gnews_api_key = "fake_gnews_key_for_test"
+        log_file = "chimera_intel.log"
+        if os.path.exists(log_file):
+            os.remove(log_file)
+        runner.invoke(app, ["scan", "business", "run", "Company", "--filings"])
+
+        with open(log_file, "r") as f:
+            log_content = f.read()
+        self.assertIn(
+            "The --filings flag requires a --ticker to be provided.", log_content
+        )
 
 
 if __name__ == "__main__":
