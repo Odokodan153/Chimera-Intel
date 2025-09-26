@@ -31,9 +31,8 @@ app = typer.Typer(
 )
 
 
-def main():
+def setup_cli():
     """
-    Main entry point for the Chimera Intel CLI application.
     Initializes logging, database, and dynamically loads all plugins.
     """
     print(BANNER)
@@ -67,6 +66,17 @@ def main():
 
         if sub_app.registered_commands:
             grouped_plugins[plugin.name].add_typer(sub_app, name=sub_name)
+
+
+# Setup the CLI and plugins when the module is imported
+
+setup_cli()
+
+
+def main():
+    """
+    Main entry point for the Chimera Intel CLI application.
+    """
     # This allows the script to be run directly during development.
 
     app()

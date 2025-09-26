@@ -162,12 +162,21 @@ class TestBusinessIntel(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
 
     @patch("chimera_intel.core.business_intel.API_KEYS")
-    def test_cli_business_intel_filings_no_ticker(self, mock_api_keys):
+    @patch("chimera_intel.core.logger_config.setup_logging")
+    def test_cli_business_intel_filings_no_ticker(
+        self, mock_setup_logging, mock_api_keys
+    ):
         """Tests that a warning is logged if --filings is used without --ticker."""
         mock_api_keys.gnews_api_key = "fake_gnews_key_for_test"
         log_file = "chimera_intel.log"
         if os.path.exists(log_file):
             os.remove(log_file)
+        # We need to ensure logging is set up for the test
+
+        from chimera_intel.core.logger_config import setup_logging
+
+        setup_logging()
+
         runner.invoke(app, ["scan", "business", "run", "Company", "--filings"])
 
         with open(log_file, "r") as f:
