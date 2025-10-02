@@ -1,8 +1,6 @@
-# src/chimera_intel/core/schemas.py
-
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional, Union
 
 # --- General Purpose Models ---
 
@@ -74,12 +72,22 @@ class TechStackReport(BaseModel):
     results: List[ScoredResult]
 
 
+class TechStackRisk(BaseModel):
+    """Model for the risk assessment of a technology stack."""
+
+    risk_score: int
+    risk_level: str  # e.g., "Low", "Medium", "High", "Critical"
+    summary: str
+    details: List[str] = []
+
+
 class WebAnalysisData(BaseModel):
     """A model for the nested data within the web analyzer module."""
 
     tech_stack: TechStackReport
     traffic_info: Dict[str, Any]
     screenshot_path: Optional[str] = None
+    tech_risk_assessment: Optional[TechStackRisk] = None
 
 
 class WebAnalysisResult(BaseModel):
@@ -375,14 +383,6 @@ class FormattedDiff(BaseModel):
     changed: List[str] = Field(default_factory=list)
 
 
-class DiffResult(BaseModel):
-    """Model for the result of a full scan comparison."""
-
-    comparison_summary: FormattedDiff
-    raw_diff: Dict[str, Any]
-    error: Optional[str] = None
-
-
 # --- Forecaster Models ---
 
 
@@ -391,13 +391,6 @@ class Prediction(BaseModel):
 
     signal: str
     details: str
-
-
-class ForecastResult(BaseModel):
-    """Model for the list of all forecasts for a target."""
-
-    predictions: List[Prediction]
-    notes: Optional[str] = None  # For messages like "Not enough data"
 
 
 # --- Vulnerability Scanner Models ---
@@ -1085,6 +1078,9 @@ class ConfigPDF(BaseModel):
 class ConfigReporting(BaseModel):
     """Configuration for all reporting."""
 
+    project_report_scans: List[str] = Field(
+        default_factory=lambda: ["footprint", "web_analyzer", "defensive_breaches"]
+    )
     graph: Dict[str, Any] = {}
     pdf: ConfigPDF = ConfigPDF()
 
@@ -1190,4 +1186,646 @@ class PhysicalSecurityResult(BaseModel):
 
     query: str
     locations_found: List[PhysicalLocation] = []
+    error: Optional[str] = None
+
+
+# --- Ecosystem Intelligence Models ---
+
+
+class DiscoveredPartner(BaseModel):
+    """Model for a single discovered business partner."""
+
+    partner_name: str
+    source: str  # e.g., "Press Release", "Partner Page", "Tech Stack"
+    details: str
+    confidence: str  # "High", "Medium", "Low"
+
+
+class DiscoveredCompetitor(BaseModel):
+    """Model for a single discovered competitor."""
+
+    competitor_name: str
+    source: str  # e.g., "SimilarWeb API", "Market Sector Analysis"
+    details: Optional[str] = None
+    confidence: str  # "High", "Medium", "Low"
+
+
+class DiscoveredDistributor(BaseModel):
+    """Model for a single discovered distributor, retailer, or supply chain partner."""
+
+    distributor_name: str
+    location: Optional[str] = None  # e.g., "Germany", "New York, USA"
+    source: str  # e.g., "Trade Data", "Website Scrape"
+    details: Optional[str] = None  # e.g., "Consignee in 15 shipments"
+    confidence: str  # "High", "Medium", "Low"
+
+
+class EcosystemData(BaseModel):
+    """Model for all discovered ecosystem relationships."""
+
+    partners: List[DiscoveredPartner] = []
+    competitors: List[DiscoveredCompetitor] = []
+    distributors: List[DiscoveredDistributor] = []
+
+
+class EcosystemResult(BaseModel):
+    """The main, top-level result model for an ecosystem intelligence scan."""
+
+    target_company: str
+    ecosystem_data: EcosystemData
+    error: Optional[str] = None
+
+
+class MozillaObservatoryResult(BaseModel):
+    """
+    A model to hold the summary of a Mozilla Observatory scan.
+    The full report can be very large, so we capture the key metrics.
+    """
+
+    scan_id: int
+    score: int
+    grade: str
+    state: str
+    tests_passed: int
+    tests_failed: int
+    report_url: str
+    error: Optional[str] = None
+
+
+# --- Cyber Intelligence (CYBINT) Models ---
+
+
+class AttackSurfaceReport(BaseModel):
+    """Model for a comprehensive, AI-analyzed attack surface report."""
+
+    target_domain: str
+    ai_risk_assessment: str
+    full_footprint_data: FootprintResult
+    vulnerability_scan_results: VulnerabilityScanResult
+    web_security_posture: Optional[MozillaObservatoryResult] = None
+    api_discovery_results: APIDiscoveryResult
+    error: Optional[str] = None
+
+
+class TTP(BaseModel):
+    """Model for a single Tactic, Technique, or Procedure used by an adversary."""
+
+    technique_id: str  # e.g., T1566.001
+    tactic: str  # e.g., Initial Access
+    description: str
+
+
+class ThreatActor(BaseModel):
+    """Model for a single threat actor profile."""
+
+    name: str  # e.g., "APT28", "FIN7"
+    aliases: List[str] = []
+    targeted_industries: List[str] = []
+    known_ttps: List[TTP] = []
+    known_indicators: List[str] = []  # Malicious IPs, domains, hashes
+
+
+class ThreatActorIntelResult(BaseModel):
+    """The result of a threat actor intelligence gathering operation."""
+
+    actor: Optional[ThreatActor] = None
+    error: Optional[str] = None
+
+
+# --- Legal Intelligence (LEGINT) Models ---
+
+
+class CourtRecord(BaseModel):
+    """Model for a single court docket record from CourtListener."""
+
+    case_name: str = Field(..., alias="caseName")
+    date_filed: str = Field(..., alias="dateFiled")
+    court: str
+    docket_url: str = Field(..., alias="absolute_url")
+    docket_number: str = Field(..., alias="docketNumber")
+
+
+class DocketSearchResult(BaseModel):
+    """The main, top-level result model for a court docket search."""
+
+    query: str
+    total_found: int = 0
+    records: List[CourtRecord] = []
+    error: Optional[str] = None
+
+
+# --- Geo-Strategic Intelligence Models ---
+
+
+class OperationalCenter(BaseModel):
+    """Model for a single identified center of operations."""
+
+    location_name: Optional[str] = None
+    address: Optional[str] = None
+    location_type: str  # e.g., "Corporate Office", "Hiring Area", "Distribution Hub"
+    source_modules: List[str]
+    details: str
+
+
+class GeoStrategicReport(BaseModel):
+    """The main, top-level result model for a geo-strategic analysis."""
+
+    target: str
+    operational_centers: List[OperationalCenter] = []
+    error: Optional[str] = None
+
+
+# --- Financial Intelligence (FININT) Models ---
+
+
+class InsiderTransaction(BaseModel):
+    """Model for a single insider trading transaction."""
+
+    companyName: str
+    insiderName: str
+    transactionType: str
+    transactionDate: str
+    shares: int
+    value: Optional[int] = None
+
+
+class InsiderTradingResult(BaseModel):
+    """The main, top-level result model for an insider trading scan."""
+
+    ticker: str
+    total_transactions: int = 0
+    transactions: List[InsiderTransaction] = []
+    error: Optional[str] = None
+
+
+# --- PESTEL Analysis Models ---
+
+
+class PESTELAnalysisResult(BaseModel):
+    """Model for the result of a PESTEL analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Competitive Analysis Models ---
+
+
+class CompetitiveAnalysisResult(BaseModel):
+    """Model for the result of a competitive analysis from the AI model."""
+
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Project Management & Daemon Models ---
+
+
+
+class ScheduledWorkflow(BaseModel):
+    """A single, named workflow with a cron schedule."""
+
+    name: str
+    schedule: str  # e.g., "0 * * * *" for hourly
+    steps: List[str]
+
+
+class DaemonConfig(BaseModel):
+    """Configuration for the autonomous monitoring daemon."""
+
+    enabled: bool = False
+    # Replaces monitoring_interval_hours and workflow
+    workflows: List[ScheduledWorkflow] = [
+        ScheduledWorkflow(
+            name="daily_footprint_diff",
+            schedule="0 8 * * *",  # Default: 8 AM every day
+            steps=[
+                "scan footprint {target}",
+                "analysis diff run footprint {target}",
+            ],
+        )
+    ]
+
+class ProjectConfig(BaseModel):
+    """Model for validating a project's configuration file (project.yaml)."""
+
+    project_name: str
+    created_at: str
+
+    # Core Assets
+    domain: Optional[str] = None
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    key_personnel: List[str] = []
+    known_ips: List[str] = []
+
+    # Daemon Configuration
+    daemon_config: DaemonConfig = DaemonConfig()
+
+
+# --- Lead Suggestion Models ---
+
+
+class LeadSuggestionResult(BaseModel):
+    """Model for the result of an AI-powered lead suggestion task."""
+
+    suggestions_text: str
+    error: Optional[str] = None
+
+
+# --- Briefing Generator Models ---
+
+
+class BriefingResult(BaseModel):
+    """Model for a full, AI-generated intelligence briefing."""
+
+    briefing_text: str
+    error: Optional[str] = None
+
+
+# --- Real-Time Social Media Monitoring Models ---
+
+
+class Tweet(BaseModel):
+    """Model for a single tweet from the Twitter/X API."""
+
+    id: str
+    text: str
+    author_id: str
+    created_at: str
+
+
+class TwitterMonitoringResult(BaseModel):
+    """The main, top-level result model for a real-time social media monitoring session."""
+
+    query: str
+    total_tweets_found: int = 0
+    tweets: List[Tweet] = []
+    error: Optional[str] = None
+
+class YouTubeVideo(BaseModel):
+    """Model for a single YouTube video."""
+    id: str
+    title: str
+    channel_id: str
+    channel_title: str
+    published_at: str
+
+class YouTubeMonitoringResult(BaseModel):
+    """The main, top-level result model for a real-time YouTube monitoring session."""
+    query: str
+    total_videos_found: int = 0
+    videos: List[YouTubeVideo] = []
+    error: Optional[str] = None
+
+# --- Mobile Application Intelligence (APPINT) Models ---
+
+
+class StaticAppAnalysisResult(BaseModel):
+    """Model for the static analysis of a mobile application file."""
+
+    file_path: str
+    secrets_found: List[FoundSecret] = []
+    error: Optional[str] = None
+
+
+# --- Image & Video Intelligence (IMINT/VIDINT) Models ---
+
+
+class ExifData(BaseModel):
+    """Model for extracted EXIF metadata from an image."""
+
+    Make: Optional[str] = None
+    Model: Optional[str] = None
+    DateTime: Optional[str] = None
+    GPSInfo: Optional[Dict[str, Any]] = None
+
+
+class ImageAnalysisResult(BaseModel):
+    """The main, top-level result model for an image analysis."""
+
+    file_path: str
+    exif_data: Optional[ExifData] = None
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+
+# --- Geopolitical Intelligence (GEOINT) Models ---
+
+
+class CountryRiskProfile(BaseModel):
+    """Model for a country's geopolitical and economic risk profile."""
+
+    country_name: str
+    region: Optional[str] = None
+    subregion: Optional[str] = None
+    population: Optional[int] = None
+    political_stability_index: Optional[float] = None
+    economic_freedom_index: Optional[float] = None
+
+
+class GeointReport(BaseModel):
+    """The main, top-level result model for a GEOINT analysis."""
+
+    target: str
+    country_risk_profiles: List[CountryRiskProfile] = []
+    error: Optional[str] = None
+
+
+# --- Operational Security (OPSEC) Models ---
+
+
+class CompromisedCommitter(BaseModel):
+    """Model for a code committer whose credentials may be compromised."""
+
+    email: str
+    source_repository: Optional[str] = None
+    related_breaches: List[str] = []
+
+
+class OpsecReport(BaseModel):
+    """The main, top-level result model for an OPSEC analysis."""
+
+    target: str
+    compromised_committers: List[CompromisedCommitter] = []
+    error: Optional[str] = None
+
+
+# --- Temporal Analysis Models ---
+
+
+class TemporalSnapshot(BaseModel):
+    """Model for a single historical snapshot of a website from the Wayback Machine."""
+
+    url: str
+    timestamp: str
+    status_code: int
+
+
+class ShiftingIdentityResult(BaseModel):
+    """The main, top-level result model for a shifting identity analysis."""
+
+    domain: str
+    total_snapshots_found: int
+    snapshots: List[TemporalSnapshot] = []
+    error: Optional[str] = None
+
+
+# --- Micro-OSINT & Anomaly Models ---
+
+
+class MicroSignal(BaseModel):
+    """Model for a single, interpreted micro-signal detected from a scan diff."""
+
+    signal_type: str  # e.g., "Infrastructure Change", "Security Posture Degradation"
+    description: str
+    confidence: str  # e.g., "High", "Medium", "Low"
+    source_field: str  # The specific field in the data where the change was detected
+
+
+class DiffResult(BaseModel):
+    """Model for the result of a full scan comparison."""
+
+    comparison_summary: FormattedDiff
+    detected_signals: List[MicroSignal] = []
+    raw_diff: Dict[str, Any]
+    error: Optional[str] = None
+
+
+# --- Weak Signal Amplification Models ---
+
+
+class WeakSignal(BaseModel):
+    """Model for a single weak signal or piece of evidence."""
+
+    source_module: str
+    signal_type: str  # A label for the type of event this signal might indicate
+    description: str
+    belief: float  # The degree of belief in this signal (e.g., 0.3 for 30%)
+
+
+class AmplifiedEventResult(BaseModel):
+    """Model for the result of a Weak Signal Amplification analysis."""
+
+    event_hypothesis: str
+    combined_belief: float
+    contributing_signals: List[WeakSignal]
+    summary: str
+    error: Optional[str] = None
+
+
+# --- Corporate Network & Deception Models ---
+
+
+class CorporateNetworkLink(BaseModel):
+    """Model for a single detected link between two corporate entities."""
+
+    entity_a: str
+    entity_b: str
+    link_type: str  # e.g., "Shared IP Address", "Shared SSL Certificate", "Shared Whois Contact"
+    confidence: str  # "High", "Medium", "Low"
+    details: str
+
+
+class DeceptionAnalysisResult(BaseModel):
+    """The main, top-level result model for a corporate deception analysis."""
+
+    target: str
+    detected_links: List[CorporateNetworkLink] = []
+    summary: str
+    error: Optional[str] = None
+
+
+# --- Image & Video Intelligence (IMINT/VIDINT) Models ---
+
+
+class ReverseImageMatch(BaseModel):
+    """Model for a single match from a reverse image search."""
+
+    page_url: str
+    page_title: str
+    image_url: str
+    source_engine: str  # e.g., "Google Images", "TinEye"
+
+
+class ReverseImageSearchResult(BaseModel):
+    """The main result model for a reverse image search operation."""
+
+    source_image_path: str
+    matches_found: int = 0
+    matches: List[ReverseImageMatch] = []
+    error: Optional[str] = None
+
+
+class MediaTranscript(BaseModel):
+    """Model for a transcript generated from an audio or video file."""
+
+    language: str
+    text: str
+    confidence: float
+
+
+class MediaAnalysisResult(BaseModel):
+    """The main result model for analyzing an audio or video file."""
+
+    file_path: str
+    media_type: str  # "Audio" or "Video"
+    transcript: Optional[MediaTranscript] = None
+    error: Optional[str] = None
+
+
+# --- Behavioral Intelligence Models ---
+
+
+class NarrativeEntropy(BaseModel):
+    """Model for the narrative entropy analysis of a target."""
+
+    entropy_score: float
+    assessment: str  # e.g., "Highly Focused Narrative", "Diverse Narrative"
+    top_keywords: List[str] = []
+
+
+class BehavioralSignal(BaseModel):
+    """Model for a single behavioral or cultural indicator."""
+
+    source_type: str  # e.g., "Job Posting", "Press Release"
+    signal_type: str  # e.g., "Risk Tolerance", "Innovation Focus"
+    content: str
+    justification: str
+
+
+class PsychographicProfileResult(BaseModel):
+    """Model for the result of a full psychographic and behavioral analysis."""
+
+    target: str
+    profile_summary: Dict[str, Any] = {}
+    behavioral_signals: List[BehavioralSignal] = []
+    narrative_entropy: Optional[NarrativeEntropy] = None
+    error: Optional[str] = None
+
+
+# --- Forecaster & Anomaly Models ---
+
+
+class ExpectedEvent(BaseModel):
+    """Defines a pattern for an expected, recurring event."""
+
+    event_type: str  # e.g., "Quarterly Report", "Security Bulletin"
+    module: str
+    field_to_check: str  # e.g., "news.articles"
+    expected_frequency_days: int
+
+
+class ForecastResult(BaseModel):
+    """Model for the list of all forecasts for a target."""
+
+    predictions: List[Prediction]
+    missed_events: List[str] = []  # For OSINT via Negative Space
+    notes: Optional[str] = None
+
+
+# --- Podcast Intelligence Models ---
+
+
+class PodcastEpisode(BaseModel):
+    """Model for a single podcast episode from an RSS feed."""
+
+    title: str
+    published_date: str = Field(..., alias="published")
+    summary: Optional[str] = None
+    audio_url: Optional[str] = None
+
+
+class PodcastInfoResult(BaseModel):
+    """Model for the result of a podcast RSS feed analysis."""
+
+    feed_url: str
+    title: Optional[str] = None
+    author: Optional[str] = None
+    episodes: List[PodcastEpisode] = []
+    error: Optional[str] = None
+
+
+class PodcastSearchResult(BaseModel):
+    """Model for the result of searching within a podcast episode."""
+
+    episode_audio_url: str
+    keyword: str
+    is_found: bool
+    transcript_snippet: Optional[str] = None
+    error: Optional[str] = None
+
+
+class PodcastAnalysisResult(BaseModel):
+    """Model for the result of an AI-powered analysis of a podcast episode."""
+
+    episode_audio_url: str
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Graph & Entity Models ---
+
+
+class GraphNode(BaseModel):
+    """Model for a single node in an intelligence graph."""
+
+    id: str  # e.g., "megacorp.com", "1.2.3.4"
+    node_type: str  # e.g., "Domain", "IP Address", "Company", "Email"
+    label: str
+    properties: Dict[str, Any] = {}
+
+
+class GraphEdge(BaseModel):
+    """Model for a relationship (edge) between two nodes in the graph."""
+
+    source: str  # ID of the source node
+    target: str  # ID of the target node
+    label: str  # e.g., "Resolves To", "Registered By", "Uses Technology"
+    properties: Dict[str, Any] = {}
+
+
+class EntityGraphResult(BaseModel):
+    """The main, top-level result model for an entity reconciliation and graph build process."""
+
+    target: str
+    total_nodes: int
+    total_edges: int
+    nodes: List[GraphNode] = []
+    edges: List[GraphEdge] = []
+    error: Optional[str] = None
+
+
+class GraphNarrativeResult(BaseModel):
+    narrative_text: str
+    error: Optional[str] = None
+
+
+
+# ---: User Management Models ---
+class User(BaseModel):
+    """Model for a user in the database."""
+
+    id: int
+    username: str
+    hashed_password: str
+
+
+# --- Threat Hunter Models ---
+class DetectedIOC(BaseModel):
+    """Model for a single IOC detected in a log file."""
+
+    ioc: str
+    line_number: int
+    log_line: str
+
+
+class ThreatHuntResult(BaseModel):
+    """Model for the result of a threat hunt."""
+
+    log_file: str
+    threat_actor: str
+    total_iocs_found: int
+    detected_iocs: List[DetectedIOC] = []
+    message: Optional[str] = None
     error: Optional[str] = None

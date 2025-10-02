@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-defensive"
+version = "1.0.0"
+description = "Defensive & Vulnerability Scanning plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "python-nmap>=0.7.1,<0.8.0",
+    "shodan>=1.28.0,<2.0.0",
+    "dnstwist>=20200531"
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+defensive = "chimera_defensive.main:DefensivePlugin"

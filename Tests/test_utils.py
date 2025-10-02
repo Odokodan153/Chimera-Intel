@@ -4,6 +4,7 @@ from chimera_intel.core.utils import (
     save_or_print_results,
     is_valid_domain,
     send_slack_notification,
+    send_teams_notification,
 )
 
 
@@ -36,6 +37,15 @@ class TestUtils(unittest.TestCase):
             mock_print.assert_any_call(
                 f"[bold green]Successfully saved to {output_file}[/bold green]"
             )
+
+    @patch("builtins.open", side_effect=IOError)
+    def test_save_or_print_results_save_fails(self, mock_open):
+        """Tests if the function handles a file save error."""
+        data = {"key": "value"}
+        output_file = "test.json"
+        with patch("chimera_intel.core.utils.logger.error") as mock_logger:
+            save_or_print_results(data, output_file)
+            mock_logger.assert_called()
 
     def test_save_or_print_results_prints_to_console(self):
         """Tests if the function prints to the console when no file is provided."""
@@ -74,3 +84,32 @@ class TestUtils(unittest.TestCase):
 
         send_slack_notification("http://fake.webhook.url", "Test message")
         mock_post.assert_called_once()
+
+    def test_send_slack_notification_no_url(self):
+        """Tests that no notification is sent if the webhook URL is not configured."""
+        with patch("chimera_intel.core.utils.logger.warning") as mock_logger:
+            send_slack_notification("", "Test message")
+            mock_logger.assert_called()
+
+    @patch("chimera_intel.core.http_client.sync_client.post")
+    def test_send_teams_notification_success(self, mock_post):
+        """Tests a successful Teams notification dispatch."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.return_value = None
+        mock_post.return_value = mock_response
+
+        send_teams_notification("http://fake.webhook.url", "Test Title", "Test message")
+        mock_post.assert_called_once()
+
+    @patch("chimera_intel.core.http_client.sync_client.post")
+    def test_send_teams_notification_failure(self, mock_post):
+        """Tests a failed Teams notification dispatch."""
+        mock_post.side_effect = Exception("Network Error")
+        send_teams_notification("http://fake.webhook.url", "Test Title", "Test message")
+        mock_post.assert_called_once()
+
+    def test_send_teams_notification_no_url(self):
+        """Tests that no notification is sent if the webhook URL is not configured."""
+        with patch("chimera_intel.core.utils.logger.warning") as mock_logger:
+            send_teams_notification("", "Test Title", "Test message")
+            mock_logger.assert_called()

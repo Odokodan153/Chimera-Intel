@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-geoint"
+version = "1.0.0"
+description = "Geopolitical Intelligence (GEOINT) plugin for Chimera Intel."
+requires-python = ">=3.9"
+
+[project.entry-points."chimera_intel.plugins"]
+geoint = "chimera_geoint.main:GeointPlugin"

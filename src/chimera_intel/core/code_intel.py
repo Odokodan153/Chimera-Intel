@@ -13,7 +13,7 @@ import shutil
 from collections import Counter
 from typing import Optional, Counter as CounterType
 from .schemas import RepoAnalysisResult, CommitterInfo
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
@@ -104,14 +104,17 @@ code_intel_app = typer.Typer()
 
 @code_intel_app.command("repo")
 def run_repo_analysis(
-    repo_url: str = typer.Argument(
-        ..., help="The full URL of the public Git repository."
+    repo_url: Optional[str] = typer.Argument(
+        None, help="The full URL of the public Git repository."
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes a public Git repository for committer and activity intelligence."""
+    if not repo_url:
+        console.print("[bold red]Error:[/bold red] A repository URL must be provided.")
+        raise typer.Exit(code=1)
     results_model = analyze_git_repository(repo_url)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)

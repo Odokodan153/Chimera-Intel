@@ -3,10 +3,12 @@ import json
 import google.generativeai as genai  # type: ignore
 from rich.markdown import Markdown
 import logging
+from typing import Optional
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
 from chimera_intel.core.schemas import StrategicProfileResult
+from .project_manager import resolve_target
 
 # Get a logger instance for this specific file
 
@@ -72,21 +74,22 @@ strategy_app = typer.Typer()
 
 @strategy_app.command("run")
 def run_strategy_analysis(
-    target: str = typer.Argument(
-        ..., help="The target company to analyze (must have historical data)."
+    target: Optional[str] = typer.Argument(
+        None, help="The target to analyze. Uses active project if not provided."
     )
 ):
     """
     Generates an AI-powered strategic profile of a competitor by aggregating all known data.
-
-    Args:
-        target (str): The target company to analyze.
     """
-    logger.info("Generating strategic profile for target: %s", target)
+    target_name = resolve_target(target, required_assets=["company_name", "domain"])
+    logger.info("Generating strategic profile for target: %s", target_name)
 
-    aggregated_data = get_aggregated_data_for_target(target)
+    aggregated_data = get_aggregated_data_for_target(target_name)
 
     if not aggregated_data:
+        console.print(
+            f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run other scans first."
+        )
         raise typer.Exit(code=1)
     logger.info("Submitting aggregated data to AI strategist for analysis.")
     api_key = API_KEYS.google_api_key
@@ -98,8 +101,10 @@ def run_strategy_analysis(
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    strategic_result = generate_strategic_profile(aggregated_data, api_key)
-
+    with console.status(
+        "[bold cyan]Generating AI-powered strategic profile...[/bold cyan]"
+    ):
+        strategic_result = generate_strategic_profile(aggregated_data, api_key)
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
         typer.secho(

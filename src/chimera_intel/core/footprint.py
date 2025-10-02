@@ -21,11 +21,13 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.http_client import async_client
 from .threat_intel import get_threat_intel_otx
+from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Simple In-Memory Cache ---
+
 
 API_CACHE: Dict[str, Any] = {}
 CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
@@ -35,8 +37,7 @@ CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
 
 
 def get_whois_info(domain: str) -> Dict[str, Any]:
-    """
-    Retrieves WHOIS information for a given domain.
+    """Retrieves WHOIS information for a given domain.
 
     Args:
         domain (str): The domain to perform the WHOIS lookup on.
@@ -58,15 +59,14 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
 
 
 def get_dns_records(domain: str) -> Dict[str, Any]:
-    """
-    Retrieves common DNS records for a given domain, configured via config.yaml.
+    """Retrieves common DNS records for a given domain from config.yaml.
 
     Args:
         domain (str): The domain to query for DNS records.
 
     Returns:
-        Dict[str, Any]: A dictionary where keys are record types (e.g., 'A', 'MX') and
-                        values are lists of records, or an error message.
+        Dict[str, Any]: A dictionary where keys are record types (e.g., 'A', 'MX')
+                        and values are lists of records, or an error message.
     """
     dns_results: Dict[str, Any] = {}
     record_types = CONFIG.modules.footprint.dns_records_to_query
@@ -94,8 +94,7 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
 
 
 async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
-    """
-    Asynchronously retrieves subdomains from the VirusTotal API.
+    """Asynchronously retrieves subdomains from the VirusTotal API.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -107,7 +106,7 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
     if not api_key:
         return []
     headers = {"x-apikey": api_key}
-    url = "https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
+    url = f"https://www.virustotal.com/api/v3/domains/{domain}/subdomains?limit=100"
 
     if (
         url in API_CACHE
@@ -130,8 +129,7 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
 
 
 async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
-    """
-    Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.
+    """Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -140,13 +138,13 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
         List[str]: A list of subdomain strings found.
     """
     url = "https://dnsdumpster.com/"
+    cache_key = f"{url}_{domain}"
     if (
-        url in API_CACHE
-        and (time.time() - API_CACHE[f"{url}_{domain}"]["timestamp"])
-        < CACHE_TTL_SECONDS
+        cache_key in API_CACHE
+        and (time.time() - API_CACHE[cache_key]["timestamp"]) < CACHE_TTL_SECONDS
     ):
         logger.info(f"Returning cached DNSDumpster data for {domain}")
-        return API_CACHE[f"{url}_{domain}"]["data"]
+        return API_CACHE[cache_key]["data"]
     try:
         home_response = await async_client.get(url)
         home_response.raise_for_status()
@@ -169,7 +167,7 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
             )
         )
         subdomains = list(subdomains_set)
-        API_CACHE[f"{url}_{domain}"] = {"timestamp": time.time(), "data": subdomains}
+        API_CACHE[cache_key] = {"timestamp": time.time(), "data": subdomains}
         return subdomains
     except (HTTPStatusError, RequestError) as e:
         logger.error("Error scraping DNSDumpster for '%s': %s", domain, e)
@@ -177,8 +175,7 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
 
 
 async def get_subdomains_threatminer(domain: str) -> List[str]:
-    """
-    Asynchronously retrieves subdomains from the ThreatMiner API.
+    """Asynchronously retrieves subdomains from the ThreatMiner API.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -210,8 +207,7 @@ async def get_subdomains_threatminer(domain: str) -> List[str]:
 
 
 async def get_subdomains_urlscan(domain: str) -> List[str]:
-    """
-    Asynchronously retrieves subdomains from the URLScan.io API.
+    """Asynchronously retrieves subdomains from the URLScan.io API.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -246,8 +242,10 @@ async def get_subdomains_urlscan(domain: str) -> List[str]:
 
 
 async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
-    """
-    Asynchronously retrieves subdomains from the Shodan API.
+    """Asynchronously retrieves subdomains from the Shodan API.
+
+    This function runs the synchronous Shodan library in a separate thread
+    to avoid blocking the asyncio event loop.
 
     Args:
         domain (str): The domain to query for subdomains.
@@ -291,14 +289,18 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
 
 
 async def gather_footprint_data(domain: str) -> FootprintResult:
-    """
-    The core logic for gathering all footprint data and enriching it with threat intelligence.
+    """Orchestrates the gathering of all footprint data.
+
+    This function concurrently runs all data gathering tasks (WHOIS, DNS,
+    subdomain enumeration) and then enriches the findings with threat
+    intelligence from AlienVault OTX.
 
     Args:
         domain (str): The target domain for the footprint scan.
 
     Returns:
-        FootprintResult: A Pydantic model containing all the gathered and processed data.
+        FootprintResult: A Pydantic model containing all the gathered
+                         and processed data.
     """
     # --- Stage 1: Initial Data Gathering ---
 
@@ -395,40 +397,40 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
 # --- Typer CLI Application ---
 
+
 footprint_app = typer.Typer()
 
 
 @footprint_app.command("run")
 def run_footprint_scan(
-    domain: str = typer.Argument(..., help="The target domain, e.g., 'google.com'"),
+    domain: Optional[str] = typer.Argument(
+        None,
+        help="The target domain. If not provided, uses the active project's domain.",
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
-    """
-    Gathers basic digital footprint information for a domain.
+    """Gathers digital footprint info for a domain."""
+    target_domain = resolve_target(domain, required_assets=["domain"])
 
-    Args:
-        domain (str): The target domain, e.g., 'google.com'.
-        output_file (str | None): Optional path to save the results to a JSON file.
-    """
-    if not is_valid_domain(domain):
+    if not is_valid_domain(target_domain):
         logger.warning(
-            "Invalid domain format provided to 'footprint' command: %s", domain
+            "Invalid domain format provided to 'footprint' command: %s", target_domain
         )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    logger.info("Starting asynchronous footprint scan for %s", domain)
+    logger.info("Starting asynchronous footprint scan for %s", target_domain)
 
-    results_model = asyncio.run(gather_footprint_data(domain))
+    results_model = asyncio.run(gather_footprint_data(target_domain))
     results_dict = results_model.model_dump()
 
-    logger.info("Footprint scan complete for %s", domain)
+    logger.info("Footprint scan complete for %s", target_domain)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="footprint", data=results_dict)
+    save_scan_to_db(target=target_domain, module="footprint", data=results_dict)

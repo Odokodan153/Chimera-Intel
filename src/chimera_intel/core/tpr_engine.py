@@ -5,10 +5,13 @@ import json
 from .schemas import TPRMReport, HIBPResult
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import check_hibp_breaches
-from .ai_core import generate_swot_from_data  # <-- FIXED: Moved import to top level
+from .ai_core import generate_swot_from_data
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
+from .project_manager import resolve_target
+from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -75,28 +78,42 @@ async def run_full_tpr_scan(domain: str) -> TPRMReport:
 
 # --- Typer CLI Application ---
 
+
 tpr_app = typer.Typer()
 
 
 @tpr_app.command("run")
 def run_tpr_scan_command(
-    domain: str = typer.Argument(..., help="The third-party domain to assess."),
-    output_file: str = typer.Option(
+    domain: Optional[str] = typer.Argument(
+        None,
+        help="The third-party domain to assess. Uses active project if not provided.",
+    ),
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the full report to a JSON file."
     ),
 ):
     """
     Runs a comprehensive TPRM scan against a target domain.
     """
+    try:
+        target_domain = resolve_target(domain, required_assets=["domain"])
+    except SystemExit as e:
+        if e.code == 1:
+            console.print(
+                "[bold red]Error:[/bold red] No domain provided and no active project set.",
+            )
+        raise typer.Exit(code=1)
     with console.status(
-        f"[bold cyan]Running comprehensive TPRM scan on {domain}... This may take a while.[/bold cyan]"
+        f"[bold cyan]Running comprehensive TPRM scan on {target_domain}... This may take a while.[/bold cyan]"
     ):
-        results_model = asyncio.run(run_full_tpr_scan(domain))
-    console.print(f"\n--- [bold]Third-Party Risk Summary for {domain}[/bold] ---")
+        results_model = asyncio.run(run_full_tpr_scan(target_domain))
+    console.print(
+        f"\n--- [bold]Third-Party Risk Summary for {target_domain}[/bold] ---"
+    )
     console.print(results_model.ai_summary)
     console.print("---")
 
     if output_file:
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
-        save_scan_to_db(target=domain, module="tpr_report", data=results_dict)
+        save_scan_to_db(target=target_domain, module="tpr_report", data=results_dict)

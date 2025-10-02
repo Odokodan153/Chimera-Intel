@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-ttp"
+version = "1.0.0"
+description = "MITRE ATT&CK TTP Mapping plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "mitreattack-python>=2.1.0,<3.0.0",
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+ttp = "chimera_ttp.main:TTPPlugin"

@@ -52,8 +52,8 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
     @patch("chimera_intel.core.internal.os.remove")
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
-    @patch("chimera_intel.core.internal.analyzeMFT.main")
-    def test_parse_mft(self, mock_main, mock_exists, mock_remove):
+    @patch("chimera_intel.core.internal.analyzeMFT")
+    def test_parse_mft(self, mock_analyzeMFT, mock_exists, mock_remove):
         """Tests the MFT parsing function."""
         mock_csv_data = (
             '"Record Number","Filename","Created","Last Modified","is_directory"\n'
@@ -69,7 +69,7 @@ Sep  1 10:00:02 server CRON[5678]: fatal error: another cron daemon is already r
         self.assertEqual(result.total_records, 3)
         self.assertEqual(result.entries[1].filename, "evil.exe")
         self.assertIsNone(result.error)
-        mock_main.assert_called_once()
+        mock_analyzeMFT.main.assert_called_once()
         # Verify that the cleanup function was called
 
         mock_remove.assert_called_once_with("mft_temp_output.csv")

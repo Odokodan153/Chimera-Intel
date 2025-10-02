@@ -4,8 +4,9 @@ import time
 from httpx import RequestError, HTTPStatusError
 from rich.panel import Panel
 import logging
-from typing import Dict, List, Optional, Any, cast
+from typing import Dict, List, Optional, Any, cast, Union
 import os
+import re
 from playwright.async_api import async_playwright
 from datetime import datetime
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
@@ -16,14 +17,18 @@ from chimera_intel.core.schemas import (
     WebAnalysisData,
     TechStackReport,
     ScoredResult,
+    TechStackRisk,
 )
 from chimera_intel.core.http_client import async_client
+from .project_manager import resolve_target
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
 # --- Simple In-Memory Cache ---
+
 
 API_CACHE: Dict[str, Any] = {}
 CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
@@ -200,6 +205,64 @@ async def take_screenshot(domain: str) -> Optional[str]:
         return None
 
 
+def analyze_tech_stack_risk(technologies: List[str]) -> TechStackRisk:
+    """
+    Analyzes a list of technologies to assess potential security risks.
+
+    Args:
+        technologies (List[str]): A list of technology names.
+
+    Returns:
+        TechStackRisk: A Pydantic model containing the risk assessment.
+    """
+    risk_score = 0
+    details = []
+
+    # Simple rule-based risk assessment
+
+    risk_rules: Dict[str, Dict[str, Union[str, int]]] = {
+        "outdated_jquery": {
+            "pattern": r"jquery 1\.|jquery 2\.",
+            "score": 20,
+            "level": "Medium",
+        },
+        "vulnerable_cms": {
+            "pattern": r"wordpress 4\.|joomla 3\.",
+            "score": 40,
+            "level": "High",
+        },
+        "php_version": {"pattern": r"php 5\.", "score": 30, "level": "High"},
+        "exposed_server": {
+            "pattern": r"apache 2\.2|nginx 1\.1",
+            "score": 15,
+            "level": "Medium",
+        },
+    }
+
+    for tech in technologies:
+        for rule_name, rule in risk_rules.items():
+            if re.search(str(rule["pattern"]), tech, re.IGNORECASE):
+                risk_score += int(rule["score"])
+                details.append(
+                    f"Detected potentially {rule['level']} risk technology: {tech}"
+                )
+    # Determine overall risk level
+
+    if risk_score >= 90:
+        risk_level = "Critical"
+    elif risk_score >= 60:
+        risk_level = "High"
+    elif risk_score >= 30:
+        risk_level = "Medium"
+    else:
+        risk_level = "Low"
+    summary = f"The technology stack presents a {risk_level.lower()} risk level with a score of {risk_score}."
+
+    return TechStackRisk(
+        risk_score=risk_score, risk_level=risk_level, summary=summary, details=details
+    )
+
+
 async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
     """
     The core logic for gathering all web analysis data.
@@ -245,6 +308,8 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         all_tech.setdefault(tech, []).append("BuiltWith")
     for tech in wappalyzer_tech:
         all_tech.setdefault(tech, []).append("Wappalyzer")
+    all_tech_list = list(all_tech.keys())
+
     scored_tech_results = [
         ScoredResult(
             technology=tech,
@@ -254,6 +319,8 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         for tech, sources in sorted(all_tech.items())
     ]
 
+    tech_risk_assessment = analyze_tech_stack_risk(all_tech_list)
+
     tech_stack_report = TechStackReport(
         total_unique=len(scored_tech_results), results=scored_tech_results
     )
@@ -262,6 +329,7 @@ async def gather_web_analysis_data(domain: str) -> WebAnalysisResult:
         tech_stack=tech_stack_report,
         traffic_info=traffic_info,
         screenshot_path=screenshot_filepath,
+        tech_risk_assessment=tech_risk_assessment,
     )
 
     return WebAnalysisResult(domain=domain, web_analysis=web_analysis_data)
@@ -275,33 +343,35 @@ web_app = typer.Typer()
 
 @web_app.command("run")
 def run_web_analysis(
-    domain: str = typer.Argument(..., help="The target domain to analyze."),
+    domain: Optional[str] = typer.Argument(
+        None, help="The target domain. Uses active project if not provided."
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the results to a JSON file."
     ),
 ):
     """
     Analyzes web-specific data asynchronously, including taking a screenshot.
-
-    Args:
-        domain (str): The target domain to analyze.
-        output_file (Optional[str]): Optional path to save the results to a JSON file.
     """
-    if not is_valid_domain(domain):
-        logger.warning("Invalid domain format provided to 'web' command: %s", domain)
+    target_domain = resolve_target(domain, required_assets=["domain"])
+
+    if not is_valid_domain(target_domain):
+        logger.warning(
+            "Invalid domain format provided to 'web' command: %s", target_domain
+        )
         console.print(
             Panel(
-                f"[bold red]Invalid Input:[/] '{domain}' is not a valid domain format.",
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
                 title="Error",
                 border_style="red",
             )
         )
         raise typer.Exit(code=1)
-    logger.info("Starting asynchronous web analysis for %s", domain)
+    logger.info("Starting asynchronous web analysis for %s", target_domain)
 
-    results_model = asyncio.run(gather_web_analysis_data(domain))
+    results_model = asyncio.run(gather_web_analysis_data(target_domain))
     results_dict = results_model.model_dump()
 
-    logger.info("Web analysis complete for %s", domain)
+    logger.info("Web analysis complete for %s", target_domain)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=domain, module="web_analyzer", data=results_dict)
+    save_scan_to_db(target=target_domain, module="web_analyzer", data=results_dict)

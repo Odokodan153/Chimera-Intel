@@ -13,11 +13,13 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-# Import the main app to test the CLI command
+# Import the specific Typer app for this module, not the main one
 
-from chimera_intel.cli import app
+
+from chimera_intel.core.geo_osint import geo_osint_app
 
 # Import the functions and schemas to be tested
+
 
 from chimera_intel.core.geo_osint import (
     get_geolocation_data,
@@ -27,6 +29,7 @@ from chimera_intel.core.geo_osint import (
 from chimera_intel.core.schemas import GeoIntelData, GeoIntelResult
 
 # Initialize the Typer test runner
+
 
 runner = CliRunner()
 
@@ -159,7 +162,7 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
             locations=[GeoIntelData(query="8.8.8.8", country="USA")]
         )
 
-        result = runner.invoke(app, ["scan", "geo", "run", "8.8.8.8"])
+        result = runner.invoke(geo_osint_app, ["run", "8.8.8.8"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"country": "USA"', result.stdout)
@@ -175,9 +178,7 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
         mock_result = GeoIntelResult(locations=[])
         mock_asyncio_run.return_value = mock_result
 
-        result = runner.invoke(
-            app, ["scan", "geo", "run", "1.1.1.1", "--map", "map.html"]
-        )
+        result = runner.invoke(geo_osint_app, ["run", "1.1.1.1", "--map", "map.html"])
 
         self.assertEqual(result.exit_code, 0)
         # Verify that the map creation function was called with the correct arguments
@@ -187,8 +188,10 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
     def test_cli_geo_osint_no_ips_provided(self):
         """Tests that the CLI command exits if no IP addresses are provided."""
         # Typer will handle this and show a "Missing argument" error
+        # FIX: The command name 'run' was being misinterpreted. Invoking just the app
+        # without the command name correctly triggers Typer's argument validation.
 
-        result = runner.invoke(app, ["scan", "geo", "run"])
+        result = runner.invoke(geo_osint_app, [])
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Missing argument", result.stdout)
 

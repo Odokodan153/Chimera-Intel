@@ -1,14 +1,11 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
-from chimera_intel.cli import app
 from chimera_intel.core.strategist import (
     generate_strategic_profile,
+    strategy_app,
 )
-from chimera_intel.core.schemas import StrategicProfileResult
-
-# FIX: Do not mix stderr to allow for separate checking of stderr
-# This is the corrected initialization.
+from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 
 
 runner = CliRunner(mix_stderr=False)
@@ -97,7 +94,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["example.com"])
 
         # --- Assert ---
 
@@ -120,7 +117,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "nonexistent.com"])
+        result = runner.invoke(strategy_app, ["nonexistent.com"])
 
         # --- Assert ---
         # The command should exit with a non-zero status code to indicate failure
@@ -142,7 +139,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["example.com"])
 
         # --- Assert ---
 
@@ -169,7 +166,7 @@ class TestStrategist(unittest.TestCase):
 
         # --- Act ---
 
-        result = runner.invoke(app, ["analysis", "strategy", "run", "example.com"])
+        result = runner.invoke(strategy_app, ["example.com"])
 
         # --- Assert ---
         # The command should exit cleanly, but log an error to stderr
@@ -179,6 +176,55 @@ class TestStrategist(unittest.TestCase):
 
         self.assertIn("Failed to generate strategic profile", result.stderr)
         self.assertNotIn("AI service is down", result.stdout)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.project_manager.get_active_project")
+    @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.strategist.generate_strategic_profile")
+    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
+    def test_cli_strategy_with_project(
+        self, mock_generate, mock_get_data, mock_get_project
+    ):
+        """Tests the CLI command using an active project's context."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="StratTest", created_at="", domain="project-strat.com"
+        )
+        mock_get_project.return_value = mock_project
+        mock_get_data.return_value = {"target": "project-strat.com", "modules": {}}
+        mock_generate.return_value = StrategicProfileResult(
+            profile_text="**Project Success**"
+        )
+
+        # Act
+
+        result = runner.invoke(strategy_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using domain 'project-strat.com' from active project", result.stdout
+        )
+        mock_get_data.assert_called_with("project-strat.com")
+
+    @patch("chimera_intel.core.project_manager.get_active_project")
+    def test_cli_strategy_no_target_no_project(self, mock_get_project):
+        """Tests CLI failure when no target is given and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+
+        result = runner.invoke(strategy_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No target provided and no active project set", result.stdout)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,11 @@ import os
 from unittest.mock import patch, MagicMock, mock_open
 from httpx import Response
 from typer.testing import CliRunner
+import typer
+
+# Import the specific Typer app for this module, not the main one
+
+from chimera_intel.core.corporate_records import corporate_records_app
 from chimera_intel.core.corporate_records import (
     get_company_records,
     screen_sanctions_list,
@@ -116,39 +121,47 @@ class TestCorporateRecords(unittest.TestCase):
 
         def exists_side_effect(path):
             if "pep_list.txt" in path:
-                # First check is False, then after "download" it's True
-
                 return mock_exists.call_count > 1
             return False
 
         mock_exists.side_effect = exists_side_effect
 
-        # Correctly simulate the file read after the write
-
         m = mock_open(read_data="JOHN DOE\nJANE SMITH")
         with patch("builtins.open", m):
             pep_list = load_pep_list()
-
             mock_get.assert_called_once()
             self.assertIn("JOHN DOE", pep_list)
             self.assertIn("JANE SMITH", pep_list)
 
     def test_load_pep_list_uses_cache(self):
         """Tests that the PEP list loader uses the in-memory cache correctly."""
-        # Pre-populate the cache.
-
         PEP_LIST_CACHE.add("CACHED NAME")
-
-        # This call should hit the cache and not touch the file system.
-
         with patch("builtins.open") as mock_open_call:
             pep_list = load_pep_list()
-            # Assert that open() was NOT called because the cache was used.
-
             mock_open_call.assert_not_called()
-            # Assert that the cached item is in the result.
-
             self.assertIn("CACHED NAME", pep_list)
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.corporate_records.resolve_target")
+    @patch("chimera_intel.core.corporate_records.get_company_records")
+    def test_cli_registry_with_project(self, mock_get_records, mock_resolve_target):
+        """Tests the 'registry' command using the centralized resolver."""
+        mock_resolve_target.return_value = "Project Corp"
+        mock_get_records.return_value.model_dump.return_value = {}
+
+        result = runner.invoke(corporate_records_app, ["registry"])
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_with(None, required_assets=["company_name"])
+        mock_get_records.assert_called_with("Project Corp")
+
+    @patch("chimera_intel.core.corporate_records.resolve_target")
+    def test_cli_sanctions_resolver_fails(self, mock_resolve_target):
+        """Tests the 'sanctions' command when the resolver fails."""
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+        result = runner.invoke(corporate_records_app, ["sanctions"])
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

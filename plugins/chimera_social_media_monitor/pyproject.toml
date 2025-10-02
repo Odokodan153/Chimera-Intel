@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-social-media-monitor"
+version = "1.0.0"
+description = "Social Media Monitoring plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "tweepy>=4.14.0,<5.0.0",
+    "google-api-python-client>=2.52.0,<3.0.0"
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+social_media_monitor = "chimera_social_media_monitor.main:SocialMediaMonitorPlugin"

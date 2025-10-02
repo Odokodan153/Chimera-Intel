@@ -9,14 +9,15 @@ through the Tor network. The client is configured with a SOCKS5 proxy to achieve
 import typer
 import asyncio
 import logging
-from typing import List
+from typing import List, Optional
 from httpx_socks import AsyncProxyTransport  # type: ignore
 from bs4 import BeautifulSoup
 import httpx
 from .schemas import DarkWebResult, DarkWebScanResult
-from .utils import save_or_print_results
+from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import CONFIG
+from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +120,9 @@ dark_web_app = typer.Typer()
 
 @dark_web_app.command("search")
 def run_dark_web_search(
-    query: str = typer.Argument(
-        ..., help="The search query, e.g., 'mycompany leaked data'"
+    query: Optional[str] = typer.Argument(
+        None,
+        help="The search query. Uses active project's company name if not provided.",
     ),
     engine: str = typer.Option(
         "ahmia",
@@ -135,15 +137,36 @@ def run_dark_web_search(
     """
     Searches for a query on the dark web via a selected search engine.
     REQUIRES TOR BROWSER TO BE RUNNING.
-
-    Args:
-        query (str): The search query, e.g., 'mycompany leaked data'.
-        engine (str): The search engine to use ('ahmia', 'darksearch').
-        output_file (str): Optional path to save the results to a JSON file.
     """
-    results_model = asyncio.run(search_dark_web_engine(query, engine))
+    # FIX: This wrapper ensures that the async function is called correctly.
+
+    asyncio.run(async_run_dark_web_search(query, engine, output_file))
+
+
+async def async_run_dark_web_search(
+    query: Optional[str],
+    engine: str,
+    output_file: Optional[str],
+):
+    target_query = query
+    if not target_query:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_query = active_project.company_name
+            console.print(
+                f"[bold cyan]Using query '{target_query}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No query provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_query:
+        console.print("[bold red]Error:[/bold red] A query is required for this scan.")
+        raise typer.Exit(code=1)
+    results_model = await search_dark_web_engine(target_query, engine)
 
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=query, module="dark_web_osint", data=results_dict)
-    logger.info("Dark web search complete for query: %s", query)
+    save_scan_to_db(target=target_query, module="dark_web_osint", data=results_dict)
+    logger.info("Dark web search complete for query: %s", target_query)

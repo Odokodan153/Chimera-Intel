@@ -319,6 +319,83 @@ class TestFootprint(unittest.TestCase):
                 if sub.domain == "vt.example.com":
                     self.assertIn("HIGH", sub.confidence)
 
+    @patch("chimera_intel.core.footprint.get_whois_info")
+    @patch("chimera_intel.core.footprint.get_dns_records")
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_virustotal", new_callable=AsyncMock
+    )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_dnsdumpster",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_threatminer",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "chimera_intel.core.footprint.get_subdomains_urlscan", new_callable=AsyncMock
+    )
+    @patch("chimera_intel.core.footprint.get_subdomains_shodan", new_callable=AsyncMock)
+    @patch("chimera_intel.core.footprint.get_threat_intel_otx", new_callable=AsyncMock)
+    def test_gather_footprint_data_partial_failure(
+        self,
+        mock_otx,
+        mock_shodan,
+        mock_urlscan,
+        mock_threatminer,
+        mock_dd,
+        mock_vt,
+        mock_dns,
+        mock_whois,
+    ):
+        """
+        Tests that gather_footprint_data can handle failures from some of its sources.
+        """
+        # --- Arrange ---
+        # Simulate some sources succeeding and others failing
+
+        mock_whois.return_value = {"registrar": "Test Registrar"}
+        mock_dns.return_value = {"A": ["1.1.1.1"]}
+        mock_vt.return_value = ["vt.example.com"]  # VirusTotal succeeds
+        # Correctly simulate a failure by returning an empty list, as per the function's error handling
+
+        mock_dd.return_value = []  # DNSDumpster fails
+        mock_threatminer.return_value = []
+        mock_urlscan.return_value = []
+        mock_shodan.return_value = []
+        mock_otx.return_value = ThreatIntelResult(
+            indicator="1.1.1.1", is_malicious=False
+        )
+
+        with patch("chimera_intel.core.footprint.API_KEYS") as mock_keys:
+            mock_keys.virustotal_api_key = "fake_key"
+            mock_keys.shodan_api_key = None
+            mock_keys.otx_api_key = "fake_otx_key"
+
+            # --- Act ---
+
+            result = asyncio.run(gather_footprint_data("example.com"))
+
+            # --- Assert ---
+            # The function should still return a result, even with partial data.
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result.domain, "example.com")
+            # It should contain the data from the successful sources.
+
+            self.assertEqual(result.footprint.whois_info["registrar"], "Test Registrar")
+            self.assertEqual(result.footprint.subdomains.total_unique, 1)
+            self.assertIn(
+                "vt.example.com",
+                [s.domain for s in result.footprint.subdomains.results],
+            )
+            # The failed source should not contribute any data.
+
+            self.assertNotIn(
+                "dd.example.com",
+                [s.domain for s in result.footprint.subdomains.results],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

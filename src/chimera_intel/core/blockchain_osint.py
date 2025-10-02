@@ -103,10 +103,11 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
 
 # --- Typer CLI Application ---
 
+
 blockchain_app = typer.Typer()
 
 
-@blockchain_app.command("wallet")
+@blockchain_app.command("analyze")
 def run_wallet_analysis(
     address: str = typer.Argument(..., help="The Ethereum wallet address to analyze."),
     output_file: Optional[str] = typer.Option(

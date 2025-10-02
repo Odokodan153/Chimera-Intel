@@ -2,7 +2,15 @@ import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
-from chimera_intel.core.dark_web_osint import search_dark_web_engine
+from typer.testing import CliRunner
+
+# Corrected: Import the specific Typer app for this module
+
+
+from chimera_intel.core.dark_web_osint import dark_web_app, search_dark_web_engine
+from chimera_intel.core.schemas import ProjectConfig
+
+runner = CliRunner(mix_stderr=False)
 
 
 class TestDarkWebOsint(unittest.TestCase):
@@ -93,6 +101,58 @@ class TestDarkWebOsint(unittest.TestCase):
         self.assertEqual(len(result.found_results), 0)
         self.assertIsNotNone(result.error)
         self.assertIn("Is the Tor Browser running?", result.error)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.dark_web_osint.get_active_project")
+    @patch(
+        "chimera_intel.core.dark_web_osint.search_dark_web_engine",
+        new_callable=AsyncMock,
+    )
+    @patch("chimera_intel.core.dark_web_osint.save_scan_to_db")
+    def test_cli_dark_web_with_project(
+        self, mock_save_db, mock_search_engine, mock_get_project
+    ):
+        """Tests the CLI command using an active project's company name as the query."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="DarkWebTest",
+            created_at="2025-01-01",
+            company_name="ProjectCorp",
+        )
+        mock_get_project.return_value = mock_project
+        mock_search_engine.return_value.model_dump.return_value = {}
+
+        # Act
+        # FIX: The command being tested is 'search', and when no arguments are given,
+        # the runner should be invoked with an empty list.
+
+        result = runner.invoke(dark_web_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using query 'ProjectCorp' from active project", result.stdout)
+        mock_search_engine.assert_awaited_with("ProjectCorp", "ahmia")
+        mock_save_db.assert_called_once()
+
+    @patch("chimera_intel.core.dark_web_osint.get_active_project")
+    def test_cli_dark_web_no_query_no_project(self, mock_get_project):
+        """Tests CLI failure when no query is given and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+        # FIX: Correct invocation for a command with an optional argument being omitted.
+
+        result = runner.invoke(dark_web_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No query provided and no active project", result.stdout)
 
 
 if __name__ == "__main__":

@@ -3,11 +3,18 @@ from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
-from chimera_intel.core.social_analyzer import discover_rss_feed, analyze_feed_content
+# Import the specific Typer app for this module, not the main one
+
+
+from chimera_intel.core.social_analyzer import social_app
+from chimera_intel.core.social_analyzer import (
+    discover_rss_feed,
+    analyze_feed_content,
+)
 from chimera_intel.core.schemas import (
     SocialContentAnalysis,
     AnalyzedPost,
+    ProjectConfig,
 )
 
 runner = CliRunner()
@@ -53,8 +60,8 @@ class TestSocialAnalyzer(unittest.TestCase):
         self.assertIsNone(feed_url)
 
     @patch("chimera_intel.core.social_analyzer.feedparser")
-    @patch("chimera_intel.core.social_analyzer.classifier")
-    def test_analyze_feed_content_success(self, mock_classifier, mock_feedparser):
+    @patch("chimera_intel.core.social_analyzer.classify_text_zero_shot")
+    def test_analyze_feed_content_success(self, mock_classify, mock_feedparser):
         """Tests a successful analysis of a feed."""
         mock_feed = MagicMock()
         mock_feed.bozo = 0
@@ -73,7 +80,7 @@ class TestSocialAnalyzer(unittest.TestCase):
         mock_feed.entries = [mock_entry]
         mock_feedparser.parse.return_value = mock_feed
 
-        mock_classifier.return_value = {"labels": ["Product Launch"], "scores": [0.99]}
+        mock_classify.return_value = {"labels": ["Product Launch"], "scores": [0.99]}
 
         result = analyze_feed_content("http://fake.url/feed.xml")
         self.assertEqual(result.feed_title, "Test Feed Title")
@@ -81,12 +88,31 @@ class TestSocialAnalyzer(unittest.TestCase):
         self.assertEqual(result.posts[0].top_category, "Product Launch")
         self.assertIsNone(result.error)
 
-    def test_analyze_feed_content_no_classifier(self):
+    @patch("chimera_intel.core.social_analyzer.feedparser")
+    @patch("chimera_intel.core.social_analyzer.classify_text_zero_shot")
+    def test_analyze_feed_content_no_classifier(self, mock_classify, mock_feedparser):
         """Tests feed analysis when the AI classifier (transformers) is not installed."""
-        with patch("chimera_intel.core.social_analyzer.classifier", None):
-            result = analyze_feed_content("http://fake.url/feed.xml")
-            self.assertIsNotNone(result.error)
-            self.assertIn("not installed", result.error)
+        # Arrange
+
+        mock_classify.return_value = None  # Simulate the classifier not being available
+
+        mock_feed = MagicMock()
+        mock_feed.bozo = 0
+        mock_feed.feed.get.return_value = "Test Feed Title"
+        mock_entry = MagicMock()
+        mock_entry.summary = "This is the summary content."
+        mock_feed.entries = [mock_entry]
+        mock_feedparser.parse.return_value = mock_feed
+
+        # Act
+
+        result = analyze_feed_content("http://fake.url/feed.xml")
+
+        # Assert
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("AI analysis skipped", result.error)
 
     @patch("chimera_intel.core.social_analyzer.feedparser")
     def test_analyze_feed_content_parse_error(self, mock_feedparser):
@@ -102,7 +128,7 @@ class TestSocialAnalyzer(unittest.TestCase):
     @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
     @patch("chimera_intel.core.social_analyzer.analyze_feed_content")
     def test_cli_social_run_success(self, mock_analyze, mock_discover):
-        """Tests a successful 'social run' CLI command."""
+        """Tests a successful 'social run' CLI command with an explicit domain."""
         mock_discover.return_value = "http://fake.url/feed.xml"
         mock_analyze.return_value = SocialContentAnalysis(
             feed_title="Test Feed",
@@ -116,22 +142,78 @@ class TestSocialAnalyzer(unittest.TestCase):
             ],
         )
 
-        result = runner.invoke(app, ["scan", "social", "run", "example.com"])
+        result = runner.invoke(social_app, ["example.com"])
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"feed_title": "Test Feed"', result.stdout)
+        # Ensure the discover function was called with the explicit domain
+
+        mock_discover.assert_called_with("example.com")
 
     def test_cli_social_run_invalid_domain(self):
         """Tests the 'social run' command with an invalid domain."""
-        result = runner.invoke(app, ["scan", "social", "run", "invalid-domain"])
+        result = runner.invoke(social_app, ["invalid-domain"])
         self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
     def test_cli_social_run_no_feed(self, mock_discover):
         """Tests the 'social run' command when no RSS feed is found."""
         mock_discover.return_value = None
-        result = runner.invoke(app, ["scan", "social", "run", "example.com"])
+        result = runner.invoke(social_app, ["example.com"])
         self.assertEqual(result.exit_code, 1)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.project_manager.get_active_project")
+    @patch("chimera_intel.core.social_analyzer.discover_rss_feed")
+    @patch("chimera_intel.core.social_analyzer.analyze_feed_content")
+    def test_cli_social_run_with_active_project(
+        self, mock_analyze, mock_discover, mock_get_project
+    ):
+        """Tests the CLI command using an active project's context when no domain is provided."""
+        # Arrange: Mock the active project and the downstream functions
+
+        mock_project = ProjectConfig(
+            project_name="TestProject",
+            created_at="2025-01-01",
+            domain="project-domain.com",
+        )
+        mock_get_project.return_value = mock_project
+        mock_discover.return_value = "http://fake.url/feed.xml"
+        mock_analyze.return_value = SocialContentAnalysis(
+            feed_title="Project Feed", posts=[]
+        )
+
+        # Act: Run the command without an explicit domain
+
+        result = runner.invoke(social_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using domain 'project-domain.com' from active project", result.stdout
+        )
+        self.assertIn('"feed_title": "Project Feed"', result.stdout)
+        # Verify that the discover function was called with the domain from the project
+
+        mock_discover.assert_called_with("project-domain.com")
+
+    @patch("chimera_intel.core.project_manager.get_active_project")
+    def test_cli_social_run_no_domain_no_project(self, mock_get_project):
+        """Tests the CLI command fails when no domain is provided and no active project is set."""
+        # Arrange: Mock that there is no active project
+
+        mock_get_project.return_value = None
+
+        # Act: Run the command without a domain
+
+        result = runner.invoke(social_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No target provided and no active project set", result.stdout)
 
 
 if __name__ == "__main__":

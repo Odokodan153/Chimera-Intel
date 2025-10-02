@@ -18,6 +18,7 @@ try:
 
     MFT_AVAILABLE = True
 except ImportError:
+    analyzeMFT = None
     MFT_AVAILABLE = False
 from .schemas import (
     LogAnalysisResult,
@@ -128,7 +129,7 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
     """
     logger.info(f"Attempting to parse MFT file: {file_path}")
 
-    if not MFT_AVAILABLE:
+    if not MFT_AVAILABLE or not analyzeMFT:
         error_msg = "'analyzeMFT' library not installed. Please add it to pyproject.toml and reinstall."
         logger.error(error_msg)
         return MFTAnalysisResult(total_records=0, entries=[], error=error_msg)

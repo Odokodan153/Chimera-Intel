@@ -28,9 +28,10 @@ from chimera_intel.core.schemas import (
     BusinessIntelResult,
     SECFilingAnalysis,
 )
+from .project_manager import resolve_target, get_active_project
+from ..core.logger_config import setup_logging
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,6 @@ logger = logging.getLogger(__name__)
 def get_financials_yfinance(ticker_symbol: str) -> Financials:
     """
     Retrieves key financial data for a public company from Yahoo Finance.
-    NOTE: This remains synchronous as yfinance does not support async.
 
     Args:
         ticker_symbol (str): The stock market ticker symbol (e.g., 'AAPL').
@@ -163,7 +163,6 @@ async def scrape_google_patents(query: str, num_patents: int = 5) -> PatentResul
 def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
     """
     Finds the latest 10-K filing for a ticker and extracts the 'Risk Factors' section.
-    NOTE: This remains synchronous as the sec-api library does not support async.
 
     Args:
         ticker (str): The stock market ticker symbol.
@@ -217,17 +216,17 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
 
 # --- Typer CLI Application ---
 
-
 business_app = typer.Typer()
 
 
 @business_app.command("run")
 def run_business_intel(
-    company_name: str = typer.Argument(
-        ..., help="The full name of the target company."
+    company_name: Optional[str] = typer.Argument(
+        None,
+        help="The full name of the target company. Uses active project if not provided.",
     ),
     ticker: Optional[str] = typer.Option(
-        None, help="The stock market ticker for financial data."
+        None, help="The stock market ticker. Uses active project if not provided."
     ),
     filings: bool = typer.Option(
         False, "--filings", help="Enable SEC filings analysis (requires ticker)."
@@ -239,30 +238,38 @@ def run_business_intel(
     """
     Gathers business intelligence: financials, news, patents, and SEC filings.
     """
+    setup_logging()  # Ensure log file is created
+    target_company = resolve_target(company_name, required_assets=["company_name"])
+
+    target_ticker = ticker
+    if not target_ticker:
+        active_project = get_active_project()
+        if active_project:
+            target_ticker = active_project.ticker
 
     async def main():
         logger.info(
             "Starting business intelligence scan for %s (Ticker: %s)",
-            company_name,
-            ticker or "N/A",
+            target_company,
+            target_ticker or "N/A",
         )
 
         gnews_key = API_KEYS.gnews_api_key
 
         loop = asyncio.get_running_loop()
         financial_data_task = (
-            loop.run_in_executor(None, get_financials_yfinance, ticker)
-            if ticker
+            loop.run_in_executor(None, get_financials_yfinance, target_ticker)
+            if target_ticker
             else asyncio.sleep(0, result="Not provided")
         )
 
         filings_analysis_task = (
-            loop.run_in_executor(None, get_sec_filings_analysis, ticker)
-            if filings and ticker
+            loop.run_in_executor(None, get_sec_filings_analysis, target_ticker)
+            if filings and target_ticker
             else asyncio.sleep(0, result=None)
         )
 
-        if filings and not ticker:
+        if filings and not target_ticker:
             logger.warning("The --filings flag requires a --ticker to be provided.")
         if not gnews_key:
             logger.warning("GNews API key not found. Skipping news gathering.")
@@ -270,8 +277,8 @@ def run_business_intel(
                 0, result=GNewsResult(error="GNews API key not configured.")
             )
         else:
-            news_data_task = get_news_gnews(company_name, gnews_key)
-        patents_task = scrape_google_patents(company_name)
+            news_data_task = get_news_gnews(target_company, gnews_key)
+        patents_task = scrape_google_patents(target_company)
 
         financial_data, filings_analysis, news_data, patents_data = (
             await asyncio.gather(
@@ -283,16 +290,17 @@ def run_business_intel(
             financials=financial_data,
             news=news_data,
             patents=patents_data,
-            sec_filings_analysis=filings_analysis,
         )
 
         results_model = BusinessIntelResult(
-            company=company_name, business_intel=intel_data
+            company=target_company, business_intel=intel_data
         )
         results_dict = results_model.model_dump(exclude_none=True)
 
-        logger.info("Business intelligence scan complete for %s", company_name)
+        logger.info("Business intelligence scan complete for %s", target_company)
         save_or_print_results(results_dict, output_file)
-        save_scan_to_db(target=company_name, module="business_intel", data=results_dict)
+        save_scan_to_db(
+            target=target_company, module="business_intel", data=results_dict
+        )
 
     asyncio.run(main())

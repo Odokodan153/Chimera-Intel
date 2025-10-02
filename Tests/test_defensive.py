@@ -8,42 +8,36 @@ are reliable and do not depend on network access.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
-from httpx import RequestError, HTTPStatusError, Response
-from typer.testing import CliRunner
+from unittest.mock import MagicMock, mock_open, patch
 
-# Import the main app to test commands
-
-
-from chimera_intel.cli import app
 from chimera_intel.core.defensive import (
-    monitor_ct_logs,
-    scan_iac_files,
-    scan_for_secrets,
+    analyze_apk_mobsf,
+    analyze_attack_surface_shodan,
+    analyze_mozilla_observatory,
+    analyze_ssl_ssllabs,
     check_hibp_breaches,
     find_typosquatting_dnstwist,
+    monitor_ct_logs,
+    scan_for_secrets,
+    scan_iac_files,
     search_github_leaks,
-    analyze_attack_surface_shodan,
     search_pastes_api,
-    analyze_ssl_ssllabs,
-    analyze_apk_mobsf,
+    defensive_app,
 )
-
-# Import all necessary Pydantic models for testing
-
-
 from chimera_intel.core.schemas import (
-    HIBPResult,
-    TyposquatResult,
     GitHubLeaksResult,
-    ShodanResult,
-    PasteResult,
-    SSLLabsResult,
+    HIBPResult,
     MobSFResult,
+    MozillaObservatoryResult,
+    PasteResult,
+    ShodanResult,
+    SSLLabsResult,
+    TyposquatResult,
 )
+from httpx import HTTPStatusError, RequestError, Response
+from typer.testing import CliRunner
 
 # CliRunner to simulate CLI commands
-
 
 runner = CliRunner()
 
@@ -406,6 +400,79 @@ class TestDefensive(unittest.TestCase):
 
                 mock_remove.assert_called_once_with("gitleaks-report.json")
 
+    # --- NEW: Tests for Mozilla Observatory ---
+
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    @patch("chimera_intel.core.defensive.sync_client.get")
+    @patch("time.sleep", return_value=None)  # Mock sleep to make the test run instantly
+    def test_analyze_mozilla_observatory_success(self, mock_sleep, mock_get, mock_post):
+        """Tests a successful Mozilla Observatory scan with polling."""
+        # 1. Mock the initial POST to start the scan
+
+        mock_post_response = MagicMock(spec=Response)
+        mock_post_response.raise_for_status.return_value = None
+        mock_post_response.json.return_value = {"scan_id": 12345, "state": "PENDING"}
+        mock_post.return_value = mock_post_response
+
+        # 2. Mock the polling GET requests
+
+        mock_poll_pending = MagicMock(spec=Response)
+        mock_poll_pending.raise_for_status.return_value = None
+        mock_poll_pending.json.return_value = {"state": "RUNNING"}
+
+        mock_poll_finished = MagicMock(spec=Response)
+        mock_poll_finished.raise_for_status.return_value = None
+        mock_poll_finished.json.return_value = {
+            "scan_id": 12345,
+            "state": "FINISHED",
+            "score": 80,
+            "grade": "B",
+            "tests_passed": 10,
+            "tests_failed": 2,
+        }
+        mock_get.side_effect = [mock_poll_pending, mock_poll_finished]
+
+        # Act
+
+        result = analyze_mozilla_observatory("example.com")
+
+        # Assert
+
+        self.assertIsInstance(result, MozillaObservatoryResult)
+        self.assertEqual(result.grade, "B")
+        self.assertEqual(result.score, 80)
+        self.assertIsNone(result.error)
+        mock_post.assert_called_once()
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    @patch("chimera_intel.core.defensive.sync_client.get")
+    @patch("time.sleep", return_value=None)
+    def test_analyze_mozilla_observatory_scan_failed(
+        self, mock_sleep, mock_get, mock_post
+    ):
+        """Tests the handling of a 'FAILED' state from the Observatory API."""
+        mock_post.return_value.json.return_value = {
+            "scan_id": 12345,
+            "state": "PENDING",
+        }
+        mock_get.return_value.json.return_value = {"state": "FAILED"}
+
+        result = analyze_mozilla_observatory("example.com")
+
+        self.assertIsInstance(result, MozillaObservatoryResult)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Scan failed on the server side", result.error)
+
+    @patch("chimera_intel.core.defensive.sync_client.post")
+    def test_analyze_mozilla_observatory_api_error(self, mock_post):
+        """Tests error handling when the initial API call fails."""
+        mock_post.side_effect = RequestError("Connection Refused")
+
+        result = analyze_mozilla_observatory("example.com")
+
+        self.assertIsNone(result)
+
     # --- CLI COMMAND TESTS ---
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
@@ -415,9 +482,7 @@ class TestDefensive(unittest.TestCase):
         Args:
             mock_check (MagicMock): A mock for `check_hibp_breaches`.
         """
-        result = runner.invoke(
-            app, ["defensive", "checks", "breaches", "invalid-domain"]
-        )
+        result = runner.invoke(defensive_app, ["breaches", "invalid-domain"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
 
@@ -428,9 +493,7 @@ class TestDefensive(unittest.TestCase):
         Args:
             mock_find (MagicMock): A mock for `find_typosquatting_dnstwist`.
         """
-        result = runner.invoke(
-            app, ["defensive", "checks", "typosquat", "invalid-domain"]
-        )
+        result = runner.invoke(defensive_app, ["typosquat", "invalid-domain"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
 
@@ -441,9 +504,7 @@ class TestDefensive(unittest.TestCase):
         Args:
             mock_analyze (MagicMock): A mock for `analyze_ssl_ssllabs`.
         """
-        result = runner.invoke(
-            app, ["defensive", "checks", "ssllabs", "invalid-domain"]
-        )
+        result = runner.invoke(defensive_app, ["ssllabs", "invalid-domain"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
 
@@ -456,14 +517,14 @@ class TestDefensive(unittest.TestCase):
             mock_search (MagicMock): A mock for `search_github_leaks`.
         """
         mock_search.return_value.model_dump.return_value = {"total_count": 0}
-        result = runner.invoke(app, ["defensive", "checks", "leaks", "query"])
+        result = runner.invoke(defensive_app, ["leaks", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_count": 0', result.stdout)
 
     @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", None)
     def test_cli_leaks_no_api_key_shows_warning(self):
         """Tests 'defensive leaks' prints a warning when API key is missing."""
-        result = runner.invoke(app, ["defensive", "checks", "leaks", "query"])
+        result = runner.invoke(defensive_app, ["leaks", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Skipping GitHub Leaks Scan", result.stdout)
         self.assertIn("GITHUB_PAT", result.stdout)
@@ -476,7 +537,7 @@ class TestDefensive(unittest.TestCase):
             mock_search (MagicMock): A mock for `search_pastes_api`.
         """
         mock_search.return_value.model_dump.return_value = {"count": 1, "pastes": []}
-        result = runner.invoke(app, ["defensive", "checks", "pastebin", "query"])
+        result = runner.invoke(defensive_app, ["pastebin", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"count": 1', result.stdout)
 
@@ -490,7 +551,7 @@ class TestDefensive(unittest.TestCase):
         mock_analyze.return_value.model_dump.return_value = {
             "report": {"host": "example.com", "grade": "A"}
         }
-        result = runner.invoke(app, ["defensive", "checks", "ssllabs", "example.com"])
+        result = runner.invoke(defensive_app, ["ssllabs", "example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"grade": "A"', result.stdout)
 
@@ -505,18 +566,14 @@ class TestDefensive(unittest.TestCase):
         mock_analyze.return_value.model_dump.return_value = {
             "report": {"app_name": "TestApp"}
         }
-        result = runner.invoke(
-            app, ["defensive", "checks", "mobsf", "--apk-file", "test.apk"]
-        )
+        result = runner.invoke(defensive_app, ["mobsf", "--apk-file", "test.apk"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"app_name": "TestApp"', result.stdout)
 
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", None)
     def test_cli_mobsf_no_api_key_shows_warning(self):
         """Tests 'defensive mobsf' prints a warning when API key is missing."""
-        result = runner.invoke(
-            app, ["defensive", "checks", "mobsf", "--apk-file", "test.apk"]
-        )
+        result = runner.invoke(defensive_app, ["mobsf", "--apk-file", "test.apk"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Skipping MobSF Scan", result.stdout)
         self.assertIn("MOBSF_API_KEY", result.stdout)
@@ -530,14 +587,14 @@ class TestDefensive(unittest.TestCase):
             mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
         """
         mock_analyze.return_value.model_dump.return_value = {"total_results": 1}
-        result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
+        result = runner.invoke(defensive_app, ["surface", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_results": 1', result.stdout)
 
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", None)
     def test_cli_surface_no_api_key_shows_warning(self):
         """Tests 'defensive surface' prints a warning when API key is missing."""
-        result = runner.invoke(app, ["defensive", "checks", "surface", "query"])
+        result = runner.invoke(defensive_app, ["surface", "query"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Skipping Shodan Scan", result.stdout)
         self.assertIn("SHODAN_API_KEY", result.stdout)

@@ -3,16 +3,17 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
 
-from chimera_intel.cli import app
 from chimera_intel.core.recon import (
     find_credential_leaks,
     find_digital_assets,
     analyze_threat_infrastructure,
+    recon_app,
 )
 from chimera_intel.core.schemas import (
     CredentialExposureResult,
     AssetIntelResult,
     ThreatInfraResult,
+    ProjectConfig,
 )
 
 # Initialize the Typer runner for CLI tests
@@ -73,15 +74,27 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
             result = find_credential_leaks("example.com")
             self.assertIsNotNone(result.error)
 
-    # --- Tests for find_digital_assets ---
+    # --- Tests for find_digital_assets (Rewritten) ---
 
-    @patch("chimera_intel.core.recon.asyncio.to_thread")
-    async def test_find_digital_assets_success(self, mock_to_thread):
-        """Tests a successful digital asset discovery."""
-        mock_to_thread.return_value = [
+    @patch("chimera_intel.core.recon.API_KEYS")
+    @patch("chimera_intel.core.recon.asyncio.to_thread", new_callable=AsyncMock)
+    async def test_find_digital_assets_success(self, mock_to_thread, mock_api_keys):
+        """Tests a successful digital asset discovery by mocking library calls."""
+        # Arrange
+
+        # Disable Kaggle for this test to prevent import errors
+        mock_api_keys.kaggle_api_key = None
+
+        # Mock the google-play-scraper call
+        mock_play_results = [
             {"title": "Test App", "appId": "com.test", "developer": "Example Corp"}
         ]
+        mock_to_thread.return_value = mock_play_results
+
+        # Act
         result = await find_digital_assets("Example Corp")
+
+        # Assert
         self.assertIsInstance(result, AssetIntelResult)
         self.assertEqual(len(result.mobile_apps), 1)
         self.assertEqual(result.mobile_apps[0].app_name, "Test App")
@@ -135,7 +148,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.recon.find_credential_leaks")
     def test_cli_credentials_command_success(self, mock_find_leaks):
-        """Tests the 'recon credentials' CLI command."""
+        """Tests the 'recon credentials' CLI command with an explicit domain."""
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
             "target_domain": "example.com",
@@ -143,9 +156,26 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_find_leaks.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "credentials", "example.com"])
+        cli_result = runner.invoke(recon_app, ["credentials", "example.com"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"total_found": 5', cli_result.stdout)
+        mock_find_leaks.assert_called_with("example.com")
+
+    @patch("chimera_intel.core.recon.get_active_project")
+    @patch("chimera_intel.core.recon.find_credential_leaks")
+    def test_cli_credentials_with_project(self, mock_find_leaks, mock_get_project):
+        """Tests the 'recon credentials' command using an active project."""
+        mock_project = ProjectConfig(
+            project_name="Test", created_at="", domain="project.com"
+        )
+        mock_get_project.return_value = mock_project
+        mock_find_leaks.return_value.model_dump.return_value = {}
+
+        result = runner.invoke(recon_app, ["credentials"])
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Using domain 'project.com'", result.stdout)
+        mock_find_leaks.assert_called_with("project.com")
 
     @patch("chimera_intel.core.recon.asyncio.run")
     def test_cli_assets_command_success(self, mock_asyncio_run):
@@ -157,7 +187,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_asyncio_run.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "assets", "Example Corp"])
+        cli_result = runner.invoke(recon_app, ["assets", "Example Corp"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"target_company": "Example Corp"', cli_result.stdout)
 
@@ -171,7 +201,7 @@ class TestRecon(unittest.IsolatedAsyncioTestCase):
         }
         mock_asyncio_run.return_value = mock_result
 
-        cli_result = runner.invoke(app, ["recon", "threat-infra", "1.2.3.4"])
+        cli_result = runner.invoke(recon_app, ["threat-infra", "1.2.3.4"])
         self.assertEqual(cli_result.exit_code, 0)
         self.assertIn('"initial_indicator": "1.2.3.4"', cli_result.stdout)
 

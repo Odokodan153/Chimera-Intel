@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-recon"
+version = "1.0.0"
+description = "Advanced Reconnaissance plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "kaggle>=1.5.12,<2.0.0",
+    "google-play-scraper>=1.2.4,<2.0.0",
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+recon = "chimera_recon.main:ReconPlugin"

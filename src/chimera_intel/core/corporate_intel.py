@@ -22,10 +22,11 @@ from .schemas import (
     Trademark,
     LobbyingRecord,
 )
-from .utils import save_or_print_results, is_valid_domain
+from .utils import save_or_print_results, is_valid_domain, console
 from .database import save_scan_to_db
 from .http_client import sync_client
 from .config_loader import API_KEYS
+from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)
 
@@ -230,17 +231,17 @@ def get_trademarks(company_name: str) -> TrademarkResult:
 
 def get_lobbying_data(company_name: str) -> LobbyingResult:
     """
-    Searches for a company's lobbying activities using the LobbyingData.com API.
+    Searches for a company's lobbying activities.
     """
     api_key = API_KEYS.lobbying_data_api_key
     if not api_key:
         return LobbyingResult(
-            total_spent=0, error="LobbyingData.com API key not found in .env file."
+            total_spent=0, error="Lobbying data API key not found in .env file."
         )
-    logger.info(f"Analyzing lobbying data for {company_name} from LobbyingData.com.")
-    base_url = "https://www.lobbyingdata.com/api/v1/search"  # Hypothetical URL
-    params = {"client": company_name}
-    headers = {"Authorization": f"Bearer {api_key}"}
+    logger.info(f"Analyzing lobbying data for {company_name}.")
+    base_url = "https://api.propublica.org/congress/v1/lobbying/search.json"
+    params = {"query": company_name}
+    headers = {"X-API-Key": api_key}
 
     try:
         response = sync_client.get(base_url, params=params, headers=headers)
@@ -253,7 +254,7 @@ def get_lobbying_data(company_name: str) -> LobbyingResult:
                 amount=int(record.get("amount", 0)),
                 year=int(record.get("year", 0)),
             )
-            for record in data.get("filings", [])
+            for record in data.get("results", [{}])[0].get("lobbying_represents", [])
         ]
 
         total_spent = sum(r.amount for r in records)
@@ -322,7 +323,6 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
 
 
 # --- Typer CLI Application ---
-# (The CLI part remains the same)
 
 
 corporate_intel_app = typer.Typer()
@@ -330,14 +330,57 @@ corporate_intel_app = typer.Typer()
 
 @corporate_intel_app.command("hr-intel")
 def run_hr_intel(
-    target: str = typer.Argument(..., help="The company domain or name."),
+    target: Optional[str] = typer.Argument(
+        None, help="The company domain or name. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes human capital: hiring trends and employee sentiment."""
-    hiring_results = get_hiring_trends(target)
-    sentiment_results = get_employee_sentiment(target)
+    target_name = target
+    target_domain = None
+    target_company = None
+
+    if not target_name:
+        active_project = get_active_project()
+        if active_project:
+            target_domain = active_project.domain
+            target_company = active_project.company_name
+            target_name = target_company or target_domain
+            console.print(
+                f"[bold cyan]Using target '{target_name}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No target provided and no active project set."
+            )
+            raise typer.Exit(code=1)
+    else:
+        if is_valid_domain(target_name):
+            target_domain = target_name
+            target_company = target_name.split(".")[0]  # Best effort
+        else:
+            target_company = target_name
+    if not target_name:
+        console.print(
+            "[bold red]Error:[/bold red] A target name or domain is required."
+        )
+        raise typer.Exit(code=1)
+    hiring_results = (
+        get_hiring_trends(target_domain)
+        if target_domain
+        else HiringTrendsResult(
+            total_postings=0, error="Domain needed for hiring trends."
+        )
+    )
+    sentiment_results = (
+        get_employee_sentiment(target_company)
+        if target_company
+        else EmployeeSentimentResult(
+            error="Company name needed for sentiment analysis."
+        )
+    )
 
     results = {
         "hiring_trends": hiring_results.model_dump(),
@@ -345,61 +388,136 @@ def run_hr_intel(
     }
 
     save_or_print_results(results, output_file)
-    save_scan_to_db(target=target, module="corporate_hr_intel", data=results)
+    save_scan_to_db(target=target_name, module="corporate_hr_intel", data=results)
 
 
 @corporate_intel_app.command("supplychain")
 def run_supplychain_intel(
-    company_name: str = typer.Argument(..., help="The legal name of the company."),
+    company_name: Optional[str] = typer.Argument(
+        None, help="The legal name of the company. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Investigates a company's supply chain via trade data."""
-    trade_data = get_trade_data(company_name)
+    target_company = company_name
+    if not target_company:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_company = active_project.company_name
+            console.print(
+                f"[bold cyan]Using company name '{target_company}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No company name provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_company:
+        console.print("[bold red]Error:[/bold red] A company name is required.")
+        raise typer.Exit(code=1)
+    trade_data = get_trade_data(target_company)
     results = trade_data.model_dump()
     save_or_print_results(results, output_file)
-    save_scan_to_db(target=company_name, module="corporate_supplychain", data=results)
+    save_scan_to_db(target=target_company, module="corporate_supplychain", data=results)
 
 
 @corporate_intel_app.command("ip-deep")
 def run_ip_intel(
-    company_name: str = typer.Argument(..., help="The legal name of the company."),
+    company_name: Optional[str] = typer.Argument(
+        None, help="The legal name of the company. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Performs deep intellectual property analysis (trademarks)."""
-    trademark_data = get_trademarks(company_name)
+    target_company = company_name
+    if not target_company:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_company = active_project.company_name
+            console.print(
+                f"[bold cyan]Using company name '{target_company}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No company name provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_company:
+        console.print("[bold red]Error:[/bold red] A company name is required.")
+        raise typer.Exit(code=1)
+    trademark_data = get_trademarks(target_company)
     results = trademark_data.model_dump()
     save_or_print_results(results, output_file)
-    save_scan_to_db(target=company_name, module="corporate_ip_deep", data=results)
+    save_scan_to_db(target=target_company, module="corporate_ip_deep", data=results)
 
 
 @corporate_intel_app.command("regulatory")
 def run_regulatory_intel(
-    company_name: str = typer.Argument(..., help="The legal name of the company."),
+    company_name: Optional[str] = typer.Argument(
+        None, help="The legal name of the company. Uses active project if not provided."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes regulatory and lobbying activities."""
-    lobbying_data = get_lobbying_data(company_name)
+    target_company = company_name
+    if not target_company:
+        active_project = get_active_project()
+        if active_project and active_project.company_name:
+            target_company = active_project.company_name
+            console.print(
+                f"[bold cyan]Using company name '{target_company}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No company name provided and no active project with a company name is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_company:
+        console.print("[bold red]Error:[/bold red] A company name is required.")
+        raise typer.Exit(code=1)
+    lobbying_data = get_lobbying_data(target_company)
     results = lobbying_data.model_dump()
     save_or_print_results(results, output_file)
-    save_scan_to_db(target=company_name, module="corporate_regulatory", data=results)
+    save_scan_to_db(target=target_company, module="corporate_regulatory", data=results)
 
 
 @corporate_intel_app.command("sec-filings")
 def run_sec_filings_intel(
-    ticker: str = typer.Argument(..., help="The stock ticker of the company."),
+    ticker: Optional[str] = typer.Argument(
+        None,
+        help="The stock ticker of the company. Uses active project if not provided.",
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Analyzes a company's SEC filings for risk factors."""
-    filings_data = get_sec_filings_analysis(ticker)
+    target_ticker = ticker
+    if not target_ticker:
+        active_project = get_active_project()
+        if active_project and active_project.ticker:
+            target_ticker = active_project.ticker
+            console.print(
+                f"[bold cyan]Using ticker '{target_ticker}' from active project '{active_project.project_name}'.[/bold cyan]"
+            )
+        else:
+            console.print(
+                "[bold red]Error:[/bold red] No ticker provided and no active project with a ticker is set."
+            )
+            raise typer.Exit(code=1)
+    if not target_ticker:
+        console.print("[bold red]Error:[/bold red] A stock ticker is required.")
+        raise typer.Exit(code=1)
+    filings_data = get_sec_filings_analysis(target_ticker)
     if filings_data:
         results = filings_data.model_dump()
         save_or_print_results(results, output_file)
-        save_scan_to_db(target=ticker, module="corporate_sec_filings", data=results)
+        save_scan_to_db(
+            target=target_ticker, module="corporate_sec_filings", data=results
+        )

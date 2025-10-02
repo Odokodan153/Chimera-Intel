@@ -2,8 +2,12 @@ import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
+import typer
 
-from chimera_intel.cli import app
+# Import the specific Typer app for this module, not the main one
+
+
+from chimera_intel.core.signal_analyzer import signal_app
 from chimera_intel.core.signal_analyzer import (
     scrape_job_postings,
     analyze_signals,
@@ -166,9 +170,10 @@ class TestSignalAnalyzer(unittest.TestCase):
             job_postings=["Hiring for Data Scientist"]
         )
 
-        # --- Act ---
+        # Act
+        # FIX: The command is 'run'. The previous test was missing this.
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["example.com"])
 
         # --- Assert ---
 
@@ -183,8 +188,9 @@ class TestSignalAnalyzer(unittest.TestCase):
         Tests that the CLI command exits with an error for an invalid domain format.
         """
         # --- Act ---
+        # FIX: Correctly invoke with the invalid domain as the argument.
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "invalid-domain"])
+        result = runner.invoke(signal_app, ["invalid-domain"])
 
         # --- Assert ---
 
@@ -201,8 +207,9 @@ class TestSignalAnalyzer(unittest.TestCase):
         mock_get_data.return_value = None
 
         # --- Act ---
+        # FIX: Correctly invoke with a target domain.
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["example.com"])
 
         # --- Assert ---
         # The command should exit with a non-zero code to indicate no data was found
@@ -222,8 +229,9 @@ class TestSignalAnalyzer(unittest.TestCase):
         mock_scrape.return_value = JobPostingsResult(job_postings=["Sales Associate"])
 
         # --- Act ---
+        # FIX: Correctly invoke with a target domain.
 
-        result = runner.invoke(app, ["analysis", "signal", "run", "example.com"])
+        result = runner.invoke(signal_app, ["example.com"])
 
         # --- Assert ---
         # The command should exit cleanly
@@ -233,6 +241,49 @@ class TestSignalAnalyzer(unittest.TestCase):
 
         self.assertNotIn("Potential Strategic Signals Detected", result.stdout)
         self.assertIn("No strong strategic signals detected", result.stderr)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.signal_analyzer.resolve_target")
+    @patch("chimera_intel.core.signal_analyzer.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.signal_analyzer.scrape_job_postings")
+    def test_cli_signal_with_project(
+        self, mock_scrape, mock_get_data, mock_resolve_target
+    ):
+        """Tests the CLI command using the centralized target resolver."""
+        # Arrange
+
+        mock_resolve_target.return_value = "project-signal.com"
+        mock_get_data.return_value = {"modules": {}}
+        mock_scrape.return_value = JobPostingsResult(job_postings=[])
+
+        # Act
+        # FIX: When testing project context, no argument should be passed to the runner.
+
+        result = runner.invoke(signal_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
+        mock_get_data.assert_called_with("project-signal.com")
+        mock_scrape.assert_called_with("project-signal.com")
+
+    @patch("chimera_intel.core.signal_analyzer.resolve_target")
+    def test_cli_signal_resolver_fails(self, mock_resolve_target):
+        """Tests CLI failure when the resolver raises an exit exception."""
+        # Arrange
+
+        mock_resolve_target.side_effect = typer.Exit(code=1)
+
+        # Act
+        # FIX: Correct invocation when no argument is provided.
+
+        result = runner.invoke(signal_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":

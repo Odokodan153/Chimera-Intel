@@ -19,6 +19,7 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
     This function uses the pyvis library to build a network graph. It parses the
     input JSON data, creating nodes for the main target, subdomains, IP addresses,
     and technologies, and then connects them with edges. The final graph is
+    configured with physics options from the config.yaml file for an interactive layout.
 
     Args:
         json_data (Dict[str, Any]): The loaded JSON data from a scan.
@@ -81,6 +82,8 @@ def generate_knowledge_graph(json_data: Dict[str, Any], output_path: str) -> Non
                     title="Technology",
                 )
                 net.add_edge(target, tech)
+        # Apply physics options from config.yaml
+
         physics_options = (
             CONFIG.model_dump()
             .get("reporting", {})

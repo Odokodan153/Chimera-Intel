@@ -26,15 +26,14 @@ modules:
 
 # Settings for report generation
 reporting:
-  graph: {} 
-  pdf:
-    # Path to your company's logo. This now points to your uploaded logo.
-    logo_path: "src/chimera_intel/assets/my_logo.png"
-    # The main title for the report.
-    title_text: "Chimera Intel - Intelligence Report"
-    # Text to display in the footer of each page.
-    footer_text: "Confidential | Prepared by Chimera Intel"
-    # Pyvis graph physics settings
+  # Defines the list of scans to be executed by the 'project report' command.
+  project_report_scans:
+    - "footprint"
+    - "web_analyzer"
+    - "defensive_breaches"
+
+  graph:
+    # Pyvis graph physics settings for interactive graphs
     # For more options: https://pyvis.readthedocs.io/en/latest/documentation.html#pyvis.network.Network.set_options
     physics_options: |
       var options = {
@@ -47,3 +46,11 @@ reporting:
           "minVelocity": 0.75
         }
       }
+  
+  pdf:
+    # Path to your company's logo.
+    logo_path: "src/chimera_intel/assets/my_logo.png"
+    # The main title for the report.
+    title_text: "Chimera Intel - Intelligence Report"
+    # Text to display in the footer of each page.
+    footer_text: "Confidential | Prepared by Chimera Intel"

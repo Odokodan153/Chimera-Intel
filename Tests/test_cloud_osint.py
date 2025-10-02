@@ -2,13 +2,23 @@ import unittest
 import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 from httpx import Response, RequestError
+from typer.testing import CliRunner
+
 from chimera_intel.core.cloud_osint import (
     check_s3_bucket,
     find_cloud_assets,
     check_azure_blob,
     check_gcs_bucket,
+    cloud_osint_app,
 )
-from chimera_intel.core.schemas import S3Bucket, AzureBlobContainer, GCSBucket
+from chimera_intel.core.schemas import (
+    S3Bucket,
+    AzureBlobContainer,
+    GCSBucket,
+    ProjectConfig,
+)
+
+runner = CliRunner(mix_stderr=False)
 
 
 class TestCloudOsint(unittest.TestCase):
@@ -136,6 +146,54 @@ class TestCloudOsint(unittest.TestCase):
         self.assertEqual(len(result.found_s3_buckets), 0)
         self.assertEqual(len(result.found_azure_containers), 0)
         self.assertEqual(len(result.found_gcs_buckets), 0)
+
+    # --- NEW: Project-Aware CLI Tests ---
+
+    @patch("chimera_intel.core.cloud_osint.get_active_project")
+    @patch("chimera_intel.core.cloud_osint.find_cloud_assets", new_callable=AsyncMock)
+    @patch("chimera_intel.core.cloud_osint.save_scan_to_db")
+    def test_cli_cloud_run_with_project(
+        self, mock_save_db, mock_find_assets, mock_get_project
+    ):
+        """Tests the CLI command using an active project's company name."""
+        # Arrange
+
+        mock_project = ProjectConfig(
+            project_name="CloudTest",
+            created_at="2025-01-01",
+            company_name="Project Cloud Inc",
+        )
+        mock_get_project.return_value = mock_project
+        mock_find_assets.return_value.model_dump.return_value = {}
+
+        # Act
+
+        result = runner.invoke(cloud_osint_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn(
+            "Using keyword 'projectcloudinc' from active project", result.stdout
+        )
+        mock_find_assets.assert_awaited_with("projectcloudinc")
+        mock_save_db.assert_called_once()
+
+    @patch("chimera_intel.core.cloud_osint.get_active_project")
+    def test_cli_cloud_run_no_keyword_no_project(self, mock_get_project):
+        """Tests CLI failure when no keyword is given and no project is active."""
+        # Arrange
+
+        mock_get_project.return_value = None
+
+        # Act
+
+        result = runner.invoke(cloud_osint_app, [])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("No keyword provided and no active project", result.stdout)
 
 
 if __name__ == "__main__":
