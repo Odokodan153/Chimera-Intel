@@ -12,6 +12,7 @@ BANNER = """
  \____|_| |_|___|_|  |_|_____|_| \_\/_/   \_\  |___|_| \_| |_| |_____|_____|
 """
 
+
 def get_cli_app():
     """
     Creates the core Typer application without loading plugins.
@@ -31,7 +32,9 @@ def get_cli_app():
 
     return app
 
+
 app = get_cli_app()
+
 
 def main():
     """
@@ -50,9 +53,10 @@ def main():
     plugins = discover_plugins()
     for plugin in plugins:
         app.add_typer(plugin.app, name=plugin.name)
-    
+
     # Run the fully configured app
     app()
+
 
 if __name__ == "__main__":
     main()

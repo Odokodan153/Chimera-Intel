@@ -1,0 +1,2 @@
+[console_scripts]
+chimera = chimera_intel.cli:app

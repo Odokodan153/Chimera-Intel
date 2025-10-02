@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
 import typer
+
 # Import the specific Typer app for this module
 
 

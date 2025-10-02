@@ -1,0 +1,292 @@
+Metadata-Version: 2.4
+Name: chimera-intel
+Version: 6.0.0
+Summary: A modular OSINT platform for corporate intelligence and counter-intelligence, powered by an AI analysis core.
+Author-email: Ignacio Iliev <ignasioi72@gmail.com>
+Project-URL: Homepage, https://github.com/IgnacioIliev/chimera-intel
+Project-URL: Bug Tracker, https://github.com/IgnacioIliev/chimera-intel/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Security
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: typer[all]<0.10.0,>=0.9.0
+Requires-Dist: click<8.2.0
+Requires-Dist: python-dotenv<2.0.0,>=1.0.0
+Requires-Dist: beautifulsoup4<5.0.0,>=4.12.2
+Requires-Dist: httpx<0.25.0,>=0.24.1
+Requires-Dist: PyYAML<7.0.0,>=6.0.1
+Requires-Dist: fastapi<0.104.0,>=0.103.1
+Requires-Dist: uvicorn[standard]<0.24.0,>=0.23.2
+Requires-Dist: jinja2<4.0.0,>=3.1.2
+Requires-Dist: pydantic<3.0.0,>=2.4.2
+Requires-Dist: pydantic-settings<3.0.0,>=2.0.3
+Requires-Dist: rich<14.0.0,>=13.0.0
+Requires-Dist: lxml<6.0.0,>=5.2.2
+Requires-Dist: stix2<4.0.0,>=3.0.1
+Requires-Dist: psycopg2-binary<3.0.0,>=2.9.9
+Requires-Dist: passlib[bcrypt]<2.0.0,>=1.7.4
+Requires-Dist: argon2-cffi<22.0.0,>=21.3.0
+Requires-Dist: playwright<2.0.0,>=1.44.0
+Requires-Dist: dnspython<3.0.0,>=2.4.2
+Requires-Dist: SpeechRecognition<4.0.0,>=3.10.0
+Requires-Dist: Pillow<11.0.0,>=10.0.0
+Requires-Dist: joblib<2.0.0,>=1.4.2
+Requires-Dist: numpy<2.0.0,>=1.26.4
+Requires-Dist: scikit-learn<2.0.0,>=1.5.0
+Requires-Dist: sec-api<2.0.0,>=1.0.17
+Requires-Dist: python-nmap<0.8.0,>=0.7.1
+Requires-Dist: reportlab<5.0.0,>=4.2.0
+Requires-Dist: pyvis<0.4.0,>=0.3.2
+Requires-Dist: feedparser<7.0.0,>=6.0.10
+Requires-Dist: python-whois<0.9.0,>=0.8.0
+Requires-Dist: GitPython<4.0.0,>=3.1.43
+Requires-Dist: jsondiff==2.0.0
+Requires-Dist: google-generativeai<0.3.0,>=0.2.2
+Requires-Dist: shodan<2.0.0,>=1.28.0
+Requires-Dist: sherlock-project<0.15.0,>=0.14.3
+Requires-Dist: tweepy<5.0.0,>=4.14.0
+Requires-Dist: googlemaps<5.0.0,>=4.10.0
+Requires-Dist: mitreattack-python<3.0.0,>=2.1.0
+Requires-Dist: folium<0.16.0,>=0.15.1
+Requires-Dist: kaggle<2.0.0,>=1.5.12
+Requires-Dist: google-api-python-client<3.0.0,>=2.52.0
+Requires-Dist: google-play-scraper<2.0.0,>=1.2.4
+Requires-Dist: httpx-socks<0.9.0,>=0.8.0
+Requires-Dist: yfinance<0.3.0,>=0.2.28
+Requires-Dist: types-PyYAML<7.0.0.0,>=6.0.12.12
+Requires-Dist: types-beautifulsoup4<4.13.0.0,>=4.12.0.20250516
+Requires-Dist: types-psycopg2<2.10.0.0,>=2.9.21.20240523
+Requires-Dist: types-passlib<1.8.0.0,>=1.7.4.20240106
+Requires-Dist: types-python-nmap<0.8.0.0,>=0.7.0.20240428
+Requires-Dist: types-reportlab~=4.2.0
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-cov; extra == "test"
+Requires-Dist: pytest-asyncio; extra == "test"
+Requires-Dist: ruff; extra == "test"
+Requires-Dist: black; extra == "test"
+Requires-Dist: mypy; extra == "test"
+Dynamic: license-file
+
+# Chimera Intel 🔱
+
+**A modular OSINT platform for comprehensive corporate intelligence and counter-intelligence, powered by an AI analysis core.**
+
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)](tests)
+
+---
+
+Chimera Intel is a command-line first OSINT (Open Source Intelligence) tool designed to solve a critical business problem: **information fragmentation**. Inspired by the mythological Chimera—a creature forged from multiple animals—this tool synthesizes disparate data streams into a single, unified, and actionable dossier.
+
+Chimera Intel is a **comprehensive Open Source Intelligence (OSINT) and cybersecurity platform** designed for both **offensive intelligence gathering** and **defensive monitoring**.
+It is a modular, extensible tool that allows cybersecurity professionals, penetration testers, and threat analysts to perform thorough reconnaissance on corporate, organizational, and personal digital footprints.
+
+By combining multiple specialized modules—ranging from domain footprinting, web and business intelligence, to AI-driven analysis—Chimera Intel enables users to gather actionable insights efficiently.
+It integrates various APIs, local scanning tools, and machine learning models to automate the collection, correlation, and analysis of large datasets, reducing manual effort while maintaining accuracy.
+
+The platform is designed with **flexibility and modularity** in mind:
+- Offensive modules provide detailed visibility into target infrastructure, public assets, and business-related data.
+- Defensive modules allow organizations to monitor for potential breaches, data leaks, and malicious activity affecting their brand or digital assets.
+- AI modules leverage state-of-the-art machine learning techniques to provide predictive insights, anomaly detection, and strategic recommendations.
+
+Chimera Intel is ideal for security researchers, OSINT enthusiasts, and IT teams looking to **strengthen their security posture**, **investigate incidents**, or **perform advanced competitive intelligence**.
+
+### ⚠️ Responsible Use & Legal Disclaimer
+
+> **For Educational & Professional Use Only**
+
+Chimera Intel is a powerful OSINT tool intended for educational purposes, ethical security research, and defensive analysis by authorized professionals. It provides a wide range of capabilities for gathering and analyzing publicly available information. By downloading or using this software, you acknowledge and agree to the terms and conditions outlined below.
+
+> **You Are Fully Responsible For Your Actions**
+
+The user assumes all responsibility and liability for any actions taken and for any consequences that may arise from using Chimera Intel. You are strictly prohibited from using this tool for any activity that is illegal, malicious, or intended to cause harm. This includes, but is not limited to, scanning systems you do not have explicit written permission to test, collecting private data in violation of privacy laws (e.g., GDPR, CCPA), or engaging in any form of unauthorized computer access.
+
+> **No Warranty & Limitation of Liability**
+
+This tool is provided "AS IS" without any warranty of any kind, express or implied. The data gathered by Chimera Intel is aggregated from third-party sources and may be inaccurate, incomplete, or outdated. You are responsible for independently verifying all information before taking action. The author and any contributors shall **not be held liable for any damages**, claims, or other liabilities arising from the use, misuse, or inability to use this software.
+
+
+
+Its command-line interface ensures scriptable workflows, automation of repetitive tasks, and easy integration with other tools or CI/CD pipelines, making it a versatile solution for both small-scale investigations and large enterprise deployments.
+## ✨ Key Features
+
+Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
+
+| Command Group      | Feature Command | Description                                                              |
+| :----------------- | :-------------- | :----------------------------------------------------------------------- |
+| **Project** | `init`, `use`, `status` | Manages intelligence projects for organized, long-term tracking.          |
+|                    | `report`        | Generates a comprehensive PDF dossier for the active project.            |
+|                    | `signal`        | Analyzes data for unintentional strategic signals (e.g., hiring trends). |
+| **Scan** | `footprint`     | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence.     |
+|                    | `web`           | Analyzes website technology stacks, traffic, and tech stack risk.         |
+|                    | `business`      | Retrieves public financial data, news, and patents.                      |
+|                    | `cloud`         | Scans for misconfigured cloud assets like S3 buckets.                    |
+|                    | `personnel`     | Finds, validates, and enriches public employee email addresses.          |
+|                    | `profiles`      | Identifies social media profiles via usernames.                          |
+|                    | `geo`           | Retrieves geolocation information for IP addresses.                      |
+| **Recon** | `credentials`   | Searches breach data for compromised credentials.                        |
+|                    | `assets`        | Discovers digital assets like mobile apps and public datasets.           |
+|                    | `threat-infra`  | Pivots on malicious indicators to map adversary infrastructure.          |
+| **Defensive** | `checks`        | Audits security posture for breaches and code leaks.                     |
+|                    | `vuln`          | Scans for CVEs and open ports on discovered assets.                      |
+|                    | `darkweb`       | Searches the dark web for relevant queries via Tor.                      |
+|                    | `certs`         | Monitors new SSL/TLS certificate issuance.                               |
+|                    | `scan-iac`      | Checks Infrastructure-as-Code (e.g., Terraform) for security flaws.      |
+|                    | `scan-secrets`  | Detects leaked secrets in code repositories.                             |
+| **Offensive** | `api-discover`  | Finds exposed APIs through active reconnaissance.                        |
+|                    | `enum-content`  | Enumerates hidden web content (directories, files).                      |
+|                    | `cloud-takeover`| Checks for subdomain and cloud service takeovers.                        |
+| **Internal** | `analyze-log`   | Analyzes local logs for incident response.                               |
+|                    | `static-analysis`| Performs malware or code static analysis.                                |
+|                    | `parse-mft`     | Parses Master File Tables for forensic insights.                         |
+| **Corporate** | `hr-intel`      | Gathers strategic intelligence on hiring trends and employee sentiment.  |
+|                    | `supplychain`   | Collects trade data and supply chain insights.                           |
+|                    | `ip-deep`       | Tracks trademarks, patents, and IP activity.                             |
+|                    | `regulatory`    | Monitors lobbying and regulatory activities.                             |
+| **Analysis** | `core`          | Performs AI-assisted SWOT analysis and sentiment analysis.               |
+|                    | `diff`          | Detects and interprets changes by comparing historical scans.            |
+|                    | `forecast`      | Predicts potential future events from historical data.                   |
+|                    | `strategy`      | Generates a high-level AI-powered strategic profile.                     |
+|                    | `temporal`      | Analyzes historical web snapshots to track a company's "Shifting Identity". |
+|                    | `behavioral`    | Builds a corporate "psycho-profile" from public communications.          |
+|                    | `wsa`           | Amplifies weak signals into high-confidence events using evidence theory. |
+|                    | `deception`     | Uncovers hidden corporate networks and mimicry.                          |
+| **Auto** | `enrich-ioc`    | Automatically enriches Indicators of Compromise.                         |
+|                    | `enrich-cve`    | Enriches CVE data for vulnerability management.                          |
+|                    | `threat-model`  | Automates threat modeling based on aggregated scan data.                 |
+|                    | `ueba`          | Performs User and Entity Behavior Analytics on log files.                |
+|                    | `workflow`      | Executes multi-step automated security workflows from a YAML file.       |
+| **Connect** | `virustotal`    | Integrates with VirusTotal for file and URL analysis.                    |
+| **Report** | `pdf`           | Generates professional PDF reports from scan data.                       |
+|                    | `graph`         | Creates interactive HTML knowledge graphs.                               |
+| **Media** | `reverse-search`| Performs a reverse image search to find where an image is used online.   |
+|                    | `transcribe`    | Transcribes audio files to text using an offline Whisper model.         |
+| **AppInt** | `static`        | Performs static analysis on mobile application (.apk) files.             |
+| **Imint** | `analyze-image` | Extracts EXIF metadata from image files.                                 |
+| **Geoint** | `run`           | Analyzes a target's geographic footprint for geopolitical risks.         |
+
+
+---
+
+
+---
+
+## 📖 Use Cases & Example Workflows
+
+Here are a few ways you can use Chimera Intel to gain actionable intelligence.
+
+### Workflow 1: Competitor Analysis
+Your goal is to build a complete dossier on a competitor, "megacorp.com".
+
+1.  **Initial Footprint**: `chimera scan footprint megacorp.com -o megacorp.json`
+2.  **Technology & Business Intel**: `chimera scan web megacorp.com` and `chimera scan business "MegaCorp Inc"`
+3.  **Find Key People**: `chimera scan personnel emails megacorp.com`
+4.  **Synthesize with AI**: `chimera analysis strategy megacorp.com`
+5.  **Generate Report**: `chimera report pdf megacorp.json`
+
+### Workflow 2: Continuous Self-Monitoring
+You want to monitor your own company, "mycompany.com", for external threats.
+
+1.  **Check for Breaches**: `chimera defensive checks breaches mycompany.com`
+2.  **Look for Leaked Secrets**: `chimera defensive checks leaks "mycompany.com api_key"`
+3.  **Discover Attack Surface**: `chimera defensive vuln run mycompany.com`
+4.  **Monitor for Changes**: Set up a weekly cron job to run scans and use `chimera analysis diff run mycompany.com footprint` to get alerts on new subdomains.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prerequisites
+* Python 3.9 or higher.
+* `git` installed on your system.
+* The `nmap` command-line tool (for the vulnerability scanner).
+* A running Tor proxy (like the Tor Browser) for dark web searches.
+
+### 2. Installation
+It is highly recommended to install the tool within a Python virtual environment.
+
+```bash
+# Clone the repository
+git clone [https://github.com/your-username/chimera-intel.git](https://github.com/your-username/chimera-intel.git)
+cd chimera-intel
+
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+
+# Install the project and all dependencies in editable mode
+pip install -e .
+
+Before running, copy the .env.example file to .env and fill in your API keys.
+cp .env.example .env
+# Now edit the .env file with your keys
+nano .env
+
+# Example: Install the 'footprint' scanning plugin
+cd plugins/chimera_footprint
+pip install -e .
+cd ../..
+
+# Example: Install the 'analysis' plugin suite
+cd plugins/chimera_analysis
+pip install -e .
+cd ../..
+
+## Usage Examples
+
+Once installed, you can run the tool from anywhere using the `chimera` command.
+
+```bash
+# Get help for any command
+chimera --help
+chimera scan --help
+
+# Run a basic footprint scan on a domain and save the output
+chimera scan footprint google.com --output google_footprint.json
+
+# Check your own company's domain for data breaches
+chimera defensive breaches mycompany.com
+
+# Generate a SWOT analysis from a previously saved scan
+chimera scan business "Microsoft" --ticker MSFT -o microsoft.json
+chimera analysis core swot microsoft.json
+
+### Data Flow Diagram
+
+The following diagram illustrates the typical data flow for a `scan` command.
+
+```mermaid
+graph TD
+    subgraph User Interface
+        A[User runs 'chimera scan footprint google.com'] --> B{CLI Entrypoint (cli.py)};
+    end
+
+    subgraph Core Logic
+        B --> C[Footprint Module (footprint.py)];
+        C --> D{gather_footprint_data()};
+        D -- Calls --> E[External APIs (VirusTotal, etc.)];
+        D -- Calls --> F[Local Libraries (whois, dnspython)];
+        E --> G[Pydantic Models (schemas.py)];
+        F --> G;
+        G --> H[Aggregated FootprintResult];
+    end
+
+    subgraph Output & Persistence
+        H --> I[Utils (utils.py)];
+        I -- Output File? --> J{Save to JSON};
+        I -- No Output File --> K[Print to Console];
+        H --> L[Database Module (database.py)];
+        L --> M[Save to chimera_intel.db];
+    end
+
+    subgraph Analysis (Later Stage)
+        M --> N[Analysis Modules (strategist.py, differ.py)];
+        N --> O[AI Models / Historical Comparison];
+        O --> P[Final Report/Analysis];
+    end

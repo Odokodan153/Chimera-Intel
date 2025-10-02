@@ -1,0 +1,241 @@
+2025-10-02 13:04:45,988 - chimera_intel.core.business_intel - WARNING - Could not fetch or parse data for ticker 'INCOMPLETE': Incomplete data received from yfinance API.
+2025-10-02 13:04:45,994 - chimera_intel.core.business_intel - CRITICAL - An unexpected error occurred in get_financials_yfinance for ticker 'AAPL': A critical error occurred
+2025-10-02 13:04:46,002 - chimera_intel.core.business_intel - ERROR - An error occurred during SEC filing analysis for ticker 'AAPL': SEC API limit reached
+2025-10-02 13:04:46,025 - chimera_intel.core.defensive - INFO - Starting HIBP breach check for mycompany.com
+2025-10-02 13:04:46,734 - chimera_intel.core.footprint - WARNING - Invalid domain format provided to 'footprint' command: invalid-domain
+2025-10-02 13:04:46,744 - chimera_intel.core.footprint - INFO - Starting asynchronous footprint scan for example.com
+2025-10-02 13:04:46,746 - chimera_intel.core.footprint - INFO - Footprint scan complete for example.com
+2025-10-02 13:04:46,794 - chimera_intel.core.cloud_osint - INFO - Cloud asset scan complete for keyword: projectcloudinc
+2025-10-02 13:04:46,801 - chimera_intel.core.cloud_osint - INFO - Starting cloud asset search for keyword: mycompany
+2025-10-02 13:04:46,809 - chimera_intel.core.cloud_osint - INFO - Starting cloud asset search for keyword: nonexistentcompany
+2025-10-02 13:04:46,816 - chimera_intel.core.code_intel - INFO - Cloning repository https://github.com/user/nonexistent-repo.git into temporary directory /tmp/tmp50di4i4k
+2025-10-02 13:04:46,817 - chimera_intel.core.code_intel - ERROR - Failed to clone or analyze repository https://github.com/user/nonexistent-repo.git: Cmd('clone') failed due to: 'Repository not found'
+  cmdline: clone
+2025-10-02 13:04:46,819 - chimera_intel.core.code_intel - INFO - Cleaning up temporary directory: /tmp/tmp50di4i4k
+2025-10-02 13:04:46,826 - chimera_intel.core.code_intel - INFO - Cloning repository https://github.com/user/repo.git into temporary directory /tmp/tmp4rqjkaw5
+2025-10-02 13:04:46,828 - chimera_intel.core.code_intel - INFO - Cleaning up temporary directory: /tmp/tmp4rqjkaw5
+2025-10-02 13:04:46,833 - chimera_intel.core.code_intel - INFO - Cloning repository https://github.com/user/repo.git into temporary directory /tmp/tmpaa0hoo61
+2025-10-02 13:04:46,834 - chimera_intel.core.code_intel - ERROR - An unexpected error occurred: An unexpected network error
+2025-10-02 13:04:46,836 - chimera_intel.core.code_intel - INFO - Cleaning up temporary directory: /tmp/tmpaa0hoo61
+2025-10-02 13:04:46,844 - chimera_intel.core.competitive_analyzer - INFO - Generating competitive analysis between 'companyA' and 'companyB'.
+2025-10-02 13:04:46,851 - chimera_intel.core.competitive_analyzer - INFO - Generating competitive analysis between 'companyA' and 'companyB'.
+2025-10-02 13:04:46,857 - chimera_intel.core.competitive_analyzer - ERROR - An error occurred with the Google AI API during competitive analysis: API error
+2025-10-02 13:04:46,874 - chimera_intel.core.corporate_intel - INFO - Fetching employee sentiment for 'Example Corp' from Aura API.
+2025-10-02 13:04:46,879 - chimera_intel.core.corporate_intel - INFO - Analyzing hiring trends for example.com
+2025-10-02 13:04:46,885 - chimera_intel.core.corporate_intel - INFO - Analyzing lobbying data for Example Corp.
+2025-10-02 13:04:46,894 - chimera_intel.core.corporate_intel - INFO - Retrieving trade data for Example Corp from ImportGenius.
+2025-10-02 13:04:46,899 - chimera_intel.core.corporate_intel - INFO - Searching for trademarks for owner: Example Corp
+2025-10-02 13:04:46,927 - chimera_intel.core.corporate_records - INFO - Local PEP list not found. Downloading from https://datasets.opensanctions.org/datasets/latest/peps/names.txt...
+2025-10-02 13:04:46,929 - chimera_intel.core.corporate_records - INFO - Successfully downloaded PEP list.
+2025-10-02 13:04:46,937 - chimera_intel.core.corporate_records - INFO - Screening name 'JOHN DOE' against OFAC sanctions list.
+2025-10-02 13:04:46,943 - chimera_intel.core.correlation_engine - INFO - Running correlation engine for '1.2.3.4' from module 'vulnerability_scanner'.
+2025-10-02 13:04:46,944 - chimera_intel.core.correlation_engine - INFO - Correlation: Critical CVE CVE-2023-1337 found on 1.2.3.4. Triggering TTP mapping.
+2025-10-02 13:04:46,948 - chimera_intel.core.correlation_engine - INFO - Running correlation engine for 'example.com' from module 'footprint'.
+2025-10-02 13:04:46,950 - chimera_intel.core.correlation_engine - INFO - Correlation: New IP 2.2.2.2 found for example.com. Triggering vulnerability scan.
+2025-10-02 13:04:46,953 - chimera_intel.core.correlation_engine - INFO - Running correlation engine for 'example.com' from module 'footprint'.
+2025-10-02 13:04:46,955 - chimera_intel.core.correlation_engine - INFO - Correlation: New subdomain new.example.com found for example.com. Triggering web analysis.
+2025-10-02 13:04:47,000 - chimera_intel.core.cybint - INFO - Starting comprehensive attack surface analysis for example.com
+2025-10-02 13:04:47,039 - chimera_intel.core.daemon - INFO - Daemon executing workflow step: chimera scan footprint example.com
+2025-10-02 13:04:47,041 - chimera_intel.core.daemon - INFO - Daemon executing workflow step: chimera scan web example.com
+2025-10-02 13:04:47,044 - chimera_intel.core.daemon - INFO - Daemon executing workflow step: chimera scan footprint example.com
+2025-10-02 13:04:47,045 - chimera_intel.core.daemon - ERROR - Daemon workflow step failed with exit code 1: chimera scan footprint example.com
+2025-10-02 13:04:47,047 - chimera_intel.core.daemon - INFO - Daemon executing workflow step: chimera scan web example.com
+2025-10-02 13:04:47,048 - chimera_intel.core.daemon - ERROR - Daemon workflow step failed with exit code 1: chimera scan web example.com
+2025-10-02 13:04:47,052 - chimera_intel.core.daemon - ERROR - fork failed: 
+2025-10-02 13:04:47,090 - chimera_intel.core.dark_web_osint - INFO - Dark web search complete for query: ProjectCorp
+2025-10-02 13:04:47,098 - chimera_intel.core.dark_web_osint - INFO - Starting dark web search on ahmia for query: test query
+2025-10-02 13:04:47,133 - chimera_intel.core.dark_web_osint - INFO - Starting dark web search on ahmia for query: test query
+2025-10-02 13:04:47,158 - chimera_intel.core.dark_web_osint - ERROR - An error occurred during dark web scan. Is the Tor Browser running? Error: Proxy error
+2025-10-02 13:04:47,167 - chimera_intel.core.dark_web_osint - INFO - Starting dark web search on ahmia for query: test query
+2025-10-02 13:04:47,192 - chimera_intel.core.dark_web_osint - ERROR - Search timed out. The Tor network can be slow, or the Tor proxy is not running.
+2025-10-02 13:04:47,202 - chimera_intel.core.dark_web_osint - INFO - Starting dark web search on darksearch for query: test query
+2025-10-02 13:04:47,286 - chimera_intel.core.deception_detector - INFO - Starting deception analysis for company-a.com
+2025-10-02 13:04:47,308 - chimera_intel.core.defensive - INFO - Initiating Mozilla Observatory scan for example.com
+2025-10-02 13:04:47,310 - chimera_intel.core.defensive - ERROR - An API error occurred with Mozilla Observatory for example.com: Connection Refused
+2025-10-02 13:04:47,314 - chimera_intel.core.defensive - INFO - Initiating Mozilla Observatory scan for example.com
+2025-10-02 13:04:47,317 - chimera_intel.core.defensive - ERROR - Observatory scan for example.com failed.
+2025-10-02 13:04:47,324 - chimera_intel.core.defensive - INFO - Initiating Mozilla Observatory scan for example.com
+2025-10-02 13:04:47,327 - chimera_intel.core.defensive - DEBUG - Observatory scan for example.com is in state: RUNNING
+2025-10-02 13:04:47,327 - chimera_intel.core.defensive - INFO - Observatory scan for example.com finished.
+2025-10-02 13:04:47,346 - chimera_intel.core.defensive - ERROR - HTTP error checking HIBP for 'example.com': Server Error
+2025-10-02 13:04:47,349 - chimera_intel.core.defensive - ERROR - Network error checking HIBP for 'example.com': Network connection failed
+2025-10-02 13:04:47,358 - chimera_intel.core.defensive - WARNING - Invalid domain format provided to 'breaches' command: invalid-domain
+2025-10-02 13:04:47,367 - chimera_intel.core.defensive - INFO - Starting GitHub leaks search for query: 'query'
+2025-10-02 13:04:47,383 - chimera_intel.core.defensive - INFO - Starting MobSF scan for APK file: test.apk
+2025-10-02 13:04:47,401 - chimera_intel.core.defensive - INFO - Starting public paste search for query: 'query'
+2025-10-02 13:04:47,411 - chimera_intel.core.defensive - INFO - Starting SSL Labs scan for example.com
+2025-10-02 13:04:47,420 - chimera_intel.core.defensive - WARNING - Invalid domain format provided to 'ssllabs' command: invalid-domain
+2025-10-02 13:04:47,429 - chimera_intel.core.defensive - INFO - Starting Shodan surface scan for query: 'query'
+2025-10-02 13:04:47,444 - chimera_intel.core.defensive - WARNING - Invalid domain format provided to 'typosquat' command: invalid-domain
+2025-10-02 13:04:47,449 - chimera_intel.core.defensive - ERROR - The 'dnstwist' command was not found. It may not be installed.
+2025-10-02 13:04:47,452 - chimera_intel.core.defensive - ERROR - Invalid domain format for dnstwist scan: '-example.com'
+2025-10-02 13:04:47,457 - chimera_intel.core.defensive - INFO - Monitoring CT logs for new certificates for example.com
+2025-10-02 13:04:47,465 - chimera_intel.core.defensive - INFO - Scanning for hardcoded secrets in directory: /path/to/repo
+2025-10-02 13:04:47,470 - chimera_intel.core.defensive - INFO - Scanning IaC files in directory: /path/to/terraform
+2025-10-02 13:04:47,478 - chimera_intel.core.defensive - ERROR - HTTP error searching pastes for query 'some_query': Error
+2025-10-02 13:04:47,510 - chimera_intel.core.differ - ERROR - Database error fetching last two scans for 'example.com': DB connection failed
+2025-10-02 13:04:47,532 - chimera_intel.core.utils - INFO - Saving results to test.json
+2025-10-02 13:04:47,544 - chimera_intel.core.utils - INFO - Saving results to test.json
+2025-10-02 13:04:47,552 - chimera_intel.core.ecosystem_intel - INFO - Searching for competitors of example.com
+2025-10-02 13:04:47,559 - chimera_intel.core.ecosystem_intel - INFO - Searching for distributors of TestCorp
+2025-10-02 13:04:47,567 - chimera_intel.core.ecosystem_intel - INFO - Searching for partners of TestCorp
+2025-10-02 13:04:47,581 - chimera_intel.core.finint - INFO - Fetching insider trading data for ticker: AAPL
+2025-10-02 13:04:47,582 - chimera_intel.core.finint - ERROR - Failed to get insider trading data for AAPL: API limit reached
+2025-10-02 13:04:47,587 - chimera_intel.core.finint - INFO - Fetching insider trading data for ticker: AAPL
+2025-10-02 13:04:47,617 - chimera_intel.core.footprint - WARNING - DNS query failed for 'nonexistentdomain123.com' (NXDOMAIN).
+2025-10-02 13:04:47,634 - chimera_intel.core.footprint - ERROR - Error fetching subdomains from ThreatMiner for 'example.com': Error
+2025-10-02 13:04:47,643 - chimera_intel.core.footprint - ERROR - Error fetching subdomains from VirusTotal for 'google.com': Network error
+2025-10-02 13:04:47,652 - chimera_intel.core.footprint - ERROR - An exception occurred during WHOIS lookup for 'google.com': A generic network error
+2025-10-02 13:04:47,670 - chimera_intel.core.forecaster - INFO - Starting forecast analysis for target 'project.com' in module 'footprint'
+2025-10-02 13:04:47,671 - chimera_intel.core.forecaster - INFO - No predictive signals found for 'project.com', notes: Not enough historical data to make predictions. Need at least 2 scans.
+2025-10-02 13:04:47,873 - chimera_intel.core.geo_osint - INFO - Geolocation OSINT scan complete.
+2025-10-02 13:04:47,882 - chimera_intel.core.geo_osint - INFO - Geolocation OSINT scan complete.
+2025-10-02 13:04:47,888 - chimera_intel.core.geo_osint - WARNING - No locations to map.
+2025-10-02 13:04:47,896 - chimera_intel.core.geo_osint - INFO - Successfully generated IP map at: test_map.html
+2025-10-02 13:04:47,911 - chimera_intel.core.geo_osint - WARNING - Geolocation lookup failed for 192.168.1.1: private range
+2025-10-02 13:04:47,918 - chimera_intel.core.geo_osint - ERROR - An error occurred during geolocation lookup for 1.1.1.1: Connection failed
+2025-10-02 13:04:47,940 - chimera_intel.core.geo_strategist - INFO - Generating Geo-Strategic report for TestCorp
+2025-10-02 13:04:47,943 - chimera_intel.core.geo_strategist - INFO - Generating Geo-Strategic report for NoDataCorp
+2025-10-02 13:04:47,948 - chimera_intel.core.geoint - INFO - Generating GEOINT report for example.com
+2025-10-02 13:04:47,978 - chimera_intel.core.grapher - INFO - Successfully generated interactive graph at: /home/runner/work/Chimera-Intel/Chimera-Intel/test_graph.html
+2025-10-02 13:04:47,990 - chimera_intel.core.grapher - INFO - Successfully generated interactive graph at: /home/runner/work/Chimera-Intel/Chimera-Intel/test_graph.html
+2025-10-02 13:04:48,005 - chimera_intel.core.internal - INFO - Analyzing log file: /var/log/auth.log
+2025-10-02 13:04:48,010 - chimera_intel.core.internal - INFO - Analyzing log file: nonexistent.log
+2025-10-02 13:04:48,012 - chimera_intel.core.internal - ERROR - Log file not found at path: nonexistent.log
+2025-10-02 13:04:48,018 - chimera_intel.core.internal - INFO - Attempting to parse MFT file: MFT_dump
+2025-10-02 13:04:48,026 - chimera_intel.core.internal - INFO - Performing static analysis on: suspicious.exe
+2025-10-02 13:04:48,032 - chimera_intel.core.internal - INFO - Performing static analysis on: nonexistent.exe
+2025-10-02 13:04:48,033 - chimera_intel.core.internal - ERROR - File not found for static analysis: nonexistent.exe
+2025-10-02 13:04:48,042 - chimera_intel.core.lead_suggester - INFO - Generating lead suggestions for project: Test
+2025-10-02 13:04:48,048 - chimera_intel.core.lead_suggester - ERROR - An error occurred with the Google AI API during lead suggestion: API error
+2025-10-02 13:04:48,063 - chimera_intel.core.legint - INFO - Searching CourtListener for dockets related to: Example Corp
+2025-10-02 13:04:48,065 - chimera_intel.core.legint - ERROR - Failed to get court dockets for Example Corp: API connection timed out
+2025-10-02 13:04:48,071 - chimera_intel.core.legint - INFO - Searching CourtListener for dockets related to: Apple Inc.
+2025-10-02 13:04:48,080 - chimera_intel.core.media_analyzer - INFO - Performing reverse image search for test.jpg
+2025-10-02 13:04:48,089 - chimera_intel.core.media_analyzer - INFO - Transcribing audio file: test.wav
+2025-10-02 13:04:48,092 - chimera_intel.core.media_analyzer - ERROR - Failed to transcribe audio file test.wav: Whisper model not found
+2025-10-02 13:04:48,100 - chimera_intel.core.media_analyzer - INFO - Transcribing audio file: test.wav
+2025-10-02 13:04:48,109 - chimera_intel.core.offensive - INFO - Checking for potential subdomain takeovers on example.com
+2025-10-02 13:04:48,116 - chimera_intel.core.offensive - INFO - Starting API discovery for example.com
+2025-10-02 13:04:48,124 - chimera_intel.core.offensive - INFO - Performing content enumeration on example.com
+2025-10-02 13:04:48,139 - chimera_intel.core.opsec_analyzer - INFO - Generating OPSEC report for example.com
+2025-10-02 13:04:48,142 - chimera_intel.core.opsec_analyzer - INFO - Generating OPSEC report for example.com
+2025-10-02 13:04:48,154 - chimera_intel.core.personnel_osint - INFO - Email search complete for domain: project-domain.com
+2025-10-02 13:04:48,158 - chimera_intel.core.personnel_osint - WARNING - Invalid domain format provided to 'personnel' command: invalid-domain
+2025-10-02 13:04:48,166 - chimera_intel.core.personnel_osint - INFO - Email search complete for domain: example.com
+2025-10-02 13:04:48,169 - chimera_intel.core.personnel_osint - ERROR - An error occurred while querying Hunter.io for domain 'example.com': Network Error
+2025-10-02 13:04:48,172 - chimera_intel.core.personnel_osint - ERROR - An error occurred while querying Hunter.io for domain 'example.com': Network error
+2025-10-02 13:04:48,182 - chimera_intel.core.pestel_analyzer - INFO - Generating PESTEL analysis for target: test.com
+2025-10-02 13:04:48,187 - chimera_intel.core.pestel_analyzer - INFO - Generating PESTEL analysis for target: test.com
+2025-10-02 13:04:48,193 - chimera_intel.core.pestel_analyzer - ERROR - An error occurred with the Google AI API during PESTEL generation: API error
+2025-10-02 13:04:48,208 - chimera_intel.core.physical_osint - INFO - Searching for physical locations matching query: Googleplex
+2025-10-02 13:04:48,212 - chimera_intel.core.plugin_manager - WARNING - Plugin bad_plugin does not inherit from ChimeraPlugin.
+2025-10-02 13:04:48,215 - chimera_intel.core.plugin_manager - ERROR - An error occurred during plugin discovery: Discovery failed
+2025-10-02 13:04:48,217 - chimera_intel.core.plugin_manager - ERROR - Failed to load plugin error_plugin: Load failed
+2025-10-02 13:04:48,220 - chimera_intel.core.plugin_manager - INFO - Successfully loaded plugin: good_plugin
+2025-10-02 13:04:48,229 - chimera_intel.core.podcast_osint - INFO - Starting AI analysis for episode from http://example.com/ep1.mp3
+2025-10-02 13:04:48,235 - chimera_intel.core.podcast_osint - INFO - Parsing podcast feed from: http://example.com/feed.rss
+2025-10-02 13:04:48,244 - chimera_intel.core.podcast_osint - INFO - Searching for 'keyword' in episode from http://example.com/ep1.mp3
+2025-10-02 13:04:48,271 - chimera_intel.core.project_manager - INFO - User 'testadmin' created project 'Test Project'
+2025-10-02 13:04:48,274 - chimera_intel.core.project_manager - INFO - Set active project context to 'active_project'.
+2025-10-02 13:04:48,294 - chimera_intel.core.recon - INFO - Analyzing threat infrastructure related to: example.com
+2025-10-02 13:04:48,295 - chimera_intel.core.recon - ERROR - Failed to analyze threat infrastructure for 'example.com': VT API down
+2025-10-02 13:04:48,307 - chimera_intel.core.recon - INFO - Analyzing threat infrastructure related to: example.com
+2025-10-02 13:04:48,351 - chimera_intel.core.recon - INFO - Searching SpyCloud for credential leaks associated with: example.com
+2025-10-02 13:04:48,353 - chimera_intel.core.recon - ERROR - Failed to get credential leaks from SpyCloud for example.com: API is down
+2025-10-02 13:04:48,358 - chimera_intel.core.recon - INFO - Searching SpyCloud for credential leaks associated with: example.com
+2025-10-02 13:04:48,360 - chimera_intel.core.recon - ERROR - Failed to get credential leaks from SpyCloud for example.com: Test exception
+2025-10-02 13:04:48,371 - chimera_intel.core.recon - INFO - Searching SpyCloud for credential leaks associated with: example.com
+2025-10-02 13:04:48,378 - chimera_intel.core.recon - INFO - Discovering digital assets for company: Example Corp
+2025-10-02 13:04:48,380 - chimera_intel.core.recon - ERROR - Failed to scrape Google Play for 'Example Corp': Scraper failed
+2025-10-02 13:04:48,381 - chimera_intel.core.recon - INFO - Kaggle API key not provided – skipping dataset search.
+2025-10-02 13:04:48,388 - chimera_intel.core.recon - INFO - Discovering digital assets for company: Example Corp
+2025-10-02 13:04:48,389 - chimera_intel.core.recon - INFO - Kaggle API key not provided – skipping dataset search.
+2025-10-02 13:04:48,398 - chimera_intel.core.reporter - INFO - Generating PDF report from: test.json
+2025-10-02 13:04:48,405 - chimera_intel.core.reporter - INFO - Generating PDF report from: test.json
+2025-10-02 13:04:48,433 - chimera_intel.core.reporter - INFO - Successfully generated PDF report at: test_report.pdf
+2025-10-02 13:04:48,445 - chimera_intel.core.reporter - INFO - Successfully generated PDF report at: report.pdf
+2025-10-02 13:04:48,463 - chimera_intel.core.signal_analyzer - INFO - Analyzing strategic signals for: example.com
+2025-10-02 13:04:48,464 - chimera_intel.core.signal_analyzer - INFO - Performing a live scrape for job postings for example.com.
+2025-10-02 13:04:48,466 - chimera_intel.core.signal_analyzer - INFO - Analyzing data for strategic signals.
+2025-10-02 13:04:48,472 - chimera_intel.core.signal_analyzer - WARNING - Invalid domain format provided to 'signal' command: invalid-domain
+2025-10-02 13:04:48,477 - chimera_intel.core.signal_analyzer - INFO - Analyzing strategic signals for: example.com
+2025-10-02 13:04:48,482 - chimera_intel.core.signal_analyzer - INFO - Analyzing strategic signals for: example.com
+2025-10-02 13:04:48,483 - chimera_intel.core.signal_analyzer - INFO - Performing a live scrape for job postings for example.com.
+2025-10-02 13:04:48,484 - chimera_intel.core.signal_analyzer - INFO - Analyzing data for strategic signals.
+2025-10-02 13:04:48,486 - chimera_intel.core.signal_analyzer - INFO - No strong strategic signals detected for example.com based on the current rule set.
+2025-10-02 13:04:48,493 - chimera_intel.core.signal_analyzer - INFO - Analyzing strategic signals for: project-signal.com
+2025-10-02 13:04:48,497 - chimera_intel.core.signal_analyzer - INFO - Performing a live scrape for job postings for project-signal.com.
+2025-10-02 13:04:48,498 - chimera_intel.core.signal_analyzer - INFO - Analyzing data for strategic signals.
+2025-10-02 13:04:48,500 - chimera_intel.core.signal_analyzer - INFO - No strong strategic signals detected for project-signal.com based on the current rule set.
+2025-10-02 13:04:48,503 - chimera_intel.core.signal_analyzer - WARNING - Could not scrape job postings from https://www.example.com/careers: Connection failed
+2025-10-02 13:04:48,505 - chimera_intel.core.signal_analyzer - WARNING - Could not scrape job postings from https://www.example.com/jobs: Connection failed
+2025-10-02 13:04:48,507 - chimera_intel.core.signal_analyzer - WARNING - Could not scrape job postings from https://boards.greenhouse.io/example.com: Connection failed
+2025-10-02 13:04:48,522 - chimera_intel.core.social_analyzer - ERROR - Failed to parse or analyze the feed at http://fake.url/feed.xml: Malformed XML
+2025-10-02 13:04:48,531 - chimera_intel.core.social_analyzer - WARNING - Invalid domain format provided to 'social' command: invalid-domain
+2025-10-02 13:04:48,539 - chimera_intel.core.social_analyzer - INFO - Starting social content analysis for example.com
+2025-10-02 13:04:48,541 - chimera_intel.core.social_analyzer - ERROR - Could not automatically discover an RSS feed for example.com.
+2025-10-02 13:04:48,546 - chimera_intel.core.social_analyzer - INFO - Starting social content analysis for example.com
+2025-10-02 13:04:48,547 - chimera_intel.core.social_analyzer - INFO - Feed found: http://fake.url/feed.xml
+2025-10-02 13:04:48,548 - chimera_intel.core.social_analyzer - INFO - Social content analysis complete for example.com
+2025-10-02 13:04:48,557 - chimera_intel.core.social_analyzer - INFO - Starting social content analysis for project-domain.com
+2025-10-02 13:04:48,559 - chimera_intel.core.social_analyzer - INFO - Feed found: http://fake.url/feed.xml
+2025-10-02 13:04:48,560 - chimera_intel.core.social_analyzer - INFO - Social content analysis complete for project-domain.com
+2025-10-02 13:04:48,573 - chimera_intel.core.social_analyzer - WARNING - Could not fetch homepage for RSS discovery on 'example.com': Network error
+2025-10-02 13:04:48,575 - chimera_intel.core.social_analyzer - WARNING - Could not fetch sitemap for RSS discovery on 'example.com': Network error
+2025-10-02 13:04:48,603 - chimera_intel.core.social_osint - INFO - Starting social media profile search for username: testuser_no_profiles
+2025-10-02 13:04:48,607 - chimera_intel.core.social_osint - INFO - Starting social media profile search for username: testuser
+2025-10-02 13:04:48,610 - chimera_intel.core.social_osint - ERROR - An error occurred during Sherlock scan for username 'testuser': Sherlock internal error
+2025-10-02 13:04:48,614 - chimera_intel.core.social_osint - INFO - Starting social media profile search for username: testuser
+2025-10-02 13:04:48,681 - chimera_intel.core.strategist - INFO - Generating strategic profile for target: example.com
+2025-10-02 13:04:48,683 - chimera_intel.core.strategist - INFO - Submitting aggregated data to AI strategist for analysis.
+2025-10-02 13:04:48,690 - chimera_intel.core.strategist - INFO - Generating strategic profile for target: example.com
+2025-10-02 13:04:48,691 - chimera_intel.core.strategist - INFO - Submitting aggregated data to AI strategist for analysis.
+2025-10-02 13:04:48,697 - chimera_intel.core.strategist - INFO - Generating strategic profile for target: example.com
+2025-10-02 13:04:48,698 - chimera_intel.core.strategist - INFO - Submitting aggregated data to AI strategist for analysis.
+2025-10-02 13:04:48,703 - chimera_intel.core.strategist - INFO - Generating strategic profile for target: nonexistent.com
+2025-10-02 13:04:48,712 - chimera_intel.core.strategist - INFO - Generating strategic profile for target: project-strat.com
+2025-10-02 13:04:48,714 - chimera_intel.core.strategist - INFO - Submitting aggregated data to AI strategist for analysis.
+2025-10-02 13:04:48,721 - chimera_intel.core.strategist - ERROR - An error occurred with the Google AI API during strategy generation: API connection timed out
+2025-10-02 13:04:48,729 - chimera_intel.core.temporal_analyzer - INFO - Fetching historical snapshots for example.com from Wayback Machine.
+2025-10-02 13:04:48,731 - chimera_intel.core.temporal_analyzer - ERROR - Failed to get historical snapshots for example.com: API connection failed
+2025-10-02 13:04:48,735 - chimera_intel.core.temporal_analyzer - INFO - Fetching historical snapshots for example.com from Wayback Machine.
+2025-10-02 13:04:48,740 - chimera_intel.core.threat_actor_intel - INFO - Searching OTX for threat actor profile: APT28
+2025-10-02 13:04:48,741 - chimera_intel.core.threat_actor_intel - ERROR - An error occurred while querying OTX for 'APT28': Network connection failed
+2025-10-02 13:04:48,747 - chimera_intel.core.threat_actor_intel - INFO - Searching OTX for threat actor profile: UnknownGroup
+2025-10-02 13:04:48,753 - chimera_intel.core.threat_actor_intel - INFO - Searching OTX for threat actor profile: APT28
+2025-10-02 13:04:48,766 - chimera_intel.core.threat_hunter - INFO - Starting threat hunt in 'fake.log' for IOCs related to 'UnknownAPT'.
+2025-10-02 13:04:48,768 - chimera_intel.core.threat_hunter - ERROR - Could not retrieve profile for threat actor 'UnknownAPT'. Error: Actor not found.
+2025-10-02 13:04:48,774 - chimera_intel.core.threat_hunter - INFO - Starting threat hunt in 'fake.log' for IOCs related to 'TestAPT'.
+2025-10-02 13:04:48,776 - chimera_intel.core.threat_hunter - INFO - Hunting for 2 unique IOCs from 'TestAPT'.
+2025-10-02 13:04:48,779 - chimera_intel.core.threat_hunter - INFO - Starting threat hunt in 'nonexistent.log' for IOCs related to 'TestAPT'.
+2025-10-02 13:04:48,781 - chimera_intel.core.threat_hunter - ERROR - Log file not found at path: nonexistent.log
+2025-10-02 13:04:48,786 - chimera_intel.core.threat_intel - ERROR - Error querying OTX for indicator '8.8.8.8': API is down
+2025-10-02 13:04:48,833 - chimera_intel.core.ttp_mapper - INFO - Mapping 1 CVEs to MITRE ATT&CK techniques.
+2025-10-02 13:04:48,899 - chimera_intel.core.user_manager - INFO - Set active user context to 'testuser'.
+2025-10-02 13:04:48,903 - chimera_intel.core.user_manager - INFO - Set active user context to 'testuser'.
+2025-10-02 13:04:48,906 - chimera_intel.core.user_manager - INFO - User logged out.
+2025-10-02 13:04:48,916 - chimera_intel.core.user_manager - INFO - Set active user context to 'testuser'.
+2025-10-02 13:04:48,919 - chimera_intel.core.user_manager - INFO - Set active user context to 'testuser'.
+2025-10-02 13:04:48,921 - chimera_intel.core.user_manager - INFO - User logged out.
+2025-10-02 13:04:49,065 - chimera_intel.core.utils - INFO - Saving results to test.json
+2025-10-02 13:04:49,072 - chimera_intel.core.utils - INFO - Saving results to test.json
+2025-10-02 13:04:49,075 - chimera_intel.core.utils - ERROR - Failed to send Slack notification: Network Error
+2025-10-02 13:04:49,081 - chimera_intel.core.utils - INFO - Successfully sent Slack notification.
+2025-10-02 13:04:49,084 - chimera_intel.core.utils - ERROR - Failed to send Teams notification: Network Error
+2025-10-02 13:04:49,089 - chimera_intel.core.utils - INFO - Successfully sent Teams notification.
+2025-10-02 13:04:49,093 - chimera_intel.core.vulnerability_scanner - ERROR - Error querying Vulners for nginx 1.21: API connection failed
+2025-10-02 13:04:49,102 - chimera_intel.core.vulnerability_scanner - WARNING - Invalid domain format provided to 'vuln' command: invalid-domain
+2025-10-02 13:04:49,112 - chimera_intel.core.vulnerability_scanner - INFO - Starting vulnerability scan for assets of project-vuln.com
+2025-10-02 13:04:49,115 - chimera_intel.core.vulnerability_scanner - INFO - Vulnerability scan complete for project-vuln.com
+2025-10-02 13:04:49,122 - chimera_intel.core.vulnerability_scanner - ERROR - Nmap not found. Please install nmap on your system.
+2025-10-02 13:04:49,142 - chimera_intel.core.vulnerability_scanner - ERROR - An unexpected error occurred during Nmap scan of '127.0.0.1': Unexpected failure
+2025-10-02 13:04:49,147 - chimera_intel.core.vulnerability_scanner - INFO - Starting vulnerability scan for assets of example.com
+2025-10-02 13:04:49,149 - chimera_intel.core.vulnerability_scanner - INFO - Vulnerability scan complete for example.com
+2025-10-02 13:04:49,155 - chimera_intel.core.vulnerability_scanner - ERROR - Footprint discovery failed: Footprint API is down. Scanning primary domain only.
+2025-10-02 13:04:49,169 - chimera_intel.core.web_analyzer - WARNING - Invalid domain format provided to 'web' command: invalid-domain
+2025-10-02 13:04:49,186 - chimera_intel.core.web_analyzer - INFO - Starting asynchronous web analysis for project.com
+2025-10-02 13:04:49,188 - chimera_intel.core.web_analyzer - INFO - Web analysis complete for project.com
+2025-10-02 13:04:49,211 - chimera_intel.core.web_analyzer - INFO - Returning cached BuiltWith data for example.com
+2025-10-02 13:04:49,244 - chimera_intel.core.web_analyzer - ERROR - Failed to take screenshot for example.com: Browser launch failed
+2025-10-02 13:04:49,265 - chimera_intel.core.web_analyzer - INFO - Screenshot saved for example.com at screenshots/example_com_20251002_130449.png
