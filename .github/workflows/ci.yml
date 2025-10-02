@@ -2,7 +2,7 @@ name: Python Quality Assurance
 
 on:
   push:
-    branches: [ "main", "master", "20250924_DeeperIntel" ]
+    branches: [ "main", "master"]
   pull_request:
     branches: [ "main", "master" ]
 
