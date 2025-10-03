@@ -1970,3 +1970,48 @@ class MASINTResult(BaseModel):
     acoustic_signatures: List[AcousticSignature] = []
     thermal_signatures: List[ThermalSignature] = []
     error: Optional[str] = None
+
+# --- CHEMINT Core Models ---
+class ChemInfo(BaseModel):
+    """Schema for a single chemical intelligence hit from PubChem/Patents."""
+    cid: int = Field(..., description="PubChem Compound ID (CID).")
+    iupac_name: Optional[str] = Field(None, description="The IUPAC systematic chemical name.")
+    molecular_weight: Optional[float] = Field(None, description="The molecular weight in g/mol.")
+    canonical_smiles: Optional[str] = Field(None, description="The Canonical SMILES string (molecular structure).")
+    
+class PatentInfo(BaseModel):
+    """Schema for intelligence gathered from patent and research analysis."""
+    patent_id: str
+    title: str
+    applicant: str
+    publication_date: str
+    summary: str
+    country: str = Field("EP", description="Country code (e.g., US, EP, WO).")
+
+class SDSData(BaseModel):
+    """Schema for key data extracted from Safety Data Sheets (or equivalent sources)."""
+    cas_number: str
+    autoignition_temp_C: Optional[float] = None
+    flash_point_C: Optional[float] = None
+    nfpa_fire_rating: Optional[int] = Field(None, description="NFPA 704 fire hazard rating (0-4).")
+    toxicology_summary: str = Field("N/A", description="A brief summary of health hazards.")
+
+class CHEMINTResult(BaseModel):
+    """Container for Chemical Intelligence results."""
+    total_results: int
+    results: List[ChemInfo | PatentInfo | SDSData]
+    error: Optional[str] = None
+
+# --- SPACEINT Core Models ---
+class TLEData(BaseModel):
+    """Schema for raw Two-Line Element (TLE) data."""
+    norad_id: str
+    name: Optional[str] = None
+    line1: str
+    line2: str
+
+class SPACEINTResult(BaseModel):
+    """Container for Space Intelligence results."""
+    total_satellites: int
+    satellites: List[TLEData]
+    error: Optional[str] = None
