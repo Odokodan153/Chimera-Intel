@@ -89,6 +89,11 @@ class ApiKeys(BaseSettings):
     db_password: Optional[str] = Field(None, alias="DB_PASSWORD")
     db_host: Optional[str] = Field(None, alias="DB_HOST")
 
+    # ---: Graph Database Credentials ---
+    neo4j_uri: Optional[str] = Field(None, alias="NEO4J_URI")
+    neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
+    neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
+
     class Config:
         """Pydantic-settings configuration."""
 

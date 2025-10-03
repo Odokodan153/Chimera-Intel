@@ -82,6 +82,20 @@ def initialize_database() -> None:
             );
             """
         )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS forecasts (
+                id SERIAL PRIMARY KEY,
+                scenario TEXT NOT NULL,
+                likelihood TEXT,
+                impact TEXT,
+                indicators JSONB,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                user_id INTEGER REFERENCES users(id)
+            );
+            """
+        )
         conn.commit()
         cursor.close()
         conn.close()
@@ -160,6 +174,34 @@ def save_scan_to_db(
     except Exception as e:
         console.print(
             f"[bold red]An unexpected error occurred while saving to the database:[/] {e}"
+        )
+
+
+def save_forecast_to_db(
+    scenario: str,
+    likelihood: str,
+    impact: str,
+    indicators: List[str],
+    user_id: Optional[int] = None,
+) -> None:
+    """Saves a strategic forecast to the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        indicators_json = json.dumps(indicators)
+        cursor.execute(
+            "INSERT INTO forecasts (scenario, likelihood, impact, indicators, user_id) VALUES (%s, %s, %s, %s, %s)",
+            (scenario, likelihood, impact, indicators_json, user_id),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        console.print(
+            f" [dim cyan]>[/dim cyan] [dim]Forecast for '{scenario}' saved to database.[/dim]"
+        )
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(
+            f"[bold red]Database Error:[/bold red] Could not save forecast to database: {e}"
         )
 
 

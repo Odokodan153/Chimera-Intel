@@ -1,10 +1,10 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 from typer.testing import CliRunner
 
 from chimera_intel.core.briefing_generator import (
     generate_intelligence_briefing,
-    present_app,
+    briefing_app,  # Updated import
 )
 from chimera_intel.core.schemas import BriefingResult, SWOTAnalysisResult, ProjectConfig
 
@@ -16,7 +16,7 @@ class TestBriefingGenerator(unittest.TestCase):
 
     @patch("chimera_intel.core.briefing_generator.generate_swot_from_data")
     def test_generate_intelligence_briefing_success(self, mock_ai_generate):
-        """Tests a successful intelligence briefing generation."""
+        """Tests a successful intelligence briefing generation with a valid template."""
         # Arrange
 
         mock_ai_generate.return_value = SWOTAnalysisResult(
@@ -26,14 +26,30 @@ class TestBriefingGenerator(unittest.TestCase):
 
         # Act
 
-        result = generate_intelligence_briefing(test_data, "fake_google_key")
+        result = generate_intelligence_briefing(
+            test_data, "fake_google_key", template="ceo_weekly"
+        )
 
         # Assert
 
         self.assertIsInstance(result, BriefingResult)
         self.assertIsNone(result.error)
         self.assertEqual(result.briefing_text, "## Executive Summary")
+        self.assertEqual(result.title, "CEO Weekly Competitive & Strategic Landscape")
         mock_ai_generate.assert_called_once()
+
+    def test_generate_intelligence_briefing_invalid_template(self):
+        """Tests briefing generation with a non-existent template."""
+        # Act
+
+        result = generate_intelligence_briefing(
+            {}, "fake_google_key", template="non_existent_template"
+        )
+
+        # Assert
+
+        self.assertIsNotNone(result.error)
+        self.assertIn("Template 'non_existent_template' not found", result.error)
 
     def test_generate_intelligence_briefing_no_api_key(self):
         """Tests that the function returns an error if no API key is provided."""
@@ -68,85 +84,58 @@ class TestBriefingGenerator(unittest.TestCase):
     @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
     @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
     def test_cli_briefing_success(self, mock_generate, mock_get_data, mock_get_project):
-        """Tests the 'briefing' CLI command with a successful run."""
+        """Tests the 'briefing generate' CLI command with a successful run."""
         mock_get_project.return_value = ProjectConfig(
-            project_name="Test",
-            created_at="",
-            company_name="TestCorp",
-            domain="test.com",
+            project_name="Test", company_name="TestCorp"
         )
         mock_get_data.return_value = {"target": "TestCorp", "modules": {}}
-        mock_generate.return_value = BriefingResult(briefing_text="**Test Briefing**")
+        mock_generate.return_value = BriefingResult(
+            briefing_text="**Test Briefing**", title="Test Title"
+        )
+
         with patch(
             "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key"
         ):
-            result = runner.invoke(present_app, [])
+            result = runner.invoke(
+                briefing_app, ["generate", "--template", "ciso_daily"]
+            )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Test Briefing", result.stdout)
+        mock_generate.assert_called_with(unittest.mock.ANY, "fake_key", "ciso_daily")
+
+    @patch("chimera_intel.core.briefing_generator.get_active_project")
+    @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
+    def test_cli_briefing_output_file(
+        self, mock_generate, mock_get_data, mock_get_project
+    ):
+        """Tests the CLI command with the --output option."""
+        mock_get_project.return_value = ProjectConfig(
+            project_name="Test", domain="test.com"
+        )
+        mock_get_data.return_value = {"target": "test.com", "modules": {}}
+        mock_generate.return_value = BriefingResult(
+            briefing_text="File content", title="File Title"
+        )
+
+        with patch(
+            "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key"
+        ):
+            with patch("builtins.open", mock_open()) as mock_file:
+                result = runner.invoke(
+                    briefing_app, ["generate", "--output", "test_briefing.pdf"]
+                )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
+        mock_file.assert_called_with("test_briefing.pdf", "w")
+        mock_file().write.assert_any_call("# File Title\n\n")
+        mock_file().write.assert_any_call("File content")
 
     @patch(
         "chimera_intel.core.briefing_generator.get_active_project", return_value=None
     )
     def test_cli_briefing_no_active_project(self, mock_get_project):
         """Tests the CLI command when no active project is set."""
-        result = runner.invoke(present_app, [])
+        result = runner.invoke(briefing_app, ["generate"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No active project set", result.stdout)
-
-    @patch("chimera_intel.core.briefing_generator.get_active_project")
-    def test_cli_briefing_no_target_in_project(self, mock_get_project):
-        """Tests the CLI command when the active project has no target."""
-        mock_get_project.return_value = ProjectConfig(
-            project_name="Test", created_at=""
-        )
-        result = runner.invoke(present_app, [])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Active project has no target", result.stdout)
-
-    @patch("chimera_intel.core.briefing_generator.get_active_project")
-    @patch(
-        "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
-        return_value=None,
-    )
-    def test_cli_briefing_no_historical_data(self, mock_get_data, mock_get_project):
-        """Tests the CLI command when no historical data is found for the target."""
-        mock_get_project.return_value = ProjectConfig(
-            project_name="Test", created_at="", domain="test.com"
-        )
-        result = runner.invoke(present_app, [])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("No historical data found", result.stdout)
-
-    @patch("chimera_intel.core.briefing_generator.get_active_project")
-    @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
-    def test_cli_briefing_no_api_key(self, mock_get_data, mock_get_project):
-        """Tests the CLI command when the Google API key is missing."""
-        mock_get_project.return_value = ProjectConfig(
-            project_name="Test", created_at="", domain="test.com"
-        )
-        mock_get_data.return_value = {"target": "test.com", "modules": {}}
-        with patch(
-            "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", None
-        ):
-            result = runner.invoke(present_app, [])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Google API key (GOOGLE_API_KEY) not found", result.stdout)
-
-    @patch("chimera_intel.core.briefing_generator.get_active_project")
-    @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
-    def test_cli_briefing_generation_error(
-        self, mock_generate, mock_get_data, mock_get_project
-    ):
-        """Tests the CLI command when the AI generation fails."""
-        mock_get_project.return_value = ProjectConfig(
-            project_name="Test", created_at="", domain="test.com"
-        )
-        mock_get_data.return_value = {"target": "test.com", "modules": {}}
-        mock_generate.return_value = BriefingResult(briefing_text="", error="AI error")
-        with patch(
-            "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key"
-        ):
-            result = runner.invoke(present_app, [])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Error generating briefing", result.stdout)

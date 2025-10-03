@@ -8,6 +8,7 @@ import httpx
 import tweepy
 from rich.console import Console
 from rich.table import Table
+from typing import List, Dict, Any
 
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import get_http_client
@@ -16,6 +17,7 @@ from chimera_intel.core.ai_core import perform_sentiment_analysis
 console = Console()
 
 # Create a new Typer application for Narrative Analysis commands
+
 
 narrative_analyzer_app = typer.Typer(
     name="narrative",
@@ -58,7 +60,7 @@ def track_narrative(
             prompt="Enter the narrative to track",
         ),
     ],
-):
+) -> List[Dict[str, Any]]:
     """
     Monitors a specific topic across various media platforms to understand
     who is talking about it, what they are saying, and how the narrative
@@ -102,8 +104,11 @@ def track_narrative(
                     "content": tweet.text.splitlines()[0],
                 }
             )
+        analyzed_content = []
         for item in all_content:
             sentiment = perform_sentiment_analysis(item["content"])
+            item["sentiment"] = sentiment
+            analyzed_content.append(item)
             sentiment_color = "white"
             if sentiment.lower() == "positive":
                 sentiment_color = "green"
@@ -116,6 +121,7 @@ def track_narrative(
                 f"[{sentiment_color}]{sentiment}[/{sentiment_color}]",
             )
         console.print(table)
+        return analyzed_content
     except ValueError as e:
         console.print(f"[bold red]Configuration Error:[/bold red] {e}")
         raise typer.Exit(code=1)

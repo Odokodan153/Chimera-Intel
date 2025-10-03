@@ -2,6 +2,9 @@ import typer
 from chimera_intel.core.logger_config import setup_logging
 from chimera_intel.core.database import initialize_database
 from chimera_intel.core.plugin_manager import discover_plugins
+from chimera_intel.core.project_manager import project_app
+from chimera_intel.core.briefing_generator import briefing_app
+from chimera_intel.core.graph_cli import graph_app
 
 # --- : Startup Banner ---
 BANNER = """
@@ -24,6 +27,11 @@ def get_cli_app():
         add_completion=False,
         rich_markup_mode="markdown",
     )
+
+    # --- Core Command Registration ---
+    app.add_typer(project_app, name="project", help="Manage intelligence projects.")
+    app.add_typer(briefing_app, name="briefing", help="Generate AI-powered executive briefings.")  # <-- ADDED
+    app.add_typer(graph_app, name="graph", help="Interact with the Chimera Intelligence Graph.")
 
     @app.command(name="version", help="Show Chimera Intel version.")
     def version():

@@ -1,155 +1,185 @@
-"""
-Main FastAPI application for the Chimera Intel web dashboard.
-"""
-
 import os
+import sys
 import asyncio
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+import subprocess
+from fastapi import (
+    FastAPI,
+    Request,
+    Depends,
+    HTTPException,
+    status,
+    Form,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import logging
-from chimera_intel.core.footprint import gather_footprint_data
-from chimera_intel.core.web_analyzer import gather_web_analysis_data
-from chimera_intel.core.utils import is_valid_domain
-from chimera_intel.core.database import get_scan_history_for_target, save_scan_to_db
-from chimera_intel.core.project_manager import (
-    list_projects,
-    get_project_config_by_name,
+from typing import List, Dict, Any
+from datetime import timedelta, datetime
+
+# Adjust path to import from the core Chimera Intel library
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.chimera_intel.core.user_manager import (
+    get_password_hash,
+    verify_password,
+    create_access_token,
+    get_current_user,
 )
-from chimera_intel.core.reporter import (
-    generate_graph_report,
+from src.chimera_intel.core.database import (
+    get_user_from_db,
+    create_user_in_db,
+    get_scan_history,
 )
-from chimera_intel.core.graph_actions import (
-    run_graph_action,
-)  # Import the new graph actions
+from src.chimera_intel.core.schemas import User
+from src.chimera_intel.core.project_manager import list_projects
 
-logger = logging.getLogger(__name__)
+# --- FastAPI App Initialization ---
 
-app = FastAPI(title="Chimera Intel API")
+app = FastAPI()
 
-# --- Setup for Static Files and Templates ---
-# Ensures that the web app can find the CSS, JS, and HTML files.
+# Mount static files and templates
+
+static_path = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_path), name="static")
+templates_path = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=templates_path)
+
+# --- Authentication Routes (remain the same) ---
 
 
-app.mount("/static", StaticFiles(directory="webapp/static"), name="static")
-templates = Jinja2Templates(directory="webapp/templates")
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
-# --- HTML Page Routes ---
+@app.post("/login")
+async def login_for_access_token(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
+    user = get_user_from_db(username)
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "Invalid username or password"}
+        )
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=timedelta(minutes=30)
+    )
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response.set_cookie(
+        key="access_token", value=f"Bearer {access_token}", httponly=True
+    )
+    return response
+
+
+@app.get("/logout")
+def logout(response: RedirectResponse = RedirectResponse(url="/login")):
+    response.delete_cookie(key="access_token")
+    return response
+
+
+@app.get("/register", response_class=HTMLResponse)
+def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+@app.post("/register")
+async def register_user(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
+    if get_user_from_db(username):
+        return templates.TemplateResponse(
+            "register.html", {"request": request, "error": "Username already exists"}
+        )
+    hashed_password = get_password_hash(password)
+    create_user_in_db(username, hashed_password)
+    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+
+# --- WebSocket for Live Scan Output ---
+
+
+@app.websocket("/ws/scan")
+async def websocket_scan_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        data = await websocket.receive_json()
+        module = data.get("module")
+        target = data.get("target")
+
+        if not module or not target:
+            await websocket.send_text("Error: Missing module or target.")
+            await websocket.close()
+            return
+        # Construct the chimera CLI command
+
+        command = ["chimera", "scan", module, "run", target]
+
+        await websocket.send_text(f"🚀 Starting '{' '.join(command)}'...\n")
+
+        # Use asyncio.create_subprocess_exec to run the command asynchronously
+
+        process = await asyncio.create_subprocess_exec(
+            *command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+
+        # Stream stdout and stderr back to the client
+
+        if process.stdout:
+            while not process.stdout.at_eof():
+                line = await process.stdout.readline()
+                if line:
+                    await websocket.send_text(line.decode().strip())
+        if process.stderr:
+            while not process.stderr.at_eof():
+                line = await process.stderr.readline()
+                if line:
+                    await websocket.send_text(f"ERROR: {line.decode().strip()}")
+        await process.wait()
+        await websocket.send_text("\n✅ Scan complete.")
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        await websocket.send_text(f"An unexpected error occurred: {e}")
+    finally:
+        await websocket.close()
+
+
+# --- Main Application Routes ---
 
 
 @app.get("/", response_class=HTMLResponse)
-async def read_dashboard(request: Request):
-    """Serves the main project dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+async def read_root(request: Request, current_user: User = Depends(get_current_user)):
+    """Serves the main dashboard page."""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    all_scans = get_scan_history()
+    projects = list_projects()
 
+    # Process data for the activity chart
 
-@app.get("/project/{project_name}", response_class=HTMLResponse)
-async def read_project_view(request: Request, project_name: str):
-    """Serves the detailed view page for a single project."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config:
-        raise HTTPException(status_code=404, detail="Project not found")
+    scans_by_day = {}
+    for i in range(7):
+        day = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        scans_by_day[day] = 0
+    for scan in all_scans:
+        day = scan["timestamp"].strftime("%Y-%m-%d")
+        if day in scans_by_day:
+            scans_by_day[day] += 1
+    chart_labels = list(reversed(scans_by_day.keys()))
+    chart_data = list(reversed(scans_by_day.values()))
+
+    dashboard_data = {
+        "total_projects": len(projects),
+        "total_scans": len(all_scans),
+        "recent_scans": all_scans[:10],
+        "projects": projects,
+        "chart_labels": chart_labels,
+        "chart_data": chart_data,
+    }
+
     return templates.TemplateResponse(
-        "project_detail.html",
-        {"request": request, "project": project_config.model_dump()},
+        "index.html", {"request": request, "user": current_user, "data": dashboard_data}
     )
-
-
-# --- API Endpoints ---
-
-
-@app.get("/api/projects", response_class=JSONResponse)
-async def api_get_projects():
-    """API endpoint to fetch all project names."""
-    return JSONResponse(content={"projects": list_projects()})
-
-
-@app.get("/api/project/{project_name}/history", response_class=JSONResponse)
-async def api_get_project_history(project_name: str):
-    """API endpoint to fetch scan history for a specific project."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config or not project_config.domain:
-        return JSONResponse(content=[])
-    # A project's history is tied to its primary domain target
-
-    history = get_scan_history_for_target(project_config.domain)
-    return JSONResponse(content=history)
-
-
-@app.post("/api/scan", response_class=JSONResponse)
-async def api_run_scan(request: Request):
-    """API endpoint to initiate a new scan for a project."""
-    try:
-        data = await request.json()
-        domain = data.get("domain")
-        scan_type = data.get("scan_type")
-
-        logger.info(f"Received web API request for '{scan_type}' on '{domain}'")
-
-        if not domain or not is_valid_domain(domain):
-            raise HTTPException(status_code=400, detail="Invalid domain provided.")
-        scan_results_model = None
-        if scan_type == "footprint":
-            scan_results_model = await gather_footprint_data(domain)
-        elif scan_type == "web_analyzer":
-            scan_results_model = await gather_web_analysis_data(domain)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid scan type.")
-        # Save to database and return
-
-        results_dict = scan_results_model.model_dump(exclude_none=True)
-        save_scan_to_db(target=domain, module=scan_type, data=results_dict)
-
-        return JSONResponse(content={"status": "success", "scan_type": scan_type})
-    except HTTPException as http_exc:
-        # Re-raise HTTP exceptions to let FastAPI handle them
-
-        raise http_exc
-    except Exception as e:
-        logger.error(
-            f"An unexpected error occurred in api_run_scan: {e}", exc_info=True
-        )
-        raise HTTPException(
-            status_code=500, detail="An internal server error occurred."
-        )
-
-
-@app.get("/api/project/{project_name}/graph", response_class=FileResponse)
-async def api_get_project_graph(project_name: str):
-    """API endpoint to generate and return the project's entity graph."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config or not project_config.domain:
-        raise HTTPException(status_code=404, detail="Project target not found.")
-    output_dir = "temp_reports"
-    os.makedirs(output_dir, exist_ok=True)
-    graph_path = os.path.join(
-        output_dir, f"{project_name.replace(' ', '_')}_graph.html"
-    )
-
-    # This is a synchronous function, so we run it in a thread to avoid blocking
-
-    await asyncio.to_thread(generate_graph_report, project_config.domain, graph_path)
-
-    if not os.path.exists(graph_path):
-        raise HTTPException(
-            status_code=500, detail="Failed to generate the graph report."
-        )
-    return FileResponse(graph_path)
-
-
-@app.post("/api/graph/pivot", response_class=JSONResponse)
-async def api_graph_pivot(request: Request):
-    """
-    API endpoint to perform a 'visual pivot' from the graph.
-    This will run a new scan on a node and update the graph.
-    """
-    data = await request.json()
-    node_id = data.get("node_id")
-    node_type = data.get("node_type")
-    action = data.get("action")
-
-    result = await run_graph_action(node_id, node_type, action)
-
-    return JSONResponse(content=result)

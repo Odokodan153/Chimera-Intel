@@ -38,6 +38,7 @@ dependencies = [
     "scikit-image>=0.22.0,<0.23.0",
     "docker>=7.0.0,<8.0.0",
     "statsmodels>=0.14.0,<0.15.0",
+    "biopython>=1.81,<2.0.0",
     "beautifulsoup4>=4.12.2,<5.0.0",
     "fastapi>=0.103.1,<0.104.0",
     "uvicorn[standard]>=0.23.2,<0.24.0",
@@ -75,6 +76,9 @@ dependencies = [
     "google-play-scraper>=1.2.4,<2.0.0",
     "httpx-socks>=0.8.0,<0.9.0",
     "yfinance>=0.2.28,<0.3.0",
+    "tensorflow>=2.14.0,<2.15.0",
+    "neo4j>=5.14.0,<6.0.0"
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
     # Associated types for core libraries
     "types-PyYAML>=6.0.12.12,<7.0.0.0",
     "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",

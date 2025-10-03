@@ -16,6 +16,8 @@ from chimera_intel.core.weak_signal_analyzer import weak_signal_analyzer_app
 from chimera_intel.core.io_tracking import io_tracking_app
 from chimera_intel.core.narrative_analyzer import narrative_analyzer_app
 from chimera_intel.core.attack_path_simulator import attack_path_simulator_app
+from chimera_intel.core.cultint import cultint_app
+from chimera_intel.core.strategic_forecaster import forecaster_app
 
 
 class AnalysisPlugin(ChimeraPlugin):
@@ -49,6 +51,8 @@ class AnalysisPlugin(ChimeraPlugin):
         analysis_app.add_typer(io_tracking_app, name="influence")
         analysis_app.add_typer(narrative_analyzer_app, name="narrative")
         analysis_app.add_typer(attack_path_simulator_app, name="simulate")
+        analysis_app.add_typer(cultint_app, name="cultint")
+        analysis_app.add_typer(forecaster_app, name="forecast")
 
         return analysis_app
 

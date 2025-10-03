@@ -1,0 +1,10 @@
+[project]
+name = "chimera_masint"
+version = "0.1.0"
+description = "A plugin for MASINT capabilities in Chimera Intel."
+dependencies = [
+    # Add any specific dependencies here if they weren't in the core project
+]
+
+[project.entry-points."chimera_intel.plugins"]
+masint = "chimera_masint.main:masint_plugin"

@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional, Union
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 import datetime
@@ -1896,3 +1896,77 @@ class HumintReport(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     source_id = Column(Integer, ForeignKey("humint_sources.id"))
     source = relationship("HumintSource", back_populates="reports")
+
+class ResponseRule(Base):
+    __tablename__ = "response_rules"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    trigger = Column(String, nullable=False, index=True) # e.g., "dark-monitor:credential-leak"
+    actions = Column(JSON, nullable=False) # e.g., ["iam:reset-password", "edr:quarantine-host"]
+
+class ForecastPerformance(Base):
+    __tablename__ = "forecast_performance"
+    id = Column(Integer, primary_key=True, index=True)
+    scenario = Column(String, index=True)
+    prediction = Column(Text) # The AI's generated forecast
+    outcome = Column(Text) # The real-world result, logged later
+    is_correct = Column(Boolean) # Was the prediction accurate?
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+class Token(BaseModel):
+    """Model for a JWT access token."""
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    """Model for the data encoded in a JWT."""
+    username: Optional[str] = None
+
+class UserCreate(BaseModel):
+    """Model for creating a new user from a web form."""
+    username: str
+    password: str
+
+class DashboardData(BaseModel):
+    """Model for the data to be displayed on the main dashboard."""
+    total_projects: int
+    total_scans: int
+    recent_scans: List[Dict[str, Any]] = []
+
+# --- MASINT Core Models ---
+class RFEmission(BaseModel):
+    """Model for a single detected Radio Frequency emission."""
+
+    frequency_mhz: float
+    power_dbm: float
+    modulation_type: Optional[str] = None
+    source_device_guess: Optional[str] = None
+    confidence: str
+
+
+class AcousticSignature(BaseModel):
+    """Model for a single detected acoustic signature."""
+
+    dominant_frequency_hz: float
+    decibel_level: float
+    signature_type: str  # e.g., "Machinery", "Vehicle", "Power Grid"
+    source_object_guess: Optional[str] = None
+
+
+class ThermalSignature(BaseModel):
+    """Model for a single detected thermal signature from multi-spectral imagery."""
+
+    max_temperature_celsius: float
+    dominant_infrared_band: str
+    activity_level_guess: str  # "Low", "Medium", "High"
+    source_object_guess: Optional[str] = None
+
+
+class MASINTResult(BaseModel):
+    """The main, top-level result model for a MASINT analysis."""
+
+    target_identifier: str  # Could be a file path, a coordinate, etc.
+    rf_emissions: List[RFEmission] = []
+    acoustic_signatures: List[AcousticSignature] = []
+    thermal_signatures: List[ThermalSignature] = []
+    error: Optional[str] = None
