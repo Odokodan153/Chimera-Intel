@@ -77,6 +77,12 @@ class ApiKeys(BaseSettings):
     twitter_bearer_token: Optional[str] = Field(None, alias="TWITTER_BEARER_TOKEN")
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
 
+    # Maritime & Shipping Intelligence Keys
+    aisstream_api_key: Optional[str] = Field(None, alias="AISSTREAM_API_KEY")
+
+    # Weather & Environmental Intelligence Keys
+    openweathermap_api_key: Optional[str] = Field(None, alias="OPENWEATHERMAP_API_KEY")
+
     # ---: Database Credentials ---
     db_name: Optional[str] = Field(None, alias="DB_NAME")
     db_user: Optional[str] = Field(None, alias="DB_USER")

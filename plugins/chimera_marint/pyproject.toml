@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-marint"
+version = "1.0.0"
+description = "Maritime & Shipping Intelligence (MARINT) plugin for Chimera Intel."
+requires-python = ">=3.9"
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+marint = "chimera_marint.main:MarintPlugin"

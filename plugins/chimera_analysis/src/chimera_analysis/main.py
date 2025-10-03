@@ -1,73 +1,57 @@
 """
-Advanced Analysis & AI Plugin for Chimera Intel.
+Analysis Plugin for Chimera Intel.
 """
 
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.ai_core import ai_app
-from chimera_intel.core.differ import diff_app
-from chimera_intel.core.forecaster import forecast_app
-from chimera_intel.core.strategist import strategy_app
-from chimera_intel.core.pestel_analyzer import pestel_analyzer_app
+from chimera_intel.core.social_analyzer import social_analyzer_app
+from chimera_intel.core.behavioral_analyzer import behavioral_analyzer_app
 from chimera_intel.core.competitive_analyzer import competitive_analyzer_app
-from chimera_intel.core.lead_suggester import lead_suggester_app
-from chimera_intel.core.geo_strategist import geo_strategist_app
+from chimera_intel.core.deception_detector import deception_detector_app
+from chimera_intel.core.opsec_analyzer import opsec_analyzer_app
+from chimera_intel.core.pestel_analyzer import pestel_analyzer_app
+from chimera_intel.core.signal_analyzer import signal_analyzer_app
+from chimera_intel.core.temporal_analyzer import temporal_analyzer_app
+from chimera_intel.core.weak_signal_analyzer import weak_signal_analyzer_app
+from chimera_intel.core.io_tracking import io_tracking_app
+from chimera_intel.core.narrative_analyzer import narrative_analyzer_app
+from chimera_intel.core.attack_path_simulator import attack_path_simulator_app
 
 
 class AnalysisPlugin(ChimeraPlugin):
-    """Advanced Analysis & AI plugin."""
+    """Analysis plugin."""
 
     @property
     def name(self) -> str:
-        # This defines the top-level command name (e.g., 'chimera analysis')
+        # This defines the command name (e.g., 'chimera analysis')
 
         return "analysis"
 
     @property
     def app(self) -> typer.Typer:
-        # We create a new Typer app here to register all the sub-commands
+        # Create a new Typer app for the 'analysis' command
 
-        analysis_group_app = typer.Typer(help="Run AI-powered and historical analysis.")
-        analysis_group_app.add_typer(
-            ai_app, name="core", help="Run basic AI analysis (Sentiment, SWOT)."
+        analysis_app = typer.Typer(
+            name="analysis",
+            help="Advanced data analysis and intelligence generation.",
         )
-        analysis_group_app.add_typer(
-            diff_app,
-            name="diff",
-            help="Compare two historical scans to detect changes.",
-        )
-        analysis_group_app.add_typer(
-            forecast_app,
-            name="forecast",
-            help="Forecasts potential future events from historical data.",
-        )
-        analysis_group_app.add_typer(
-            strategy_app,
-            name="strategy",
-            help="Generates an AI-powered strategic profile of a target.",
-        )
-        analysis_group_app.add_typer(
-            pestel_analyzer_app,
-            name="pestel",
-            help="Generates an AI-powered PESTEL analysis.",
-        )
-        analysis_group_app.add_typer(
-            competitive_analyzer_app,
-            name="competitive",
-            help="Generates an AI-powered comparison of two targets.",
-        )
-        analysis_group_app.add_typer(
-            lead_suggester_app,
-            name="suggest-leads",
-            help="AI suggests next steps for the active project.",
-        )
-        analysis_group_app.add_typer(
-            geo_strategist_app,
-            name="geo-strategy",
-            help="Generates a geographic intelligence report.",
-        )
-        return analysis_group_app
+        # Add subcommands from different modules
+
+        analysis_app.add_typer(social_analyzer_app, name="social")
+        analysis_app.add_typer(behavioral_analyzer_app, name="behavioral")
+        analysis_app.add_typer(competitive_analyzer_app, name="competitive")
+        analysis_app.add_typer(deception_detector_app, name="deception")
+        analysis_app.add_typer(opsec_analyzer_app, name="opsec")
+        analysis_app.add_typer(pestel_analyzer_app, name="pestel")
+        analysis_app.add_typer(signal_analyzer_app, name="signal")
+        analysis_app.add_typer(temporal_analyzer_app, name="temporal")
+        analysis_app.add_typer(weak_signal_analyzer_app, name="wsa")
+        analysis_app.add_typer(io_tracking_app, name="influence")
+        analysis_app.add_typer(narrative_analyzer_app, name="narrative")
+        analysis_app.add_typer(attack_path_simulator_app, name="simulate")
+
+        return analysis_app
 
     def initialize(self):
-        """Initializes the Advanced Analysis & AI plugin."""
+        """Initializes the Analysis plugin."""
         pass

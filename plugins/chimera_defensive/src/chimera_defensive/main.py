@@ -7,6 +7,8 @@ from chimera_intel.core.plugin_interface import ChimeraPlugin
 from chimera_intel.core.defensive import defensive_app
 from chimera_intel.core.vulnerability_scanner import vulnerability_app
 from chimera_intel.core.dark_web_osint import dark_web_app
+from .dark_web_monitor import dark_web_monitor_app
+from .page_monitor import page_monitor_app
 
 
 class DefensivePlugin(ChimeraPlugin):
@@ -37,6 +39,16 @@ class DefensivePlugin(ChimeraPlugin):
         )
         defensive_group_app.add_typer(
             dark_web_app, name="darkweb", help="Searches the dark web for leaked data."
+        )
+        defensive_app.add_typer(
+            dark_web_monitor_app,
+            name="dark-monitor",
+            help="Continuously monitors dark web sites for keyword mentions.",
+        )
+        defensive_app.add_typer(
+            page_monitor_app,
+            name="page-monitor",
+            help="Monitors specific web pages for visual and textual changes.",
         )
         return defensive_group_app
 

@@ -1,5 +1,8 @@
 from typing import Any, Dict, List, Optional, Union
-
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from .database import Base
+import datetime
 from pydantic import BaseModel, Field
 
 # --- General Purpose Models ---
@@ -1833,3 +1836,63 @@ class ThreatHuntResult(BaseModel):
     detected_iocs: List[DetectedIOC] = []
     message: Optional[str] = None
     error: Optional[str] = None
+
+# --- Industry Intelligence Models ---
+
+class IndustryIntelResult(BaseModel):
+    """Model for the result of an industry intelligence analysis."""
+
+    industry: str
+    country: Optional[str] = None
+    analysis_text: str
+    error: Optional[str] = None
+
+class MonopolyAnalysisResult(BaseModel):
+    """Model for the result of a monopoly analysis."""
+
+    company_name: str
+    industry: str
+    analysis_text: str
+    error: Optional[str] = None
+
+# --- Aviation Intelligence (AVINT) Models ---
+
+class FlightInfo(BaseModel):
+    """Model for a single aircraft's state vector from OpenSky Network."""
+
+    icao24: str
+    callsign: str
+    origin_country: str
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    baro_altitude: Optional[float] = None
+    on_ground: bool
+    velocity: Optional[float] = None
+    true_track: Optional[float] = None
+    vertical_rate: Optional[float] = None
+    geo_altitude: Optional[float] = None
+    spi: bool
+    position_source: int
+
+class AVINTResult(BaseModel):
+    """The main, top-level result model for an AVINT scan."""
+    
+    total_flights: int
+    flights: List[FlightInfo] = []
+    error: Optional[str] = None
+
+class HumintSource(Base):
+    __tablename__ = "humint_sources"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    reliability = Column(String)  # e.g., 'A1', 'B2'
+    expertise = Column(String)
+    reports = relationship("HumintReport", back_populates="source")
+
+class HumintReport(Base):
+    __tablename__ = "humint_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    source_id = Column(Integer, ForeignKey("humint_sources.id"))
+    source = relationship("HumintSource", back_populates="reports")
