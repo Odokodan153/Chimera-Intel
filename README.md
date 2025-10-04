@@ -105,39 +105,39 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **AppInt**    | `static`                | Performs static analysis on mobile application (.apk) files.                |
 | **Imint**     | `analyze-image`         | Extracts EXIF metadata from image files.                                    |
 | **Geoint**    | `run`                   | Analyzes a target's geographic footprint for geopolitical risks.            |
-| **CYBINT**    | `scan-host`             | Scans a host for open ports, vulnerabilities, and services.                 |
+| **Cybint**    | `scan-host`             | Scans a host for open ports, vulnerabilities, and services.                 |
 |               | `scan-url`              | Analyzes a URL for threats, technologies, and metadata.                     |
-| **FININT**    | `track-wallet`          | Monitors cryptocurrency wallet activity and balances.                       |
+| **Finint**    | `track-wallet`          | Monitors cryptocurrency wallet activity and balances.                       |
 |               | `get-transactions`      | Retrieves transaction history for a given wallet address.                   |
-| **HUMINT**    | `search-profiles`       | Searches for individuals across social media and professional networks.     |
+| **Humint**    | `search-profiles`       | Searches for individuals across social media and professional networks.     |
 |               | `monitor-person`        | Continuously monitors a person's online activity for changes.               |
-| **LEGINT**    | `search-dockets`        | Searches court dockets and legal filings.                                   |
+| **Legint**    | `search-dockets`        | Searches court dockets and legal filings.                                   |
 |               | `monitor-legislation`   | Tracks changes in laws and regulations.                                     |
-| **MARINT**    | `track-vessel`          | Tracks maritime vessels using AIS data.                                     |
+| **Marint**    | `track-vessel`          | Tracks maritime vessels using AIS data.                                     |
 |               | `monitor-area`          | Monitors a specific maritime area for vessel activity.                      |
-| **PRODINT**   | `analyze-product`       | Gathers information about a product from online sources.                    |
+| **Prodint**   | `analyze-product`       | Gathers information about a product from online sources.                    |
 |               | `compare-products`      | Compares features, reviews, and prices of multiple products.                |
-| **SIGINT**    | `scan-wifi`             | Scans for nearby Wi-Fi networks and analyzes their security.                |
+| **Sigint**    | `scan-wifi`             | Scans for nearby Wi-Fi networks and analyzes their security.                |
 |               | `analyze-traffic`       | Captures and analyzes network traffic.                                      |
-| **BIOINT**    | `analyze-face`          | Performs facial recognition and analysis on images.                         |
+| **Bioint**    | `analyze-face`          | Performs facial recognition and analysis on images.                         |
 |               | `compare-voices`        | Compares voice recordings for speaker identification.                       |
-| **CHEMINT**   | `search-compound`       | Searches for information about chemical compounds.                          |
+| **Chemint**   | `search-compound`       | Searches for information about chemical compounds.                          |
 |               | `analyze-formula`       | Analyzes chemical formulas and structures.                                  |
-| **AVINT**     | `track-flight`          | Tracks aircraft in real-time.                                               |
+| **Avint**     | `track-flight`          | Tracks aircraft in real-time.                                               |
 |               | `monitor-airspace`      | Monitors a specific airspace for flight activity.                           |
-| **ECOINT**    | `market-analysis`       | Analyzes market trends and economic indicators.                             |
+| **Ecoint**    | `market-analysis`       | Analyzes market trends and economic indicators.                             |
 |               | `economic-indicators`   | Retrieves key economic indicators for a country or region.                  |
-| **ELECINT**   | `analyze-device`        | Gathers information about electronic devices.                               |
+| **Elecint**   | `analyze-device`        | Gathers information about electronic devices.                               |
 |               | `track-signal`          | Tracks and analyzes electronic signals.                                     |
-| **QINT**      | `create-survey`         | Creates and distributes surveys and questionnaires.                         |
+| **Qint**      | `create-survey`         | Creates and distributes surveys and questionnaires.                         |
 |               | `analyze-responses`     | Analyzes survey responses to extract insights.                              |
-| **SCINT**     | `search-papers`         | Searches for scientific papers and research articles.                       |
+| **Scint**     | `search-papers`         | Searches for scientific papers and research articles.                       |
 |               | `track-research`        | Monitors a specific area of scientific research for new developments.       |
-| **SPACEINT**  | `track-satellite`       | Tracks the location and status of satellites.                               |
+| **Spaceint**  | `track-satellite`       | Tracks the location and status of satellites.                               |
 |               | `monitor-launch`        | Monitors for upcoming satellite launches.                                   |
-| **WEATHINT**  | `get-forecast`          | Retrieves weather forecasts for a specific location.                        |
+| **Weathint**  | `get-forecast`          | Retrieves weather forecasts for a specific location.                        |
 |               | `analyze-climate`       | Analyzes historical climate data.                                           |
-| **OTINT**     | `scan-network`          | Scans operational technology (OT) networks for devices and vulnerabilities. |
+| **Otint**     | `scan-network`          | Scans operational technology (OT) networks for devices and vulnerabilities. |
 |               | `analyze-plc`           | Analyzes programmable logic controller (PLC) configurations.                |
 
 
