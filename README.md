@@ -139,6 +139,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 |               | `analyze-climate`       | Analyzes historical climate data.                                           |
 | **Otint**     | `scan-network`          | Scans operational technology (OT) networks for devices and vulnerabilities. |
 |               | `analyze-plc`           | Analyzes programmable logic controller (PLC) configurations.                |
+| **Historical** | `run`      | Analyzes and compares historical snapshots of a website.                  |
 
 
 ---
