@@ -54,9 +54,7 @@ class StrategicForecaster:
                 df_insider.set_index("transactionDate", inplace=True)
                 # Aggregate transaction values by day
 
-                daily_transactions = (
-                    df_insider["transactionTotalValue"].resample("D").sum()
-                )
+                daily_transactions = df_insider["value"].resample("D").sum()
                 data["insider_trading_volume"] = daily_transactions
                 console.print(
                     f"  - [green]Loaded {len(df_insider)} insider transactions for {self.ticker}.[/green]"
@@ -74,7 +72,6 @@ class StrategicForecaster:
                     df_narrative["sentiment"].str.lower().map(sentiment_map).fillna(0)
                 )
                 # For simplicity, we'll just take the mean sentiment for now.
-                # A real implementation would be more sophisticated.
 
                 data["narrative_sentiment"] = [
                     df_narrative["sentiment_score"].mean()
@@ -99,21 +96,10 @@ class StrategicForecaster:
                 )
         if not data:
             console.print(
-                "[bold yellow]Warning:[/bold yellow] No data loaded. Using dummy data for demonstration."
+                "[bold yellow]Warning:[/bold yellow] No data loaded. Forecasting will be limited."
             )
-            return self._load_dummy_data()
+            return pd.DataFrame()  # Return empty dataframe if no data
         return pd.DataFrame(data).fillna(0)
-
-    def _load_dummy_data(self):
-        """
-        Generates dummy data for demonstration purposes if no real data can be loaded.
-        """
-        data = {
-            "narrative_sentiment": np.random.normal(0, 1, 100),
-            "stock_volatility": np.random.rand(100) * 10,
-            "keyword_frequency": np.random.randint(100, 1000, 100),
-        }
-        return pd.DataFrame(data)
 
     def detect_anomalies(self):
         """

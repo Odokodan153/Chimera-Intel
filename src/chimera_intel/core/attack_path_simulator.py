@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 import networkx as nx
 import json
+from itertools import combinations
 
 from chimera_intel.core.ai_core import perform_generative_task
 from chimera_intel.core.database import get_db, Scans
@@ -16,6 +17,7 @@ from chimera_intel.core.schemas import ScanModel
 console = Console()
 
 # Create a new Typer application for Attack Path Simulation commands
+
 
 attack_path_simulator_app = typer.Typer(
     name="simulate",
@@ -39,19 +41,41 @@ def build_attack_graph_from_db(project_name: str) -> dict:
         scan_data = ScanModel.model_validate(scan)
         node_id = f"{scan_data.module}_{scan_data.id}"
         G.add_node(node_id, type=scan_data.module, data=scan_data.data)
-    # In a full implementation, you would add sophisticated logic here to
-    # create edges based on relationships between assets (e.g., IP to domain).
-    # For now, we create a simplified representation for the AI.
+    # Add edges based on relationships between assets
 
+    for node1, node2 in combinations(G.nodes(data=True), 2):
+        data1 = node1[1]["data"]
+        data2 = node2[1]["data"]
+
+        # Example relationship: if two scans share a common IP address
+
+        if "ip" in data1 and "ip" in data2 and data1["ip"] == data2["ip"]:
+            G.add_edge(node1[0], node2[0], reason=f"Shared IP: {data1['ip']}")
+        # Example relationship: if a domain resolves to an IP found in another scan
+
+        if node1[1]["type"] == "footprint" and "A" in data1.get("footprint", {}).get(
+            "dns_records", {}
+        ):
+            if "ip" in data2 and data2["ip"] in data1["footprint"]["dns_records"]["A"]:
+                G.add_edge(node1[0], node2[0], reason=f"DNS Resolution: {data2['ip']}")
+        if node2[1]["type"] == "footprint" and "A" in data2.get("footprint", {}).get(
+            "dns_records", {}
+        ):
+            if "ip" in data1 and data1["ip"] in data2["footprint"]["dns_records"]["A"]:
+                G.add_edge(node1[0], node2[0], reason=f"DNS Resolution: {data1['ip']}")
     nodes_for_prompt = []
     for node, attrs in G.nodes(data=True):
-        nodes_for_prompt.append({"id": node, "type": attrs["type"]})
-    # Since edge logic is complex, we will just pass the list of assets to the AI
-    # and let it infer the connections based on its knowledge.
-
+        nodes_for_prompt.append(
+            {"id": node, "type": attrs["type"], "data": attrs.get("data", {})}
+        )
+    edges_for_prompt = []
+    for u, v, attrs in G.edges(data=True):
+        edges_for_prompt.append(
+            {"source": u, "target": v, "reason": attrs.get("reason", "Unknown")}
+        )
     return {
         "nodes": nodes_for_prompt,
-        "edges": "Not applicable in this simplified model.",
+        "edges": edges_for_prompt,
     }
 
 
@@ -95,9 +119,9 @@ def simulate_attack(
 
         prompt = (
             f"You are a cybersecurity expert specializing in attack path analysis. "
-            f"Given the following list of discovered assets for a project, identify the most likely multi-step attack path an adversary would take to achieve the goal: '{goal}'.\n\n"
-            f"Network Assets:\n{json.dumps(attack_graph['nodes'], indent=2)}\n\n"
-            f"Based on the asset types, infer the connections and describe the path step-by-step, explaining the likely TTPs for each stage."
+            f"Given the following list of discovered assets and their relationships for a project, identify the most likely multi-step attack path an adversary would take to achieve the goal: '{goal}'.\n\n"
+            f"Network Assets and Relationships:\n{json.dumps(attack_graph, indent=2)}\n\n"
+            f"Based on the asset types and their connections, describe the path step-by-step, explaining the likely TTPs for each stage."
         )
 
         # 3. Use the AI to generate the simulated attack path

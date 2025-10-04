@@ -10,6 +10,7 @@ import os
 from typing import Optional
 from rich.console import Console
 import cv2
+import numpy as np
 
 console = Console()
 
@@ -17,6 +18,48 @@ vidint_app = typer.Typer(
     name="vidint",
     help="Video Intelligence (VIDINT) operations.",
 )
+
+
+def detect_motion(file_path: str, threshold: int = 30):
+    """
+    Detects motion in a video file by comparing consecutive frames.
+    """
+    console.print(f"Detecting motion in {file_path}...")
+    vid = cv2.VideoCapture(file_path)
+    if not vid.isOpened():
+        return
+    _, frame1 = vid.read()
+    if frame1 is None:
+        return
+    gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+    gray1 = cv2.GaussianBlur(gray1, (21, 21), 0)
+
+    motion_events = 0
+    while True:
+        ret, frame2 = vid.read()
+        if not ret:
+            break
+        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.GaussianBlur(gray2, (21, 21), 0)
+
+        frame_delta = cv2.absdiff(gray1, gray2)
+        thresh = cv2.threshold(frame_delta, threshold, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.dilate(thresh, None, iterations=2)
+
+        contours, _ = cv2.findContours(
+            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        if contours:
+            motion_events += 1
+        gray1 = gray2  # Move to the next frame
+    vid.release()
+    if motion_events > 5:  # Simple threshold to reduce noise
+        console.print(
+            f"[bold yellow]Significant motion detected in {motion_events} frames.[/bold yellow]"
+        )
+    else:
+        console.print("[green]No significant motion detected.[/green]")
 
 
 @vidint_app.command(
@@ -32,6 +75,11 @@ def analyze_video(
     ),
     output_dir: str = typer.Option(
         "video_frames", "--output-dir", "-d", help="Directory to save extracted frames."
+    ),
+    detect_motion_flag: bool = typer.Option(
+        False,
+        "--detect-motion",
+        help="Detect motion in the video.",
     ),
 ):
     """
@@ -83,6 +131,8 @@ def analyze_video(
             console.print(
                 f"\nSuccessfully extracted {saved_count} frames to '{output_dir}'."
             )
+        if detect_motion_flag:
+            detect_motion(file_path)
         vid.release()
     except Exception as e:
         console.print(

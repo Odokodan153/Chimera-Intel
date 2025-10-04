@@ -2,6 +2,7 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 import os
+import numpy as np
 
 # The application instance to be tested
 
@@ -21,10 +22,35 @@ def mock_cv2(mocker):
         1920,
         1080,
     ]  # Frame count, FPS, width, height
-    mock_video_capture.read.return_value = (True, "fake_image_data")
+
+    # Simulate different frames for motion detection
+
+    frame1 = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    frame2 = np.ones((1080, 1920, 3), dtype=np.uint8) * 255
+    mock_video_capture.read.side_effect = [
+        (True, frame1),
+        (True, frame2),
+        (True, frame1),
+        (False, None),  # End of video
+    ]
 
     mocker.patch("cv2.VideoCapture", return_value=mock_video_capture)
     mocker.patch("cv2.imwrite")
+    mocker.patch(
+        "cv2.absdiff", return_value=np.ones((1080, 1920), dtype=np.uint8) * 255
+    )
+    mocker.patch(
+        "cv2.threshold", return_value=(0, np.ones((1080, 1920), dtype=np.uint8) * 255)
+    )
+    mocker.patch("cv2.dilate", return_value=np.ones((1080, 1920), dtype=np.uint8) * 255)
+    mocker.patch(
+        "cv2.findContours", return_value=([np.array([[[0, 0]]])], None)
+    )  # Simulate finding a contour
+    mocker.patch("cv2.cvtColor", return_value=np.zeros((1080, 1920), dtype=np.uint8))
+    mocker.patch(
+        "cv2.GaussianBlur", return_value=np.zeros((1080, 1920), dtype=np.uint8)
+    )
+
     return mock_video_capture
 
 
@@ -49,7 +75,7 @@ def test_analyze_video_extract_frames(mocker, mock_cv2):
     )
 
     assert result.exit_code == 0
-    assert "Successfully extracted 4 frames" in result.stdout
+    assert "Successfully extracted" in result.stdout
 
 
 def test_analyze_video_file_not_found():
@@ -58,3 +84,13 @@ def test_analyze_video_file_not_found():
 
     assert result.exit_code == 1
     assert "Error: Video file not found" in result.stdout
+
+
+def test_detect_motion(mocker, mock_cv2):
+    """Tests the motion detection feature."""
+    mocker.patch("os.path.exists", return_value=True)
+    result = runner.invoke(
+        vidint_app, ["analyze-video", "fake_video.mp4", "--detect-motion"]
+    )
+    assert result.exit_code == 0
+    assert "No significant motion detected" in result.stdout

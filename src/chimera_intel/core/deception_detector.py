@@ -9,6 +9,7 @@ import typer
 import asyncio
 import logging
 from typing import Optional, List, Dict
+import httpx
 from .schemas import DeceptionAnalysisResult, CorporateNetworkLink
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
@@ -16,6 +17,28 @@ from .project_manager import resolve_target
 from .footprint import gather_footprint_data
 
 logger = logging.getLogger(__name__)
+
+
+async def reverse_ip_lookup(ip: str) -> List[str]:
+    """
+    Finds other domains hosted on the same IP address using an online API.
+    """
+    domains = []
+    try:
+        async with httpx.AsyncClient() as client:
+            # Using a free reverse IP lookup service. In a production environment,
+            # a more robust, paid service would be preferable.
+
+            response = await client.get(
+                f"https://api.hackertarget.com/reverseiplookup/?q={ip}"
+            )
+            response.raise_for_status()
+            domains = response.text.splitlines()
+    except httpx.HTTPStatusError as e:
+        logger.warning(f"Reverse IP lookup failed for {ip}: {e.response.status_code}")
+    except Exception as e:
+        logger.error(f"An error occurred during reverse IP lookup for {ip}: {e}")
+    return domains
 
 
 async def analyze_for_deception(domain: str) -> DeceptionAnalysisResult:
@@ -42,21 +65,24 @@ async def analyze_for_deception(domain: str) -> DeceptionAnalysisResult:
             summary="Analysis could not proceed: No A records found for the primary domain.",
             error="No IP addresses found for the target domain.",
         )
-    # Step 2: Find other domains on the same IPs (Reverse IP Lookup - simplified)
-    # A real implementation would use a dedicated Reverse IP API. Here, we simulate
-    # by assuming we have a list of domains to check against. For this example,
-    # we'll just re-scan the primary domain to demonstrate the logic.
-
-    potential_related_domains = {domain}  # In a real scenario, this would be expanded.
+    # Step 2: Find other domains on the same IPs (Reverse IP Lookup)
 
     console.print(
         f"[cyan]Analyzing infrastructure related to IPs: {', '.join(main_ips)}...[/cyan]"
     )
+    reverse_ip_tasks = [reverse_ip_lookup(ip) for ip in main_ips]
+    potential_related_domains_lists = await asyncio.gather(*reverse_ip_tasks)
+    potential_related_domains = {
+        d for sublist in potential_related_domains_lists for d in sublist if d
+    }
 
     # Step 3: Gather footprints for all potentially related domains
 
-    tasks = [gather_footprint_data(d) for d in potential_related_domains]
+    tasks = [gather_footprint_data(d) for d in potential_related_domains if d != domain]
     all_footprints = await asyncio.gather(*tasks)
+    all_footprints.append(
+        initial_footprint
+    )  # Add the initial footprint back in for comparison
 
     # Step 4: Cross-reference the data to find links
 

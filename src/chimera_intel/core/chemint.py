@@ -1,320 +1,304 @@
+"""
+Chemical & Materials Intelligence (CHEMINT) Module.
+
+This module is responsible for gathering and analyzing intelligence on chemical
+manufacturing, material science breakthroughs, and the supply chains for
+specialized chemical precursors.
+"""
+
 import typer
-import logging
-import asyncio
-from typing import Optional, List
-from .schemas import CHEMINTResult, ChemInfo, PatentInfo, SDSData
-from .utils import save_or_print_results, console
-from .database import save_scan_to_db
-from .http_client import async_client
+from rich import print
+from rich.table import Table
+import pypatent
+from scholarly import scholarly
+import requests
+from bs4 import BeautifulSoup
+from SDSParser import SDSParser
+from io import BytesIO
+from pypdf import PdfReader
+import pdfplumber
+import docx
+import csv
+import re
 
-logger = logging.getLogger(__name__)
-
-# Real API URL for PubChem PUG-REST (Compound properties lookup)
-
-PUBCHEM_API_BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
-# Placeholder API URLs for new functions (simulated)
-
-OPS_API_BASE_URL = "https://ops.epo.org/rest-services"  # European Patent Office OPS
-NIST_WEBBOOK_URL = "https://webbook.nist.gov/api"  # Placeholder for SDS-like data
+chemint_app = typer.Typer()
 
 
-# --- Existing Function (Lookup) ---
-
-
-async def get_chemical_properties(cid: int) -> CHEMINTResult:
-    """Retrieves chemical property data from PubChem by CID."""
-    try:
-        properties = "CanonicalSMILES,MolecularWeight,IUPACName"
-        url = f"{PUBCHEM_API_BASE_URL}/compound/cid/{cid}/property/{properties}/JSON"
-
-        response = await async_client.get(url)
-        response.raise_for_status()
-        data = response.json()
-
-        properties = data.get("PropertyTable", {}).get("Properties", [])
-
-        if not properties:
-            error_msg = (
-                f"PubChem API returned no properties for CID: {cid}. It may not exist."
-            )
-            logger.warning(error_msg)
-            return CHEMINTResult(total_results=0, results=[], error=error_msg)
-        chem_data = properties[0]
-
-        chem_info = ChemInfo(
-            cid=chem_data.get("CID"),
-            iupac_name=chem_data.get("IUPACName"),
-            molecular_weight=chem_data.get("MolecularWeight"),
-            canonical_smiles=chem_data.get("CanonicalSMILES"),
-        )
-
-        return CHEMINTResult(total_results=1, results=[chem_info])
-    except Exception as e:
-        logger.error(f"Failed to get chemical data from PubChem for CID {cid}: {e}")
-        return CHEMINTResult(
-            total_results=0, results=[], error=f"A PubChem API error occurred: {e}"
-        )
-
-
-# --- NEW FUNCTION 1: Patent & Research Search ---
-
-
-async def search_chemical_patents(keyword: str) -> CHEMINTResult:
-    """
-    Searches European Patent Office (OPS) for patents related to a chemical or material.
-
-    Args:
-        keyword (str): The material or chemical keyword to search for.
-    """
-    results: List[PatentInfo] = []
-    logger.info(f"Searching OPS for patents/research on: {keyword}")
-
-    try:
-        # Simulate API call to a patent service (like OPS)
-        # In a real scenario, this requires proper OAuth2 authentication.
-
-        url = f"{OPS_API_BASE_URL}/publication/search?q={keyword}"
-        response = await async_client.get(url)
-        # Simulate successful response data for "high-temp polymer"
-
-        await asyncio.sleep(0.5)
-
-        if "polymer" in keyword.lower():
-            results.append(
-                PatentInfo(
-                    patent_id="EP3048777B1",
-                    title=f"Method for synthesizing a high-temperature resistant {keyword}",
-                    applicant="Material Dynamics AG",
-                    publication_date="2023-11-15",
-                    summary="A novel polymerization technique yielding a material stable up to 1200°C for aerospace use.",
-                    country="EP",
-                )
-            )
-        else:
-            results.append(
-                PatentInfo(
-                    patent_id="US2024012345A1",
-                    title=f"Catalytic pathway for efficient {keyword} precursor synthesis",
-                    applicant="ChemTech Innovations",
-                    publication_date="2024-05-01",
-                    summary=f"A process to reduce energy consumption in the production of {keyword}.",
-                    country="US",
-                )
-            )
-        return CHEMINTResult(total_results=len(results), results=results)
-    except Exception as e:
-        logger.error(f"Failed to search patents for {keyword}: {e}")
-        return CHEMINTResult(
-            total_results=0, results=[], error=f"Patent search failed: {e}"
-        )
-
-
-# --- NEW FUNCTION 2: SDS Analysis (Hazard/Safety Data) ---
-
-
-async def analyze_safety_data_sheet(cas_number: str) -> CHEMINTResult:
-    """
-    Retrieves and simulates analysis of safety/hazard data for a chemical by CAS number.
-
-    Args:
-        cas_number (str): The Chemical Abstracts Service (CAS) registry number.
-    """
-    results: List[SDSData] = []
-    logger.info(f"Retrieving safety data for CAS: {cas_number}")
-
-    try:
-        # Simulate API call to a source like the NIST WebBook or a dedicated SDS provider
-
-        url = f"{NIST_WEBBOOK_URL}/compounds?cas={cas_number}&properties=thermo"
-        response = await async_client.get(url)
-        await asyncio.sleep(0.5)
-
-        # Simulated data analysis
-
-        if cas_number == "67-64-1":  # Acetone
-            results.append(
-                SDSData(
-                    cas_number=cas_number,
-                    autoignition_temp_C=465.0,
-                    flash_point_C=-20.0,
-                    nfpa_fire_rating=3,
-                    toxicology_summary="Low acute toxicity, primarily irritant via inhalation. Highly flammable liquid.",
-                )
-            )
-        else:
-            results.append(
-                SDSData(
-                    cas_number=cas_number,
-                    autoignition_temp_C=None,
-                    flash_point_C=250.0,
-                    nfpa_fire_rating=1,
-                    toxicology_summary="Data suggests low inhalation hazard but potential for chronic systemic toxicity.",
-                )
-            )
-        return CHEMINTResult(total_results=len(results), results=results)
-    except Exception as e:
-        logger.error(f"Failed to analyze SDS data for {cas_number}: {e}")
-        return CHEMINTResult(
-            total_results=0, results=[], error=f"SDS analysis failed: {e}"
-        )
-
-
-# --- Typer CLI Extension ---
-
-
-avint_app = (
-    typer.Typer()
-)  # Note: This line likely exists elsewhere, but included for completeness.
-
-chemint_app = typer.Typer(help="Chemical & Materials Intelligence (CHEMINT) module.")
-
-
-@chemint_app.command("lookup")
-def run_chemical_lookup(
-    cid: int = typer.Option(
+@chemint_app.command(name="monitor-patents-research")
+def monitor_patents_research(
+    keywords: str = typer.Option(
         ...,
-        "--cid",
-        help="The PubChem Compound ID (CID) to look up. Example: 240 (Formaldehyde).",
+        "--keywords",
+        "-k",
+        help="Keywords to search for in patents and research papers.",
     ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save results to a JSON file."
+    start_date: str = typer.Option(
+        None, "--start-date", "-s", help="Start date for patent search (YYYY-MM-DD)."
     ),
+    end_date: str = typer.Option(
+        None, "--end-date", "-e", help="End date for patent search (YYYY-MM-DD)."
+    ),
+    limit: int = typer.Option(10, "--limit", "-l", help="Limit the number of results."),
 ):
     """
-    Looks up core chemical properties by PubChem CID.
+    Monitor patents and research for new developments.
     """
-    results_model = asyncio.run(get_chemical_properties(cid))
-    # ... (Rest of existing CLI output logic for lookup) ...
+    print(f"Monitoring patents and research for keywords: {keywords}")
 
-    if results_model.error:
-        console.print(f"[bold red]Error:[/bold red] {results_model.error}")
-        raise typer.Exit(code=1)
-    console.print(f"\n--- [bold]PubChem Chemical Data Lookup[/bold] ---\n")
-    if results_model.total_results > 0:
-        result = results_model.results[0]
+    # Search for patents
 
-        if output_file:
-            results_dict = results_model.model_dump(exclude_none=True)
-            save_or_print_results(results_dict, output_file)
-            save_scan_to_db(target=str(cid), module="chemint_lookup", data=results_dict)
-        else:
-            from rich.panel import Panel
-
-            content = (
-                f"[bold cyan]IUPAC Name:[/bold cyan] {result.iupac_name}\n"
-                f"[bold yellow]Mol. Weight:[/bold yellow] {result.molecular_weight:.3f} g/mol\n"
-                f"[bold white]SMILES:[/bold white] {result.canonical_smiles}"
-            )
-            console.print(
-                Panel(content, title=f"CID: {result.cid}", border_style="green")
-            )
-    else:
-        console.print(
-            f"[bold yellow]Lookup complete:[/bold yellow] No data found for CID {cid}."
-        )
-
-
-@chemint_app.command("patent-search")
-def run_patent_search(
-    keyword: str = typer.Option(
-        ...,
-        "--keyword",
-        help="The chemical/material keyword to monitor in patent databases.",
-    ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save results to a JSON file."
-    ),
-):
-    """
-    Searches major patent databases for breakthroughs or precursor tracking intelligence.
-    """
-    results_model = asyncio.run(search_chemical_patents(keyword))
-
-    if results_model.error:
-        console.print(f"[bold red]Error:[/bold red] {results_model.error}")
-        raise typer.Exit(code=1)
-    console.print(f"\n--- [bold]Patent & Research Intelligence[/bold] ---\n")
-    console.print(f"Search Term: [cyan]{keyword}[/cyan]")
-
-    if results_model.total_results > 0:
-        if output_file:
-            results_dict = results_model.model_dump(exclude_none=True)
-            save_or_print_results(results_dict, output_file)
-            save_scan_to_db(
-                target=keyword, module="chemint_patent_search", data=results_dict
-            )
-        else:
-            from rich.table import Table
-
-            table = Table(title=f"Patents matching '{keyword}'")
-            table.add_column("ID", style="cyan", justify="left")
+    try:
+        print("\n[bold]Patents (USPTO):[/bold]")
+        search = pypatent.Search(keywords, results_limit=limit)
+        patents = search.as_dataframe()
+        if not patents.empty:
+            table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Title")
-            table.add_column("Applicant", style="yellow")
-            table.add_column("Date", style="magenta")
+            table.add_column("URL")
+            for index, row in patents.iterrows():
+                table.add_row(row["title"], row["url"])
+            print(table)
+        else:
+            print("No patents found on USPTO.")
+    except Exception as e:
+        print(f"[red]Error searching for patents on USPTO: {e}[/red]")
+    # Search for research papers
 
-            for result in results_model.results:
-                table.add_row(
-                    result.patent_id,
-                    result.title,
-                    result.applicant,
-                    result.publication_date,
-                )
-            console.print(table)
-            console.print(
-                f"\n[bold green]Summary:[/bold green] Found {results_model.total_results} relevant patent(s)."
+    try:
+        print("\n[bold]Research Papers (Google Scholar):[/bold]")
+        search_query = scholarly.search_pubs(keywords)
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Title")
+        table.add_column("URL")
+        for i, pub in enumerate(search_query):
+            if i >= limit:
+                break
+            table.add_row(
+                pub["bib"]["title"], pub.get("eprint_url", "No URL available")
             )
-    else:
-        console.print(
-            "[bold yellow]Patent search complete:[/bold yellow] No immediate breakthroughs detected."
+        print(table)
+    except Exception as e:
+        print(f"[red]Error searching for research papers: {e}[/red]")
+        print(
+            "[yellow]Note: Google Scholar may block requests. Consider using proxies.[/yellow]"
         )
 
 
-@chemint_app.command("sds-analysis")
-def run_sds_analysis(
-    cas: str = typer.Option(
+@chemint_app.command(name="track-precursors")
+def track_precursors(
+    precursors: str = typer.Option(
         ...,
-        "--cas",
-        help="The Chemical Abstracts Service (CAS) number for the material. Example: 67-64-1 (Acetone).",
+        "--precursors",
+        "-p",
+        help="Comma-separated list of chemical precursors to track.",
     ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save results to a JSON file."
+    output_file: str = typer.Option(
+        "precursor_tracking.csv", "--output", "-o", help="Output CSV file."
     ),
 ):
     """
-    Analyzes safety and hazard data for a chemical, simulating SDS review.
+    Track the sale and shipment of dual-use chemical precursors.
     """
-    results_model = asyncio.run(analyze_safety_data_sheet(cas))
+    print(f"Tracking precursors: {precursors}")
 
-    if results_model.error:
-        console.print(f"[bold red]Error:[/bold red] {results_model.error}")
-        raise typer.Exit(code=1)
-    console.print(f"\n--- [bold]Chemical Safety Data Sheet (SDS) Analysis[/bold] ---\n")
-    console.print(f"CAS Number: [cyan]{cas}[/cyan]")
+    target_urls = {
+        "Sigma-Aldrich": "https://www.sigmaaldrich.com/search/{precursor}?focus=products&page=1&perpage=30&sort=relevance&term={precursor}&type=product",
+        "Fisher Scientific": "https://www.fishersci.com/us/en/catalog/search/products?keyword={precursor}",
+        "VWR": "https://us.vwr.com/store/search?keyword={precursor}",
+    }
 
-    if results_model.total_results > 0:
-        result = results_model.results[0]
+    results = []
 
-        if output_file:
-            results_dict = results_model.model_dump(exclude_none=True)
-            save_or_print_results(results_dict, output_file)
-            save_scan_to_db(
-                target=cas, module="chemint_sds_analysis", data=results_dict
-            )
-        else:
-            from rich.panel import Panel
+    for precursor in precursors.split(","):
+        precursor = precursor.strip()
+        print(f"\n[bold]Tracking {precursor}...[/bold]")
+        for supplier, url_template in target_urls.items():
+            url = url_template.format(precursor=precursor)
+            try:
+                response = requests.get(url, timeout=15)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
 
-            content = (
-                f"[bold yellow]Flash Point:[/bold yellow] {result.flash_point_C}°C\n"
-                f"[bold red]Autoignition Temp:[/bold red] {result.autoignition_temp_C}°C\n"
-                f"[bold white]NFPA Fire Rating (0-4):[/bold white] {result.nfpa_fire_rating}\n"
-                f"[bold magenta]Toxicology Summary:[/bold magenta] {result.toxicology_summary}"
-            )
-            console.print(
-                Panel(
-                    content, title=f"Hazard Profile for CAS: {cas}", border_style="red"
-                )
-            )
+                if supplier == "Sigma-Aldrich":
+                    products = soup.find_all("li", {"class": "list-group-item"})
+                    for product in products:
+                        name_tag = product.find("a", {"class": "product-name"})
+                        price_tag = product.find("span", {"class": "price"})
+                        if name_tag and price_tag:
+                            name = name_tag.text.strip()
+                            price = price_tag.text.strip()
+                            results.append([supplier, precursor, name, price, url])
+                elif supplier == "Fisher Scientific":
+                    products = soup.find_all("div", {"class": "product_pod"})
+                    for product in products:
+                        name_tag = product.find("a", {"class": "title-link"})
+                        price_tag = product.find("span", {"class": "price_value"})
+                        if name_tag and price_tag:
+                            name = name_tag.text.strip()
+                            price = price_tag.text.strip()
+                            results.append([supplier, precursor, name, price, url])
+                elif supplier == "VWR":
+                    products = soup.find_all("div", {"class": "search-item"})
+                    for product in products:
+                        name_tag = product.find("a", {"class": "search-item__title"})
+                        price_tag = product.find(
+                            "span", {"class": "search-item__price"}
+                        )
+                        if name_tag and price_tag:
+                            name = name_tag.text.strip()
+                            price = price_tag.text.strip()
+                            results.append([supplier, precursor, name, price, url])
+                print(f"  - Scraped {supplier} for {precursor}")
+            except requests.exceptions.RequestException as e:
+                print(f"  - [red]Error scraping {supplier}: {e}[/red]")
+            except Exception as e:
+                print(f"  - [red]Error parsing {supplier} data: {e}[/red]")
+    # Save results to a CSV file
+
+    if results:
+        with open(output_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Supplier", "Precursor", "Product Name", "Price", "URL"])
+            writer.writerows(results)
+        print(f"\n[green]Precursor tracking data saved to {output_file}[/green]")
     else:
-        console.print(
-            f"[bold yellow]SDS Analysis complete:[/bold yellow] No safety data found for CAS {cas}."
+        print("\n[yellow]No precursor data was found.[/yellow]")
+
+
+@chemint_app.command(name="analyze-sds")
+def analyze_sds(
+    sds_url: str = typer.Option(
+        ..., "--sds-url", "-u", help="URL to the Safety Data Sheet (SDS) to analyze."
+    )
+):
+    """
+    Analyze a Safety Data Sheet (SDS) to extract chemical properties and safety information.
+    """
+    print(f"Analyzing SDS from URL: {sds_url}")
+
+    try:
+        response = requests.get(sds_url, timeout=15)
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "")
+
+        text_content = ""
+
+        if "pdf" in content_type:
+            with pdfplumber.open(BytesIO(response.content)) as pdf:
+                for page in pdf.pages:
+                    text_content += page.extract_text()
+        elif (
+            "vnd.openxmlformats-officedocument.wordprocessingml.document"
+            in content_type
+        ):
+            document = docx.Document(BytesIO(response.content))
+            for para in document.paragraphs:
+                text_content += para.text + "\n"
+        else:
+            soup = BeautifulSoup(response.text, "html.parser")
+            text_content = soup.get_text()
+        print("\n[bold]Extracted SDS Information:[/bold]")
+
+        # Use regex to find GHS pictograms, Hazard statements (H-statements), and
+        # Precautionary statements (P-statements). These are examples and may
+        # need to be refined for better accuracy.
+
+        ghs_pictograms = re.findall(r"GHS\d{2}", text_content)
+        h_statements = re.findall(r"H\d{3}", text_content)
+        p_statements = re.findall(r"P\d{3}", text_content)
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Information Type")
+        table.add_column("Details")
+        table.add_row("GHS Pictograms", ", ".join(set(ghs_pictograms)) or "Not found")
+        table.add_row("Hazard Statements", ", ".join(set(h_statements)) or "Not found")
+        table.add_row(
+            "Precautionary Statements", ", ".join(set(p_statements)) or "Not found"
         )
+        print(table)
+    except requests.exceptions.RequestException as e:
+        print(f"[red]Error downloading SDS: {e}[/red]")
+    except Exception as e:
+        print(f"[red]An unexpected error occurred: {e}[/red]")
+
+
+@chemint_app.command(name="monitor-chemical-news")
+def monitor_chemical_news(
+    keywords: str = typer.Option(
+        ..., "--keywords", "-k", help="Keywords to search for in chemical news."
+    ),
+    limit: int = typer.Option(10, "--limit", "-l", help="Limit the number of results."),
+):
+    """
+    Monitor the latest news and developments in the chemical industry.
+    """
+    print(f"Monitoring chemical news for keywords: {keywords}")
+
+    news_sources = {
+        "Chemical & Engineering News": "https://cen.acs.org/search.html?q={keywords}",
+        "Chemistry World": "https://www.chemistryworld.com/search-results?q={keywords}",
+        "ICIS": "https://www.icis.com/explore/resources/news/?s={keywords}",
+    }
+
+    results = []
+
+    for source, url_template in news_sources.items():
+        url = url_template.format(keywords=keywords)
+        try:
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            if source == "Chemical & Engineering News":
+                articles = soup.find_all("div", {"class": "search-result"}, limit=limit)
+                for article in articles:
+                    title_tag = article.find("a")
+                    if title_tag:
+                        title = title_tag.text.strip()
+                        link = title_tag["href"]
+                        if not link.startswith("http"):
+                            base_url = "/".join(url.split("/")[:3])
+                            link = base_url + link
+                        results.append([source, title, link])
+            elif source == "Chemistry World":
+                articles = soup.find_all(
+                    "div", {"class": "story-listing-item"}, limit=limit
+                )
+                for article in articles:
+                    title_tag = article.find("a")
+                    if title_tag:
+                        title = title_tag.text.strip()
+                        link = title_tag["href"]
+                        if not link.startswith("http"):
+                            base_url = "/".join(url.split("/")[:3])
+                            link = base_url + link
+                        results.append([source, title, link])
+            elif source == "ICIS":
+                articles = soup.find_all("article", limit=limit)
+                for article in articles:
+                    title_tag = article.find("a")
+                    if title_tag:
+                        title = title_tag.text.strip()
+                        link = title_tag["href"]
+                        if not link.startswith("http"):
+                            base_url = "/".join(url.split("/")[:3])
+                            link = base_url + link
+                        results.append([source, title, link])
+        except requests.exceptions.RequestException as e:
+            print(f"[red]Error scraping {source}: {e}[/red]")
+        except Exception as e:
+            print(f"[red]Error parsing {source} data: {e}[/red]")
+    if results:
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Source")
+        table.add_column("Title")
+        table.add_column("URL")
+        for row in results:
+            table.add_row(*row)
+        print(table)
+    else:
+        print("\n[yellow]No chemical news found.[/yellow]")
+
+
+if __name__ == "__main__":
+    chemint_app()

@@ -9,8 +9,10 @@ import typer
 import json
 import logging
 from typing import Literal
-
 from rich.markdown import Markdown
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
 
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
@@ -173,12 +175,25 @@ def run_briefing_generation(
     # --- Output Handling ---
 
     if output:
-        # Placeholder for PDF generation. You would integrate a library like reportlab here.
+        doc = SimpleDocTemplate(output)
+        styles = getSampleStyleSheet()
+        story = [Paragraph(briefing_result.title, styles["h1"]), Spacer(1, 0.25 * inch)]
+        # Basic markdown to reportlab conversion
 
+        for line in (briefing_result.briefing_text or "").split("\n"):
+            if line.startswith("# "):
+                story.append(Paragraph(line.lstrip("# "), styles["h1"]))
+            elif line.startswith("## "):
+                story.append(Paragraph(line.lstrip("## "), styles["h2"]))
+            elif line.startswith("### "):
+                story.append(Paragraph(line.lstrip("### "), styles["h3"]))
+            elif line.startswith("* "):
+                story.append(Paragraph(f"• {line.lstrip('* ')}", styles["Normal"]))
+            else:
+                story.append(Paragraph(line, styles["Normal"]))
+            story.append(Spacer(1, 0.1 * inch))
+        doc.build(story)
         console.print(f"[bold green]Briefing saved to:[/bold green] {output}")
-        with open(output, "w") as f:
-            f.write(f"# {briefing_result.title}\n\n")
-            f.write(briefing_result.briefing_text or "No briefing generated.")
     else:
         console.print(
             f"\n--- [bold]{briefing_result.title}: {active_project.project_name}[/bold] ---\n"

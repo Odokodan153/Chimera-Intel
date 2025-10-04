@@ -1,20 +1,39 @@
-import click
-from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.masint import masint_cli
-
+# plugins/chimera_masint/src/chimera_masint/main.py
+import typer
+from src.chimera_intel.core.plugin_interface import ChimeraPlugin
+from src.chimera_intel.core.masint import app as masint_app
 
 class MasintPlugin(ChimeraPlugin):
     """
-    Plugin for Measurement and Signature Intelligence (MASINT).
+    MASINT (Measurement and Signature Intelligence) plugin.
+    This plugin provides tools for analyzing unique signatures from various sources,
+    such as RF, acoustic, and thermal data.
     """
 
-    def get_cli(self) -> click.Group:
-        """
-        Returns the Click command group for this plugin.
-        """
-        return masint_cli
+    @property
+    def name(self) -> str:
+        """This defines the command name: 'chimera masint'."""
+        return "masint"
 
+    @property
+    def app(self) -> typer.Typer:
+        """Creates the Typer app for the 'masint' command."""
+        # Create the top-level command for the plugin
+        plugin_app = typer.Typer(
+            name="masint",
+            help="Measurement and Signature Intelligence (MASINT) Module.",
+            no_args_is_help=True
+        )
+        
+        # Attach the core MASINT commands (rf-pcap, acoustic, thermal)
+        # This will make them available under 'chimera masint run <command>'
+        plugin_app.add_typer(masint_app, name="run")
+        
+        return plugin_app
 
-# The entry point function that the plugin manager will call
-def masint_plugin():
-    return MasintPlugin()
+    def initialize(self):
+        """Initializes the MASINT plugin. No specific initialization needed for now."""
+        pass
+
+# The plugin manager will discover and instantiate this class
+plugin = MasintPlugin()

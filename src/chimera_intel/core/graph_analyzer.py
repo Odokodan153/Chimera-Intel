@@ -1,10 +1,11 @@
 import typer
 from typing import Optional
-from .graph_db import build_and_save_graph
+from .graph_db import build_and_save_graph, graph_db_instance
 from .ai_core import generate_narrative_from_graph
 from .config_loader import API_KEYS
 from .utils import console
 from rich.markdown import Markdown
+from pyvis.network import Network
 
 graph_app = typer.Typer()
 
@@ -31,8 +32,12 @@ def build_graph_command(
     )
 
     if output_file:
-        # Placeholder for visualization logic
-
+        net = Network(height="800px", width="100%", notebook=True)
+        for node in graph_result.nodes:
+            net.add_node(node.id, label=node.label, title=node.node_type)
+        for edge in graph_result.edges:
+            net.add_edge(edge.source, edge.target, title=edge.label)
+        net.show(output_file)
         console.print(f"[cyan]Visualization saved to {output_file}[/cyan]")
 
 

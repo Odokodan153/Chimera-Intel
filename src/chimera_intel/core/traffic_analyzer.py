@@ -5,10 +5,18 @@ Advanced Network Traffic Analysis Module for Chimera Intel.
 import typer
 from typing_extensions import Annotated
 from scapy.all import rdpcap, Raw
-from scapy.layers.inet import TCP
+from scapy.layers.inet import TCP, IP
 import os
+from collections import Counter
+from rich.console import Console
+from rich.table import Table
+import networkx as nx
+from pyvis.network import Network
+
+console = Console()
 
 # Create a new Typer application for Traffic Analysis commands
+
 
 traffic_analyzer_app = typer.Typer(
     name="traffic",
@@ -54,6 +62,57 @@ def carve_files_from_pcap(pcap_path: str, output_dir: str):
         print("No files could be carved from the capture.")
 
 
+def analyze_protocols(pcap_path: str):
+    """
+    Dissects the pcap to provide a summary of protocols and conversations.
+    """
+    packets = rdpcap(pcap_path)
+    protocol_counts = Counter(
+        p.summary().split()[2] for p in packets if len(p.summary().split()) > 2
+    )
+
+    console.print("\n--- [bold green]Protocol Distribution[/bold green] ---")
+    proto_table = Table(title="Protocol Summary")
+    proto_table.add_column("Protocol", style="cyan")
+    proto_table.add_column("Packet Count", style="magenta")
+    for proto, count in protocol_counts.most_common():
+        proto_table.add_row(proto, str(count))
+    console.print(proto_table)
+
+    # Communication mapping
+
+    G = nx.DiGraph()
+    for pkt in packets:
+        if IP in pkt:
+            src_ip = pkt[IP].src
+            dst_ip = pkt[IP].dst
+            if G.has_edge(src_ip, dst_ip):
+                G[src_ip][dst_ip]["weight"] += 1
+            else:
+                G.add_edge(src_ip, dst_ip, weight=1)
+    console.print("\n--- [bold green]Top Conversations[/bold green] ---")
+    convo_table = Table(title="Top 10 IP Conversations")
+    convo_table.add_column("Source IP", style="yellow")
+    convo_table.add_column("Destination IP", style="blue")
+    convo_table.add_column("Packet Count", style="magenta")
+
+    sorted_edges = sorted(
+        G.edges(data=True), key=lambda t: t[2].get("weight", 0), reverse=True
+    )
+    for u, v, attrs in sorted_edges[:10]:
+        convo_table.add_row(u, v, str(attrs["weight"]))
+    console.print(convo_table)
+
+    # Generate interactive graph
+
+    net = Network(height="750px", width="100%", notebook=True)
+    net.from_nx(G)
+    net.show("communication_map.html")
+    console.print(
+        "\n[cyan]Interactive communication map saved to 'communication_map.html'[/cyan]"
+    )
+
+
 @traffic_analyzer_app.command(
     name="analyze", help="Analyze a network traffic capture file."
 )
@@ -72,25 +131,24 @@ def analyze_traffic(
     ] = False,
 ):
     """
-    Analyzes raw network traffic captures to extract files and identify
-    covert communication channels.
+    Analyzes raw network traffic captures to extract files, identify protocols,
+    and map communication channels.
     """
     print(f"Analyzing network traffic from: {capture_file}")
 
     if not os.path.exists(capture_file):
         print(f"Error: Capture file not found at '{capture_file}'")
         raise typer.Exit(code=1)
+    analyze_protocols(capture_file)
+
     if carve_files:
         output_dir = "carved_files_output"
-        print(f"Carving files to directory: {output_dir}")
+        print(f"\nCarving files to directory: {output_dir}")
         try:
             carve_files_from_pcap(capture_file, output_dir)
         except Exception as e:
             print(f"An error occurred during file carving: {e}")
             raise typer.Exit(code=1)
-    # In a full implementation, you would add protocol dissection and
-    # communication mapping features here.
-
     print("\nTraffic analysis complete.")
 
 

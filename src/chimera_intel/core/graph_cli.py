@@ -4,6 +4,7 @@ CLI commands for interacting with the Unified Graph Database.
 
 import typer
 from rich.console import Console
+from rich.table import Table
 from chimera_intel.core.graph_db import graph_db_instance
 
 console = Console()
@@ -19,8 +20,21 @@ def run_cypher_query(
     """
     console.print(f"[bold cyan]Executing query:[/bold cyan] {cypher_query}")
     try:
-        graph_db_instance.execute_query(cypher_query)
+        results = graph_db_instance.execute_query(cypher_query)
         console.print("[bold green]Query executed successfully.[/bold green]")
+        if results:
+            # Create a table to display the results
+
+            table = Table(show_header=True, header_style="bold magenta")
+            if results:
+                # Use the keys from the first record as headers
+
+                headers = results[0].keys()
+                for header in headers:
+                    table.add_column(header)
+                for record in results:
+                    table.add_row(*[str(value) for value in record.values()])
+            console.print(table)
     except Exception as e:
         console.print(f"[bold red]Error executing query:[/bold red] {e}")
 
@@ -47,12 +61,25 @@ def find_shortest_path(
         console.print(
             f"[bold cyan]Searching for path from {from_node} to {to_node}...[/bold cyan]"
         )
-        # Note: This is a placeholder for result handling. A real implementation
-        # would process and display the path results from a read_transaction.
-
-        console.print(
-            f"Execute this query in your Neo4j Browser to see the path:\n[yellow]{query}[/yellow]"
+        results = graph_db_instance.execute_query(
+            query, {"start_name": from_name, "end_name": to_name}
         )
+
+        if results:
+            console.print("[bold green]Path found![/bold green]")
+            for record in results:
+                path = record["p"]
+                nodes = path.nodes
+                relationships = path.relationships
+
+                path_str = ""
+                for i, node in enumerate(nodes):
+                    path_str += f"({node.get('name')})"
+                    if i < len(relationships):
+                        path_str += f"-[{relationships[i].type}]->"
+                console.print(path_str)
+        else:
+            console.print("[yellow]No path found between the specified nodes.[/yellow]")
     except ValueError:
         console.print(
             "[bold red]Error:[/bold red] Node format must be 'Label:Name' (e.g., 'Domain:example.com')."

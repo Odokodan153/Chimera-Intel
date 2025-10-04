@@ -7,6 +7,7 @@ from typing_extensions import Annotated
 from typing import List
 from rich.console import Console
 from rich.table import Table
+import subprocess
 
 from .database import get_db
 from .schemas import ResponseRule
@@ -76,29 +77,42 @@ def list_rules():
 
 
 @response_app.command(
-    "simulate-trigger", help="Simulate a trigger to see which actions would run."
+    "execute-trigger", help="Find and execute the actions for a given trigger."
 )
-def simulate_trigger(
+def execute_trigger(
     trigger: Annotated[
         str,
         typer.Argument(
-            help="The trigger to simulate (e.g., 'dark-monitor:credential-leak')."
+            help="The trigger to execute (e.g., 'dark-monitor:credential-leak')."
         ),
     ],
 ):
     """
-    Finds a rule matching a trigger and shows the actions that would be
-    executed, without actually running them.
+    Finds a rule matching a trigger and executes the defined actions.
     """
-    console.print(f"Simulating trigger: [bold cyan]{trigger}[/bold cyan]")
+    console.print(f"Executing trigger: [bold cyan]{trigger}[/bold cyan]")
     db = next(get_db())
     rule = db.query(ResponseRule).filter(ResponseRule.trigger == trigger).first()
 
     if not rule:
         console.print("[yellow]No rule found for this trigger.[/yellow]")
         raise typer.Exit()
-    console.print(f"Rule '{rule.name}' would be executed with the following actions:")
+    console.print(f"Rule '{rule.name}' triggered. Executing actions:")
     for action in rule.actions:
-        console.print(f"  - [bold]Simulating action:[/] {action}")
-        # In a real implementation, this would call the actual action handler.
-        # e.g., if action == "iam:reset-password": iam_service.reset_password(...)
+        console.print(f"  - [bold]Executing action:[/] {action}")
+        try:
+            # We assume the action is a valid shell command.
+            # In a real-world scenario, you would have a more robust action mapping system.
+
+            process = subprocess.run(
+                action,
+                shell=True,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            console.print(f"    [green]Success![/green] Output: {process.stdout}")
+        except subprocess.CalledProcessError as e:
+            console.print(f"    [red]Error executing action:[/red] {e.stderr}")
+        except Exception as e:
+            console.print(f"    [red]An unexpected error occurred:[/red] {e}")

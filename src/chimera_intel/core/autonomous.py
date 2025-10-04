@@ -7,6 +7,7 @@ from typing_extensions import Annotated
 from rich.console import Console
 from rich.panel import Panel
 import datetime
+import subprocess
 
 from .database import get_db
 from .schemas import ForecastPerformance
@@ -18,6 +19,41 @@ autonomous_app = typer.Typer(
     name="autonomous",
     help="Manages the platform's self-improvement and learning capabilities.",
 )
+
+
+def trigger_retraining_pipeline(optimization_plan: str):
+    """
+    Triggers an automated model retraining pipeline.
+
+    In a real-world scenario, this function would interact with a CI/CD system
+    (like Jenkins, GitLab CI, or GitHub Actions) or a machine learning operations
+    (MLOps) platform (like Kubeflow or MLflow) to start a predefined
+    retraining job.
+
+    For this example, we will simulate this by writing the plan to a file
+    and printing a message.
+    """
+    console.print(
+        "[bold cyan]Triggering automated model retraining pipeline...[/bold cyan]"
+    )
+    try:
+        with open("model_optimization_plan.txt", "w") as f:
+            f.write(optimization_plan)
+        # Simulate running a script that would trigger the pipeline
+        # For example, this could be a `curl` command to a Jenkins webhook
+        # or a `git commit` that triggers a GitHub Action.
+
+        console.print(
+            "  - [green]Optimization plan saved to model_optimization_plan.txt.[/green]"
+        )
+        console.print(
+            "  - [green]Simulating trigger of retraining pipeline (e.g., via a webhook).[/green]"
+        )
+
+        # Example of what a real command might look like:
+        # subprocess.run(["curl", "-X", "POST", "http://jenkins.example.com/job/retrain-model/build"], check=True)
+    except Exception as e:
+        console.print(f"[bold red]Error triggering retraining pipeline:[/bold red] {e}")
 
 
 @autonomous_app.command(
@@ -41,6 +77,14 @@ def optimize_models(
             help="The time window of performance data to analyze (e.g., 'last-90-days').",
         ),
     ] = "last-90-days",
+    auto_trigger: Annotated[
+        bool,
+        typer.Option(
+            "--auto-trigger",
+            "-t",
+            help="Automatically trigger the retraining pipeline if an optimization plan is generated.",
+        ),
+    ] = False,
 ):
     """
     Creates a feedback loop where the results of past operations are used to
@@ -98,9 +142,13 @@ def optimize_models(
                 border_style="green",
             )
         )
-        console.print(
-            "\n[bold]Note:[/] This is a simulation. In a full implementation, these steps would be used to trigger an automated model retraining pipeline."
-        )
+
+        if auto_trigger:
+            trigger_retraining_pipeline(optimization_plan)
+        else:
+            console.print(
+                "\n[bold]Note:[/] To automatically trigger the retraining pipeline, use the --auto-trigger flag."
+            )
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during model optimization:[/bold red] {e}"

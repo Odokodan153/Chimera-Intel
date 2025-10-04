@@ -1,150 +1,146 @@
-import click
-from pathlib import Path
-import json
-from scapy.all import rdpcap, RadioTap, Dot11
-import librosa
+import typer
 import numpy as np
-from PIL import Image
-import requests
-from io import BytesIO
+import cv2
+from rich.console import Console
+from rich.table import Table
+from scapy.all import rdpcap
 
-# Import the new schemas
-from .schemas import MASINTResult, RFEmission, AcousticSignature, ThermalSignature
+# Conditional import for librosa, as it's a heavy dependency
+
+try:
+    import librosa
+except ImportError:
+    librosa = None
+app = typer.Typer(
+    no_args_is_help=True, help="Measurement and Signature Intelligence (MASINT) tools."
+)
+console = Console()
 
 
-def analyze_rf_from_pcap(pcap_file: Path) -> list[RFEmission]:
+class Masint:
     """
-    Analyzes a PCAP file to identify and characterize RF emissions.
-    This function uses Scapy to parse 802.11 packets and extract RadioTap headers.
+    Handles MASINT tasks by analyzing unique signatures from various sources.
     """
-    emissions = []
-    try:
-        packets = rdpcap(str(pcap_file))
-        for packet in packets:
-            if packet.haslayer(RadioTap) and packet.haslayer(Dot11):
-                radiotap = packet.getlayer(RadioTap)
-                # Not all RadioTap headers have all fields, so we need to check
-                if hasattr(radiotap, "dbm_antsignal") and hasattr(
-                    radiotap, "ChannelFrequency"
-                ):
-                    power_dbm = radiotap.dbm_antsignal
-                    frequency_mhz = radiotap.ChannelFrequency
-                    # Simple guess based on frequency band
-                    device_guess = (
-                        "Wi-Fi (2.4GHz)"
-                        if 2400 <= frequency_mhz <= 2500
-                        else "Wi-Fi (5GHz)"
-                    )
-                    emissions.append(
-                        RFEmission(
-                            frequency_mhz=frequency_mhz,
-                            power_dbm=power_dbm,
-                            modulation_type="802.11",
-                            source_device_guess=device_guess,
-                            confidence="High",
-                        )
-                    )
-    except Exception as e:
-        click.echo(f"Error processing PCAP file: {e}", err=True)
-    return emissions
 
+    def analyze_rf_pcap(self, pcap_path: str):
+        """
+        Analyzes a PCAP file to generate a basic RF signature of the traffic.
+        This simplified example creates a signature based on packet size distribution.
+        """
+        try:
+            packets = rdpcap(pcap_path)
+            sizes = [len(p) for p in packets]
+            if not sizes:
+                console.print(
+                    "[yellow]PCAP file is empty or could not be read.[/yellow]"
+                )
+                return None
+            hist, _ = np.histogram(sizes, bins=10, range=(0, 1500))
+            signature = {"packet_count": len(sizes), "size_histogram": hist.tolist()}
+            return signature
+        except Exception as e:
+            console.print(f"[bold red]Error processing PCAP file: {e}[/bold red]")
+            return None
 
-def analyze_acoustic_from_media(media_file: Path) -> list[AcousticSignature]:
-    """
-    Analyzes an audio or video file to identify unique acoustic signatures
-    using Librosa for feature extraction.
-    """
-    signatures = []
-    try:
-        y, sr = librosa.load(media_file)
-        # Perform a Fast Fourier Transform (FFT)
-        fft = np.fft.fft(y)
-        magnitude = np.abs(fft)
-        frequency = np.fft.fftfreq(len(magnitude), 1 / sr)
-        # Find the peak frequency
-        peak_frequency = frequency[np.argmax(magnitude)]
-        # Convert magnitude to decibels
-        db_level = librosa.amplitude_to_db(magnitude, ref=np.max)[
-            np.argmax(magnitude)
-        ]
-        signature_type = (
-            "Power Grid Hum"
-            if 58 <= abs(peak_frequency) <= 62
-            else "Generic Acoustic Noise"
-        )
-        signatures.append(
-            AcousticSignature(
-                dominant_frequency_hz=abs(peak_frequency),
-                decibel_level=float(db_level),
-                signature_type=signature_type,
+    def analyze_acoustic_signature(self, audio_path: str):
+        """
+        Analyzes an audio file to extract its acoustic signature using MFCCs.
+        """
+        if librosa is None:
+            console.print(
+                "[bold red]librosa library not installed. Please run 'pip install librosa' to use this feature.[/bold red]"
             )
-        )
-    except Exception as e:
-        click.echo(f"Error processing media file: {e}", err=True)
-    return signatures
+            return None
+        try:
+            y, sr = librosa.load(audio_path)
+            mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+            # A simplified signature is the mean of each MFCC over time
 
+            signature = np.mean(mfccs, axis=1)
+            return signature.tolist()
+        except Exception as e:
+            console.print(f"[bold red]Error processing audio file: {e}[/bold red]")
+            return None
 
-def analyze_thermal_from_imagery(image_url: str) -> list[ThermalSignature]:
-    """
-    Analyzes an image URL to simulate identifying thermal signatures.
-    NOTE: This is a conceptual implementation. True thermal analysis requires
-    multi-spectral imagery (e.g., from Landsat or a commercial provider).
-    This function uses pixel brightness as a proxy for temperature.
-    """
-    signatures = []
-    try:
-        response = requests.get(image_url)
-        img = Image.open(BytesIO(response.content)).convert("L")  # Convert to grayscale
-        img_array = np.array(img)
-        # Use the brightest pixel as a proxy for the highest temperature
-        max_brightness = np.max(img_array)
-        # Scale brightness (0-255) to a plausible temperature range (e.g., 0-100 C)
-        scaled_temp = (max_brightness / 255) * 100
-        signatures.append(
-            ThermalSignature(
-                max_temperature_celsius=scaled_temp,
-                dominant_infrared_band="Simulated (from visible spectrum)",
-                activity_level_guess="Medium",
-                source_object_guess="Brightest object in image",
+    def analyze_thermal_image(self, image_path: str, threshold: int = 200):
+        """
+        Analyzes a thermal (grayscale) image to find hotspots.
+        """
+        try:
+            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            if image is None:
+                console.print("[bold red]Could not read image file.[/bold red]")
+                return None
+            _, thresh = cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)
+            contours, _ = cv2.findContours(
+                thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
             )
+
+            hotspots = []
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour)
+                hotspots.append({"x": x, "y": y, "width": w, "height": h})
+            return hotspots
+        except Exception as e:
+            console.print(f"[bold red]Error processing image file: {e}[/bold red]")
+            return None
+
+
+@app.command(name="rf-pcap")
+def rf_pcap_analysis(
+    pcap_path: str = typer.Argument(..., help="Path to the PCAP file to analyze."),
+):
+    """Analyzes RF signatures from a PCAP file."""
+    masint = Masint()
+    signature = masint.analyze_rf_pcap(pcap_path)
+    if signature:
+        console.print("[bold green]Generated RF Signature:[/bold green]")
+        console.print_json(data=signature)
+
+
+@app.command(name="acoustic")
+def acoustic_analysis(
+    audio_path: str = typer.Argument(
+        ..., help="Path to the audio file (e.g., .wav, .mp3)."
+    ),
+):
+    """Extracts an acoustic signature from an audio file."""
+    masint = Masint()
+    signature = masint.analyze_acoustic_signature(audio_path)
+    if signature:
+        console.print(
+            "[bold green]Generated Acoustic Signature (MFCC Means):[/bold green]"
         )
-    except Exception as e:
-        click.echo(f"Error processing image from URL: {e}", err=True)
-    return signatures
+        console.print(signature)
 
 
-@click.group("masint")
-def masint_cli():
-    """📡 MASINT Core for analyzing physical signatures."""
-    pass
-
-
-@masint_cli.command("analyze-rf")
-@click.argument("pcap_file", type=click.Path(exists=True, dir_okay=False))
-def analyze_rf(pcap_file):
-    """Analyze RF signatures from a PCAP file."""
-    result = MASINTResult(target_identifier=pcap_file)
-    result.rf_emissions = analyze_rf_from_pcap(Path(pcap_file))
-    click.echo(result.model_dump_json(indent=4))
-
-
-@masint_cli.command("analyze-acoustic")
-@click.argument("media_file", type=click.Path(exists=True, dir_okay=False))
-def analyze_acoustic(media_file):
-    """Analyze acoustic signatures from a media file."""
-    result = MASINTResult(target_identifier=media_file)
-    result.acoustic_signatures = analyze_acoustic_from_media(Path(media_file))
-    click.echo(result.model_dump_json(indent=4))
-
-
-@masint_cli.command("analyze-thermal")
-@click.argument("image_url", type=str)
-def analyze_thermal(image_url):
-    """(Simulated) Analyze thermal signatures from an image URL."""
-    result = MASINTResult(target_identifier=image_url)
-    result.thermal_signatures = analyze_thermal_from_imagery(image_url)
-    click.echo(result.model_dump_json(indent=4))
+@app.command(name="thermal")
+def thermal_analysis(
+    image_path: str = typer.Argument(..., help="Path to the thermal image file."),
+    threshold: int = typer.Option(
+        200,
+        "--threshold",
+        "-t",
+        help="Brightness threshold (0-255) to identify hotspots.",
+    ),
+):
+    """Identifies hotspots in a thermal image."""
+    masint = Masint()
+    hotspots = masint.analyze_thermal_image(image_path, threshold)
+    if hotspots:
+        table = Table(title="Detected Thermal Hotspots")
+        table.add_column("X", style="cyan")
+        table.add_column("Y", style="cyan")
+        table.add_column("Width", style="magenta")
+        table.add_column("Height", style="magenta")
+        for spot in hotspots:
+            table.add_row(
+                str(spot["x"]), str(spot["y"]), str(spot["width"]), str(spot["height"])
+            )
+        console.print(table)
+    else:
+        console.print("[yellow]No hotspots detected at the given threshold.[/yellow]")
 
 
 if __name__ == "__main__":
-    masint_cli()
+    app()
