@@ -37,7 +37,7 @@ The user assumes all responsibility and liability for any actions taken and for 
 
 This tool is provided "AS IS" without any warranty of any kind, express or implied. The data gathered by Chimera Intel is aggregated from third-party sources and may be inaccurate, incomplete, or outdated. You are responsible for independently verifying all information before taking action. The author and any contributors shall **not be held liable for any damages**, claims, or other liabilities arising from the use, misuse, or inability to use this software.
 
-End-User License Agreement (EULA)
+### ⚠️End-User License Agreement (EULA)
 
 By using Chimera Intel, you agree to this End-User License Agreement (EULA). This EULA is a binding legal agreement between you and the developers of Chimera Intel.
 
