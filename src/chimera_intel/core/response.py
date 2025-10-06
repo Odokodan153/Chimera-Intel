@@ -6,7 +6,7 @@ execute corresponding actions when specific triggers are met.
 """
 
 import typer
-from typing import List, Dict, Any
+from typing import List
 import psycopg2
 
 from .config_loader import API_KEYS

@@ -10,7 +10,6 @@ import datetime
 import psycopg2
 
 from .database import get_db_connection
-from .schemas import ForecastPerformance
 from .ai_core import generate_swot_from_data
 
 console = Console()

@@ -118,7 +118,7 @@ def save_graph_to_neo4j(graph_data: EntityGraphResult):
     # Using a transaction to ensure atomicity
 
     with conn._Neo4jConnection__driver.session() as session:
-        result = session.write_transaction(
+        session.write_transaction(
             _create_and_link_nodes, graph_data.nodes, graph_data.edges
         )
     conn.close()

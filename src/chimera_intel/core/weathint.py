@@ -8,7 +8,6 @@ which can be crucial for physical security assessments and operational planning.
 import typer
 from typing import Optional, Dict, Any
 from geopy.geocoders import Nominatim
-from rich.console import Console
 from rich.panel import Panel
 import httpx
 

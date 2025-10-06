@@ -12,8 +12,7 @@ from rich.panel import Panel
 from collections import Counter
 
 from .config_loader import API_KEYS
-from .ai_core import analyze_sentiment, generate_swot_from_data
-from .schemas import SentimentAnalysisResult
+from .ai_core import generate_swot_from_data
 
 console = Console()
 profile_analyzer_app = typer.Typer()
