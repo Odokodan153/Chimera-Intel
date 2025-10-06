@@ -1,166 +1,102 @@
 """
-Weather & Environmental Intelligence (WEATHINT) Module for Chimera Intel.
+WEATHINT (Weather Intelligence) Module for Chimera Intel.
+
+Provides functionalities to retrieve and analyze weather data for a given location,
+which can be crucial for physical security assessments and operational planning.
 """
 
 import typer
-from typing_extensions import Annotated
-import httpx
+from typing import Optional, Dict, Any
 from geopy.geocoders import Nominatim
 from rich.console import Console
 from rich.panel import Panel
+import httpx
 
-from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import get_http_client
-
-console = Console()
-
-# Create a new Typer application for WEATHINT commands
-
+from .config_loader import API_KEYS
+from .utils import console
 
 weathint_app = typer.Typer(
     name="weathint",
-    help="Weather & Environmental Intelligence (WEATHINT)",
+    help="Performs Weather Intelligence (WEATHINT) tasks.",
 )
 
 
-def get_live_weather(lat: float, lon: float, client: httpx.Client) -> dict:
-    """Fetches live weather data from OpenWeatherMap."""
-    api_key = API_KEYS.openweathermap_api_key
-    if not api_key:
-        raise ValueError("OPENWEATHERMAP_API_KEY not found in .env file.")
+def get_coordinates(location_name: str) -> Optional[Dict[str, float]]:
+    """Geocodes a location name to get its latitude and longitude."""
+    geolocator = Nominatim(user_agent="chimera-intel")
+    try:
+        location = geolocator.geocode(location_name)
+        if location:
+            return {"latitude": location.latitude, "longitude": location.longitude}
+    except Exception as e:
+        console.print(f"[bold red]Geocoding failed:[/bold red] {e}")
+    return None
+
+
+def get_weather_forecast(lat: float, lon: float) -> Optional[Dict[str, Any]]:
+    """Retrieves the weather forecast from OpenWeatherMap API."""
+    if not API_KEYS.openweathermap_api_key:
+        console.print("[bold red]OpenWeatherMap API key not configured.[/bold red]")
+        return None
     url = "https://api.openweathermap.org/data/2.5/weather"
-    params = {
+    params: Dict[str, Any] = {
         "lat": lat,
         "lon": lon,
-        "appid": api_key,
-        "units": "metric",  # Use metric units
+        "appid": API_KEYS.openweathermap_api_key,
+        "units": "metric",  # Use Celsius
     }
-    response = client.get(url, params=params)
-    response.raise_for_status()
-    return response.json()
-
-
-@weathint_app.command(
-    name="risk-assessment",
-    help="Perform a risk assessment for a given location and peril.",
-)
-def risk_assessment(
-    location: Annotated[
-        str,
-        typer.Option(
-            "--location",
-            "-l",
-            help="The physical address or location to assess.",
-            prompt="Enter the location to assess",
-        ),
-    ],
-    peril: Annotated[
-        str,
-        typer.Option(
-            "--peril",
-            "-p",
-            help="The specific peril to assess (e.g., wildfire, flood, extreme-heat).",
-            prompt="Enter the peril to assess",
-        ),
-    ],
-):
-    """
-    Performs a basic risk assessment by fetching live weather data.
-    A full implementation would correlate this with historical data and peril maps.
-    """
-    console.print(f"Performing '{peril}' risk assessment for: {location}")
 
     try:
-        # 1. Geocode the location string to get coordinates
-
-        geolocator = Nominatim(user_agent="chimera-intel")
-        location_data = geolocator.geocode(location)
-        if not location_data:
-            console.print(f"Error: Could not geocode location '{location}'.")
-            raise typer.Exit(code=1)
-        lat, lon = location_data.latitude, location_data.longitude
-        console.print(f"Coordinates found: Latitude={lat:.4f}, Longitude={lon:.4f}")
-
-        # 2. Fetch live weather data as an initial risk indicator
-
-        with get_http_client() as client:
-            weather_data = get_live_weather(lat, lon, client)
-        # 3. Analyze and display results based on the specified peril
-
-        main_weather = weather_data.get("weather", [{}])[0].get("main", "N/A")
-        temp = weather_data.get("main", {}).get("temp", 0)
-        humidity = weather_data.get("main", {}).get("humidity", 0)
-        wind_speed = weather_data.get("wind", {}).get("speed", 0)
-        rain_1h = weather_data.get("rain", {}).get("1h", 0)
-
-        console.print("\n--- [bold green]Live Environmental Data[/bold green] ---")
-        console.print(f"- Current Weather: {main_weather}")
-        console.print(f"- Temperature: {temp}°C")
-        console.print(f"- Humidity: {humidity}%")
-        console.print(f"- Wind Speed: {wind_speed} m/s")
-        console.print(f"- Rain (last 1h): {rain_1h} mm")
-        console.print("-----------------------------")
-
-        risk_assessment_summary = "Risk assessment could not be determined."
-        risk_color = "white"
-
-        if peril.lower() == "wildfire":
-            # Simple Wildfire Risk: High temp, low humidity, high wind
-
-            if temp > 30 and humidity < 30 and wind_speed > 10:
-                risk_assessment_summary = "HIGH RISK: Conditions are favorable for rapid wildfire spread (High Temp, Low Humidity, High Wind)."
-                risk_color = "bold red"
-            elif temp > 25 and humidity < 40:
-                risk_assessment_summary = "MODERATE RISK: Elevated temperature and low humidity increase wildfire risk."
-                risk_color = "yellow"
-            else:
-                risk_assessment_summary = "LOW RISK: Current conditions are not indicative of a high wildfire threat."
-                risk_color = "green"
-        elif peril.lower() == "flood":
-            # Simple Flood Risk: Heavy rain
-
-            if rain_1h > 10:  # More than 10mm of rain in an hour
-                risk_assessment_summary = "HIGH RISK: Heavy rainfall detected, which could lead to localized flooding."
-                risk_color = "bold red"
-            elif rain_1h > 2.5:
-                risk_assessment_summary = "MODERATE RISK: Moderate rainfall detected. Monitor for potential flooding."
-                risk_color = "yellow"
-            else:
-                risk_assessment_summary = "LOW RISK: No significant rainfall to indicate immediate flood risk."
-                risk_color = "green"
-        elif peril.lower() == "extreme-heat":
-            if temp > 35:
-                risk_assessment_summary = (
-                    "HIGH RISK: Extreme heat warning. Temperature is above 35°C."
-                )
-                risk_color = "bold red"
-            elif temp > 30:
-                risk_assessment_summary = "MODERATE RISK: High temperature advisory. Temperature is above 30°C."
-                risk_color = "yellow"
-            else:
-                risk_assessment_summary = (
-                    "LOW RISK: Temperature is within normal range."
-                )
-                risk_color = "green"
-        console.print(
-            Panel(
-                risk_assessment_summary,
-                title=f"[{risk_color}]Peril Assessment: {peril.capitalize()}[/{risk_color}]",
-                border_style=risk_color,
-            )
-        )
-    except ValueError as e:
-        console.print(f"Configuration Error: {e}")
-        raise typer.Exit(code=1)
+        with httpx.Client() as client:
+            response = client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
     except httpx.HTTPStatusError as e:
         console.print(
-            f"API Error: Failed to fetch weather data. Status code: {e.response.status_code}"
+            f"[bold red]Weather API request failed:[/bold red] {e.response.text}"
+        )
+    except Exception as e:
+        console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
+    return None
+
+
+@weathint_app.command("get")
+def get_weather(
+    location: str = typer.Argument(
+        ..., help="The city and country (e.g., 'Paris, France')."
+    ),
+):
+    """
+    Retrieves the current weather for a specified location.
+    """
+    console.print(f"[bold cyan]Fetching weather for {location}...[/bold cyan]")
+
+    coords = get_coordinates(location)
+    if not coords:
+        console.print(
+            f"[bold red]Could not find coordinates for {location}.[/bold red]"
         )
         raise typer.Exit(code=1)
-    except Exception as e:
-        console.print(f"An unexpected error occurred: {e}")
-        raise typer.Exit(code=1)
+    weather_data = get_weather_forecast(coords["latitude"], coords["longitude"])
 
+    if weather_data:
+        # Format and display the weather data
 
-if __name__ == "__main__":
-    weathint_app()
+        main_weather = weather_data.get("weather", [{}])[0].get("main", "N/A")
+        description = weather_data.get("weather", [{}])[0].get("description", "N/A")
+        temp = weather_data.get("main", {}).get("temp", "N/A")
+        feels_like = weather_data.get("main", {}).get("feels_like", "N/A")
+        wind_speed = weather_data.get("wind", {}).get("speed", "N/A")
+
+        report = (
+            f"Weather: {main_weather} ({description})\n"
+            f"Temperature: {temp}°C (Feels like: {feels_like}°C)\n"
+            f"Wind Speed: {wind_speed} m/s"
+        )
+        console.print(
+            Panel(
+                report,
+                title=f"[bold green]Current Weather in {location}[/bold green]",
+                border_style="green",
+            )
+        )

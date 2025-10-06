@@ -1442,6 +1442,7 @@ class LeadSuggestionResult(BaseModel):
 class BriefingResult(BaseModel):
     """Model for a full, AI-generated intelligence briefing."""
 
+    title: Optional[str] = None
     briefing_text: str
     error: Optional[str] = None
 
@@ -2014,4 +2015,15 @@ class SPACEINTResult(BaseModel):
     """Container for Space Intelligence results."""
     total_satellites: int
     satellites: List[TLEData]
+    error: Optional[str] = None
+
+# --- Historical Analysis ---
+class HistoricalAnalysisResult(BaseModel):
+    """Model for the result of a historical analysis."""
+
+    domain: str
+    from_timestamp: Optional[str] = None
+    to_timestamp: Optional[str] = None
+    diff: Optional[str] = None
+    ai_summary: Optional[str] = None
     error: Optional[str] = None

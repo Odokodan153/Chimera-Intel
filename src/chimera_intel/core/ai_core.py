@@ -22,13 +22,11 @@ import json
 
 # Get a logger instance for this specific file
 
-
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
 # Define variables before the try block
-
 
 sentiment_analyzer: Optional[Any] = None
 classifier: Optional[Any] = None
@@ -68,7 +66,7 @@ def analyze_sentiment(text: str) -> SentimentAnalysisResult:
         text (str): The text to analyze.
 
     Returns:
-        SentimentAnalysisResult: A Pantic model containing the sentiment label, score, or an error.
+        SentimentAnalysisResult: A Pydantic model containing the sentiment label, score, or an error.
     """
     if not sentiment_analyzer:
         return SentimentAnalysisResult(
@@ -120,7 +118,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
         api_key (str): The Google AI API key.
 
     Returns:
-        SWOTAnalysisResult: A Pantic model containing the markdown-formatted SWOT analysis, or an error.
+        SWOTAnalysisResult: A Pydantic model containing the markdown-formatted SWOT analysis, or an error.
     """
     if not api_key:
         return SWOTAnalysisResult(
@@ -147,7 +145,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
         traffic_data (List[float]): A list of numbers (e.g., monthly website visits).
 
     Returns:
-        AnomalyDetectionResult: A Pantic model containing the original data, detected anomalies, or an error.
+        AnomalyDetectionResult: A Pydantic model containing the original data, detected anomalies, or an error.
     """
     if not IsolationForest or not np:
         return AnomalyDetectionResult(
@@ -181,7 +179,6 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
 
 
 # --- Typer CLI Application ---
-
 
 ai_app = typer.Typer()
 
@@ -265,19 +262,15 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
         api_key (str): The Google AI API key.
 
     Returns:
-        GraphNarrativeResult: A Pantic model containing the AI-generated narrative.
+        GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
     """
     graph_result = build_and_save_graph(target)
     if graph_result.error:
         return GraphNarrativeResult(narrative_text="", error=graph_result.error)
-    # Simplified representation for the prompt
-
     prompt_data = {
         "nodes": [node.model_dump() for node in graph_result.nodes],
         "edges": [edge.model_dump() for edge in graph_result.edges],
     }
-
-    # Generate narrative using the existing SWOT function's underlying model
 
     swot_result = generate_swot_from_data(
         f"Analyze the following entity graph and provide a brief intelligence summary:\n{json.dumps(prompt_data, indent=2)}",

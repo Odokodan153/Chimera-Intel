@@ -7,10 +7,11 @@ from typing_extensions import Annotated
 from rich.console import Console
 from rich.panel import Panel
 import datetime
+import psycopg2
 
-from .database import get_db
+from .database import get_db_connection
 from .schemas import ForecastPerformance
-from .ai_core import perform_generative_task
+from .ai_core import generate_swot_from_data
 
 console = Console()
 
@@ -99,26 +100,26 @@ def optimize_models(
         )
         raise typer.Exit(code=1)
     try:
-        db = next(get_db())
-        # This is a simplified query; a real implementation would parse the time window
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
         ninety_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=90)
-        records = (
-            db.query(ForecastPerformance)
-            .filter(ForecastPerformance.timestamp >= ninety_days_ago)
-            .all()
+        cursor.execute(
+            "SELECT scenario, is_correct, outcome FROM forecast_performance WHERE timestamp >= %s",
+            (ninety_days_ago,),
         )
+        records = cursor.fetchall()
+        cursor.close()
+        conn.close()
 
         if not records:
             console.print(
                 "[yellow]No performance records found for the last 90 days. Cannot perform optimization.[/yellow]"
             )
             raise typer.Exit()
-        # Format the performance data for the AI
-
         performance_summary = "\n".join(
             [
-                f"- Scenario: {r.scenario}\n  - Prediction Correct: {r.is_correct}\n  - Outcome: {r.outcome}"
+                f"- Scenario: {r[0]}\n  - Prediction Correct: {r[1]}\n  - Outcome: {r[2]}"
                 for r in records
             ]
         )
@@ -132,7 +133,15 @@ def optimize_models(
             f"**Performance Data:**\n{performance_summary}"
         )
 
-        optimization_plan = perform_generative_task(prompt)
+        # We'll reuse the SWOT generation function for this generative task
+
+        ai_result = generate_swot_from_data(
+            prompt, "YOUR_GOOGLE_API_KEY"
+        )  # Replace with your actual key loading mechanism
+        if ai_result.error:
+            console.print(f"[bold red]AI Error:[/bold red] {ai_result.error}")
+            raise typer.Exit(code=1)
+        optimization_plan = ai_result.analysis_text
 
         console.print(
             Panel(
@@ -148,6 +157,9 @@ def optimize_models(
             console.print(
                 "\n[bold]Note:[/] To automatically trigger the retraining pipeline, use the --auto-trigger flag."
             )
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(f"[bold red]Database Error:[/bold red] {e}")
+        raise typer.Exit(code=1)
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during model optimization:[/bold red] {e}"

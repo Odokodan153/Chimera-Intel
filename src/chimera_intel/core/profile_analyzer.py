@@ -1,145 +1,118 @@
 """
-Deeper Social Media Profile Analysis (SOCMINT) Module for Chimera Intel.
+Profile Analyzer for Chimera Intel.
+
+Analyzes social media profiles to build a behavioral and psychographic summary.
 """
 
 import typer
-from typing_extensions import Annotated
 import tweepy
+from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
 from collections import Counter
 
-from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.ai_core import (
-    perform_sentiment_analysis,
-    perform_generative_task,
-)
+from .config_loader import API_KEYS
+from .ai_core import analyze_sentiment, generate_swot_from_data
+from .schemas import SentimentAnalysisResult
 
 console = Console()
-
-profile_analyzer_app = typer.Typer(
-    name="profile-analysis",
-    help="Performs deep analysis of a specific social media profile.",
-)
+profile_analyzer_app = typer.Typer()
 
 
-def get_user_tweets(username: str, limit: int = 50) -> list:
-    """Fetches the most recent tweets for a given username."""
-    bearer_token = API_KEYS.twitter_bearer_token
-    if not bearer_token:
-        raise ValueError("TWITTER_BEARER_TOKEN not found in .env file.")
-    client = tweepy.Client(bearer_token)
-    user = client.get_user(username=username).data
-    if not user:
-        raise ValueError(f"User '{username}' not found.")
-    response = client.get_users_tweets(
-        user.id, max_results=limit, tweet_fields=["entities"]
-    )
-    return response.data or []
-
-
-@profile_analyzer_app.command(
-    "run",
-    help="Create a behavioral and network profile of an individual from their public social media.",
-)
-def run_profile_analysis(
-    username: Annotated[
-        str, typer.Argument(help="The username of the profile to analyze.")
-    ],
-    platform: Annotated[
-        str,
-        typer.Option(
-            "--platform", "-p", help="The social media platform (e.g., twitter)."
-        ),
-    ] = "twitter",
-):
-    """
-    Analyzes a specific person's public social media profile to understand
-    their interests, network, sentiment, and key discussion topics.
-    """
-    console.print(
-        f"Running deep profile analysis for [bold cyan]@{username}[/bold cyan] on {platform}..."
-    )
+def get_user_timeline(username: str, count: int = 50) -> List[Dict[str, Any]]:
+    """Fetches the most recent tweets from a user's timeline."""
+    auth = tweepy.OAuth2BearerHandler(API_KEYS.twitter_bearer_token)
+    api = tweepy.API(auth)
 
     try:
-        if platform.lower() != "twitter":
-            console.print(
-                f"[bold red]Error:[/bold red] Platform '{platform}' is not currently supported."
-            )
-            raise typer.Exit(code=1)
-        # 1. Scrape user's recent posts
+        tweets = api.user_timeline(
+            screen_name=username, count=count, tweet_mode="extended"
+        )
+        return [tweet._json for tweet in tweets]
+    except tweepy.errors.TweepyException as e:
+        console.print(f"[bold red]Twitter API Error:[/bold red] {e}")
+        return []
 
-        tweets = get_user_tweets(username)
-        if not tweets:
-            console.print(f"No recent tweets found for user @{username}.")
-            raise typer.Exit()
-        console.print(f"Fetched {len(tweets)} recent tweets.")
 
-        # 2. Analyze sentiment, mentions, and hashtags
+def generate_behavioral_profile(
+    username: str, tweets: List[Dict[str, Any]]
+) -> Optional[str]:
+    """Uses a generative AI model to create a behavioral profile from tweets."""
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        return None
+    # Create a summary of the tweets for the prompt
 
-        sentiments = []
-        mentions = Counter()
-        hashtags = Counter()
-        all_tweets_text = ""
+    tweet_summary = "\n".join(
+        [f"- {t.get('full_text', '')}" for t in tweets[:10]]
+    )  # Use a sample
 
-        for tweet in tweets:
-            sentiments.append(perform_sentiment_analysis(tweet.text))
-            all_tweets_text += tweet.text + "\n\n"
-            if tweet.entities:
-                for mention in tweet.entities.get("mentions", []):
-                    mentions[mention["username"]] += 1
-                for hashtag in tweet.entities.get("hashtags", []):
-                    hashtags[hashtag["tag"]] += 1
-        # 3. Use AI core to summarize themes
+    prompt = f"""
+    As a behavioral psychologist, analyze the following tweets from the user '{username}'.
+    Based on their language, topics, and sentiment, create a brief psychographic and behavioral profile.
+    Focus on communication style, recurring themes, and potential interests.
 
-        summary_prompt = f"Based on the following tweets from the user @{username}, provide a concise summary of the key themes, topics, and interests they frequently discuss:\n\n{all_tweets_text}"
-        summary = perform_generative_task(summary_prompt)
+    **Recent Tweets:**
+    {tweet_summary}
+    """
 
-        # 4. Display results
+    ai_result = generate_swot_from_data(prompt, api_key)
+    if ai_result.error:
+        console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
+        return None
+    return ai_result.analysis_text
 
+
+@profile_analyzer_app.command("twitter")
+def analyze_twitter_profile(
+    username: str = typer.Argument(..., help="The Twitter username (without the @)."),
+    tweet_count: int = typer.Option(
+        50, "--count", "-c", help="Number of recent tweets to analyze."
+    ),
+):
+    """
+    Analyzes a Twitter user's profile and recent tweets for behavioral insights.
+    """
+    console.print(
+        f"[bold cyan]Analyzing Twitter profile for @{username}...[/bold cyan]"
+    )
+
+    if not API_KEYS.twitter_bearer_token:
+        console.print(
+            "[bold red]Error:[/bold red] Twitter Bearer Token is not configured."
+        )
+        raise typer.Exit(code=1)
+    tweets = get_user_timeline(username, tweet_count)
+    if not tweets:
+        console.print("[yellow]No tweets found for this user.[/yellow]")
+        return
+    # Basic stats
+
+    mentions: Counter = Counter()
+    hashtags: Counter = Counter()
+    for tweet in tweets:
+        if "entities" in tweet:
+            for mention in tweet["entities"].get("user_mentions", []):
+                mentions[mention["screen_name"]] += 1
+            for hashtag in tweet["entities"].get("hashtags", []):
+                hashtags[hashtag["text"]] += 1
+    console.print(
+        Panel(
+            f"Most Mentioned: {mentions.most_common(3)}\nMost Used Hashtags: {hashtags.most_common(3)}",
+            title="[bold green]Activity Summary[/bold green]",
+            border_style="green",
+        )
+    )
+
+    # AI-powered behavioral profile
+
+    profile = generate_behavioral_profile(username, tweets)
+    if profile:
         console.print(
             Panel(
-                summary,
-                title="[bold green]AI Summary of Key Themes[/bold green]",
-                border_style="green",
-            )
-        )
-
-        sentiment_summary = ", ".join(
-            f"{s.capitalize()}: {sentiments.count(s)}" for s in set(sentiments)
-        )
-        console.print(
-            Panel(
-                f"Overall Sentiment Distribution: {sentiment_summary}",
-                title="[bold blue]Sentiment Analysis[/bold blue]",
+                profile,
+                title="[bold blue]AI Behavioral Profile[/bold blue]",
                 border_style="blue",
             )
         )
-
-        top_mentions = "\n".join(
-            [f"- @{user} ({count} times)" for user, count in mentions.most_common(5)]
-        )
-        console.print(
-            Panel(
-                top_mentions,
-                title="[bold magenta]Top 5 Mentions[/bold magenta]",
-                border_style="magenta",
-            )
-        )
-
-        top_hashtags = "\n".join(
-            [f"- #{tag} ({count} times)" for tag, count in hashtags.most_common(5)]
-        )
-        console.print(
-            Panel(
-                top_hashtags,
-                title="[bold yellow]Top 5 Hashtags[/bold yellow]",
-                border_style="yellow",
-            )
-        )
-    except ValueError as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(code=1)
-    except Exception as e:
-        console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
-        raise typer.Exit(code=1)

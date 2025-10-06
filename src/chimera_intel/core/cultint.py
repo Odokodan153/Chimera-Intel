@@ -1,102 +1,91 @@
 """
-Cultural Intelligence (CULTINT) & Memetic Engineering Engine for Chimera Intel.
+CULTINT (Cultural Intelligence) Module for Chimera Intel.
+
+Analyzes cultural trends, narratives, and sentiments from various data sources
+to provide insights into the cultural landscape surrounding a target.
 """
 
 import typer
-from typing_extensions import Annotated
-from rich.console import Console
-from rich.panel import Panel
-import json
+from typing import Optional, Dict, Any
 
-from .database import get_db, Scans
-from .ai_core import perform_generative_task
-
-console = Console()
+from .database import get_aggregated_data_for_target
+from .ai_core import generate_swot_from_data
+from .config_loader import API_KEYS
+from .utils import console
 
 cultint_app = typer.Typer(
     name="cultint",
-    help="Performs Cultural Intelligence analysis to map belief systems.",
+    help="Performs Cultural Intelligence (CULTINT) analysis.",
 )
 
 
-@cultint_app.command("map", help="Map the cultural and ideological terrain of a group.")
-def cultint_map(
-    project: Annotated[
-        str,
-        typer.Option(
-            "--project",
-            "-p",
-            help="The project context representing the group to analyze.",
-            prompt=True,
-        ),
-    ],
-    sources: Annotated[
-        str,
-        typer.Option(
-            "--sources",
-            "-s",
-            help="Comma-separated data sources to use (e.g., 'social,darkweb').",
-            default="all",
-        ),
-    ],
-):
+def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
     """
-    Synthesizes unstructured data to identify core values, symbols, and
-    foundational beliefs that define a group's identity.
+    Analyzes the cultural narrative of a target using aggregated OSINT data.
     """
     console.print(
-        f"Mapping cultural terrain for project '[bold yellow]{project}[/bold yellow]' using sources: [cyan]{sources}[/cyan]"
+        f"[bold cyan]Analyzing cultural narrative for {target}...[/bold cyan]"
     )
 
-    try:
-        db = next(get_db())
-        query = db.query(Scans).filter(Scans.project_name == project)
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        return None
+    # Fetch aggregated data from modules that are relevant to cultural analysis
 
-        if sources != "all":
-            source_list = [s.strip() for s in sources.split(",")]
-            # This assumes your module names align with the sources, e.g., 'social_osint', 'dark_web_osint'
+    aggregated_data = get_aggregated_data_for_target(target)
+    if not aggregated_data:
+        return None  # The warning is already printed in the called function
+    # Filter for modules that provide cultural context
 
-            query = query.filter(Scans.module.in_([f"{s}_osint" for s in source_list]))
-        scans = query.all()
-        if not scans:
-            console.print(
-                "[bold red]Error:[/bold red] No data found for the specified project and sources. Cannot generate map."
-            )
-            raise typer.Exit(code=1)
-        # Synthesize a text-based summary of all relevant data
+    cultural_data_sources = {
+        "social_media": aggregated_data.get("modules", {}).get("social_analyzer"),
+        "news_media": aggregated_data.get("modules", {})
+        .get("business_intel", {})
+        .get("news"),
+        "employee_sentiment": aggregated_data.get("modules", {}).get(
+            "corporate_hr_intel"
+        ),
+    }
 
-        data_summary = "\n\n---\n\n".join(
-            [
-                f"Source: {s.module}\nContent: {json.dumps(s.data, indent=2)}"
-                for s in scans
-            ]
-        )
+    # Remove empty sources
 
-        # Construct the prompt for the AI core
+    cultural_data_sources = {k: v for k, v in cultural_data_sources.items() if v}
 
-        prompt = (
-            "As an expert in cultural anthropology and memetic engineering, analyze the following collection of unstructured data from various sources (social media posts, forum discussions, etc.) related to a specific group. Your task is to produce a 'Cultural Terrain Map'. "
-            "Identify and synthesize the following:\n"
-            "1. **Core Values & Beliefs**: What are the foundational principles that members of this group hold dear?\n"
-            "2. **Key Symbols & Language**: Are there specific words, phrases, images, or symbols that carry special meaning for this group?\n"
-            "3. **Shared History & Grievances**: What are the key historical events or shared struggles that define their collective identity?\n"
-            "4. **In-group/Out-group Dynamics**: How do they define themselves in opposition to other groups?\n\n"
-            f"Here is the data:\n{data_summary}"
-        )
-
-        # Use the AI to generate the analysis
-
-        analysis_result = perform_generative_task(prompt)
-
+    if not cultural_data_sources:
         console.print(
-            Panel(
-                analysis_result,
-                title="[bold green]Cultural Terrain Map[/bold green]",
-                border_style="green",
-            )
+            f"[yellow]Warning:[/] No relevant data sources (social media, news, HR intel) found for '{target}' to analyze cultural narrative."
         )
-    except Exception as e:
+        return None
+    prompt = f"""
+    As a cultural intelligence analyst, analyze the following data collected on {target}.
+    Based on this information, provide a summary of the dominant cultural narratives, sentiments, and values expressed.
+    Consider the perspectives from social media, news coverage, and internal employee sentiment.
+
+    **Collected Data:**
+    {cultural_data_sources}
+    """
+
+    ai_result = generate_swot_from_data(prompt, api_key)
+
+    if ai_result.error:
+        console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
+        return None
+    return {"cultural_narrative_analysis": ai_result.analysis_text}
+
+
+@cultint_app.command("run")
+def run_cultint_analysis(
+    target: str = typer.Argument(
+        ..., help="The target entity (e.g., a company name or domain) to analyze."
+    )
+):
+    """
+    Performs cultural intelligence analysis on a given target.
+    """
+    result = analyze_cultural_narrative(target)
+    if result:
         console.print(
-            f"[bold red]An error occurred during CULTINT analysis:[/bold red] {e}"
+            f"\n[bold green]Cultural Narrative Analysis for {target}:[/bold green]"
         )
-        raise typer.Exit(code=1)
+        console.print(result["cultural_narrative_analysis"])

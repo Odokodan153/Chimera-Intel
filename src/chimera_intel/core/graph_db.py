@@ -1,96 +1,169 @@
 """
-Core module for connecting to and interacting with the Neo4j Graph Database.
-This acts as the central brain for all interconnected intelligence data.
+Graph Database Module for Chimera Intel.
+
+Handles interactions with the Neo4j graph database, including building,
+storing, and querying entity graphs.
 """
 
-import logging
+from typing import Dict, Any, List, Optional
 from neo4j import GraphDatabase
-from chimera_intel.core.config_loader import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+from .config_loader import API_KEYS
+from .utils import console
+from .schemas import EntityGraphResult, GraphNode, GraphEdge
+from .database import get_aggregated_data_for_target
 
-logger = logging.getLogger(__name__)
 
+class Neo4jConnection:
+    """A class to manage the connection to the Neo4j database."""
 
-class GraphDB:
-    """A singleton class to manage the Neo4j database connection."""
-
-    _instance = None
-    _driver = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(GraphDB, cls).__new__(cls)
-            try:
-                cls._driver = GraphDatabase.driver(
-                    NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)
-                )
-                logger.info("Neo4j driver initialized successfully.")
-            except Exception as e:
-                logger.error(f"Failed to initialize Neo4j driver: {e}")
-                cls._driver = None
-        return cls._instance
+    def __init__(self, uri, user, password):
+        self.__uri = uri
+        self.__user = user
+        self.__password = password
+        self.__driver = None
+        try:
+            self.__driver = GraphDatabase.driver(
+                self.__uri, auth=(self.__user, self.__password)
+            )
+        except Exception as e:
+            console.print(f"[bold red]Failed to create Neo4j driver:[/bold red] {e}")
 
     def close(self):
-        """Closes the Neo4j database driver connection."""
-        if self._driver is not None:
-            self._driver.close()
-            logger.info("Neo4j driver closed.")
+        """Closes the database connection."""
+        if self.__driver is not None:
+            self.__driver.close()
 
-    def execute_query(self, query: str, parameters: dict = None):
-        """
-        Executes a Cypher query against the graph database.
-
-        Args:
-            query (str): The Cypher query to execute.
-            parameters (dict, optional): Parameters to pass to the query.
-        """
-        if self._driver is None:
-            logger.error("Cannot execute query, Neo4j driver is not available.")
-            return
-        try:
-            with self._driver.session() as session:
-                session.run(query, parameters or {})
-        except Exception as e:
-            logger.error(f"Error executing Cypher query '{query}': {e}")
-
-    def add_node(self, label: str, properties: dict):
-        """
-        Adds or updates a node in the graph using MERGE to avoid duplicates.
-        A 'name' or 'id' property is recommended for merging.
-        """
-        if "name" not in properties and "id" not in properties:
-            logger.warning(
-                f"Node of type '{label}' added without a unique property ('name' or 'id'). This may create duplicate nodes."
-            )
-        # Build the MERGE query dynamically based on a unique identifier
-
-        unique_property = "name" if "name" in properties else "id"
-
-        query = (
-            f"MERGE (n:{label} {{{unique_property}: $unique_val}}) "
-            "ON CREATE SET n = $props "
-            "ON MATCH SET n += $props"
-        )
-        params = {"unique_val": properties.get(unique_property), "props": properties}
-        self.execute_query(query, params)
-
-    def add_relationship(
+    def query(
         self,
-        from_node_label: str,
-        from_node_id: str,
-        relationship_type: str,
-        to_node_label: str,
-        to_node_id: str,
-    ):
-        """
-        Creates a relationship between two existing nodes.
-        """
-        query = (
-            f"MATCH (a:{from_node_label} {{name: $from_id}}), (b:{to_node_label} {{name: $to_id}}) "
-            f"MERGE (a)-[r:{relationship_type}]->(b)"
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        db: Optional[str] = None,
+    ) -> Optional[List[Any]]:
+        """Executes a query against the database."""
+        assert self.__driver is not None, "Driver not initialized!"
+        session = None
+        response = None
+        try:
+            session = (
+                self.__driver.session(database=db)
+                if db is not None
+                else self.__driver.session()
+            )
+            response = list(session.run(query, parameters))
+        except Exception as e:
+            console.print(f"[bold red]Query failed:[/bold red] {e}")
+            return None
+        finally:
+            if session is not None:
+                session.close()
+        return response
+
+
+def get_graph_db_connection() -> Optional[Neo4jConnection]:
+    """Initializes and returns a connection to the Neo4j database."""
+    uri = getattr(API_KEYS, "neo4j_uri", None)
+    user = getattr(API_KEYS, "neo4j_user", None)
+    password = getattr(API_KEYS, "neo4j_password", None)
+
+    if not all([uri, user, password]):
+        console.print("[bold red]Neo4j connection details not configured.[/bold red]")
+        return None
+    return Neo4jConnection(uri, user, password)
+
+
+def build_entity_graph(target: str) -> EntityGraphResult:
+    """
+    Builds an entity graph from aggregated scan data for a target.
+    """
+    aggregated_data = get_aggregated_data_for_target(target)
+    if not aggregated_data:
+        return EntityGraphResult(
+            target=target, total_nodes=0, total_edges=0, error="No data to build graph."
         )
-        self.execute_query(query, {"from_id": from_node_id, "to_id": to_node_id})
+    nodes: Dict[str, GraphNode] = {}
+    edges: List[GraphEdge] = []
+
+    # Add the central target node
+
+    nodes[target] = GraphNode(id=target, node_type="Domain", label=target)
+
+    # Process modules to add nodes and edges
+    # Example: Footprint data
+
+    footprint_data = aggregated_data.get("modules", {}).get("footprint", {})
+    if "subdomains" in footprint_data:
+        for sub in footprint_data["subdomains"].get("results", []):
+            sub_name = sub.get("domain")
+            if sub_name:
+                nodes[sub_name] = GraphNode(
+                    id=sub_name, node_type="Subdomain", label=sub_name
+                )
+                edges.append(
+                    GraphEdge(source=target, target=sub_name, label="HAS_SUBDOMAIN")
+                )
+    return EntityGraphResult(
+        target=target,
+        total_nodes=len(nodes),
+        total_edges=len(edges),
+        nodes=list(nodes.values()),
+        edges=edges,
+    )
 
 
-# Initialize a singleton instance for use across the application
+def save_graph_to_neo4j(graph_data: EntityGraphResult):
+    """Saves a built entity graph to the Neo4j database."""
+    conn = get_graph_db_connection()
+    if not conn:
+        return
+    # Using a transaction to ensure atomicity
 
-graph_db_instance = GraphDB()
+    with conn._Neo4jConnection__driver.session() as session:
+        result = session.write_transaction(
+            _create_and_link_nodes, graph_data.nodes, graph_data.edges
+        )
+    conn.close()
+    console.print(f"[green]Graph for {graph_data.target} saved to Neo4j.[/green]")
+
+
+def _create_and_link_nodes(tx, nodes, edges):
+    """A private function to handle the transaction logic."""
+    for node in nodes:
+        tx.run(
+            "MERGE (n:%s {id: $id, label: $label}) SET n += $props" % node.node_type,
+            id=node.id,
+            label=node.label,
+            props=node.properties,
+        )
+    for edge in edges:
+        tx.run(
+            """
+            MATCH (a {id: $source})
+            MATCH (b {id: $target})
+            MERGE (a)-[r:%s]->(b)
+            SET r += $props
+        """
+            % edge.label,
+            source=edge.source,
+            target=edge.target,
+            props=edge.properties,
+        )
+
+
+def build_and_save_graph(target: str) -> "EntityGraphResult":
+    """
+    Builds and saves an entity graph for a given target.
+    """
+    # This is a placeholder for the actual graph building logic
+
+    from .schemas import EntityGraphResult, GraphNode, GraphEdge
+
+    nodes = [GraphNode(id=target, node_type="Domain", label=target)]
+    edges = []
+
+    return EntityGraphResult(
+        target=target,
+        total_nodes=len(nodes),
+        total_edges=len(edges),
+        nodes=nodes,
+        edges=edges,
+    )

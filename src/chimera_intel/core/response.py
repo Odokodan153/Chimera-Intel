@@ -1,40 +1,101 @@
 """
-Automated Response & Counter-Offensive Operations Module for Chimera Intel.
+Automated Incident Response Module for Chimera Intel.
+
+This module provides functionalities to define automated response rules and
+execute corresponding actions when specific triggers are met.
 """
 
 import typer
-from typing_extensions import Annotated
-from typing import List
-from rich.console import Console
-from rich.table import Table
-import subprocess
+from typing import List, Dict, Any
+import psycopg2
 
-from .database import get_db
-from .schemas import ResponseRule
-
-console = Console()
+from .config_loader import API_KEYS
+from .utils import console, send_slack_notification, send_teams_notification
+from .database import get_db_connection
 
 response_app = typer.Typer(
     name="response",
-    help="Manages automated defensive and counter-offensive actions.",
+    help="Manages automated incident response rules and actions.",
 )
 
+# A simple mapping of action names to functions.
+# In a real-world scenario, these would be more complex integrations.
 
-@response_app.command("create-rule", help="Create a new automated response rule.")
-def create_rule(
-    name: Annotated[
-        str,
-        typer.Option("--name", "-n", help="A unique name for the rule.", prompt=True),
-    ],
-    trigger: Annotated[
-        str,
-        typer.Option(
-            "--trigger",
-            "-t",
-            help="The event that triggers the rule (e.g., 'dark-monitor:credential-leak').",
-            prompt=True,
-        ),
-    ],
+ACTION_MAP = {
+    "send_slack_alert": lambda details: send_slack_notification(
+        message=f"Automated Response Triggered: {details}"
+    ),
+    "send_teams_alert": lambda details: send_teams_notification(
+        title="Automated Response", message=details
+    ),
+    "quarantine_host": lambda details: console.print(
+        f"[bold yellow]ACTION (Simulated):[/bold yellow] Quarantining host mentioned in: {details}"
+    ),
+    "reset_password": lambda details: console.print(
+        f"[bold yellow]ACTION (Simulated):[/bold yellow] Resetting password for user mentioned in: {details}"
+    ),
+}
+
+
+def get_response_rule(trigger: str) -> List[str]:
+    """Retrieves the actions for a given trigger from the database."""
+    actions = []
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT actions FROM response_rules WHERE trigger = %s", (trigger,)
+        )
+        record = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if record:
+            return record[0]  # Actions are stored as a JSON list
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(
+            f"[bold red]Database Error:[/bold red] Could not retrieve response rule: {e}"
+        )
+    return actions
+
+
+def execute_response_actions(trigger: str, event_details: str):
+    """
+    Executes the predefined response actions for a specific trigger.
+    """
+    console.print(f"\n[bold cyan]Event detected with trigger:[/bold cyan] '{trigger}'")
+    console.print(f"[bold]Details:[/bold] {event_details}")
+
+    actions_to_execute = get_response_rule(trigger)
+    if not actions_to_execute:
+        console.print(
+            f"  - No response rule found for trigger '{trigger}'. No actions taken."
+        )
+        return
+    console.print("[bold]Executing response actions:[/bold]")
+    for action_name in actions_to_execute:
+        action_func = ACTION_MAP.get(action_name)
+        if action_func:
+            console.print(f"  - Running action: [bold green]{action_name}[/bold green]")
+            try:
+                action_func(event_details)
+            except Exception as e:
+                console.print(
+                    f"    [bold red]Error executing action '{action_name}':[/bold red] {e}"
+                )
+        else:
+            console.print(
+                f"  - [bold red]Warning:[/bold red] Action '{action_name}' is not defined in the ACTION_MAP."
+            )
+
+
+@response_app.command("add-rule")
+def add_rule(
+    trigger: str = typer.Option(
+        ...,
+        "--trigger",
+        "-t",
+        help="The trigger name (e.g., 'dark-web:credential-leak').",
+    ),
     actions: List[str] = typer.Option(
         ...,
         "--action",
@@ -43,76 +104,39 @@ def create_rule(
     ),
 ):
     """
-    Creates a 'Threat-to-Action' rule that automatically triggers defensive
-    actions based on intelligence findings.
+    Adds a new automated response rule to the database.
     """
-    db = next(get_db())
-    db_rule = ResponseRule(name=name, trigger=trigger, actions=actions)
-    db.add(db_rule)
-    db.commit()
-    console.print(
-        f"[bold green]✅ Response rule '{name}' created successfully.[/bold green]"
-    )
-    console.print(f"   - [bold]Trigger:[/] {trigger}")
-    console.print(f"   - [bold]Actions:[/] {', '.join(actions)}")
+    console.print(f"Adding response rule for trigger: [bold cyan]{trigger}[/bold cyan]")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Using INSERT ... ON CONFLICT to handle updates gracefully
+
+        cursor.execute(
+            """
+            INSERT INTO response_rules (trigger, actions) VALUES (%s, %s)
+            ON CONFLICT (trigger) DO UPDATE SET actions = EXCLUDED.actions;
+            """,
+            (trigger, actions),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        console.print(
+            "[bold green]Successfully added/updated response rule.[/bold green]"
+        )
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(f"[bold red]Database Error:[/bold red] Could not add rule: {e}")
 
 
-@response_app.command("list-rules", help="List all configured response rules.")
-def list_rules():
-    """Displays all automated response rules currently in the database."""
-    db = next(get_db())
-    rules = db.query(ResponseRule).all()
-    if not rules:
-        console.print("[yellow]No response rules found.[/yellow]")
-        return
-    table = Table(title="Automated Response Rules")
-    table.add_column("ID", style="cyan")
-    table.add_column("Name", style="magenta")
-    table.add_column("Trigger", style="green")
-    table.add_column("Actions", style="yellow")
-
-    for rule in rules:
-        table.add_row(str(rule.id), rule.name, rule.trigger, ", ".join(rule.actions))
-    console.print(table)
-
-
-@response_app.command(
-    "execute-trigger", help="Find and execute the actions for a given trigger."
-)
-def execute_trigger(
-    trigger: Annotated[
-        str,
-        typer.Argument(
-            help="The trigger to execute (e.g., 'dark-monitor:credential-leak')."
-        ),
-    ],
+@response_app.command("simulate-event")
+def simulate_event(
+    trigger: str = typer.Argument(..., help="The trigger name to simulate."),
+    details: str = typer.Argument(
+        "Simulated event for testing purposes.", help="Details of the simulated event."
+    ),
 ):
     """
-    Finds a rule matching a trigger and executes the defined actions.
+    Simulates an event to test the response rules and actions.
     """
-    console.print(f"Executing trigger: [bold cyan]{trigger}[/bold cyan]")
-    db = next(get_db())
-    rule = db.query(ResponseRule).filter(ResponseRule.trigger == trigger).first()
-
-    if not rule:
-        console.print("[yellow]No rule found for this trigger.[/yellow]")
-        raise typer.Exit()
-    console.print(f"Rule '{rule.name}' triggered. Executing actions:")
-    for action in rule.actions:
-        console.print(f"  - [bold]Executing action:[/] {action}")
-        try:
-            # We assume the action is a valid shell command.
-            # In a real-world scenario, you would have a more robust action mapping system.
-
-            process = subprocess.run(
-                action,
-                shell=True,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            console.print(f"    [green]Success![/green] Output: {process.stdout}")
-        except subprocess.CalledProcessError as e:
-            console.print(f"    [red]Error executing action:[/red] {e.stderr}")
-        except Exception as e:
-            console.print(f"    [red]An unexpected error occurred:[/red] {e}")
+    execute_response_actions(trigger, details)

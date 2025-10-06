@@ -1,65 +1,69 @@
 """
-The Red Team: An Adversarial Simulation & Strategy Validation Engine for Chimera Intel.
+Red Team Module for Chimera Intel.
+
+This module uses AI to analyze aggregated OSINT data from a red team
+perspective, generating potential attack vectors and actionable TTPs.
 """
 
 import typer
-from typing_extensions import Annotated
-from rich.console import Console
-from rich.panel import Panel
+from typing import Optional, Dict, Any
 
-from .database import get_db, Scans
-from .ai_core import perform_generative_task
-from .schemas import ScanModel
-
-console = Console()
+from .database import get_aggregated_data_for_target
+from .ai_core import generate_swot_from_data
+from .config_loader import API_KEYS
+from .utils import console
 
 red_team_app = typer.Typer(
     name="red-team",
-    help="Runs adversarial simulations to test defensive strategies.",
+    help="Generates red team insights and potential attack vectors.",
 )
 
-@red_team_app.command("simulate", help="Simulate a realistic adversarial campaign against a project's attack surface.")
-def simulate(
-    project: Annotated[str, typer.Option("--project", "-p", help="The project whose assets will be the target of the simulation.", prompt=True)],
-    adversary: Annotated[str, typer.Option("--adversary", "-a", help="The threat actor to simulate (e.g., 'FIN7', 'APT29').", prompt=True)],
+
+def generate_attack_vectors(target: str) -> Optional[Dict[str, Any]]:
+    """
+    Analyzes aggregated OSINT data to generate potential attack vectors.
+    """
+    console.print(
+        f"[bold cyan]Generating potential attack vectors for {target}...[/bold cyan]"
+    )
+
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        return None
+    aggregated_data = get_aggregated_data_for_target(target)
+    if not aggregated_data:
+        return None  # Warning is handled in the called function
+    prompt = f"""
+    As a red team operator, analyze the following aggregated OSINT data for the target: {target}.
+    Your objective is to identify the most likely and impactful attack vectors.
+    Based on the data, generate a report that includes:
+    1.  **Top 3 Attack Vectors:** Describe three specific, plausible attack vectors.
+    2.  **Recommended TTPs:** For each vector, suggest relevant MITRE ATT&CK techniques (TTPs) that could be used.
+    3.  **Required Information Gaps:** What critical information is missing that would be needed to execute these attacks?
+
+    **Aggregated OSINT Data:**
+    {aggregated_data}
+    """
+
+    ai_result = generate_swot_from_data(prompt, api_key)
+
+    if ai_result.error:
+        console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
+        return None
+    return {"red_team_analysis": ai_result.analysis_text}
+
+
+@red_team_app.command("generate")
+def run_red_team_analysis(
+    target: str = typer.Argument(
+        ..., help="The target entity (e.g., a domain or company name)."
+    )
 ):
     """
-    Simulates a realistic adversarial campaign against your organization's own
-    attack surface, allowing you to test defensive strategies and identify
-    weaknesses before a real attacker does.
+    Performs a red team analysis on the aggregated data for a target.
     """
-    console.print(f"Initiating Red Team simulation for project '[bold yellow]{project}[/bold yellow]'...")
-    console.print(f"Adversary Profile: [bold red]{adversary}[/bold red]")
-
-    try:
-        db = next(get_db())
-        scans = db.query(Scans).filter(Scans.project_name == project).all()
-        if not scans:
-            console.print(f"[bold red]Error:[/bold red] No assets found for project '{project}'. Cannot run simulation.")
-            raise typer.Exit(code=1)
-
-        # Synthesize all collected asset data for the project
-        asset_summary = "\n".join([ScanModel.model_validate(s).model_dump_json(indent=2) for s in scans])
-
-        # Construct the detailed prompt for the AI Red Team Agent
-        prompt = (
-            f"You are an AI-powered Red Team agent. Your mission is to simulate an attack campaign against the assets of project '{project}'. "
-            f"You will adopt the persona and known tactics of the threat actor group: **{adversary}**.\n\n"
-            "Your simulation must be structured as a step-by-step campaign, referencing specific MITRE ATT&CK techniques (e.g., 'T1566.001 - Spearphishing Attachment') for each action. "
-            "Your goal is to achieve a common objective for this threat actor, such as data exfiltration for financial gain or establishing persistent access.\n\n"
-            f"Here is the list of known assets for the target project:\n---\n{asset_summary}\n---\n\n"
-            "Based on these assets and your knowledge of the adversary, generate a realistic, multi-stage attack plan. For each stage, describe the action, the target asset, and the specific ATT&CK technique used."
-        )
-
-        # Use the AI to generate the simulation
-        simulation_result = perform_generative_task(prompt)
-
-        console.print(Panel(
-            simulation_result,
-            title=f"[bold red]Red Team Simulation: {adversary} Campaign[/bold red]",
-            border_style="red"
-        ))
-
-    except Exception as e:
-        console.print(f"[bold red]An error occurred during the Red Team simulation:[/bold red] {e}")
-        raise typer.Exit(code=1)
+    result = generate_attack_vectors(target)
+    if result:
+        console.print(f"\n[bold green]Red Team Analysis for {target}:[/bold green]")
+        console.print(result["red_team_analysis"])
