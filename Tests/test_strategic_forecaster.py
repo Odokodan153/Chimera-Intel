@@ -112,7 +112,6 @@ def test_forecaster_fallback_to_dummy_data():
         "chimera_intel.core.strategic_forecaster.track_narrative"
     ), patch("chimera_intel.core.strategic_forecaster.monitor_twitter_stream"):
 
-        console_output = MagicMock()
         forecaster = StrategicForecaster()
 
         # To capture print output, we would need to patch 'console.print'

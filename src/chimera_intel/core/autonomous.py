@@ -95,7 +95,7 @@ def optimize_models(
 
     if module.lower() != "forecaster":
         console.print(
-            f"[bold red]Error:[/bold red] Only the 'forecaster' module is supported for optimization at this time."
+            "[bold red]Error:[/bold red] Only the 'forecaster' module is supported for optimization at this time."
         )
         raise typer.Exit(code=1)
     try:

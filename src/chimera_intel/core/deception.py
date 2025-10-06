@@ -87,7 +87,7 @@ def deploy_honeypot(
         console.print(f"   [bold]docker logs -f {container.short_id}[/bold]")
     except docker.errors.DockerException as e:
         console.print(
-            f"[bold red]Docker Error:[/bold red] Could not connect to the Docker daemon. Is it running?"
+            "[bold red]Docker Error:[/bold red] Could not connect to the Docker daemon. Is it running?"
         )
         console.print(f"   Details: {e}")
         raise typer.Exit(code=1)
