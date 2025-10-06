@@ -88,7 +88,7 @@ def decode_ais_from_capture(capture_path: str):
     try:
         # The command pipes the raw capture file into rtl_ais
 
-        command = f"rtl_sdr -f 162.025M -s 24000 - | rtl_ais -n"
+        command = "rtl_sdr -f 162.025M -s 24000 - | rtl_ais -n"
         process = subprocess.run(
             command,
             shell=True,

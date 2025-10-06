@@ -57,7 +57,7 @@ def ot_recon(
                     found_protocols.add(protocol.upper())
 
         if found_protocols:
-            print(f"\n[bold green]Identified potential ICS/SCADA protocols:[/bold green]")
+            print("\n[bold green]Identified potential ICS/SCADA protocols:[/bold green]")
             for protocol in found_protocols:
                 print(f"- {protocol}")
         else:

@@ -1,7 +1,6 @@
 import pytest
 from typer.testing import CliRunner
 from scapy.all import wrpcap, RadioTap, Dot11, Dot11Beacon, Dot11Elt
-import os
 
 # The application instance to be tested
 

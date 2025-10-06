@@ -78,7 +78,7 @@ def run_live_tracking(
     if results_model.error:
         console.print(f"[bold red]Error:[/bold red] {results_model.error}")
         raise typer.Exit(code=1)
-    console.print(f"\n--- [bold]Live Flight Data[/bold] ---\n")
+    console.print("\n--- [bold]Live Flight Data[/bold] ---\n")
     if icao24:
         console.print(f"Tracking aircraft with ICAO24: {icao24}")
     else:

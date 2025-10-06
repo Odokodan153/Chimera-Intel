@@ -8,7 +8,6 @@ a complete, multi-page narrative report from all data gathered for a project.
 import typer
 import json
 import logging
-from typing import Literal
 from rich.markdown import Markdown
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -87,7 +86,7 @@ def generate_intelligence_briefing(
         return BriefingResult(
             briefing_text="", error=f"Template '{template}' not found."
         )
-    target_name = aggregated_data.get("target", "the target")
+   
     data_str = json.dumps(aggregated_data.get("modules", {}), indent=2, default=str)
 
     prompt_template = template_config["prompt"]

@@ -7,7 +7,6 @@ from typing_extensions import Annotated
 from rich.console import Console
 from rich.panel import Panel
 import datetime
-import subprocess
 
 from .database import get_db
 from .schemas import ForecastPerformance
@@ -112,7 +111,7 @@ def optimize_models(
 
         if not records:
             console.print(
-                f"[yellow]No performance records found for the last 90 days. Cannot perform optimization.[/yellow]"
+                "[yellow]No performance records found for the last 90 days. Cannot perform optimization.[/yellow]"
             )
             raise typer.Exit()
         # Format the performance data for the AI

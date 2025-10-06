@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 from chimera_intel.core.avint import get_live_flights
-from chimera_intel.core.schemas import AVINTResult, FlightInfo
+from chimera_intel.core.schemas import AVINTResult
 
 
 class TestAvint(unittest.IsolatedAsyncioTestCase):

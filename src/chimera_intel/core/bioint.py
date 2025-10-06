@@ -73,7 +73,7 @@ def monitor_sequences(
 
     if db.lower() != "genbank":
         console.print(
-            f"[bold red]Error:[/bold red] Only 'GenBank' is supported at this time."
+            "[bold red]Error:[/bold red] Only 'GenBank' is supported at this time."
         )
         raise typer.Exit(code=1)
     try:

@@ -7,7 +7,6 @@ from typing_extensions import Annotated
 import pandas as pd
 import os
 from rich.console import Console
-from rich.table import Table
 
 console = Console()
 

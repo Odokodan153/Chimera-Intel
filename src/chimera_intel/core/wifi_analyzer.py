@@ -7,7 +7,6 @@ from typing_extensions import Annotated
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
-import re
 
 # Create a new Typer application for Wi-Fi Analysis commands
 

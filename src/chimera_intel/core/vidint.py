@@ -10,7 +10,6 @@ import os
 from typing import Optional
 from rich.console import Console
 import cv2
-import numpy as np
 
 console = Console()
 

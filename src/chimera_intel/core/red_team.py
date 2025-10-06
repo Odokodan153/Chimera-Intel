@@ -6,7 +6,6 @@ import typer
 from typing_extensions import Annotated
 from rich.console import Console
 from rich.panel import Panel
-import json
 
 from .database import get_db, Scans
 from .ai_core import perform_generative_task

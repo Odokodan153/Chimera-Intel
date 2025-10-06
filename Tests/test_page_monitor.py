@@ -5,7 +5,6 @@ from unittest.mock import patch, MagicMock, mock_open
 # The application instance to be tested
 
 from chimera_intel.core.page_monitor import page_monitor_app, run_page_monitor
-import datetime
 
 runner = CliRunner()
 

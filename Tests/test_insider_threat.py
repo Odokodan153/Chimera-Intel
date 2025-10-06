@@ -1,10 +1,6 @@
 import pytest
 from typer.testing import CliRunner
 import pandas as pd
-import os
-
-# The application instance to be tested
-
 from chimera_intel.core.insider_threat import insider_threat_app
 
 runner = CliRunner()

@@ -1,11 +1,7 @@
 import pytest
 from typer.testing import CliRunner
 from PIL import Image
-import os
 from unittest.mock import patch, MagicMock
-
-# The application instance to be tested
-
 from chimera_intel.core.imint import imint_app, analyze_image_metadata
 from chimera_intel.core.schemas import ImageAnalysisResult
 

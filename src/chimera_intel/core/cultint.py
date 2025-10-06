@@ -10,7 +10,6 @@ import json
 
 from .database import get_db, Scans
 from .ai_core import perform_generative_task
-from .schemas import ScanModel
 
 console = Console()
 
@@ -61,7 +60,7 @@ def cultint_map(
         scans = query.all()
         if not scans:
             console.print(
-                f"[bold red]Error:[/bold red] No data found for the specified project and sources. Cannot generate map."
+                "[bold red]Error:[/bold red] No data found for the specified project and sources. Cannot generate map."
             )
             raise typer.Exit(code=1)
         # Synthesize a text-based summary of all relevant data

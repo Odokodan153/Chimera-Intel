@@ -1,7 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock, AsyncMock
-import asyncio
+from unittest.mock import MagicMock, AsyncMock
 
 # The application instance to be tested
 

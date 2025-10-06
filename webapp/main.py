@@ -6,7 +6,6 @@ from fastapi import (
     FastAPI,
     Request,
     Depends,
-    HTTPException,
     status,
     Form,
     WebSocket,
@@ -15,7 +14,6 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import List, Dict, Any
 from datetime import timedelta, datetime
 
 # Adjust path to import from the core Chimera Intel library

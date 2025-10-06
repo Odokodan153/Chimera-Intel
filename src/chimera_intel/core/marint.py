@@ -7,7 +7,6 @@ from typing_extensions import Annotated
 import asyncio
 import websockets
 import json
-from chimera_intel.core.http_client import get_aiohttp_session
 from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for MARINT commands

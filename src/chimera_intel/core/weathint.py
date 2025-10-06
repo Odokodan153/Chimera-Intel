@@ -9,7 +9,7 @@ from geopy.geocoders import Nominatim
 from rich.console import Console
 from rich.panel import Panel
 
-from chimera_intel.core.config_loader import API_KEYS, CONFIG
+from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import get_http_client
 
 console = Console()

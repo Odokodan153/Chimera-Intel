@@ -1,6 +1,6 @@
 import typer
 from typing import Optional
-from .graph_db import build_and_save_graph, graph_db_instance
+from .graph_db import build_and_save_graph
 from .ai_core import generate_narrative_from_graph
 from .config_loader import API_KEYS
 from .utils import console

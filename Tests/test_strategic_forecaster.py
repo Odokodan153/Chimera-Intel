@@ -1,7 +1,7 @@
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
-import pandas as pd
+from chimera_intel.core.strategic_forecaster import forecaster_app, StrategicForecaster
 import datetime
 
 # Since the schemas are in other modules, we'll create simple mock objects
@@ -35,11 +35,6 @@ def create_mock_tweet(timestamp):
     mock_tweet = MagicMock()
     mock_tweet.model_dump.return_value = {"created_at": timestamp}
     return mock_tweet
-
-
-# We can now import the module we want to test
-
-from chimera_intel.core.strategic_forecaster import forecaster_app, StrategicForecaster
 
 runner = CliRunner()
 

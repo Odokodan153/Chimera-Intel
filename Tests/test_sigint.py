@@ -1,7 +1,5 @@
 import pytest
 from typer.testing import CliRunner
-import numpy as np
-import os
 
 # The application instance to be tested
 from chimera_intel.core.sigint import sigint_app

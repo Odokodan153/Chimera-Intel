@@ -1,6 +1,5 @@
 import typer
 from rich.console import Console
-from rich.table import Table
 from collections import Counter
 from Wappalyzer import Wappalyzer, WebPage
 from app_store_scraper import AppStore

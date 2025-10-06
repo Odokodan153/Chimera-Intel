@@ -1,10 +1,6 @@
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
-import datetime
-
-# The application instance to be tested
-
 from chimera_intel.core.autonomous import autonomous_app
 from chimera_intel.core.schemas import ForecastPerformance
 

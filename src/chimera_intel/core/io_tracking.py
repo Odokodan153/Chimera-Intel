@@ -8,7 +8,6 @@ import httpx
 from rich.console import Console
 from rich.table import Table
 from collections import Counter
-import re
 import tweepy
 
 from chimera_intel.core.config_loader import API_KEYS
@@ -130,7 +129,7 @@ def track_influence(
             for post in reddit_posts:
                 data = post.get("data", {})
                 table.add_row(
-                    f"Reddit", f"r/{data.get('subreddit')}", data.get("title")
+                    "Reddit", f"r/{data.get('subreddit')}", data.get("title")
                 )
                 if "url" in data:
                     all_urls.append(data["url"])

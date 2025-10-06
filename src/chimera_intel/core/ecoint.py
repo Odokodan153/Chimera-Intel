@@ -3,7 +3,6 @@ import requests
 import os
 from rich.console import Console
 from rich.table import Table
-from datetime import datetime
 
 app = typer.Typer(
     no_args_is_help=True,

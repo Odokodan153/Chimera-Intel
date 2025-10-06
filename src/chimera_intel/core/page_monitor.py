@@ -79,7 +79,7 @@ def run_page_monitor(url: str):
                 send_slack_notification(message)
                 send_teams_notification(message)
                 console.print(
-                    f"[bold red]Change detected![/bold red] Updating baseline."
+                    "[bold red]Change detected![/bold red] Updating baseline."
                 )
                 # Update baseline
 

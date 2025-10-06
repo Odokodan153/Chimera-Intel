@@ -13,9 +13,7 @@ import pypatent
 from scholarly import scholarly
 import requests
 from bs4 import BeautifulSoup
-from SDSParser import SDSParser
 from io import BytesIO
-from pypdf import PdfReader
 import pdfplumber
 import docx
 import csv

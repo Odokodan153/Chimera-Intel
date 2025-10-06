@@ -163,7 +163,7 @@ def add_dark_web_monitor(
         kwargs={"keywords": keyword_list},
     )
     console.print(
-        f"[bold green]✅ Successfully scheduled dark web monitor.[/bold green]"
+        "[bold green]✅ Successfully scheduled dark web monitor.[/bold green]"
     )
     console.print(f"   - Job ID: {job_id}")
     console.print(f"   - Keywords: {keyword_list}")
