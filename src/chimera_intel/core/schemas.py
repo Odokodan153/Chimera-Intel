@@ -1108,12 +1108,19 @@ class ConfigNetwork(BaseModel):
     timeout: float = 20.0
 
 
+class ConfigNotifications(BaseModel):
+    """Configuration for notifications from config.yaml."""
+    slack_webhook_url: Optional[str] = None
+    teams_webhook_url: Optional[str] = None
+
+
 class AppConfig(BaseModel):
     """The main model for validating the entire config.yaml file."""
 
     network: ConfigNetwork
     modules: ConfigModules
     reporting: ConfigReporting = ConfigReporting()
+    notifications: ConfigNotifications = ConfigNotifications()
 
 
 # --- Blockchain & Cryptocurrency OSINT Models ---
@@ -2030,16 +2037,4 @@ class GraphNarrativeResult(BaseModel):
     error: Optional[str] = None
 
 
-class ConfigNotifications(BaseModel):
-    """Configuration for notifications from config.yaml."""
-    slack_webhook_url: Optional[str] = None
-    teams_webhook_url: Optional[str] = None
 
-
-class AppConfig(BaseModel):
-    """The main model for validating the entire config.yaml file."""
-
-    network: ConfigNetwork
-    modules: ConfigModules
-    reporting: ConfigReporting = ConfigReporting()
-    notifications: ConfigNotifications = ConfigNotifications()
