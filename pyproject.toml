@@ -100,18 +100,10 @@ test = [
     "pdfplumber",
     "python-docx",
     "types-docker",
-    "types-requests",
-    "pdfplumber",
-    "pandas-stubs",
     "overpy",
     "Wappalyzer",
-    "types-requests",
     "sgp4",
     "skyfield",
-    "scapy",
-    "types-networkx",
-    "pyvis",
-    "opencv-python"
 ]
 
 # This is the entry point that creates the 'chimera' command
@@ -121,3 +113,40 @@ chimera = "chimera_intel.cli:app"
 [project.urls]
 "Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
 "Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "sgp4.api",
+    "skyfield.api",
+    "pandas.*",
+    "sklearn.*",
+    "networkx.*",
+    "dns.*",
+    "whois.*",
+    "pyvis.*",
+    "tweepy.*",
+    "playwright.*",
+    "bs4.*",
+    "torch.*",
+    "torchvision.*",
+    "shodan.*",
+    "skimage.*",
+    "geopy.*",
+    "sqlalchemy.*",
+    "cv2.*",
+    "scapy.*",
+    "librosa.*",
+    "pymodes.*",
+    "pypatent.*",
+    "scholarly.*",
+    "requests.*",
+    "pdfplumber.*",
+    "docx.*",
+    "docker.*",
+    "overpy.*",
+    "Wappalyzer.*"
+]
+ignore_missing_imports = true
