@@ -117,7 +117,7 @@ class ElecInt:
                 or []
             )
 
-            graph = nx.DiGraph()
+            graph: nx.DiGraph = nx.DiGraph()
             for tweet in tweets:
                 if tweet.in_reply_to_user_id:
                     graph.add_edge(tweet.author_id, tweet.in_reply_to_user_id)

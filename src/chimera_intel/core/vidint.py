@@ -10,6 +10,7 @@ import os
 from typing import Optional
 from rich.console import Console
 import cv2
+import numpy as np
 
 console = Console()
 
@@ -34,6 +35,7 @@ def detect_motion(file_path: str, threshold: int = 30):
     gray1 = cv2.GaussianBlur(gray1, (21, 21), 0)
 
     motion_events = 0
+    kernel = np.ones((5, 5), np.uint8)
     while True:
         ret, frame2 = vid.read()
         if not ret:
@@ -43,7 +45,7 @@ def detect_motion(file_path: str, threshold: int = 30):
 
         frame_delta = cv2.absdiff(gray1, gray2)
         thresh = cv2.threshold(frame_delta, threshold, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.dilate(thresh, None, iterations=2)
+        thresh = cv2.dilate(thresh, kernel, iterations=2)
 
         contours, _ = cv2.findContours(
             thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE

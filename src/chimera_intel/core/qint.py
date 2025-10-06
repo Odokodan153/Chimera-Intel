@@ -103,16 +103,18 @@ class QInt:
 
             table = soup.find("table", caption="Algorithms to be Standardized")
             if table:
-                for row in table.find("tbody").find_all("tr"):
-                    cols = row.find_all("td")
-                    if len(cols) >= 2:
-                        algorithms.append(
-                            {
-                                "algorithm": cols[0].text.strip(),
-                                "type": cols[1].text.strip(),
-                                "status": "Selected for Standardization",
-                            }
-                        )
+                tbody = table.find("tbody")
+                if tbody:
+                    for row in tbody.find_all("tr"):
+                        cols = row.find_all("td")
+                        if len(cols) >= 2:
+                            algorithms.append(
+                                {
+                                    "algorithm": cols[0].text.strip(),
+                                    "type": cols[1].text.strip(),
+                                    "status": "Selected for Standardization",
+                                }
+                            )
             return algorithms
         except Exception as e:
             console.print(f"[bold red]Error scraping NIST PQC page: {e}[/bold red]")

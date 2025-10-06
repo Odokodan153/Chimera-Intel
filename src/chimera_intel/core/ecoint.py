@@ -71,7 +71,7 @@ class EcoInt:
             response = requests.get(
                 self.climatetrace_url,
                 headers=headers,
-                params={"q": company_name, "limit": 10},
+                params={"q": company_name, "limit": "10"},
             )
             response.raise_for_status()
             data = response.json()
