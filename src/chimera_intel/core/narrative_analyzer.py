@@ -11,8 +11,8 @@ from rich.table import Table
 from typing import List, Dict, Any
 
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import get_http_client
-from chimera_intel.core.ai_core import perform_sentiment_analysis
+from chimera_intel.core.http_client import sync_client
+from chimera_intel.core.ai_core import analyze_sentiment
 
 console = Console()
 
@@ -31,7 +31,7 @@ def fetch_news(query: str, client: httpx.Client) -> list:
     if not api_key:
         raise ValueError("GNEWS_API_KEY not found in .env file.")
     url = "https://gnews.io/api/v4/search"
-    params = {"q": query, "token": api_key, "lang": "en", "max": 10}
+    params = {"q": query, "token": api_key, "lang": "en", "max": "10"}
     response = client.get(url, params=params)
     response.raise_for_status()
     return response.json().get("articles", [])
@@ -71,7 +71,7 @@ def track_narrative(
     try:
         # 1. Fetch data from sources
 
-        with get_http_client() as http_client:
+        with sync_client as http_client:
             news_articles = fetch_news(query, http_client)
         tweets = fetch_tweets(query)
 
@@ -106,7 +106,8 @@ def track_narrative(
             )
         analyzed_content = []
         for item in all_content:
-            sentiment = perform_sentiment_analysis(item["content"])
+            sentiment_result = analyze_sentiment(item["content"])
+            sentiment = sentiment_result.label
             item["sentiment"] = sentiment
             analyzed_content.append(item)
             sentiment_color = "white"

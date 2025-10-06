@@ -86,7 +86,6 @@ def generate_intelligence_briefing(
         return BriefingResult(
             briefing_text="", error=f"Template '{template}' not found."
         )
-   
     data_str = json.dumps(aggregated_data.get("modules", {}), indent=2, default=str)
 
     prompt_template = template_config["prompt"]
@@ -176,7 +175,10 @@ def run_briefing_generation(
     if output:
         doc = SimpleDocTemplate(output)
         styles = getSampleStyleSheet()
-        story = [Paragraph(briefing_result.title, styles["h1"]), Spacer(1, 0.25 * inch)]
+        story = [
+            Paragraph(briefing_result.title or "Intelligence Briefing", styles["h1"]),
+            Spacer(1, 0.25 * inch),
+        ]
         # Basic markdown to reportlab conversion
 
         for line in (briefing_result.briefing_text or "").split("\n"):

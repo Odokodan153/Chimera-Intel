@@ -17,16 +17,18 @@ from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
 from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
 from .graph_db import build_and_save_graph
-from .graph_schemas import GraphNarrativeResult
+from .graph_schemas import GraphNarrativeResult, Node, Edge, GraphResult
 import json
 
 # Get a logger instance for this specific file
+
 
 logger = logging.getLogger(__name__)
 
 # --- AI Model Initializations ---
 
 # Define variables before the try block
+
 
 sentiment_analyzer: Optional[Any] = None
 classifier: Optional[Any] = None
@@ -180,6 +182,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
 
 # --- Typer CLI Application ---
 
+
 ai_app = typer.Typer()
 
 
@@ -264,9 +267,68 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
     Returns:
         GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
     """
-    graph_result = build_and_save_graph(target)
-    if graph_result.error:
-        return GraphNarrativeResult(narrative_text="", error=graph_result.error)
+    try:
+        with open(target, "r") as f:
+            data = json.load(f)
+        output_path = f"{target.replace('.json', '')}_graph.html"
+        build_and_save_graph(data, output_path)
+
+        nodes = []
+        edges = []
+        target_node_id = data.get("domain") or data.get("company", "Unknown Target")
+        nodes.append(
+            Node(
+                id=target_node_id,
+                label=target_node_id,
+                type="Main Target",
+                properties={},
+            )
+        )
+
+        footprint_data = data.get("footprint", {})
+        for sub_item in footprint_data.get("subdomains", {}).get("results", []):
+            subdomain = sub_item.get("domain")
+            if subdomain:
+                nodes.append(
+                    Node(id=subdomain, label=subdomain, type="Subdomain", properties={})
+                )
+                edges.append(
+                    Edge(
+                        source=target_node_id,
+                        target=subdomain,
+                        label="has_subdomain",
+                        properties={},
+                    )
+                )
+        for ip in footprint_data.get("dns_records", {}).get("A", []):
+            if "Error" not in str(ip):
+                nodes.append(Node(id=ip, label=ip, type="IP Address", properties={}))
+                edges.append(
+                    Edge(
+                        source=target_node_id,
+                        target=ip,
+                        label="resolves_to",
+                        properties={},
+                    )
+                )
+        web_data = data.get("web_analysis", {})
+        for tech_item in web_data.get("tech_stack", {}).get("results", []):
+            tech = tech_item.get("technology")
+            if tech:
+                nodes.append(
+                    Node(id=tech, label=tech, type="Technology", properties={})
+                )
+                edges.append(
+                    Edge(
+                        source=target_node_id,
+                        target=tech,
+                        label="uses_tech",
+                        properties={},
+                    )
+                )
+        graph_result = GraphResult(nodes=nodes, edges=edges, error=None)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        return GraphNarrativeResult(narrative_text="", error=str(e))
     prompt_data = {
         "nodes": [node.model_dump() for node in graph_result.nodes],
         "edges": [edge.model_dump() for edge in graph_result.edges],

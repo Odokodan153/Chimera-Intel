@@ -186,16 +186,9 @@ def create_pdf_report(
 
 def generate_graph_report(target: str, output_path: str):
     """Generates an HTML graph report for a target."""
-    graph_result = build_and_save_graph(target)
-    if graph_result.error:
-        console.print(
-            f"[bold red]Error generating graph report:[/bold red] {graph_result.error}"
-        )
-        return
-    net = Network(height="100%", width="100%", bgcolor="#222222", font_color="white")
-
-    for node in graph_result.nodes:
-        net.add_node(node.id, label=node.label, title=node.node_type)
-    for edge in graph_result.edges:
-        net.add_edge(edge.source, edge.target, label=edge.label)
-    net.save_graph(output_path)
+    try:
+        with open(target, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        build_and_save_graph(data, output_path)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        console.print(f"[bold red]Error generating graph report:[/bold red] {e}")

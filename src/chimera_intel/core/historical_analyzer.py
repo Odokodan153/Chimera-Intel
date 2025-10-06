@@ -12,7 +12,7 @@ import difflib
 from typing import Optional
 import asyncio
 from bs4 import BeautifulSoup
-from .schemas import HistoricalAnalysisResult
+from .schemas import HistoricalAnalysisResult, TemporalSnapshot
 from .utils import console
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
@@ -65,6 +65,9 @@ async def analyze_historical_changes(
             error="Could not retrieve historical snapshots for the domain.",
         )
     snapshots = sorted(snapshots_result.snapshots, key=lambda s: s.timestamp)
+
+    from_snapshot: Optional[TemporalSnapshot] = None
+    to_snapshot: Optional[TemporalSnapshot] = None
 
     if not from_timestamp:
         from_snapshot = snapshots[0]

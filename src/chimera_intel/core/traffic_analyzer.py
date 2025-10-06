@@ -81,7 +81,7 @@ def analyze_protocols(pcap_path: str):
 
     # Communication mapping
 
-    G = nx.DiGraph()
+    G: nx.DiGraph = nx.DiGraph()
     for pkt in packets:
         if IP in pkt:
             src_ip = pkt[IP].src

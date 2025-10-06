@@ -9,9 +9,10 @@ from rich.panel import Panel
 import networkx as nx
 import json
 from itertools import combinations
+from typing import Any, Dict, List
 
 from chimera_intel.core.ai_core import perform_generative_task
-from chimera_intel.core.database import get_db, Scans
+from chimera_intel.core.database import get_db_connection
 from chimera_intel.core.schemas import ScanModel
 
 console = Console()
@@ -30,15 +31,25 @@ def build_attack_graph_from_db(project_name: str) -> dict:
     Builds an attack graph by fetching real asset data from the database
     for a specific project.
     """
-    db = next(get_db())
-    scans = db.query(Scans).filter(Scans.project_name == project_name).all()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, module, scan_data FROM scans WHERE project_id = (SELECT id FROM projects WHERE name = %s)",
+        (project_name,),
+    )
+    scans = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
     if not scans:
         raise ValueError(
             f"No assets found for project '{project_name}'. Run scans first."
         )
-    G = nx.Graph()
+    G: nx.Graph = nx.Graph()
     for scan in scans:
-        scan_data = ScanModel.model_validate(scan)
+        scan_data = ScanModel.model_validate(
+            {"id": scan[0], "module": scan[1], "data": scan[2]}
+        )
         node_id = f"{scan_data.module}_{scan_data.id}"
         G.add_node(node_id, type=scan_data.module, data=scan_data.data)
     # Add edges based on relationships between assets

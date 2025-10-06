@@ -22,12 +22,12 @@ from chimera_intel.core.schemas import (
 from chimera_intel.core.http_client import async_client
 from .threat_intel import get_threat_intel_otx
 from .project_manager import resolve_target
-from chimera_intel.core.graph_db import graph_db_instance
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 
 # --- Simple In-Memory Cache ---
+
 
 API_CACHE: Dict[str, Any] = {}
 CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
@@ -222,7 +222,7 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
 
 async def gather_footprint_data(domain: str) -> FootprintResult:
     """
-    Orchestrates the gathering of all footprint data and ingests it into the graph.
+    Orchestrates the gathering of all footprint data.
     """
     # --- Stage 1: Initial Data Gathering ---
 
@@ -287,26 +287,7 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
             for res in ti_results:
                 if res:
                     threat_intel_results[res.indicator] = res
-    # --- Stage 4: Graph Ingestion ---
-
-    console.print(
-        "[bold cyan]Ingesting footprint data into the intelligence graph...[/bold cyan]"
-    )
-    try:
-        graph_db_instance.add_node("Domain", {"name": domain})
-        for ip in main_domain_ips:
-            graph_db_instance.add_node("IPAddress", {"name": ip})
-            graph_db_instance.add_relationship(
-                "Domain", domain, "RESOLVES_TO", "IPAddress", ip
-            )
-        for sub in all_subdomains:
-            graph_db_instance.add_node("Subdomain", {"name": sub})
-            graph_db_instance.add_relationship(
-                "Domain", domain, "HAS_SUBDOMAIN", "Subdomain", sub
-            )
-    except Exception as e:
-        console.print(f"[bold red]Error during graph ingestion:[/bold red] {e}")
-    # --- Stage 5: Final Assembly ---
+    # --- Stage 4: Final Assembly ---
 
     available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
     scored_results = [
@@ -334,6 +315,7 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
 
 # --- Typer CLI Application ---
+
 
 footprint_app = typer.Typer()
 

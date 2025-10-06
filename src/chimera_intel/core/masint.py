@@ -4,13 +4,25 @@ import cv2
 from rich.console import Console
 from rich.table import Table
 from scapy.all import rdpcap
+from typing import Optional, Type
 
 # Conditional import for librosa, as it's a heavy dependency
+
+
+class LibrosaPlaceholder:
+    def __getattr__(self, name):
+        def method(*args, **kwargs):
+            raise ImportError(
+                "librosa is not installed. Please run 'pip install librosa' to use this feature."
+            )
+
+        return method
+
 
 try:
     import librosa
 except ImportError:
-    librosa = None
+    librosa: Optional[Type[LibrosaPlaceholder]] = LibrosaPlaceholder()
 app = typer.Typer(
     no_args_is_help=True, help="Measurement and Signature Intelligence (MASINT) tools."
 )
@@ -46,7 +58,7 @@ class Masint:
         """
         Analyzes an audio file to extract its acoustic signature using MFCCs.
         """
-        if librosa is None:
+        if isinstance(librosa, LibrosaPlaceholder):
             console.print(
                 "[bold red]librosa library not installed. Please run 'pip install librosa' to use this feature.[/bold red]"
             )
