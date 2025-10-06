@@ -5,8 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-avint"
 version = "1.0.0"
-description = "Aviation Intelligence (AVINT) plugin for Chimera Intel."
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A plugin for Chimera-Intel that provides audio-visual intelligence (AVINT) capabilities."
+readme = "README.md"
 requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
-[project.entry-points."chimera_intel.plugins"]
-avint = "chimera_avint.main:AvintPlugin"
+# Dependencies specific to the AVINT plugin
+dependencies = [
+    "librosa>=0.9.2,<0.10.0",
+    "soundfile>=0.12.1,<0.13.0",
+    "SpeechRecognition>=3.10.0,<4.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"

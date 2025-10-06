@@ -8,8 +8,23 @@ version = "1.0.0"
 authors = [
     { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
-description = "Financial Intelligence plugin for Chimera Intel."
+description = "A plugin for Chimera-Intel that provides financial intelligence (FININT) capabilities."
+readme = "README.md"
 requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
-[project.entry-points."chimera_intel.plugins"]
-finint = "chimera_finint.main:FinintPlugin"
+# Dependencies specific to the FININT plugin
+dependencies = [
+    "yfinance>=0.2.28,<0.3.0",
+    "sec-api>=1.0.17,<2.0.0",
+    "beautifulsoup4>=4.12.2,<5.0.0",
+    "lxml>=5.2.2,<6.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"

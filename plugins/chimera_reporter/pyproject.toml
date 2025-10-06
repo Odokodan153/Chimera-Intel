@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chimera-spaceint"
+name = "chimera-reporter"
 version = "1.0.0"
 authors = [
     { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
-description = "A plugin for Chimera-Intel that provides space intelligence (SPACEINT) capabilities."
+description = "A plugin for Chimera-Intel that provides advanced reporting and document generation capabilities."
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
@@ -17,10 +17,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-# Dependencies specific to the SPACEINT plugin
+# Dependencies specific to the Reporter plugin
 dependencies = [
-    "sgp4>=2.21,<3.0.0",
-    "skyfield>=1.45,<2.0.0",
+    "reportlab>=4.2.0,<5.0.0",
+    "jinja2>=3.1.2,<4.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
 ]
 
 [project.urls]

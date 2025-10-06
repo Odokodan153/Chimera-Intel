@@ -5,9 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-cybint"
 version = "1.0.0"
-description = "Cyber Intelligence (CYBINT) plugin for Chimera Intel."
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A plugin for Chimera-Intel that provides cyber intelligence (CYBINT) capabilities."
+readme = "README.md"
 requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
-# This section registers the package as a Chimera Intel plugin
-[project.entry-points."chimera_intel.plugins"]
-cybint = "chimera_cybint.main:CybintPlugin"
+# Dependencies specific to the CYBINT plugin
+dependencies = [
+    "scapy>=2.5.0,<3.0.0",
+    "python-nmap>=0.7.1,<0.8.0",
+    "shodan>=1.28.0,<2.0.0",
+    "dnspython>=2.4.2,<3.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"

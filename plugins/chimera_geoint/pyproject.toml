@@ -5,8 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-geoint"
 version = "1.0.0"
-description = "Geopolitical Intelligence (GEOINT) plugin for Chimera Intel."
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A plugin for Chimera-Intel that provides geospatial intelligence (GEOINT) capabilities."
+readme = "README.md"
 requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 
-[project.entry-points."chimera_intel.plugins"]
-geoint = "chimera_geoint.main:GeointPlugin"
+# Dependencies specific to the GEOINT plugin
+dependencies = [
+    "geopy>=2.4.1,<3.0.0",
+    "folium>=0.15.1,<0.16.0",
+    "googlemaps>=4.10.0,<5.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"
