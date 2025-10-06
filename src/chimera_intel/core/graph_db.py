@@ -1,169 +1,132 @@
-"""
-Graph Database Module for Chimera Intel.
-
-Handles interactions with the Neo4j graph database, including building,
-storing, and querying entity graphs.
-"""
-
-from typing import Dict, Any, List, Optional
-from neo4j import GraphDatabase
-from .config_loader import API_KEYS
+import typer
+import json
+from pyvis.network import Network  # type: ignore
+import os
+from typing import Dict, Any
+import logging
+from .config_loader import CONFIG
 from .utils import console
-from .schemas import EntityGraphResult, GraphNode, GraphEdge
-from .database import get_aggregated_data_for_target
+
+# Get a logger instance for this specific file
 
 
-class Neo4jConnection:
-    """A class to manage the connection to the Neo4j database."""
-
-    def __init__(self, uri, user, password):
-        self.__uri = uri
-        self.__user = user
-        self.__password = password
-        self.__driver = None
-        try:
-            self.__driver = GraphDatabase.driver(
-                self.__uri, auth=(self.__user, self.__password)
-            )
-        except Exception as e:
-            console.print(f"[bold red]Failed to create Neo4j driver:[/bold red] {e}")
-
-    def close(self):
-        """Closes the database connection."""
-        if self.__driver is not None:
-            self.__driver.close()
-
-    def query(
-        self,
-        query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-        db: Optional[str] = None,
-    ) -> Optional[List[Any]]:
-        """Executes a query against the database."""
-        assert self.__driver is not None, "Driver not initialized!"
-        session = None
-        response = None
-        try:
-            session = (
-                self.__driver.session(database=db)
-                if db is not None
-                else self.__driver.session()
-            )
-            response = list(session.run(query, parameters))
-        except Exception as e:
-            console.print(f"[bold red]Query failed:[/bold red] {e}")
-            return None
-        finally:
-            if session is not None:
-                session.close()
-        return response
+logger = logging.getLogger(__name__)
 
 
-def get_graph_db_connection() -> Optional[Neo4jConnection]:
-    """Initializes and returns a connection to the Neo4j database."""
-    uri = getattr(API_KEYS, "neo4j_uri", None)
-    user = getattr(API_KEYS, "neo4j_user", None)
-    password = getattr(API_KEYS, "neo4j_password", None)
+def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
+    """Builds and saves an interactive HTML knowledge graph from a JSON scan result.
 
-    if not all([uri, user, password]):
-        console.print("[bold red]Neo4j connection details not configured.[/bold red]")
-        return None
-    return Neo4jConnection(uri, user, password)
+    This function uses the pyvis library to build a network graph. It parses the
+    input JSON data, creating nodes for the main target, subdomains, IP addresses,
+    and technologies, and then connects them with edges. The final graph is
+    configured with physics options from the config.yaml file for an interactive layout.
 
-
-def build_entity_graph(target: str) -> EntityGraphResult:
+    Args:
+        json_data (Dict[str, Any]): The loaded JSON data from a scan.
+        output_path (str): The path to save the generated HTML file.
     """
-    Builds an entity graph from aggregated scan data for a target.
-    """
-    aggregated_data = get_aggregated_data_for_target(target)
-    if not aggregated_data:
-        return EntityGraphResult(
-            target=target, total_nodes=0, total_edges=0, error="No data to build graph."
+    try:
+        net = Network(
+            height="900px",
+            width="100%",
+            bgcolor="#222222",
+            font_color="white",
+            notebook=False,
+            directed=True,
         )
-    nodes: Dict[str, GraphNode] = {}
-    edges: List[GraphEdge] = []
 
-    # Add the central target node
+        target = json_data.get("domain") or json_data.get("company", "Unknown Target")
+        net.add_node(
+            target,
+            label=target,
+            color="#ff4757",
+            size=30,
+            shape="dot",
+            title="Main Target",
+        )
 
-    nodes[target] = GraphNode(id=target, node_type="Domain", label=target)
-
-    # Process modules to add nodes and edges
-    # Example: Footprint data
-
-    footprint_data = aggregated_data.get("modules", {}).get("footprint", {})
-    if "subdomains" in footprint_data:
-        for sub in footprint_data["subdomains"].get("results", []):
-            sub_name = sub.get("domain")
-            if sub_name:
-                nodes[sub_name] = GraphNode(
-                    id=sub_name, node_type="Subdomain", label=sub_name
+        footprint_data = json_data.get("footprint", {})
+        for sub_item in footprint_data.get("subdomains", {}).get("results", []):
+            subdomain = sub_item.get("domain")
+            if subdomain:
+                net.add_node(
+                    subdomain,
+                    label=subdomain,
+                    color="#1e90ff",
+                    size=15,
+                    shape="dot",
+                    title="Subdomain",
                 )
-                edges.append(
-                    GraphEdge(source=target, target=sub_name, label="HAS_SUBDOMAIN")
+                net.add_edge(target, subdomain)
+        for ip in footprint_data.get("dns_records", {}).get("A", []):
+            if "Error" not in str(ip):
+                net.add_node(
+                    ip,
+                    label=ip,
+                    color="#feca57",
+                    size=20,
+                    shape="triangle",
+                    title="IP Address",
                 )
-    return EntityGraphResult(
-        target=target,
-        total_nodes=len(nodes),
-        total_edges=len(edges),
-        nodes=list(nodes.values()),
-        edges=edges,
-    )
+                net.add_edge(target, ip)
+        web_data = json_data.get("web_analysis", {})
+        for tech_item in web_data.get("tech_stack", {}).get("results", []):
+            tech = tech_item.get("technology")
+            if tech:
+                net.add_node(
+                    tech,
+                    label=tech,
+                    color="#576574",
+                    size=12,
+                    shape="square",
+                    title="Technology",
+                )
+                net.add_edge(target, tech)
+        # Apply physics options from config.yaml
 
-
-def save_graph_to_neo4j(graph_data: EntityGraphResult):
-    """Saves a built entity graph to the Neo4j database."""
-    conn = get_graph_db_connection()
-    if not conn:
-        return
-    # Using a transaction to ensure atomicity
-
-    with conn._Neo4jConnection__driver.session() as session:
-        session.write_transaction(
-            _create_and_link_nodes, graph_data.nodes, graph_data.edges
+        physics_options = (
+            CONFIG.model_dump()
+            .get("reporting", {})
+            .get("graph", {})
+            .get("physics_options", "")
         )
-    conn.close()
-    console.print(f"[green]Graph for {graph_data.target} saved to Neo4j.[/green]")
-
-
-def _create_and_link_nodes(tx, nodes, edges):
-    """A private function to handle the transaction logic."""
-    for node in nodes:
-        tx.run(
-            "MERGE (n:%s {id: $id, label: $label}) SET n += $props" % node.node_type,
-            id=node.id,
-            label=node.label,
-            props=node.properties,
+        if physics_options:
+            net.set_options(physics_options)
+        net.save_graph(output_path)
+        logger.info(
+            "Successfully generated interactive graph at: %s",
+            os.path.abspath(output_path),
         )
-    for edge in edges:
-        tx.run(
-            """
-            MATCH (a {id: $source})
-            MATCH (b {id: $target})
-            MERGE (a)-[r:%s]->(b)
-            SET r += $props
-        """
-            % edge.label,
-            source=edge.source,
-            target=edge.target,
-            props=edge.properties,
-        )
+        console.print("   [dim]Open this HTML file in your browser to explore.[/dim]")
+    except Exception as e:
+        logger.error("An error occurred during graph generation: %s", e)
 
 
-def build_and_save_graph(target: str) -> "EntityGraphResult":
-    """
-    Builds and saves an entity graph for a given target.
-    """
-    # This is a placeholder for the actual graph building logic
+# --- Typer CLI Application ---
 
-    from .schemas import EntityGraphResult, GraphNode, GraphEdge
 
-    nodes = [GraphNode(id=target, node_type="Domain", label=target)]
-    edges = []
+graph_app = typer.Typer()
 
-    return EntityGraphResult(
-        target=target,
-        total_nodes=len(nodes),
-        total_edges=len(edges),
-        nodes=nodes,
-        edges=edges,
-    )
+
+@graph_app.command("create")
+def create_knowledge_graph(
+    json_file: str = typer.Argument(..., help="Path to the JSON scan result file."),
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Path to save the HTML graph."
+    ),
+):
+    """Creates an interactive knowledge graph from a saved JSON scan file."""
+    logger.info("Generating knowledge graph from: %s", json_file)
+
+    try:
+        with open(json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error("Error reading file '%s' for graph generation: %s", json_file, e)
+        raise typer.Exit(code=1)
+    if not output_file:
+        target_name = data.get("domain") or data.get("company", "graph")
+        output_path = f"{target_name.replace('.', '_')}_graph.html"
+    else:
+        output_path = output_file
+    build_and_save_graph(data, output_path)

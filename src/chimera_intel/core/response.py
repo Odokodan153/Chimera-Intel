@@ -9,7 +9,6 @@ import typer
 from typing import List
 import psycopg2
 
-from .config_loader import API_KEYS
 from .utils import console, send_slack_notification, send_teams_notification
 from .database import get_db_connection
 
