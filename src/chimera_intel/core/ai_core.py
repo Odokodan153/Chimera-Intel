@@ -15,9 +15,14 @@ from typing import List, Optional, Any, Dict
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+from .schemas import (
+    SentimentAnalysisResult,
+    SWOTAnalysisResult,
+    AnomalyDetectionResult,
+    GraphNarrativeResult,
+)
+from .graph_schemas import (GraphEdge, GraphNode, GraphResult)
 from .graph_db import build_and_save_graph
-from .graph_schemas import GraphNarrativeResult, Node, Edge, GraphResult
 import json
 
 # Get a logger instance for this specific file
@@ -277,10 +282,10 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
         edges = []
         target_node_id = data.get("domain") or data.get("company", "Unknown Target")
         nodes.append(
-            Node(
+            GraphNode(
                 id=target_node_id,
                 label=target_node_id,
-                type="Main Target",
+                node_type="Main Target",
                 properties={},
             )
         )
@@ -290,10 +295,15 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
             subdomain = sub_item.get("domain")
             if subdomain:
                 nodes.append(
-                    Node(id=subdomain, label=subdomain, type="Subdomain", properties={})
+                    GraphNode(
+                        id=subdomain,
+                        label=subdomain,
+                        node_type="Subdomain",
+                        properties={},
+                    )
                 )
                 edges.append(
-                    Edge(
+                    GraphEdge(
                         source=target_node_id,
                         target=subdomain,
                         label="has_subdomain",
@@ -302,9 +312,11 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
                 )
         for ip in footprint_data.get("dns_records", {}).get("A", []):
             if "Error" not in str(ip):
-                nodes.append(Node(id=ip, label=ip, type="IP Address", properties={}))
+                nodes.append(
+                    GraphNode(id=ip, label=ip, node_type="IP Address", properties={})
+                )
                 edges.append(
-                    Edge(
+                    GraphEdge(
                         source=target_node_id,
                         target=ip,
                         label="resolves_to",
@@ -316,17 +328,23 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
             tech = tech_item.get("technology")
             if tech:
                 nodes.append(
-                    Node(id=tech, label=tech, type="Technology", properties={})
+                    GraphNode(id=tech, label=tech, node_type="Technology", properties={})
                 )
                 edges.append(
-                    Edge(
+                    GraphEdge(
                         source=target_node_id,
                         target=tech,
                         label="uses_tech",
                         properties={},
                     )
                 )
-        graph_result = GraphResult(nodes=nodes, edges=edges, error=None)
+        graph_result = GraphResult(
+            nodes=nodes,
+            edges=edges,
+            target=target,
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+        )
     except (FileNotFoundError, json.JSONDecodeError) as e:
         return GraphNarrativeResult(narrative_text="", error=str(e))
     prompt_data = {

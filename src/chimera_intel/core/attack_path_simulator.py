@@ -12,7 +12,8 @@ from itertools import combinations
 
 from chimera_intel.core.ai_core import generate_swot_from_data
 from chimera_intel.core.database import get_db_connection
-from chimera_intel.core.schemas import ProjectConfig
+from chimera_intel.core.schemas import ScanData
+from chimera_intel.core.config_loader import API_KEYS
 
 console = Console()
 
@@ -46,7 +47,7 @@ def build_attack_graph_from_db(project_name: str) -> dict:
         )
     G: nx.Graph = nx.Graph()
     for scan in scans:
-        scan_data = ProjectConfig.model_validate(
+        scan_data = ScanData.model_validate(
             {"id": scan[0], "module": scan[1], "data": scan[2]}
         )
         node_id = f"{scan_data.module}_{scan_data.id}"
@@ -136,11 +137,11 @@ def simulate_attack(
 
         # 3. Use the AI to generate the simulated attack path
 
-        simulated_path = generate_swot_from_data(prompt)
+        simulated_path = generate_swot_from_data(prompt, API_KEYS.google_api_key)
 
         console.print(
             Panel(
-                simulated_path,
+                simulated_path.analysis_text,
                 title="[bold green]Simulated Attack Path[/bold green]",
                 border_style="green",
             )

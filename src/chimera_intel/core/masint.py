@@ -4,7 +4,7 @@ import cv2
 from rich.console import Console
 from rich.table import Table
 from scapy.all import rdpcap
-from typing import Optional, Type
+import importlib
 
 # Conditional import for librosa, as it's a heavy dependency
 
@@ -20,9 +20,9 @@ class LibrosaPlaceholder:
 
 
 try:
-    import librosa
+    librosa = importlib.import_module("librosa")
 except ImportError:
-    librosa: Optional[Type[LibrosaPlaceholder]] = LibrosaPlaceholder()
+    librosa = LibrosaPlaceholder()
 app = typer.Typer(
     no_args_is_help=True, help="Measurement and Signature Intelligence (MASINT) tools."
 )

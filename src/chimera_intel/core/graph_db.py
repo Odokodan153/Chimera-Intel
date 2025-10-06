@@ -2,34 +2,67 @@ import typer
 import json
 from pyvis.network import Network  # type: ignore
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 import logging
 from .config_loader import CONFIG
 from .utils import console
 from .graph_schemas import Node, Edge, EntityGraphResult
-
-# Get a logger instance for this specific file
+from neo4j import GraphDatabase as Neo4jGraphDatabase
+from neo4j.exceptions import ServiceUnavailable
 
 logger = logging.getLogger(__name__)
+
+class GraphDatabase:
+    """
+    Manages the connection to a Neo4j graph database.
+    """
+
+    def __init__(self, uri, user, password):
+        try:
+            self._driver = Neo4jGraphDatabase.driver(uri, auth=(user, password))
+            logger.info("Successfully connected to Neo4j database.")
+        except ServiceUnavailable as e:
+            logger.error("Could not connect to Neo4j database at %s: %s", uri, e)
+            self._driver = None
+
+    def execute_query(
+        self, query: str, parameters: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Executes a Cypher query against the database.
+        """
+        if not self._driver:
+            logger.error("Cannot execute query: database driver is not available.")
+            return []
+        try:
+            with self._driver.session() as session:
+                result = session.run(query, parameters)
+                return [record.data() for record in result]
+        except Exception as e:
+            logger.error("An error occurred while executing the query: %s", e)
+            return []
+
+    def close(self):
+        if self._driver:
+            self._driver.close()
+            logger.info("Neo4j database connection closed.")
+
+
+# --- Singleton instance of the graph database connection ---
+# The CLI will import and use this instance to run queries.
+# Connection details are populated from the config.
+
+graph_db_instance = GraphDatabase(
+    uri=CONFIG.get("graph_db", {}).get("uri", "bolt://localhost:7687"),
+    user=CONFIG.get("graph_db", {}).get("user", "neo4j"),
+    password=CONFIG.get("graph_db", {}).get("password", "password"),
+)
 
 
 def build_and_save_graph(
     json_data: Dict[str, Any], output_path: str
 ) -> EntityGraphResult:
-    """Builds and saves an interactive HTML knowledge graph from a JSON scan result.
-
-    This function uses the pyvis library to build a network graph. It parses the
-    input JSON data, creating nodes for the main target, subdomains, IP addresses,
-    and technologies, and then connects them with edges. The final graph is
-    configured with physics options from the config.yaml file for an interactive layout.
-
-    Args:
-        json_data (Dict[str, Any]): The loaded JSON data from a scan.
-        output_path (str): The path to save the generated HTML file.
-
-    Returns:
-        EntityGraphResult: A Pydantic model containing the graph data.
-    """
+    """Builds and saves an interactive HTML knowledge graph from a JSON scan result."""
     nodes = []
     edges = []
     try:
