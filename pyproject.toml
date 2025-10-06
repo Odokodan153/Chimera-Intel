@@ -90,7 +90,7 @@ test = [
     "scikit-image",
     "geopy",
     "SQLAlchemy",
-    "types-sqlalchemy"
+    "types-sqlalchemy",
     "opencv-python",
     "scapy",
     "librosa",
