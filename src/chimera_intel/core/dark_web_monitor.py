@@ -105,8 +105,22 @@ async def run_dark_web_monitor(keywords: list[str]):
                         # Send notifications
 
                         message = f"🚨 Chimera Intel Alert: Keyword '{keyword}' detected on the dark web at {url}. Page content saved to '{filename}'."
-                        send_slack_notification(message)
-                        send_teams_notification(message)
+                        if (
+                            CONFIG.notifications
+                            and CONFIG.notifications.slack_webhook_url
+                        ):
+                            send_slack_notification(
+                                CONFIG.notifications.slack_webhook_url, message
+                            )
+                        if (
+                            CONFIG.notifications
+                            and CONFIG.notifications.teams_webhook_url
+                        ):
+                            send_teams_notification(
+                                CONFIG.notifications.teams_webhook_url,
+                                f"Chimera Intel Alert: Keyword '{keyword}' detected",
+                                message,
+                            )
             except httpx.RequestError as e:
                 console.print(
                     f"[bold yellow]Warning:[/bold yellow] Could not connect to {url}. Error: {e}"

@@ -2,6 +2,7 @@ import typer
 import feedparser
 import requests
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 from rich.console import Console
 from rich.table import Table
 
@@ -104,7 +105,7 @@ class QInt:
             table = soup.find("table", caption="Algorithms to be Standardized")
             if table:
                 tbody = table.find("tbody")
-                if tbody:
+                if isinstance(tbody, Tag):
                     for row in tbody.find_all("tr"):
                         cols = row.find_all("td")
                         if len(cols) >= 2:

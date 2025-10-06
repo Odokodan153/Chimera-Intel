@@ -8,9 +8,19 @@ execute corresponding actions when specific triggers are met.
 import typer
 from typing import List
 import psycopg2
+import os
+from dotenv import load_dotenv
 
 from .utils import console, send_slack_notification, send_teams_notification
 from .database import get_db_connection
+
+# Load environment variables from .env file
+
+load_dotenv()
+
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL")
+
 
 response_app = typer.Typer(
     name="response",
@@ -20,12 +30,14 @@ response_app = typer.Typer(
 # A simple mapping of action names to functions.
 # In a real-world scenario, these would be more complex integrations.
 
+
 ACTION_MAP = {
     "send_slack_alert": lambda details: send_slack_notification(
-        message=f"Automated Response Triggered: {details}"
+        webhook_url=SLACK_WEBHOOK_URL,
+        message=f"Automated Response Triggered: {details}",
     ),
     "send_teams_alert": lambda details: send_teams_notification(
-        title="Automated Response", message=details
+        webhook_url=TEAMS_WEBHOOK_URL, title="Automated Response", message=details
     ),
     "quarantine_host": lambda details: console.print(
         f"[bold yellow]ACTION (Simulated):[/bold yellow] Quarantining host mentioned in: {details}"
@@ -38,7 +50,7 @@ ACTION_MAP = {
 
 def get_response_rule(trigger: str) -> List[str]:
     """Retrieves the actions for a given trigger from the database."""
-    actions = []
+    actions: List[str] = []
     try:
         conn = get_db_connection()
         cursor = conn.cursor()

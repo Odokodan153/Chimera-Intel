@@ -16,6 +16,7 @@ import google.generativeai as genai
 
 # Imports for Satellite Analysis
 
+
 from typing_extensions import Annotated
 import torch
 from torchvision import models, transforms
@@ -105,6 +106,7 @@ def analyze_content(
 # --- Satellite Imagery Analysis ---
 
 # Load a pre-trained model for object detection
+
 
 detection_model = models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
 detection_model.eval()
@@ -214,7 +216,7 @@ def perform_object_detection(image_path: str) -> dict:
 
     with torch.no_grad():
         prediction = detection_model([img_tensor])
-    detected_objects = {}
+    detected_objects: Dict[str, int] = {}
     pred_labels = [
         COCO_INSTANCE_CATEGORY_NAMES[i] for i in prediction[0]["labels"].numpy()
     ]

@@ -6,14 +6,16 @@ from typing import Dict, Any
 import logging
 from .config_loader import CONFIG
 from .utils import console
+from .graph_schemas import Node, Edge, EntityGraphResult
 
 # Get a logger instance for this specific file
-
 
 logger = logging.getLogger(__name__)
 
 
-def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
+def build_and_save_graph(
+    json_data: Dict[str, Any], output_path: str
+) -> EntityGraphResult:
     """Builds and saves an interactive HTML knowledge graph from a JSON scan result.
 
     This function uses the pyvis library to build a network graph. It parses the
@@ -24,7 +26,12 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
     Args:
         json_data (Dict[str, Any]): The loaded JSON data from a scan.
         output_path (str): The path to save the generated HTML file.
+
+    Returns:
+        EntityGraphResult: A Pydantic model containing the graph data.
     """
+    nodes = []
+    edges = []
     try:
         net = Network(
             height="900px",
@@ -44,6 +51,9 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
             shape="dot",
             title="Main Target",
         )
+        nodes.append(
+            Node(id=target, label=target, node_type="Main Target", properties={})
+        )
 
         footprint_data = json_data.get("footprint", {})
         for sub_item in footprint_data.get("subdomains", {}).get("results", []):
@@ -58,6 +68,22 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
                     title="Subdomain",
                 )
                 net.add_edge(target, subdomain)
+                nodes.append(
+                    Node(
+                        id=subdomain,
+                        label=subdomain,
+                        node_type="Subdomain",
+                        properties={},
+                    )
+                )
+                edges.append(
+                    Edge(
+                        source=target,
+                        target=subdomain,
+                        label="has_subdomain",
+                        properties={},
+                    )
+                )
         for ip in footprint_data.get("dns_records", {}).get("A", []):
             if "Error" not in str(ip):
                 net.add_node(
@@ -69,6 +95,12 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
                     title="IP Address",
                 )
                 net.add_edge(target, ip)
+                nodes.append(
+                    Node(id=ip, label=ip, node_type="IP Address", properties={})
+                )
+                edges.append(
+                    Edge(source=target, target=ip, label="resolves_to", properties={})
+                )
         web_data = json_data.get("web_analysis", {})
         for tech_item in web_data.get("tech_stack", {}).get("results", []):
             tech = tech_item.get("technology")
@@ -82,6 +114,12 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
                     title="Technology",
                 )
                 net.add_edge(target, tech)
+                nodes.append(
+                    Node(id=tech, label=tech, node_type="Technology", properties={})
+                )
+                edges.append(
+                    Edge(source=target, target=tech, label="uses_tech", properties={})
+                )
         # Apply physics options from config.yaml
 
         physics_options = (
@@ -98,8 +136,18 @@ def build_and_save_graph(json_data: Dict[str, Any], output_path: str) -> None:
             os.path.abspath(output_path),
         )
         console.print("   [dim]Open this HTML file in your browser to explore.[/dim]")
+        return EntityGraphResult(
+            target=target,
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+            nodes=nodes,
+            edges=edges,
+        )
     except Exception as e:
         logger.error("An error occurred during graph generation: %s", e)
+        return EntityGraphResult(
+            target="", total_nodes=0, total_edges=0, nodes=[], edges=[], error=str(e)
+        )
 
 
 # --- Typer CLI Application ---

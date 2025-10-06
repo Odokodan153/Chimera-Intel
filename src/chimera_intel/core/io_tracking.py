@@ -11,7 +11,7 @@ from collections import Counter
 import tweepy
 
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import get_http_client
+from chimera_intel.core.http_client import sync_client
 
 # Create a new Typer application for IO Tracking commands
 
@@ -28,7 +28,7 @@ def search_news_narrative(narrative: str, client: httpx.Client) -> list:
     if not api_key:
         raise ValueError("GNEWS_API_KEY not found in .env file.")
     url = "https://gnews.io/api/v4/search"
-    params = {"q": f'"{narrative}"', "token": api_key, "lang": "en", "max": 10}
+    params = {"q": f'"{narrative}"', "token": api_key, "lang": "en", "max": "10"}
     response = client.get(url, params=params)
     response.raise_for_status()
     return response.json().get("articles", [])
@@ -90,7 +90,7 @@ def track_influence(
     )
 
     try:
-        with get_http_client() as client:
+        with sync_client as client:
             # 1. Search for the narrative across multiple platforms
 
             news_articles = search_news_narrative(narrative, client)
@@ -128,9 +128,7 @@ def track_influence(
                         all_urls.append(url_info["expanded_url"])
             for post in reddit_posts:
                 data = post.get("data", {})
-                table.add_row(
-                    "Reddit", f"r/{data.get('subreddit')}", data.get("title")
-                )
+                table.add_row("Reddit", f"r/{data.get('subreddit')}", data.get("title"))
                 if "url" in data:
                     all_urls.append(data["url"])
             console.print(table)
