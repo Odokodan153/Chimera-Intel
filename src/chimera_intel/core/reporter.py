@@ -18,10 +18,6 @@ from typing import Dict, Any, List, Optional
 import logging
 from .utils import console
 import os
-from pyvis.network import Network  # type: ignore
-
-# Import the global CONFIG object to access customization settings
-
 
 from .config_loader import CONFIG
 from .graph_db import build_and_save_graph
