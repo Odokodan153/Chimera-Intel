@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 import datetime
 from pydantic import BaseModel, Field
 
@@ -1858,6 +1858,8 @@ class AVINTResult(BaseModel):
     total_flights: int
     flights: List[FlightInfo] = []
     error: Optional[str] = None
+
+Base = declarative_base()
 
 class HumintSource(Base):
     __tablename__ = "humint_sources"
