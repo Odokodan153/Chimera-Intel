@@ -11,7 +11,6 @@ from sqlalchemy import (
     LargeBinary,
 )
 from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy.ext.declarative import DeclarativeMeta
 import datetime
 from pydantic import BaseModel, Field
 
