@@ -22,7 +22,7 @@ class LibrosaPlaceholder:
 try:
     librosa = importlib.import_module("librosa")
 except ImportError:
-    librosa = LibrosaPlaceholder()
+    librosa = LibrosaPlaceholder()  # type: ignore
 app = typer.Typer(
     no_args_is_help=True, help="Measurement and Signature Intelligence (MASINT) tools."
 )

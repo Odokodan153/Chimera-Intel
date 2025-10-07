@@ -10,14 +10,14 @@ from sqlalchemy import (
     Boolean,
     LargeBinary,
 )
-from sqlalchemy.orm import relationship, DeclarativeBase
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 import datetime
 from pydantic import BaseModel, Field
 
 # --- General Purpose Models ---
 
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
 class ScoredResult(BaseModel):
     """A model for a result that has sources and a confidence score."""

@@ -61,23 +61,14 @@ async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     """
     client = None
     try:
-        # Create the client without the proxies first.
+        # Create the client, passing the proxies directly to the constructor.
 
         client = AsyncClient(
             transport=async_transport,
             timeout=Timeout(NETWORK_TIMEOUT),
             headers={"User-Agent": "Chimera-Intel/6.0"},
+            proxies=proxies,
         )
-
-        # If proxies are provided, mount a new transport for each one.
-        # This is the correct way to handle proxies in recent httpx versions.
-
-        if proxies:
-            for scheme, proxy_url in proxies.items():
-                # Ensure the scheme is properly formatted for mounting
-
-                mount_scheme = f"{scheme.split(':')[0]}://"
-                client.mount(mount_scheme, httpx.AsyncHTTPTransport(proxy=proxy_url))
         # Yield the client to the 'with' block for use.
 
         yield client
