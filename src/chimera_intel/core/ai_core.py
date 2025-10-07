@@ -21,7 +21,7 @@ from .schemas import (
     AnomalyDetectionResult,
     GraphNarrativeResult,
 )
-from .graph_schemas import (GraphEdge, GraphNode, GraphResult)
+from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult
 from .graph_db import build_and_save_graph
 import json
 
@@ -328,7 +328,9 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
             tech = tech_item.get("technology")
             if tech:
                 nodes.append(
-                    GraphNode(id=tech, label=tech, node_type="Technology", properties={})
+                    GraphNode(
+                        id=tech, label=tech, node_type="Technology", properties={}
+                    )
                 )
                 edges.append(
                     GraphEdge(
@@ -338,7 +340,9 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
                         properties={},
                     )
                 )
-        graph_result = GraphResult(
+        # Corrected from GraphResult to EntityGraphResult
+
+        graph_result = EntityGraphResult(
             nodes=nodes,
             edges=edges,
             target=target,

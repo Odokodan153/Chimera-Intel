@@ -121,6 +121,12 @@ def simulate_attack(
         f"Simulating attack path for project '[bold yellow]{project_name}[/bold yellow]' with goal: '[bold cyan]{goal}[/bold cyan]'"
     )
 
+    # Extract and check the API key to resolve the type checker error (str | None to str)
+    api_key = API_KEYS.google_api_key
+    if api_key is None:
+        console.print("[bold red]Error:[/bold red] GOOGLE_API_KEY not found. Please set it in your .env file to enable AI simulation.")
+        raise typer.Exit(code=1)
+
     try:
         # 1. Build the attack surface graph from the database
 
@@ -137,7 +143,7 @@ def simulate_attack(
 
         # 3. Use the AI to generate the simulated attack path
 
-        simulated_path = generate_swot_from_data(prompt, API_KEYS.google_api_key)
+        simulated_path = generate_swot_from_data(prompt, api_key)
 
         console.print(
             Panel(

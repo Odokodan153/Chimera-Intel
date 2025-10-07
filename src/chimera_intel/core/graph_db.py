@@ -2,15 +2,16 @@ import typer
 import json
 from pyvis.network import Network  # type: ignore
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
 from .config_loader import CONFIG
 from .utils import console
-from .graph_schemas import Node, Edge, EntityGraphResult
+from .graph_schemas import GraphNode, GraphEdge, EntityGraphResult  # Corrected imports
 from neo4j import GraphDatabase as Neo4jGraphDatabase
 from neo4j.exceptions import ServiceUnavailable
 
 logger = logging.getLogger(__name__)
+
 
 class GraphDatabase:
     """
@@ -26,7 +27,7 @@ class GraphDatabase:
             self._driver = None
 
     def execute_query(
-        self, query: str, parameters: Dict[str, Any] = None
+        self, query: str, parameters: Optional[Dict[str, Any]] = None  # Added Optional
     ) -> List[Dict[str, Any]]:
         """
         Executes a Cypher query against the database.
@@ -36,6 +37,7 @@ class GraphDatabase:
             return []
         try:
             with self._driver.session() as session:
+                parameters = parameters or {}  # Handle optional None
                 result = session.run(query, parameters)
                 return [record.data() for record in result]
         except Exception as e:
@@ -52,10 +54,12 @@ class GraphDatabase:
 # The CLI will import and use this instance to run queries.
 # Connection details are populated from the config.
 
+# Corrected configuration access from dict.get() to Pydantic dot notation
+
 graph_db_instance = GraphDatabase(
-    uri=CONFIG.get("graph_db", {}).get("uri", "bolt://localhost:7687"),
-    user=CONFIG.get("graph_db", {}).get("user", "neo4j"),
-    password=CONFIG.get("graph_db", {}).get("password", "password"),
+    uri=CONFIG.graph_db.neo4j_uri,
+    user=CONFIG.graph_db.neo4j_user,
+    password=CONFIG.graph_db.neo4j_password,
 )
 
 
@@ -85,7 +89,9 @@ def build_and_save_graph(
             title="Main Target",
         )
         nodes.append(
-            Node(id=target, label=target, node_type="Main Target", properties={})
+            GraphNode(
+                id=target, label=target, node_type="Main Target", properties={}
+            )  # Corrected Node to GraphNode
         )
 
         footprint_data = json_data.get("footprint", {})
@@ -102,7 +108,7 @@ def build_and_save_graph(
                 )
                 net.add_edge(target, subdomain)
                 nodes.append(
-                    Node(
+                    GraphNode(  # Corrected Node to GraphNode
                         id=subdomain,
                         label=subdomain,
                         node_type="Subdomain",
@@ -110,7 +116,7 @@ def build_and_save_graph(
                     )
                 )
                 edges.append(
-                    Edge(
+                    GraphEdge(  # Corrected Edge to GraphEdge
                         source=target,
                         target=subdomain,
                         label="has_subdomain",
@@ -129,10 +135,14 @@ def build_and_save_graph(
                 )
                 net.add_edge(target, ip)
                 nodes.append(
-                    Node(id=ip, label=ip, node_type="IP Address", properties={})
+                    GraphNode(
+                        id=ip, label=ip, node_type="IP Address", properties={}
+                    )  # Corrected Node to GraphNode
                 )
                 edges.append(
-                    Edge(source=target, target=ip, label="resolves_to", properties={})
+                    GraphEdge(
+                        source=target, target=ip, label="resolves_to", properties={}
+                    )  # Corrected Edge to GraphEdge
                 )
         web_data = json_data.get("web_analysis", {})
         for tech_item in web_data.get("tech_stack", {}).get("results", []):
@@ -148,19 +158,20 @@ def build_and_save_graph(
                 )
                 net.add_edge(target, tech)
                 nodes.append(
-                    Node(id=tech, label=tech, node_type="Technology", properties={})
+                    GraphNode(
+                        id=tech, label=tech, node_type="Technology", properties={}
+                    )  # Corrected Node to GraphNode
                 )
                 edges.append(
-                    Edge(source=target, target=tech, label="uses_tech", properties={})
+                    GraphEdge(
+                        source=target, target=tech, label="uses_tech", properties={}
+                    )  # Corrected Edge to GraphEdge
                 )
         # Apply physics options from config.yaml
 
-        physics_options = (
-            CONFIG.model_dump()
-            .get("reporting", {})
-            .get("graph", {})
-            .get("physics_options", "")
-        )
+        physics_options = None
+        if CONFIG.reporting and CONFIG.reporting.graph:
+            physics_options = CONFIG.reporting.graph.physics_options
         if physics_options:
             net.set_options(physics_options)
         net.save_graph(output_path)

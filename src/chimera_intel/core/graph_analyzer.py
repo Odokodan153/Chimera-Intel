@@ -6,6 +6,7 @@ from .config_loader import API_KEYS
 from .utils import console
 from rich.markdown import Markdown
 from pyvis.network import Network
+import json
 
 graph_app = typer.Typer()
 
@@ -13,15 +14,34 @@ graph_app = typer.Typer()
 @graph_app.command("build")
 def build_graph_command(
     target: str = typer.Argument(
-        ..., help="The primary target to build the graph around."
+        ..., help="The path to the JSON file containing the data for the graph."
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the graph to an HTML file."
     ),
 ):
     """Builds and saves an entity relationship graph for a target."""
-    console.print(f"[bold cyan]Building entity graph for {target}...[/bold cyan]")
-    graph_result = build_and_save_graph(target)
+    console.print(
+        f"[bold cyan]Building entity graph from file '{target}'...[/bold cyan]"
+    )
+
+    try:
+        with open(target, "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        console.print(
+            f"[bold red]Error:[/bold red] Input file not found at '{target}'."
+        )
+        raise typer.Exit(code=1)
+    except json.JSONDecodeError:
+        console.print(
+            f"[bold red]Error:[/bold red] Invalid JSON format in file '{target}'."
+        )
+        raise typer.Exit(code=1)
+    # Corrected function call: passes loaded 'data' and 'output_file'
+
+    graph_result = build_and_save_graph(data, output_file)
+
     if graph_result.error:
         console.print(
             f"[bold red]Error building graph:[/bold red] {graph_result.error}"

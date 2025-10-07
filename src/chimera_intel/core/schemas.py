@@ -1,9 +1,8 @@
 from typing import Any, Dict, List, Optional, Union
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
-from .database import Base
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Base 
 
 # --- General Purpose Models ---
 
