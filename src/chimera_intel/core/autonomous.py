@@ -8,9 +8,14 @@ from rich.console import Console
 from rich.panel import Panel
 import datetime
 import psycopg2
+import requests
+import os
+import pandas as pd
+from scipy.stats import ks_2samp
 
 from .database import get_db_connection
 from .ai_core import generate_swot_from_data
+from .config_loader import API_KEYS
 
 console = Console()
 
@@ -20,43 +25,55 @@ autonomous_app = typer.Typer(
 )
 
 
-def trigger_retraining_pipeline(optimization_plan: str):
+def trigger_retraining_pipeline(
+    optimization_plan: str, reason: str = "Model performance degradation"
+):
     """
-    Triggers an automated model retraining pipeline.
-
-    In a real-world scenario, this function would interact with a CI/CD system
-    (like Jenkins, GitLab CI, or GitHub Actions) or a machine learning operations
-    (MLOps) platform (like Kubeflow or MLflow) to start a predefined
-    retraining job.
-
-    For this example, we will simulate this by writing the plan to a file
-    and printing a message.
+    Triggers an automated model retraining pipeline by sending a webhook
+    to a CI/CD platform (e.g., Jenkins, GitLab CI, GitHub Actions).
     """
     console.print(
-        "[bold cyan]Triggering automated model retraining pipeline...[/bold cyan]"
+        f"[bold cyan]Triggering automated model retraining pipeline for reason: {reason}...[/bold cyan]"
     )
+
+    webhook_url = API_KEYS.cicd_webhook_url  # Fetch URL from config
+    auth_token = API_KEYS.cicd_auth_token  # Fetch auth token from config
+
+    if not webhook_url:
+        console.print(
+            "[bold red]Error:[/bold red] CICD_WEBHOOK_URL is not set in your .env file."
+        )
+        return
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+    payload = {
+        "event_type": "chimera_retraining_trigger",
+        "client_payload": {"reason": reason, "optimization_plan": optimization_plan},
+    }
+
     try:
-        with open("model_optimization_plan.txt", "w") as f:
-            f.write(optimization_plan)
-        # Simulate running a script that would trigger the pipeline
-        # For example, this could be a `curl` command to a Jenkins webhook
-        # or a `git commit` that triggers a GitHub Action.
+        response = requests.post(webhook_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
 
         console.print(
-            "  - [green]Optimization plan saved to model_optimization_plan.txt.[/green]"
+            "  - [green]Successfully triggered retraining pipeline via webhook.[/green]"
         )
-        console.print(
-            "  - [green]Simulating trigger of retraining pipeline (e.g., via a webhook).[/green]"
-        )
-
-        # Example of what a real command might look like:
-        # subprocess.run(["curl", "-X", "POST", "http://jenkins.example.com/job/retrain-model/build"], check=True)
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         console.print(f"[bold red]Error triggering retraining pipeline:[/bold red] {e}")
+        # Optionally, save the plan to a file as a fallback
+
+        with open("model_optimization_plan_failed.txt", "w") as f:
+            f.write(optimization_plan)
+        console.print(
+            "  - [yellow]Optimization plan saved to model_optimization_plan_failed.txt as a fallback.[/yellow]"
+        )
 
 
 @autonomous_app.command(
-    "optimize-models", help="Analyze performance data and simulate model optimization."
+    "optimize-models", help="Analyze performance data and trigger model optimization."
 )
 def optimize_models(
     module: Annotated[
@@ -132,11 +149,7 @@ def optimize_models(
             f"**Performance Data:**\n{performance_summary}"
         )
 
-        # We'll reuse the SWOT generation function for this generative task
-
-        ai_result = generate_swot_from_data(
-            prompt, "YOUR_GOOGLE_API_KEY"
-        )  # Replace with your actual key loading mechanism
+        ai_result = generate_swot_from_data(prompt, API_KEYS.google_api_key)
         if ai_result.error:
             console.print(f"[bold red]AI Error:[/bold red] {ai_result.error}")
             raise typer.Exit(code=1)
@@ -163,4 +176,182 @@ def optimize_models(
         console.print(
             f"[bold red]An error occurred during model optimization:[/bold red] {e}"
         )
+        raise typer.Exit(code=1)
+
+
+@autonomous_app.command(
+    "analyze-ab-test", help="Analyze A/B test results and suggest a winner."
+)
+def analyze_ab_test_results(
+    auto_deploy: Annotated[
+        bool,
+        typer.Option(
+            "--auto-deploy",
+            "-d",
+            help="Automatically trigger deployment of the winning model variant.",
+        ),
+    ] = False,
+):
+    """
+    Analyzes A/B test results from the database and recommends a model to deploy.
+    """
+    console.print("[bold cyan]Analyzing A/B test results...[/bold cyan]")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT model_variant, accuracy, latency FROM ab_test_results")
+        records = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if not records:
+            console.print("[yellow]No A/B test results found in the database.[/yellow]")
+            raise typer.Exit()
+        # Simple logic to determine the winner: highest accuracy, with latency as a tie-breaker
+
+        winner = max(records, key=lambda x: (x[1], -x[2]))
+        winner_variant, winner_accuracy, winner_latency = winner
+
+        console.print(
+            f"[bold green]Winning Model Variant:[/bold green] {winner_variant}"
+        )
+        console.print(f"  - Accuracy: {winner_accuracy:.4f}")
+        console.print(f"  - Latency: {winner_latency:.4f} ms")
+
+        if auto_deploy:
+            console.print(
+                f"\n[bold]Automatically deploying winning variant '{winner_variant}'...[/bold]"
+            )
+            # In a real scenario, this would call a deployment API or webhook
+
+            console.print(
+                "  - [green]Deployment triggered successfully (simulated).[/green]"
+            )
+        else:
+            console.print(
+                "\n[bold]Note:[/] To automatically deploy the winning variant, use the --auto-deploy flag."
+            )
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(f"[bold red]Database Error:[/bold red] {e}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred during A/B test analysis:[/bold red] {e}"
+        )
+        raise typer.Exit(code=1)
+
+
+@autonomous_app.command("detect-drift", help="Detect data drift between two datasets.")
+def detect_data_drift(
+    baseline_data_path: Annotated[
+        str,
+        typer.Option(
+            "--baseline",
+            "-b",
+            help="Path to the baseline dataset (CSV format).",
+            prompt=True,
+        ),
+    ],
+    new_data_path: Annotated[
+        str,
+        typer.Option(
+            "--new",
+            "-n",
+            help="Path to the new dataset (CSV format).",
+            prompt=True,
+        ),
+    ],
+    auto_trigger: Annotated[
+        bool,
+        typer.Option(
+            "--auto-trigger",
+            "-t",
+            help="Automatically trigger a retraining pipeline if drift is detected.",
+        ),
+    ] = False,
+):
+    """
+    Compares two datasets to detect data drift using the Kolmogorov-Smirnov test.
+    """
+    console.print("[bold cyan]Detecting data drift...[/bold cyan]")
+    try:
+        baseline_df = pd.read_csv(baseline_data_path)
+        new_df = pd.read_csv(new_data_path)
+
+        drift_detected = False
+        for column in baseline_df.columns:
+            if column in new_df.columns:
+                ks_statistic, p_value = ks_2samp(baseline_df[column], new_df[column])
+                if p_value < 0.05:  # Significance level
+                    console.print(
+                        f"  - [bold red]Drift detected in column '{column}'[/bold red] (p-value: {p_value:.4f})"
+                    )
+                    drift_detected = True
+        if not drift_detected:
+            console.print(
+                "[bold green]No significant data drift detected.[/bold green]"
+            )
+        elif auto_trigger:
+            trigger_retraining_pipeline(
+                "Data drift detected in one or more features.", reason="Data Drift"
+            )
+    except FileNotFoundError as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred during drift detection:[/bold red] {e}"
+        )
+        raise typer.Exit(code=1)
+
+
+@autonomous_app.command(
+    "backtest", help="Backtest a forecasting model against historical data."
+)
+def run_backtesting(
+    model_name: Annotated[
+        str,
+        typer.Option(
+            "--model",
+            "-m",
+            help="The name of the model to backtest.",
+            prompt=True,
+        ),
+    ],
+):
+    """
+    Performs backtesting of a forecasting model against historical data.
+    """
+    console.print(
+        f"[bold cyan]Running backtest for model '{model_name}'...[/bold cyan]"
+    )
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT scenario, predicted_outcome, actual_outcome FROM historical_forecasts"
+        )
+        records = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if not records:
+            console.print(
+                "[yellow]No historical forecast data found for backtesting.[/yellow]"
+            )
+            raise typer.Exit()
+        correct_predictions = 0
+        for _, predicted, actual in records:
+            if predicted == actual:
+                correct_predictions += 1
+        accuracy = (correct_predictions / len(records)) * 100
+        console.print(f"[bold green]Backtesting Complete:[/bold green]")
+        console.print(f"  - Total Forecasts: {len(records)}")
+        console.print(f"  - Correct Predictions: {correct_predictions}")
+        console.print(f"  - Accuracy: {accuracy:.2f}%")
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(f"[bold red]Database Error:[/bold red] {e}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[bold red]An error occurred during backtesting:[/bold red] {e}")
         raise typer.Exit(code=1)

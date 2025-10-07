@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import git
+import json
 from typer.testing import CliRunner
 
 from chimera_intel.core.code_intel import analyze_git_repository, code_intel_app
-from chimera_intel.core.schemas import RepoAnalysisResult
+from chimera_intel.core.schemas import RepoAnalysisResult, CommitterInfo
 
 runner = CliRunner()
 
@@ -47,6 +48,7 @@ class TestCodeIntel(unittest.TestCase):
         self.assertEqual(len(result.top_committers), 2)
         self.assertIn("feature", result.commit_keywords)
         self.assertIn("bug", result.commit_keywords)
+        self.assertEqual(result.commit_keywords["feature"], 1)
         mock_rmtree.assert_called_once()  # Verify cleanup was called
 
     @patch("chimera_intel.core.code_intel.shutil.rmtree")
@@ -95,15 +97,47 @@ class TestCodeIntel(unittest.TestCase):
         self.assertEqual(result.total_committers, 0)
         mock_rmtree.assert_called_once()
 
-    def test_cli_repo_no_url_fails(self):
-        """Tests that the CLI command fails if no repository URL is provided."""
-        # Act
-        # Test the specific Typer app for this module to isolate the test from the main app
+    # --- CLI Command Tests ---
 
-        result = runner.invoke(code_intel_app, [])
+    @patch("chimera_intel.core.code_intel.analyze_git_repository")
+    def test_cli_repo_analysis_success(self, mock_analyze_repo):
+        """NEW: Tests a successful run of the 'repo' CLI command."""
+        # Arrange
+
+        mock_analyze_repo.return_value = RepoAnalysisResult(
+            repository_url="https://github.com/user/repo.git",
+            total_commits=10,
+            total_committers=3,
+            top_committers=[
+                CommitterInfo(name="Test User", email="test@user.com", commit_count=5)
+            ],
+            commit_keywords={"feat": 5},
+        )
+
+        # Act
+
+        result = runner.invoke(
+            code_intel_app, ["repo", "https://github.com/user/repo.git"]
+        )
 
         # Assert
-        # The command's internal logic should exit with code 1
+
+        self.assertEqual(result.exit_code, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["repository_url"], "https://github.com/user/repo.git")
+        self.assertEqual(output["total_commits"], 10)
+        mock_analyze_repo.assert_called_with("https://github.com/user/repo.git")
+
+    def test_cli_repo_no_url_fails(self):
+        """
+        CORRECTED: Tests that the CLI command fails correctly if no repository URL is provided.
+        The command's internal logic should exit with code 1.
+        """
+        # Act
+
+        result = runner.invoke(code_intel_app, ["repo"])
+
+        # Assert
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("A repository URL must be provided", result.stdout)

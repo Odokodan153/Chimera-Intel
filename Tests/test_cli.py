@@ -9,6 +9,7 @@ parameter validation, and output.
 import subprocess
 import sys
 import unittest
+import json
 from typer.testing import CliRunner
 from unittest.mock import patch, AsyncMock, MagicMock
 import typer
@@ -17,6 +18,12 @@ from importlib import reload
 from chimera_intel.core.plugin_interface import ChimeraPlugin
 from chimera_intel.core.footprint import footprint_app
 from chimera_intel.core.defensive import defensive_app
+from chimera_intel.core.schemas import (
+    FootprintResult,
+    FootprintData,
+    SubdomainReport,
+    HIBPResult,
+)
 
 # --- Mock Plugins ---
 
@@ -51,7 +58,7 @@ class MockDefensivePlugin(ChimeraPlugin):
         pass
 
 
-class TestCLI(unittest.TestCase):
+class TestCLI(unittest.IsolatedAsyncioTestCase):
     """Tests for the main CLI with mocked plugins and database."""
 
     app: typer.Typer
@@ -83,6 +90,8 @@ class TestCLI(unittest.TestCase):
         result = self.runner.invoke(self.app, ["--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Usage", result.stdout)
+        # Check that commands from both mocked plugins are present
+
         self.assertIn("scan", result.stdout)
         self.assertIn("defensive", result.stdout)
 
@@ -92,15 +101,19 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Chimera Intel v1.0.0", result.stdout)
 
-    @patch("chimera_intel.cli.initialize_database", side_effect=ConnectionError)
-    def test_main_no_db_connection(self, mock_initialize_database):
-        """Tests that the CLI can still run basic commands without a DB connection."""
+    @patch(
+        "chimera_intel.cli.initialize_database", side_effect=ConnectionError("DB Down")
+    )
+    def test_main_no_db_connection_still_runs_basic_commands(
+        self, mock_initialize_database
+    ):
+        """Tests that the CLI can still run basic commands like --help without a DB connection."""
         result = self.runner.invoke(self.app, ["--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Usage", result.stdout)
 
-    def test_main_script_entry(self):
-        """Tests running the CLI script as a subprocess."""
+    def test_main_script_entry_point(self):
+        """Tests running the CLI script as a subprocess to ensure it's executable."""
         with patch.dict("os.environ", {"PYTHONPATH": "."}):
             result = subprocess.run(
                 [sys.executable, "-m", "chimera_intel.cli", "--help"],
@@ -114,48 +127,85 @@ class TestCLI(unittest.TestCase):
         )
         self.assertIn("Usage", result.stdout)
 
+    # --- Plugin Command Tests ---
+
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
-    def test_scan_footprint_success(self, mock_gather_footprint: AsyncMock):
-        """Tests a successful 'scan footprint run' command."""
-        mock_result_model = MagicMock()
-        mock_result_model.model_dump.return_value = {
-            "domain": "example.com",
-            "footprint": {},
-        }
+    async def test_scan_footprint_success(self, mock_gather_footprint: AsyncMock):
+        """Tests a successful 'scan footprint run' command with specific assertions."""
+        # Arrange
+
+        mock_result_model = FootprintResult(
+            domain="example.com",
+            footprint=FootprintData(
+                whois_info={},
+                dns_records={},
+                subdomains=SubdomainReport(total_unique=0, results=[]),
+                ip_threat_intelligence=[],
+            ),
+        )
         mock_gather_footprint.return_value = mock_result_model
+
+        # Act
 
         result = self.runner.invoke(
             self.app, ["scan", "footprint", "run", "example.com"]
         )
+
+        # Assert
+
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('"domain": "example.com"', result.stdout)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["domain"], "example.com")
+        self.assertIn("footprint", output)
 
     def test_scan_footprint_invalid_domain(self):
-        """Tests 'scan footprint run' with an invalid domain."""
+        """Tests 'scan footprint run' with an invalid domain, expecting a specific error."""
+        # Act
+
         result = self.runner.invoke(
             self.app, ["scan", "footprint", "run", "invalid-domain"]
         )
+
+        # Assert
+
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
     def test_defensive_breaches_success(self, mock_check_hibp: MagicMock):
         """Tests a successful 'defensive checks breaches' command."""
-        mock_check_hibp.return_value.model_dump.return_value = {"breaches": []}
+        # Arrange
+
+        mock_check_hibp.return_value = HIBPResult(breaches=[])
+
         with patch(
             "chimera_intel.core.config_loader.API_KEYS.hibp_api_key", "fake_key"
         ):
+            # Act
+
             result = self.runner.invoke(
                 self.app, ["defensive", "checks", "breaches", "mycompany.com"]
             )
+        # Assert
+
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('"breaches": []', result.stdout)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["breaches"], [])
 
     @patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", None)
     def test_defensive_breaches_no_api_key(self):
-        """Tests 'defensive checks breaches' when the API key is missing."""
+        """Tests 'defensive checks breaches' when the API key is missing, expecting a graceful skip."""
+        # Act
+
         result = self.runner.invoke(
             self.app, ["defensive", "checks", "breaches", "mycompany.com"]
         )
+
+        # Assert
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Skipping HIBP Scan", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

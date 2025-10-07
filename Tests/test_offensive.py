@@ -1,121 +1,169 @@
-# tests/test_offensive.py
-
-
 import unittest
 import asyncio
-from unittest.mock import patch, AsyncMock, MagicMock
-from httpx import Response
-import dns.resolver
-
-# Import the functions to be tested
-
+from unittest.mock import patch, MagicMock, AsyncMock
+from typer.testing import CliRunner
+import json
 
 from chimera_intel.core.offensive import (
     discover_apis,
-    enumerate_directories,
-    check_subdomain_takeover,
+    enumerate_content,
+    check_for_subdomain_takeover,
+    offensive_app,
 )
 from chimera_intel.core.schemas import (
-    DiscoveredAPI,
-    DiscoveredContent,
+    APIDiscoveryResult,
+    ContentEnumerationResult,
+    AdvancedCloudResult,
     SubdomainTakeoverResult,
 )
 
+runner = CliRunner()
 
-class TestOffensive(unittest.TestCase):
+
+class TestOffensive(unittest.IsolatedAsyncioTestCase):
     """Test cases for the offensive intelligence module."""
 
-    @patch("chimera_intel.core.offensive.async_client.head", new_callable=AsyncMock)
-    def test_discover_apis_success(self, mock_head):
-        """Tests the API discovery function by mocking HEAD requests."""
-        # Arrange: Simulate that only the /graphql endpoint is found (returns 200)
-
-        async def side_effect(url, **kwargs):
-            if "graphql" in str(url):
-                return MagicMock(spec=Response, status_code=200)
-            return MagicMock(spec=Response, status_code=404)
-
-        mock_head.side_effect = side_effect
-
-        # Act
-
-        result = asyncio.run(discover_apis("example.com"))
-
-        # Assert
-
-        self.assertEqual(len(result.discovered_apis), 1)
-        self.assertIsInstance(result.discovered_apis[0], DiscoveredAPI)
-        self.assertEqual(result.discovered_apis[0].api_type, "GraphQL")
-
-    @patch("chimera_intel.core.offensive.async_client.head", new_callable=AsyncMock)
-    def test_enumerate_directories_success(self, mock_head):
-        """Tests the content enumeration function by mocking HEAD requests."""
-        # Arrange: Simulate that /admin and /.env are found, but others are not.
-
-        async def side_effect(url, **kwargs):
-            if "/admin" in str(url):
-                return MagicMock(
-                    spec=Response, status_code=403, headers={"content-length": "128"}
-                )
-            if "/.env" in str(url):
-                return MagicMock(
-                    spec=Response, status_code=200, headers={"content-length": "512"}
-                )
-            return MagicMock(spec=Response, status_code=404)
-
-        mock_head.side_effect = side_effect
-
-        # Act
-
-        result = asyncio.run(enumerate_directories("example.com"))
-
-        # Assert
-
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result.found_content), 2)
-        self.assertIsInstance(result.found_content[0], DiscoveredContent)
-
-        # Check that one of the found URLs is the admin page
-
-        found_urls = [content.url for content in result.found_content]
-        self.assertIn("https://example.com/admin", found_urls)
+    # --- API Discovery Tests ---
 
     @patch("chimera_intel.core.offensive.async_client.get", new_callable=AsyncMock)
-    @patch("chimera_intel.core.offensive.asyncio.to_thread")
-    def test_check_subdomain_takeover_success(self, mock_to_thread, mock_async_get):
-        """Tests the subdomain takeover check by mocking DNS and HTTP calls."""
+    async def test_discover_apis_success(self, mock_get):
+        """Tests successful API discovery."""
         # Arrange
 
-        # 1. Mock the DNS CNAME lookup
-
-        mock_cname_answer = MagicMock()
-        mock_cname_answer.target = "non-existent-bucket.s3.amazonaws.com"
-        # We use side_effect to return different results based on the subdomain being checked
-
-        def dns_side_effect(func, domain, rdtype):
-            if domain == "assets.example.com" and rdtype == "CNAME":
-                return [mock_cname_answer]
-            raise dns.resolver.NXDOMAIN  # Simulate other subdomains not existing
-
-        mock_to_thread.side_effect = dns_side_effect
-
-        # 2. Mock the HTTP GET request to the subdomain
-
-        mock_response = MagicMock(spec=Response)
-        mock_response.text = "<html><body><h1>NoSuchBucket</h1><p>The specified bucket does not exist.</p></body></html>"
-        mock_async_get.return_value = mock_response
+        mock_response_200 = MagicMock()
+        mock_response_200.status_code = 200
+        mock_response_404 = MagicMock()
+        mock_response_404.status_code = 404
+        mock_get.side_effect = [mock_response_200, mock_response_404]
 
         # Act
 
-        result = asyncio.run(check_subdomain_takeover("example.com"))
+        result = await discover_apis("example.com")
 
         # Assert
 
-        self.assertIsNotNone(result)
+        self.assertIsInstance(result, APIDiscoveryResult)
+        self.assertEqual(len(result.discovered_apis), 1)
+        self.assertEqual(result.discovered_apis[0].api_type, "Swagger/OpenAPI")
+        self.assertEqual(result.discovered_apis[0].status_code, 200)
+        self.assertIsNone(result.error)
+
+    # --- Content Enumeration Tests ---
+
+    @patch("chimera_intel.core.offensive.async_client.get", new_callable=AsyncMock)
+    async def test_enumerate_content_success(self, mock_get):
+        """Tests successful content enumeration."""
+        # Arrange
+
+        mock_response_200 = MagicMock()
+        mock_response_200.status_code = 200
+        mock_response_200.headers = {"content-length": "1024"}
+        mock_response_404 = MagicMock()
+        mock_response_404.status_code = 404
+        mock_get.side_effect = [mock_response_200, mock_response_404]
+
+        # Act
+
+        result = await enumerate_content("http://example.com")
+
+        # Assert
+
+        self.assertIsInstance(result, ContentEnumerationResult)
+        self.assertEqual(len(result.found_content), 1)
+        self.assertEqual(result.found_content[0].status_code, 200)
+        self.assertEqual(result.found_content[0].content_length, 1024)
+
+    # --- Subdomain Takeover Tests ---
+
+    @patch("chimera_intel.core.offensive.asyncio.to_thread")
+    async def test_check_for_subdomain_takeover_vulnerable(self, mock_to_thread):
+        """Tests detection of a vulnerable subdomain."""
+        # Arrange
+        # Simulate 'socket.gethostbyname' raising an error, indicating a dangling CNAME
+
+        mock_to_thread.side_effect = socket.gaierror
+
+        # This import is needed for the side_effect
+
+        import socket
+
+        # Act
+
+        result = await check_for_subdomain_takeover("sub.example.com")
+
+        # Assert
+
+        self.assertIsInstance(result, AdvancedCloudResult)
         self.assertEqual(len(result.potential_takeovers), 1)
-        self.assertIsInstance(result.potential_takeovers[0], SubdomainTakeoverResult)
-        self.assertEqual(result.potential_takeovers[0].vulnerable_service, "S3 Bucket")
-        self.assertIn("NoSuchBucket", result.potential_takeovers[0].details)
+        self.assertEqual(result.potential_takeovers[0].subdomain, "sub.example.com")
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.offensive.discover_apis", new_callable=AsyncMock)
+    def test_cli_discover_apis_success(self, mock_discover):
+        """Tests the 'offensive discover-apis' CLI command."""
+        # Arrange
+
+        mock_discover.return_value = APIDiscoveryResult(
+            target_domain="example.com", discovered_apis=[]
+        )
+
+        # Act
+
+        result = runner.invoke(offensive_app, ["discover-apis", "example.com"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"target_domain": "example.com"', result.stdout)
+        mock_discover.assert_awaited_with("example.com")
+
+    @patch("chimera_intel.core.offensive.enumerate_content", new_callable=AsyncMock)
+    def test_cli_enumerate_content_success(self, mock_enumerate):
+        """Tests the 'offensive enumerate-content' CLI command."""
+        # Arrange
+
+        mock_enumerate.return_value = ContentEnumerationResult(
+            target_url="http://example.com", found_content=[]
+        )
+
+        # Act
+
+        result = runner.invoke(
+            offensive_app, ["enumerate-content", "http://example.com"]
+        )
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn('"target_url": "http://example.com"', result.stdout)
+
+    @patch(
+        "chimera_intel.core.offensive.check_for_subdomain_takeover",
+        new_callable=AsyncMock,
+    )
+    def test_cli_subdomain_takeover_success(self, mock_check):
+        """Tests the 'offensive subdomain-takeover' CLI command."""
+        # Arrange
+
+        mock_check.return_value = AdvancedCloudResult(
+            target_domain="sub.example.com",
+            potential_takeovers=[
+                SubdomainTakeoverResult(
+                    subdomain="sub.example.com", vulnerable_service="N/A", details=""
+                )
+            ],
+        )
+
+        # Act
+
+        result = runner.invoke(offensive_app, ["subdomain-takeover", "sub.example.com"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(len(output["potential_takeovers"]), 1)
 
 
 if __name__ == "__main__":

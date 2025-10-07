@@ -1,153 +1,142 @@
 import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
-from httpx import Response, RequestError
+from httpx import Response
 from typer.testing import CliRunner
+import json
 
-# Corrected: Import the specific Typer app for this module
+from chimera_intel.core.dark_web_osint import search_dark_web_engine, dark_web_app
+from chimera_intel.core.schemas import DarkWebScanResult, DarkWebResult, ProjectConfig
 
-
-from chimera_intel.core.dark_web_osint import dark_web_app, search_dark_web_engine
-from chimera_intel.core.schemas import ProjectConfig
-
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
-class TestDarkWebOsint(unittest.TestCase):
+class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the dark_web_osint module."""
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
-    def test_search_ahmia_success(self, mock_async_client_constructor, mock_config):
-        """Tests a successful dark web search on Ahmia."""
-        mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
+    @patch("httpx_socks.AsyncProxyTransport.from_url")
+    async def test_search_dark_web_engine_success(self, mock_transport, mock_config):
+        """Tests a successful dark web search using the Ahmia engine."""
+        # Arrange
+
+        mock_config.modules.dark_web.tor_proxy_url = "socks5://127.0.0.1:9150"
+
+        mock_async_client = AsyncMock()
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
         mock_response.text = """
-        <li class="result">
-          <a>Test Title</a>
-          <cite>http://test.onion</cite>
-          <p>Test Description</p>
-        </li>
+        <html><body>
+            <li class="result">
+                <a href="http://example.onion">Test Title</a>
+                <cite>http://example.onion</cite>
+                <p>Test description.</p>
+            </li>
+        </body></html>
         """
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
-        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
+        mock_async_client.get.return_value = mock_response
 
-        result = asyncio.run(search_dark_web_engine("test query", engine="ahmia"))
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            # Act
 
+            result = await search_dark_web_engine("test query", engine="ahmia")
+        # Assert
+
+        self.assertIsInstance(result, DarkWebScanResult)
+        self.assertIsNone(result.error)
         self.assertEqual(len(result.found_results), 1)
         self.assertEqual(result.found_results[0].title, "Test Title")
-        self.assertIsNone(result.error)
+
+    async def test_search_dark_web_no_proxy_configured(self):
+        """Tests the function's behavior when the Tor proxy is not configured."""
+        with patch(
+            "chimera_intel.core.dark_web_osint.CONFIG.modules.dark_web.tor_proxy_url",
+            None,
+        ):
+            result = await search_dark_web_engine("test query")
+            self.assertIsNotNone(result.error)
+            self.assertIn("Tor proxy URL is not configured", result.error)
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
-    def test_search_darksearch_success(
-        self, mock_async_client_constructor, mock_config
-    ):
-        """Tests a successful dark web search on Dark Search."""
-        mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-        mock_response = MagicMock(spec=Response)
-        mock_response.status_code = 200
-        mock_response.text = """
-        <div class="card-body">
-          <h5>
-            <a href="#">Dark Search Title</a>
-            <small>http://darksearch.onion</small>
-          </h5>
-          <p class="text-break">Dark Search Description</p>
-        </div>
-        """
-        mock_client = AsyncMock()
-        mock_client.get.return_value = mock_response
-        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
+    @patch("httpx_socks.AsyncProxyTransport.from_url")
+    async def test_search_dark_web_engine_timeout(self, mock_transport, mock_config):
+        """NEW: Tests the function's timeout handling."""
+        # Arrange
 
-        result = asyncio.run(search_dark_web_engine("test query", engine="darksearch"))
+        mock_config.modules.dark_web.tor_proxy_url = "socks5://127.0.0.1:9150"
 
-        self.assertEqual(len(result.found_results), 1)
-        self.assertEqual(result.found_results[0].title, "Dark Search Title")
-        self.assertEqual(result.found_results[0].url, "http://darksearch.onion")
-        self.assertEqual(result.found_results[0].description, "Dark Search Description")
-        self.assertIsNone(result.error)
+        mock_async_client = AsyncMock()
+        mock_async_client.get.side_effect = asyncio.TimeoutError
 
-    @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
-    def test_search_dark_web_timeout(self, mock_async_client_constructor, mock_config):
-        """Tests the dark web search when a timeout occurs."""
-        mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-        mock_client = AsyncMock()
-        mock_client.get.side_effect = asyncio.TimeoutError
-        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            # Act
 
-        result = asyncio.run(search_dark_web_engine("test query"))
+            result = await search_dark_web_engine("test query")
+        # Assert
 
-        self.assertEqual(len(result.found_results), 0)
         self.assertIsNotNone(result.error)
-        self.assertIn("timed out", result.error)
+        self.assertIn("Search timed out", result.error)
 
-    @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("chimera_intel.core.dark_web_osint.httpx.AsyncClient")
-    def test_search_dark_web_generic_exception(
-        self, mock_async_client_constructor, mock_config
-    ):
-        """Tests the dark web search when a generic exception occurs."""
-        mock_config.modules.dark_web.tor_proxy_url = "socks5://fake.proxy:9999"
-        mock_client = AsyncMock()
-        mock_client.get.side_effect = RequestError("Proxy error")
-        mock_async_client_constructor.return_value.__aenter__.return_value = mock_client
+    # --- CLI Command Tests ---
 
-        result = asyncio.run(search_dark_web_engine("test query"))
+    @patch(
+        "chimera_intel.core.dark_web_osint.search_dark_web_engine",
+        new_callable=AsyncMock,
+    )
+    def test_cli_dark_web_search_success(self, mock_search):
+        """NEW: Tests a successful run of the 'dark-web search' command."""
+        # Arrange
 
-        self.assertEqual(len(result.found_results), 0)
-        self.assertIsNotNone(result.error)
-        self.assertIn("Is the Tor Browser running?", result.error)
+        mock_search.return_value = DarkWebScanResult(
+            query="testcorp",
+            found_results=[DarkWebResult(title="Test Result", url="http://test.onion")],
+        )
 
-    # --- NEW: Project-Aware CLI Tests ---
+        # Act
+
+        result = runner.invoke(dark_web_app, ["search", "testcorp"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["query"], "testcorp")
+        self.assertEqual(len(output["found_results"]), 1)
+        mock_search.assert_awaited_with("testcorp", "ahmia")
 
     @patch("chimera_intel.core.dark_web_osint.get_active_project")
     @patch(
         "chimera_intel.core.dark_web_osint.search_dark_web_engine",
         new_callable=AsyncMock,
     )
-    @patch("chimera_intel.core.dark_web_osint.save_scan_to_db")
-    def test_cli_dark_web_with_project(
-        self, mock_save_db, mock_search_engine, mock_get_project
-    ):
-        """Tests the CLI command using an active project's company name as the query."""
+    def test_cli_dark_web_search_with_project(self, mock_search, mock_get_project):
+        """NEW: Tests the CLI command using an active project's company name."""
         # Arrange
 
         mock_project = ProjectConfig(
-            project_name="DarkWebTest",
-            created_at="2025-01-01",
-            company_name="ProjectCorp",
+            project_name="Test", created_at="", company_name="ProjectCorp"
         )
         mock_get_project.return_value = mock_project
-        mock_search_engine.return_value.model_dump.return_value = {}
+        mock_search.return_value = DarkWebScanResult(
+            query="ProjectCorp", found_results=[]
+        )
 
         # Act
-        # FIX: The command being tested is 'search', and when no arguments are given,
-        # the runner should be invoked with an empty list.
 
-        result = runner.invoke(dark_web_app, [])
+        result = runner.invoke(dark_web_app, ["search"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using query 'ProjectCorp' from active project", result.stdout)
-        mock_search_engine.assert_awaited_with("ProjectCorp", "ahmia")
-        mock_save_db.assert_called_once()
+        mock_search.assert_awaited_with("ProjectCorp", "ahmia")
 
-    @patch("chimera_intel.core.dark_web_osint.get_active_project")
-    def test_cli_dark_web_no_query_no_project(self, mock_get_project):
-        """Tests CLI failure when no query is given and no project is active."""
-        # Arrange
-
-        mock_get_project.return_value = None
-
+    @patch("chimera_intel.core.dark_web_osint.get_active_project", return_value=None)
+    def test_cli_dark_web_search_no_query_or_project(self, mock_get_project):
+        """NEW: Tests CLI failure when no query is given and no project is active."""
         # Act
-        # FIX: Correct invocation for a command with an optional argument being omitted.
 
-        result = runner.invoke(dark_web_app, [])
+        result = runner.invoke(dark_web_app, ["search"])
 
         # Assert
 

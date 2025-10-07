@@ -16,6 +16,7 @@ from chimera_intel.core.schemas import (
     AzureBlobContainer,
     GCSBucket,
     ProjectConfig,
+    CloudOSINTResult,
 )
 
 runner = CliRunner(mix_stderr=False)
@@ -27,12 +28,18 @@ class TestCloudOsint(unittest.TestCase):
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_s3_bucket_public(self, mock_async_client):
         """Tests checking a bucket that exists and is public."""
+        # Arrange
+
         mock_head_response = MagicMock(spec=Response, status_code=200)
         mock_get_response = MagicMock(spec=Response, status_code=200)
         mock_async_client.head.return_value = mock_head_response
         mock_async_client.get.return_value = mock_get_response
 
+        # Act
+
         result = asyncio.run(check_s3_bucket("public-bucket"))
+
+        # Assert
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, S3Bucket)
@@ -41,27 +48,38 @@ class TestCloudOsint(unittest.TestCase):
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_s3_bucket_private(self, mock_async_client):
-        """Tests checking a bucket that exists but is private (e.g., returns 403)."""
-        # HEAD is successful (bucket exists), but GET fails (it's private)
+        """Tests checking a bucket that exists but is private (returns 403)."""
+        # Arrange: HEAD is successful (bucket exists), but GET fails (it's private)
 
         mock_head_response = MagicMock(spec=Response, status_code=200)
         mock_get_response = MagicMock(spec=Response, status_code=403)
         mock_async_client.head.return_value = mock_head_response
         mock_async_client.get.return_value = mock_get_response
 
+        # Act
+
         result = asyncio.run(check_s3_bucket("private-bucket"))
+
+        # Assert
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, S3Bucket)
         self.assertFalse(result.is_public)
+        self.assertEqual(result.name, "private-bucket")
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_azure_blob_public(self, mock_async_client):
         """Tests checking a public Azure blob container."""
+        # Arrange
+
         mock_response = MagicMock(spec=Response, status_code=200)
         mock_async_client.get.return_value = mock_response
 
+        # Act
+
         result = asyncio.run(check_azure_blob("public-container"))
+
+        # Assert
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, AzureBlobContainer)
@@ -70,19 +88,31 @@ class TestCloudOsint(unittest.TestCase):
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_azure_blob_network_error(self, mock_async_client):
         """Tests the Azure blob check when a network error occurs."""
+        # Arrange
+
         mock_async_client.get.side_effect = RequestError("Connection timeout")
 
+        # Act
+
         result = asyncio.run(check_azure_blob("some-container"))
+
+        # Assert
 
         self.assertIsNone(result)
 
     @patch("chimera_intel.core.cloud_osint.async_client", new_callable=AsyncMock)
     def test_check_gcs_bucket_public(self, mock_async_client):
         """Tests checking a public GCS bucket."""
+        # Arrange
+
         mock_response = MagicMock(spec=Response, status_code=200)
         mock_async_client.get.return_value = mock_response
 
+        # Act
+
         result = asyncio.run(check_gcs_bucket("public-gcs-bucket"))
+
+        # Assert
 
         self.assertIsNotNone(result)
         self.assertIsInstance(result, GCSBucket)
@@ -91,12 +121,14 @@ class TestCloudOsint(unittest.TestCase):
     @patch("chimera_intel.core.cloud_osint.check_s3_bucket", new_callable=AsyncMock)
     @patch("chimera_intel.core.cloud_osint.check_azure_blob", new_callable=AsyncMock)
     @patch("chimera_intel.core.cloud_osint.check_gcs_bucket", new_callable=AsyncMock)
-    def test_find_cloud_assets_logic(
+    def test_find_cloud_assets_main_logic(
         self, mock_check_gcs, mock_check_azure, mock_check_s3
     ):
         """
         Tests the main asset finding logic across all cloud providers.
         """
+        # Arrange
+
         mock_check_s3.side_effect = lambda name: (
             S3Bucket(name=name, url="", is_public=True)
             if name == "mycompany-assets"
@@ -113,7 +145,11 @@ class TestCloudOsint(unittest.TestCase):
             else None
         )
 
+        # Act
+
         result = asyncio.run(find_cloud_assets("mycompany"))
+
+        # Assert
 
         self.assertEqual(len(result.found_s3_buckets), 1)
         self.assertEqual(len(result.found_azure_containers), 1)
@@ -147,7 +183,7 @@ class TestCloudOsint(unittest.TestCase):
         self.assertEqual(len(result.found_azure_containers), 0)
         self.assertEqual(len(result.found_gcs_buckets), 0)
 
-    # --- NEW: Project-Aware CLI Tests ---
+    # --- Project-Aware CLI Tests ---
 
     @patch("chimera_intel.core.cloud_osint.get_active_project")
     @patch("chimera_intel.core.cloud_osint.find_cloud_assets", new_callable=AsyncMock)
@@ -164,11 +200,13 @@ class TestCloudOsint(unittest.TestCase):
             company_name="Project Cloud Inc",
         )
         mock_get_project.return_value = mock_project
-        mock_find_assets.return_value.model_dump.return_value = {}
+        mock_find_assets.return_value = CloudOSINTResult(
+            target_keyword="projectcloudinc"
+        )
 
         # Act
 
-        result = runner.invoke(cloud_osint_app, [])
+        result = runner.invoke(cloud_osint_app, ["run"])
 
         # Assert
 
@@ -188,7 +226,7 @@ class TestCloudOsint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(cloud_osint_app, [])
+        result = runner.invoke(cloud_osint_app, ["run"])
 
         # Assert
 

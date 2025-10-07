@@ -67,10 +67,14 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("An error occurred with the Google AI API", result.error)
 
+    # --- CLI Command Tests ---
+
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.competitive_analyzer.generate_competitive_analysis")
     def test_cli_competitive_analysis_success(self, mock_generate, mock_get_data):
         """Tests the 'competitive' CLI command with a successful run."""
+        # Arrange
+
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},
             {"target": "companyB", "modules": {}},
@@ -82,9 +86,19 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
             "chimera_intel.core.competitive_analyzer.API_KEYS.google_api_key",
             "fake_key",
         ):
-            result = runner.invoke(competitive_analyzer_app, ["companyA", "companyB"])
+            # Act
+
+            result = runner.invoke(
+                competitive_analyzer_app, ["run", "companyA", "companyB"]
+            )
+        # Assert
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Test Analysis", result.stdout)
+        mock_get_data.assert_any_call("companyA")
+        mock_get_data.assert_any_call("companyB")
+        self.assertEqual(mock_get_data.call_count, 2)
+        mock_generate.assert_called_once()
 
     @patch(
         "chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target",
@@ -92,6 +106,35 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     )
     def test_cli_competitive_analysis_no_data(self, mock_get_data):
         """Tests the CLI command when data for one of the targets is missing."""
-        result = runner.invoke(competitive_analyzer_app, ["companyA", "companyB"])
+        # Act
+
+        result = runner.invoke(
+            competitive_analyzer_app, ["run", "companyA", "companyB"]
+        )
+
+        # Assert
+
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Could not retrieve historical data", result.stdout)
+
+    @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
+    def test_cli_competitive_analysis_no_api_key(self, mock_get_data):
+        """NEW: Tests the CLI command when the Google API key is not configured."""
+        # Arrange
+
+        mock_get_data.return_value = {"target": "companyA", "modules": {}}
+
+        # Act
+
+        result = runner.invoke(
+            competitive_analyzer_app, ["run", "companyA", "companyB"]
+        )
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Google API key (GOOGLE_API_KEY) not found", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

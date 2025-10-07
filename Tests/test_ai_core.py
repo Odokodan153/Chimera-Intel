@@ -8,11 +8,11 @@ require loading large models or making external API calls.
 """
 
 import unittest
+import json
 from unittest.mock import patch, MagicMock, mock_open
 from typer.testing import CliRunner
 
-# FIX: Import the specific Typer app for this module's CLI tests
-
+# Import the specific Typer app for this module's CLI tests
 
 from chimera_intel.core.ai_core import (
     analyze_sentiment,
@@ -39,22 +39,17 @@ class TestAiCore(unittest.TestCase):
     def test_analyze_sentiment_positive(self, mock_analyzer: MagicMock):
         """
         Tests the sentiment analysis function with a mocked positive result.
-
-        Args:
-            mock_analyzer (MagicMock): A mock for the transformer pipeline.
         """
         mock_analyzer.return_value = [{"label": "POSITIVE", "score": 0.99}]
         result = analyze_sentiment("This is great!")
         self.assertEqual(result.label, "POSITIVE")
+        self.assertAlmostEqual(result.score, 0.99)
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.ai_core.sentiment_analyzer")
     def test_analyze_sentiment_failure(self, mock_analyzer: MagicMock):
         """
         Tests the sentiment analysis function when the model raises an exception.
-
-        Args:
-            mock_analyzer (MagicMock): A mock for the transformer pipeline.
         """
         mock_analyzer.side_effect = Exception("Model loading failed")
         result = analyze_sentiment("Some text")
@@ -72,9 +67,6 @@ class TestAiCore(unittest.TestCase):
     def test_generate_swot_from_data_success(self, mock_genai: MagicMock):
         """
         Tests a successful SWOT analysis generation.
-
-        Args:
-            mock_genai (MagicMock): A mock for the 'google.generativeai' module.
         """
         mock_model_instance = mock_genai.GenerativeModel.return_value
         mock_model_instance.generate_content.return_value.text = "## SWOT Analysis"
@@ -88,9 +80,6 @@ class TestAiCore(unittest.TestCase):
     def test_generate_swot_from_data_api_error(self, mock_genai: MagicMock):
         """
         Tests SWOT generation when the Google AI API returns an error.
-
-        Args:
-            mock_genai (MagicMock): A mock for the 'google.generativeai' module.
         """
         mock_model_instance = mock_genai.GenerativeModel.return_value
         mock_model_instance.generate_content.side_effect = Exception(
@@ -125,22 +114,24 @@ class TestAiCore(unittest.TestCase):
             result = detect_traffic_anomalies([100.0, 110.0])
             self.assertIn("not installed", result.error)
 
-    # --- CLI COMMAND TESTS ---
+    # --- CLI COMMAND TESTS (IMPROVED) ---
 
     @patch("chimera_intel.core.ai_core.analyze_sentiment")
     def test_cli_sentiment_command(self, mock_analyze: MagicMock):
         """
-        Tests the 'sentiment' CLI command.
-
-        Args:
-            mock_analyze (MagicMock): A mock for the `analyze_sentiment` function.
+        Tests the 'sentiment' CLI command with more specific assertions.
         """
         mock_analyze.return_value = SentimentAnalysisResult(label="POSITIVE", score=0.9)
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["sentiment", "I love this!"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('"label": "POSITIVE"', result.stdout)
+
+        # IMPROVED: Parse the JSON output for more precise testing
+
+        output = json.loads(result.stdout)
+        self.assertEqual(output["label"], "POSITIVE")
+        self.assertAlmostEqual(output["score"], 0.9)
 
     @patch("builtins.open", new_callable=mock_open, read_data='{"data": "test"}')
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
@@ -148,15 +139,11 @@ class TestAiCore(unittest.TestCase):
     def test_cli_swot_command(self, mock_swot: MagicMock, mock_file: MagicMock):
         """
         Tests the 'swot' CLI command.
-
-        Args:
-            mock_swot (MagicMock): A mock for the `generate_swot_from_data` function.
-            mock_file (MagicMock): A mock for the `open` built-in function.
         """
         mock_swot.return_value = SWOTAnalysisResult(
             analysis_text="SWOT Text", error=None
         )
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 0)
@@ -164,73 +151,68 @@ class TestAiCore(unittest.TestCase):
 
     @patch("builtins.open", side_effect=FileNotFoundError)
     @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
-    def test_cli_swot_command_file_not_found(self, mock_open: MagicMock):
+    def test_cli_swot_command_file_not_found(self, mock_open_patch: MagicMock):
         """
         Tests the 'swot' command when the input file is not found.
-
-        Args:
-            mock_open (MagicMock): A mock for the `open` built-in function.
         """
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["swot", "nonexistent.json"])
-        # Exit code is 1 because the file is not found before the command logic is called
-
         self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.ai_core.detect_traffic_anomalies")
     def test_cli_anomaly_command(self, mock_detect: MagicMock):
         """
-        Tests the 'anomaly' CLI command.
-
-        Args:
-            mock_detect (MagicMock): A mock for the `detect_traffic_anomalies` function.
+        Tests the 'anomaly' CLI command with more specific assertions.
         """
         mock_detect.return_value = AnomalyDetectionResult(
-            data_points=[], detected_anomalies=[500.0]
+            data_points=[100.0, 200.0, 500.0], detected_anomalies=[500.0]
         )
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["anomaly", "100,200,500"])
         self.assertEqual(result.exit_code, 0)
-        self.assertIn('"detected_anomalies":', result.stdout)
+
+        # IMPROVED: Parse the JSON output for more precise testing
+
+        output = json.loads(result.stdout)
+        self.assertIn(500.0, output["detected_anomalies"])
+        self.assertEqual(len(output["detected_anomalies"]), 1)
 
     def test_cli_anomaly_command_invalid_data(self):
         """Tests the 'anomaly' command with invalid data."""
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["anomaly", "a,b,c"])
         # Should exit cleanly, but the function inside will handle the error
 
         self.assertEqual(result.exit_code, 0)
-        self.assertNotIn('"detected_anomalies":', result.stdout)
+        self.assertIn("Invalid data points", result.stdout)
 
-    # --- EXTENDED LOGIC ---
+    # --- EXTENDED LOGIC & EDGE CASES ---
 
     @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", None)
     def test_cli_swot_command_no_api_key(self):
         """
         Tests the 'swot' command when the GOOGLE_API_KEY is not set.
         """
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 1)
+        self.assertIn("Google API key not found", result.stdout)
 
     @patch("builtins.open", new_callable=mock_open, read_data="invalid json")
     @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
     def test_cli_swot_command_invalid_json(self, mock_file: MagicMock):
         """
         Tests the 'swot' command when the input file contains invalid JSON.
-        This tests the outer exception block in the CLI function.
-
-        Args:
-            mock_file (MagicMock): A mock for the `open` built-in function.
         """
-        # FIX: Test the specific Typer app instance for this module
+        # CORRECTED: Test the specific Typer app instance for this module
 
         result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 1)
+        self.assertIn("Invalid JSON", result.stdout)
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")
@@ -250,7 +232,7 @@ class TestAiCore(unittest.TestCase):
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.ai_core.build_and_save_graph")
-    def test_generate_narrative_from_graph_error(self, mock_build_graph):
+    def test_generate_narrative_from_graph_build_error(self, mock_build_graph):
         """Tests graph narrative generation when the graph build fails."""
         mock_build_graph.return_value = EntityGraphResult(
             target="example.com", total_nodes=0, total_edges=0, error="DB error"
@@ -259,6 +241,26 @@ class TestAiCore(unittest.TestCase):
         result = generate_narrative_from_graph("example.com", "fake_api_key")
 
         self.assertIsNotNone(result.error)
+        self.assertIn("DB error", result.error)
+        self.assertEqual(result.narrative_text, "")
+
+    @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    @patch("chimera_intel.core.ai_core.generate_swot_from_data")
+    def test_generate_narrative_from_graph_swot_error(
+        self, mock_gen_swot, mock_build_graph
+    ):
+        """Tests graph narrative generation when the SWOT analysis fails."""
+        mock_build_graph.return_value = EntityGraphResult(
+            target="example.com", total_nodes=2, total_edges=1, nodes=[], edges=[]
+        )
+        mock_gen_swot.return_value = SWOTAnalysisResult(
+            analysis_text="", error="API Error"
+        )
+
+        result = generate_narrative_from_graph("example.com", "fake_api_key")
+
+        self.assertIsNotNone(result.error)
+        self.assertIn("API Error", result.error)
         self.assertEqual(result.narrative_text, "")
 
 

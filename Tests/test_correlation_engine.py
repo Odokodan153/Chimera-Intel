@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-from chimera_intel.core.correlation_engine import run_correlations
+from chimera_intel.core.correlation_engine import run_correlations, _trigger_scan
 
 
 class TestCorrelationEngine(unittest.TestCase):
@@ -35,9 +35,18 @@ class TestCorrelationEngine(unittest.TestCase):
         # Arrange
 
         latest_scan = {
-            "footprint": {"subdomains": {"results": [{"domain": "new.example.com"}]}}
+            "footprint": {
+                "subdomains": {
+                    "results": [
+                        {"domain": "new.example.com"},
+                        {"domain": "old.example.com"},
+                    ]
+                }
+            }
         }
-        previous_scan = {"footprint": {"subdomains": {"results": []}}}
+        previous_scan = {
+            "footprint": {"subdomains": {"results": [{"domain": "old.example.com"}]}}
+        }
         mock_get_scans.return_value = (latest_scan, previous_scan)
 
         # Act
@@ -46,14 +55,14 @@ class TestCorrelationEngine(unittest.TestCase):
 
         # Assert
 
-        mock_trigger.assert_called_with(
+        mock_trigger.assert_called_once_with(
             ["scan", "web", "run", "new.example.com"],
             "New subdomain new.example.com found",
         )
 
     @patch("chimera_intel.core.correlation_engine._trigger_scan")
     def test_critical_cve_triggers_ttp_map(self, mock_trigger):
-        """Tests that a critical CVE triggers a TTP mapping."""
+        """Tests that a critical CVE (CVSS >= 9.0) found in a vuln scan triggers a TTP mapping."""
         # Arrange
 
         scan_data = {
@@ -78,18 +87,64 @@ class TestCorrelationEngine(unittest.TestCase):
         # Assert
 
         mock_trigger.assert_called_once_with(
-            ["ttp", "map-cve", "CVE-2023-1337"], "Critical CVE CVE-2023-1337 found"
+            ["ttp", "map-cve", "CVE-2023-1337"],
+            "Critical CVE CVE-2023-1337 found on 1.2.3.4",
         )
 
+    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.correlation_engine._trigger_scan")
+    def test_no_change_does_not_trigger_scan(self, mock_trigger, mock_get_scans):
+        """NEW: Tests that no scan is triggered if the footprint has not changed."""
+        # Arrange
+
+        latest_scan = {"footprint": {"dns_records": {"A": ["1.1.1.1"]}}}
+        previous_scan = {"footprint": {"dns_records": {"A": ["1.1.1.1"]}}}
+        mock_get_scans.return_value = (latest_scan, previous_scan)
+
+        # Act
+
+        run_correlations("example.com", "footprint", latest_scan)
+
+        # Assert
+
+        mock_trigger.assert_not_called()
+
+    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.correlation_engine._trigger_scan")
+    def test_no_previous_scan_does_not_trigger(self, mock_trigger, mock_get_scans):
+        """NEW: Tests that no scan is triggered if there is no previous scan to compare against."""
+        # Arrange
+
+        latest_scan = {"footprint": {"dns_records": {"A": ["1.1.1.1"]}}}
+        # Simulate the first scan for a target
+
+        mock_get_scans.return_value = (latest_scan, None)
+
+        # Act
+
+        run_correlations("example.com", "footprint", latest_scan)
+
+        # Assert
+
+        mock_trigger.assert_not_called()
+
     @patch("chimera_intel.core.correlation_engine.subprocess.Popen")
-    def test_trigger_scan_calls_subprocess(self, mock_popen):
-        """Tests the internal _trigger_scan helper function."""
-        from chimera_intel.core.correlation_engine import _trigger_scan
+    def test_internal_trigger_scan_helper_calls_subprocess(self, mock_popen):
+        """Tests the internal _trigger_scan helper function to ensure it formats and calls the command correctly."""
+        # Arrange
 
         command = ["scan", "footprint", "run", "test.com"]
-        _trigger_scan(command, "Test reason")
+        reason = "Test reason"
+
+        # Act
+
+        _trigger_scan(command, reason)
+
+        # Assert
 
         mock_popen.assert_called_once()
+        # Check the arguments passed to Popen
+
         called_args = mock_popen.call_args[0][0]
         self.assertEqual(called_args, ["chimera"] + command)
 

@@ -1,86 +1,143 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import asyncio
+from unittest.mock import patch, MagicMock, AsyncMock
+from typer.testing import CliRunner
+import typer
 
 from chimera_intel.core.geoint import (
-    generate_geoint_report,
     get_country_risk_data,
-    _get_countries_from_ips,
+    generate_geoint_report,
+    geoint_app,
 )
-from chimera_intel.core.schemas import GeointReport, CountryRiskProfile, GeoIntelData
+from chimera_intel.core.schemas import (
+    GeointReport,
+    CountryRiskProfile
+)
+
+runner = CliRunner()
 
 
-class TestGeoint(unittest.TestCase):
-    """Test cases for the geoint module."""
+class TestGeoint(unittest.IsolatedAsyncioTestCase):
+    """Test cases for the Geopolitical Intelligence (GEOINT) module."""
 
-    @patch("chimera_intel.core.geoint.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.geoint.get_country_risk_data")
-    @patch("chimera_intel.core.geoint.asyncio.run")
-    def test_generate_geoint_report_success(
-        self, mock_asyncio_run, mock_get_risk_data, mock_get_aggregated_data
-    ):
-        """Tests a successful GEOINT report generation."""
-        mock_get_aggregated_data.return_value = {
-            "modules": {
-                "physical_osint_locations": {
-                    "locations_found": [{"address": "123 Main St, Anytown, USA"}]
-                },
-                "footprint": {"dns_records": {"A": ["8.8.8.8"]}},
-            }
-        }
-        mock_asyncio_run.return_value = {"USA"}
-        mock_get_risk_data.return_value = CountryRiskProfile(
-            country_name="USA", region="Americas"
-        )
-
-        result = generate_geoint_report("example.com")
-
-        self.assertIsInstance(result, GeointReport)
-        self.assertEqual(len(result.country_risk_profiles), 1)
-        self.assertEqual(result.country_risk_profiles[0].country_name, "USA")
+    # --- Function Tests ---
 
     @patch("chimera_intel.core.geoint.sync_client.get")
     def test_get_country_risk_data_success(self, mock_get):
-        """Tests fetching country risk data."""
-        mock_response_country = MagicMock()
-        mock_response_country.json.return_value = [
+        """Tests a successful country risk data lookup."""
+        # Arrange
+
+        mock_country_response = MagicMock()
+        mock_country_response.raise_for_status.return_value = None
+        mock_country_response.json.return_value = [
             {
-                "name": {"common": "Testland"},
-                "cca2": "TL",
-                "region": "Testregion",
-                "subregion": "Testsubregion",
-                "population": 1000,
+                "name": {"common": "United States"},
+                "cca2": "US",
+                "region": "Americas",
+                "population": 331000000,
             }
         ]
-        mock_response_wb = MagicMock()
-        mock_response_wb.json.return_value = [
+
+        mock_wb_response = MagicMock()
+        mock_wb_response.raise_for_status.return_value = None
+        mock_wb_response.json.return_value = [
             None,
-            [{"value": 1.5}],
-        ]
-        mock_get.side_effect = [mock_response_country, mock_response_wb]
+            [{"value": 0.5}],
+        ]  # World Bank API format
 
-        result = get_country_risk_data("Testland")
+        mock_get.side_effect = [mock_country_response, mock_wb_response]
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.country_name, "Testland")
-        self.assertEqual(result.political_stability_index, 1.5)
+        # Act
 
-    @patch("chimera_intel.core.geoint.get_geolocation_data", new_callable=MagicMock)
-    def test_get_countries_from_ips(self, mock_get_geolocation_data):
-        """Tests getting countries from a list of IP addresses."""
+        result = get_country_risk_data("United States")
 
-        async def mock_coro(ip):
-            if ip == "8.8.8.8":
-                return GeoIntelData(query="8.8.8.8", country="USA")
-            return None
+        # Assert
 
-        mock_get_geolocation_data.side_effect = mock_coro
+        self.assertIsInstance(result, CountryRiskProfile)
+        self.assertEqual(result.country_name, "United States")
+        self.assertEqual(result.political_stability_index, 0.5)
 
-        async def run_test():
-            return await _get_countries_from_ips(["8.8.8.8", "1.1.1.1"])
+    @patch("chimera_intel.core.geoint.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.geoint._get_countries_from_ips", new_callable=AsyncMock)
+    @patch("chimera_intel.core.geoint.get_country_risk_data")
+    def test_generate_geoint_report_success(
+        self, mock_get_risk, mock_get_ips, mock_get_agg_data
+    ):
+        """Tests the successful generation of a GEOINT report."""
+        # Arrange
 
-        countries = asyncio.run(run_test())
-        self.assertEqual(countries, {"USA"})
+        mock_get_agg_data.return_value = {
+            "modules": {
+                "physical_osint_locations": {
+                    "locations_found": [{"address": "Somewhere, USA"}]
+                },
+                "footprint": {"dns_records": {"A": ["1.1.1.1"]}},
+            }
+        }
+        mock_get_ips.return_value = {"Canada"}
+        mock_get_risk.return_value = CountryRiskProfile(country_name="Canada")
+
+        # Act
+
+        report = generate_geoint_report("example.com")
+
+        # Assert
+
+        self.assertIsInstance(report, GeointReport)
+        self.assertEqual(len(report.country_risk_profiles), 1)
+        self.assertEqual(report.country_risk_profiles[0].country_name, "Canada")
+        self.assertIsNone(report.error)
+
+    def test_generate_geoint_report_no_data(self):
+        """Tests report generation when no historical data is available."""
+        with patch(
+            "chimera_intel.core.geoint.get_aggregated_data_for_target",
+            return_value=None,
+        ):
+            report = generate_geoint_report("example.com")
+            self.assertIsNotNone(report.error)
+            self.assertIn("No historical data", report.error)
+
+    # --- CLI Tests ---
+
+    @patch("chimera_intel.core.geoint.resolve_target")
+    @patch("chimera_intel.core.geoint.generate_geoint_report")
+    def test_cli_run_geoint_analysis_success(self, mock_generate, mock_resolve):
+        """Tests a successful run of the 'geoint run' CLI command."""
+        # Arrange
+
+        mock_resolve.return_value = "example.com"
+        mock_generate.return_value = GeointReport(
+            target="example.com",
+            country_risk_profiles=[CountryRiskProfile(country_name="Testland")],
+        )
+
+        # Act
+
+        result = runner.invoke(geoint_app, ["run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_resolve.assert_called_with(
+            None, required_assets=["company_name", "domain"]
+        )
+        mock_generate.assert_called_with("example.com")
+        self.assertIn('"country_name": "Testland"', result.stdout)
+
+    @patch("chimera_intel.core.geoint.resolve_target")
+    def test_cli_run_geoint_analysis_no_target(self, mock_resolve):
+        """Tests CLI failure when no target can be resolved."""
+        # Arrange
+
+        mock_resolve.side_effect = typer.Exit(code=1)
+
+        # Act
+
+        result = runner.invoke(geoint_app, ["run"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 1)
 
 
 if __name__ == "__main__":
