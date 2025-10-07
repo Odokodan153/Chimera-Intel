@@ -10,7 +10,7 @@ from sqlalchemy import (
     Boolean,
     LargeBinary,
 )
-from sqlalchemy.orm import relationship, declarative_base, DeclarativeBase
+from sqlalchemy.orm import relationship, DeclarativeBase
 import datetime
 from pydantic import BaseModel, Field
 
