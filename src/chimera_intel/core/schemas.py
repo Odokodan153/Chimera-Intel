@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 
 # --- General Purpose Models ---
 
+class Base(DeclarativeBase):
+    pass
 
 class ScoredResult(BaseModel):
     """A model for a result that has sources and a confidence score."""
