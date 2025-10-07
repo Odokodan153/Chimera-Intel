@@ -11,7 +11,7 @@ from hashlib import sha256
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
-from chimera_intel.core.daemon import add_job
+from chimera_intel.core.scheduler import add_job  # Corrected import
 from chimera_intel.core.database import save_page_snapshot
 from chimera_intel.core.utils import (
     console,
@@ -47,12 +47,13 @@ async def check_for_changes(url: str, job_id: str):
             current_hash = sha256(clean_text.encode("utf-8")).hexdigest()
 
             # The logic relies on save_page_snapshot to handle the persistence and comparison.
+            # Corrected: Removed the job_id argument
 
             change_detected, old_hash = save_page_snapshot(
-                url=url, current_hash=current_hash, content=response.text, job_id=job_id
+                url=url, current_hash=current_hash, content=response.text
             )
 
-            if change_detected:
+            if change_detected and old_hash:  # Added a check for old_hash
                 console.print(
                     f"[bold red]!! Change Detected for {url}[/bold red] - Hash changed from {old_hash[:8]} to {current_hash[:8]}"
                 )
@@ -61,14 +62,10 @@ async def check_for_changes(url: str, job_id: str):
 
                 message = f"🚨 Chimera Intel Alert: Significant change detected on monitored URL: {url}. Snapshot taken."
 
-                # Fix for Missing positional argument "message" (Error 3)
-
                 if CONFIG.notifications and CONFIG.notifications.slack_webhook_url:
                     send_slack_notification(
                         CONFIG.notifications.slack_webhook_url, message=message
                     )
-                # Fix for Missing positional arguments "title", "message" (Error 4)
-
                 if CONFIG.notifications and CONFIG.notifications.teams_webhook_url:
                     send_teams_notification(
                         CONFIG.notifications.teams_webhook_url,

@@ -38,10 +38,18 @@ def build_graph_command(
             f"[bold red]Error:[/bold red] Invalid JSON format in file '{target}'."
         )
         raise typer.Exit(code=1)
-    # Corrected function call: passes loaded 'data' and 'output_file'
+    # Corrected function call: passes loaded 'data' and 'output_file' if it exists
 
-    graph_result = build_and_save_graph(data, output_file)
+    if output_file:
+        graph_result = build_and_save_graph(data, output_file)
+    else:
+        # Decide what to do if no output file is specified.
+        # For example, you could create a default name or just build the graph in memory without saving.
+        # Here, we'll assume a default name based on the target.
 
+        target_name = data.get("domain") or data.get("company", "graph")
+        output_path = f"{target_name.replace('.', '_')}_graph.html"
+        graph_result = build_and_save_graph(data, output_path)
     if graph_result.error:
         console.print(
             f"[bold red]Error building graph:[/bold red] {graph_result.error}"

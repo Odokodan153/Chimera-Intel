@@ -20,7 +20,7 @@ def search_genbank(query: str, email: str, max_results: int = 5):
     """
     Searches the NCBI GenBank database for a specific genetic sequence or term.
     """
-    Entrez.email = email
+    Entrez.email = email  # type: ignore
     handle = Entrez.esearch(db="nucleotide", term=query, retmax=max_results)
     record = Entrez.read(handle)
     handle.close()

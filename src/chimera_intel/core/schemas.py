@@ -1,5 +1,15 @@
 from typing import Any, Dict, List, Optional, Union
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean, LargeBinary
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Boolean,
+    LargeBinary,
+)
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.ext.declarative import DeclarativeMeta
 import datetime
@@ -1868,7 +1878,7 @@ class AVINTResult(BaseModel):
     flights: List[FlightInfo] = []
     error: Optional[str] = None
 
-Base: DeclarativeMeta = declarative_base()
+Base = declarative_base()
 
 # --- ORM Models ---
 class ScanResult(Base):
@@ -1881,6 +1891,7 @@ class ScanResult(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     # The result is stored as a JSON string in the database.
     result = Column(Text, nullable=False)
+
 
 class PageSnapshot(Base):
     """Represents a single snapshot of a monitored web page."""
@@ -1902,6 +1913,7 @@ class HumintSource(Base):
     expertise = Column(String)
     reports = relationship("HumintReport", back_populates="source")
 
+
 class HumintReport(Base):
     __tablename__ = "humint_reports"
     id = Column(Integer, primary_key=True, index=True)
@@ -1910,20 +1922,26 @@ class HumintReport(Base):
     source_id = Column(Integer, ForeignKey("humint_sources.id"))
     source = relationship("HumintSource", back_populates="reports")
 
+
 class ResponseRule(Base):
     __tablename__ = "response_rules"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
-    trigger = Column(String, nullable=False, index=True) # e.g., "dark-monitor:credential-leak"
-    actions = Column(JSON, nullable=False) # e.g., ["iam:reset-password", "edr:quarantine-host"]
+    trigger = Column(
+        String, nullable=False, index=True
+    )  # e.g., "dark-monitor:credential-leak"
+    actions = Column(
+        JSON, nullable=False
+    )  # e.g., ["iam:reset-password", "edr:quarantine-host"]
+
 
 class ForecastPerformance(Base):
     __tablename__ = "forecast_performance"
     id = Column(Integer, primary_key=True, index=True)
     scenario = Column(String, index=True)
-    prediction = Column(Text) # The AI's generated forecast
-    outcome = Column(Text) # The real-world result, logged later
-    is_correct = Column(Boolean) # Was the prediction accurate?
+    prediction = Column(Text)  # The AI's generated forecast
+    outcome = Column(Text)  # The real-world result, logged later
+    is_correct = Column(Boolean)  # Was the prediction accurate?
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Token(BaseModel):

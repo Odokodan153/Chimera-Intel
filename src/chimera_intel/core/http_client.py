@@ -1,40 +1,31 @@
-"""
-Centralized HTTP client configuration for the Chimera Intel application.
-
-This module creates and configures synchronous and asynchronous HTTP clients
-with robust settings for timeouts and retries. By centralizing the client
-instances, the entire application benefits from consistent, reliable, and
-maintainable network behavior.
-"""
-
 import httpx
-from httpx import Timeout, Client, AsyncClient
-from .config_loader import CONFIG
-from .schemas import AppConfig
+from httpx import AsyncClient, Client, Timeout
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, cast
 
-# Explicitly cast CONFIG to its AppConfig type to satisfy mypy's type inference.
+# Solution 1: Rename the imported CONFIG to avoid a 'no-redef' mypy error.
+# This allows us to import the raw configuration object and then create a typed version
+# with the same final name 'CONFIG' without conflicts.
 
-CONFIG: AppConfig = cast(AppConfig, CONFIG)
+from .config_loader import CONFIG as RAW_CONFIG
+from .schemas import AppConfig
 
-# --- Configuration ---
-# Load the global network timeout from the Pydantic config object.
+# Cast the raw config to the AppConfig schema for proper type hinting and access.
+
+CONFIG: AppConfig = cast(AppConfig, RAW_CONFIG)
+
+# Define a global network timeout loaded from the application's configuration.
 
 NETWORK_TIMEOUT = CONFIG.network.timeout
 
-# --- CHANGE: Correctly configure retries for the transport ---
-# The 'retries' parameter on the transport layer handles the retry logic.
+# Define reusable HTTP transports with a built-in retry mechanism for resilience.
+# This helps handle transient network errors automatically.
 
 transport = httpx.HTTPTransport(retries=3)
 async_transport = httpx.AsyncHTTPTransport(retries=3)
 
-
-# --- Centralized Client Instances ---
-# These pre-configured clients are imported and used by all other modules
-# in the application for making HTTP requests.
-
-# Synchronous client for regular (def) functions.
+# Global synchronous client for parts of the application that don't use async.
+# It's configured with the standard transport, timeout, and a custom User-Agent.
 
 sync_client = Client(
     transport=transport,
@@ -42,7 +33,8 @@ sync_client = Client(
     headers={"User-Agent": "Chimera-Intel/6.0"},
 )
 
-# Asynchronous client for high-performance (async def) functions.
+# Global asynchronous client for general-purpose, non-proxied API calls.
+# Reusing this client instance benefits from connection pooling.
 
 async_client = AsyncClient(
     transport=async_transport,
@@ -54,30 +46,33 @@ async_client = AsyncClient(
 @asynccontextmanager
 async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     """
-    Provides a new AsyncClient instance, primarily for use with dynamic proxy configurations
-    (e.g., Tor proxies for dark web monitoring).
-    It closes the client automatically upon exit.
+    Provides a new AsyncClient instance, primarily for use cases
+    requiring proxy support.
+
+    This is an async context manager, which ensures that the client's
+    resources are properly managed and its .aclose() method is called
+    automatically upon exiting the 'with' block.
+
+    Args:
+        proxies: An optional dictionary to configure proxies (e.g.,
+                 {"http://": "http://user:pass@10.10.1.10:3128/"}).
     """
     client = None
-    mounts = None
-    if proxies:
-        # Construct the mounts dictionary for httpx from the proxies dictionary.
-        # This example assumes a simple mapping; adjust if your proxy logic is more complex.
-
-        mounts = {
-            f"{scheme}://": httpx.AsyncProxy(
-                url=proxy_url,
-            )
-            for scheme, proxy_url in proxies.items()
-        }
     try:
+        # Solution 2: Pass the proxies dictionary directly to the client constructor,
+        # which is the correct and intended way to use proxies with httpx.
+
         client = AsyncClient(
             transport=async_transport,
             timeout=Timeout(NETWORK_TIMEOUT),
             headers={"User-Agent": "Chimera-Intel/6.0"},
-            mounts=mounts,
+            proxies=proxies,
         )
+        # Yield the client to the 'with' block for use.
+
         yield client
     finally:
+        # Ensure the client is closed to release connections, even if errors occur.
+
         if client:
             await client.aclose()
