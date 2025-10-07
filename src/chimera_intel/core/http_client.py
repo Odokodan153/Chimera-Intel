@@ -51,29 +51,28 @@ async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     Provides a new AsyncClient instance, primarily for use cases
     requiring proxy support.
 
-    This is an async context manager, which ensures that the client's
-    resources are properly managed and its .aclose() method is called
-    automatically upon exiting the 'with' block.
-
     Args:
-        proxies: An optional dictionary to configure proxies (e.g.,
-                 {"http://": "http://user:pass@10.10.1.10:3128/"}).
+        proxies: Optional dict with proxy configuration, e.g.:
+                 {"http": "http://user:pass@10.10.1.10:3128"}
     """
     client = None
     try:
-        # Create the client, passing the proxies directly to the constructor.
+# If proxies are provided, create a new client with the specified proxy settings.
+        if proxies and "http" in proxies:
+            transport = httpx.AsyncHTTPTransport(
+                retries=3,
+                proxy=proxies["http"]  
+            )
+        else:
+            transport = async_transport # Use the default transport if no proxy is specified.
 
         client = AsyncClient(
-            transport=async_transport,
+            transport=transport,
             timeout=Timeout(NETWORK_TIMEOUT),
             headers={"User-Agent": "Chimera-Intel/6.0"},
-            proxies=proxies,
         )
-        # Yield the client to the 'with' block for use.
-
         yield client
-    finally:
-        # Ensure the client is closed to release connections, even if errors occur.
 
+    finally:
         if client:
             await client.aclose()

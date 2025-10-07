@@ -1881,7 +1881,7 @@ class AVINTResult(BaseModel):
 
 
 # --- ORM Models ---
-class ScanResult(Base):
+class ScanResult(Base): # type: ignore
     """Represents a single scan result from any module."""
 
     __tablename__ = "scan_results"
@@ -1893,7 +1893,7 @@ class ScanResult(Base):
     result = Column(Text, nullable=False)
 
 
-class PageSnapshot(Base):
+class PageSnapshot(Base): # type: ignore
     """Represents a single snapshot of a monitored web page."""
 
     __tablename__ = "page_snapshots"
@@ -1905,7 +1905,7 @@ class PageSnapshot(Base):
     content = Column(LargeBinary, nullable=False)
 
 
-class HumintSource(Base):
+class HumintSource(Base): # type: ignore
     __tablename__ = "humint_sources"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -1914,7 +1914,7 @@ class HumintSource(Base):
     reports = relationship("HumintReport", back_populates="source")
 
 
-class HumintReport(Base):
+class HumintReport(Base): # type: ignore
     __tablename__ = "humint_reports"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
@@ -1923,7 +1923,7 @@ class HumintReport(Base):
     source = relationship("HumintSource", back_populates="reports")
 
 
-class ResponseRule(Base):
+class ResponseRule(Base): # type: ignore
     __tablename__ = "response_rules"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -1935,7 +1935,7 @@ class ResponseRule(Base):
     )  # e.g., ["iam:reset-password", "edr:quarantine-host"]
 
 
-class ForecastPerformance(Base):
+class ForecastPerformance(Base): # type: ignore
     __tablename__ = "forecast_performance"
     id = Column(Integer, primary_key=True, index=True)
     scenario = Column(String, index=True)
