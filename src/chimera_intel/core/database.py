@@ -96,6 +96,18 @@ def initialize_database() -> None:
             );
             """
         )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS page_snapshots (
+                id SERIAL PRIMARY KEY,
+                url TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                content BYTEA NOT NULL,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
         conn.commit()
         cursor.close()
         conn.close()
@@ -339,3 +351,43 @@ def get_all_scans_for_target(
             f"[bold red]Database Error:[/bold red] Could not fetch scans for target: {e}"
         )
         return []
+
+
+def save_page_snapshot(
+    url: str, current_hash: str, content: str
+) -> tuple[bool, str | None]:
+    """
+    Saves a snapshot of a web page's content if it has changed.
+    Args:
+        url (str): The URL of the page.
+        current_hash (str): The SHA256 hash of the page's current content.
+        content (str): The full HTML content of the page.
+    Returns:
+        A tuple containing a boolean indicating if a change was detected
+        and the hash of the previous version if it exists.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check for the most recent hash for this URL
+
+    cursor.execute(
+        "SELECT content_hash FROM page_snapshots WHERE url = %s ORDER BY timestamp DESC LIMIT 1",
+        (url,),
+    )
+    last_record = cursor.fetchone()
+    last_hash = last_record[0] if last_record else None
+
+    change_detected = last_hash is not None and last_hash != current_hash
+
+    # Insert the new snapshot
+
+    cursor.execute(
+        "INSERT INTO page_snapshots (url, content_hash, content) VALUES (%s, %s, %s)",
+        (url, current_hash, content.encode("utf-8")),
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return change_detected, last_hash

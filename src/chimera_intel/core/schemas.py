@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Union
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean, LargeBinary
 from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.ext.declarative import DeclarativeMeta
 import datetime
 from pydantic import BaseModel, Field
 
@@ -1113,6 +1114,13 @@ class ConfigNotifications(BaseModel):
     teams_webhook_url: Optional[str] = None
 
 
+class ConfigGraphDB(BaseModel):
+    """Configuration for the graph database from config.yaml."""
+    uri: str = "bolt://localhost:7687"
+    username: str = "neo4j"
+    password: str = "password"
+
+
 class AppConfig(BaseModel):
     """The main model for validating the entire config.yaml file."""
 
@@ -1120,6 +1128,7 @@ class AppConfig(BaseModel):
     modules: ConfigModules
     reporting: ConfigReporting = ConfigReporting()
     notifications: ConfigNotifications = ConfigNotifications()
+    graph_db: ConfigGraphDB = ConfigGraphDB()
 
 
 # --- Blockchain & Cryptocurrency OSINT Models ---
@@ -1859,7 +1868,31 @@ class AVINTResult(BaseModel):
     flights: List[FlightInfo] = []
     error: Optional[str] = None
 
-Base = declarative_base()
+Base: DeclarativeMeta = declarative_base()
+
+# --- ORM Models ---
+class ScanResult(Base):
+    """Represents a single scan result from any module."""
+
+    __tablename__ = "scan_results"
+    id = Column(Integer, primary_key=True, index=True)
+    project_name = Column(String, index=True, nullable=False)
+    module = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    # The result is stored as a JSON string in the database.
+    result = Column(Text, nullable=False)
+
+class PageSnapshot(Base):
+    """Represents a single snapshot of a monitored web page."""
+
+    __tablename__ = "page_snapshots"
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    content_hash = Column(String, nullable=False)
+    # Storing the full content allows for detailed diffing later.
+    content = Column(LargeBinary, nullable=False)
+
 
 class HumintSource(Base):
     __tablename__ = "humint_sources"

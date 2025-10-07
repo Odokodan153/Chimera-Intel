@@ -11,7 +11,7 @@ from hashlib import sha256
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
-from chimera_intel.core.scheduler import add_job
+from chimera_intel.core.daemon import add_job
 from chimera_intel.core.database import save_page_snapshot
 from chimera_intel.core.utils import (
     console,

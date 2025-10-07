@@ -12,7 +12,7 @@ from rich.console import Console
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
-from chimera_intel.core.scheduler import add_job
+from chimera_intel.core.daemon import add_job
 from chimera_intel.core.utils import send_slack_notification, send_teams_notification
 
 console = Console()

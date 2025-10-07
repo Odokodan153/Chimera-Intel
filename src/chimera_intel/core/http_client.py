@@ -10,9 +10,9 @@ maintainable network behavior.
 import httpx
 from httpx import Timeout, Client, AsyncClient
 from .config_loader import CONFIG
-from .schemas import AppConfig  # Import AppConfig type to resolve the error
+from .schemas import AppConfig
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any, cast  # Import cast for type narrowing
+from typing import Optional, Dict, Any, cast
 
 # Explicitly cast CONFIG to its AppConfig type to satisfy mypy's type inference.
 
@@ -21,12 +21,10 @@ CONFIG: AppConfig = cast(AppConfig, CONFIG)
 # --- Configuration ---
 # Load the global network timeout from the Pydantic config object.
 
-
 NETWORK_TIMEOUT = CONFIG.network.timeout
 
 # --- CHANGE: Correctly configure retries for the transport ---
 # The 'retries' parameter on the transport layer handles the retry logic.
-
 
 transport = httpx.HTTPTransport(retries=3)
 async_transport = httpx.AsyncHTTPTransport(retries=3)
@@ -38,7 +36,6 @@ async_transport = httpx.AsyncHTTPTransport(retries=3)
 
 # Synchronous client for regular (def) functions.
 
-
 sync_client = Client(
     transport=transport,
     timeout=Timeout(NETWORK_TIMEOUT),
@@ -46,7 +43,6 @@ sync_client = Client(
 )
 
 # Asynchronous client for high-performance (async def) functions.
-
 
 async_client = AsyncClient(
     transport=async_transport,
@@ -63,12 +59,23 @@ async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     It closes the client automatically upon exit.
     """
     client = None
+    mounts = None
+    if proxies:
+        # Construct the mounts dictionary for httpx from the proxies dictionary.
+        # This example assumes a simple mapping; adjust if your proxy logic is more complex.
+
+        mounts = {
+            f"{scheme}://": httpx.AsyncProxy(
+                url=proxy_url,
+            )
+            for scheme, proxy_url in proxies.items()
+        }
     try:
         client = AsyncClient(
             transport=async_transport,
             timeout=Timeout(NETWORK_TIMEOUT),
             headers={"User-Agent": "Chimera-Intel/6.0"},
-            proxies=proxies,
+            mounts=mounts,
         )
         yield client
     finally:
