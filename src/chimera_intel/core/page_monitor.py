@@ -7,8 +7,6 @@ from typing_extensions import Annotated
 import httpx
 from bs4 import BeautifulSoup
 import datetime
-import os
-from rich.console import Console
 from hashlib import sha256
 
 from chimera_intel.core.config_loader import CONFIG
