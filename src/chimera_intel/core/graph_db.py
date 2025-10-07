@@ -54,12 +54,12 @@ class GraphDatabase:
 # The CLI will import and use this instance to run queries.
 # Connection details are populated from the config.
 
-# Corrected configuration access from dict.get() to Pydantic dot notation
+# Corrected configuration access to match the schema definition
 
 graph_db_instance = GraphDatabase(
-    uri=CONFIG.graph_db.neo4j_uri,
-    user=CONFIG.graph_db.neo4j_user,
-    password=CONFIG.graph_db.neo4j_password,
+    uri=CONFIG.graph_db.uri,
+    user=CONFIG.graph_db.username,
+    password=CONFIG.graph_db.password,
 )
 
 
@@ -169,9 +169,11 @@ def build_and_save_graph(
                 )
         # Apply physics options from config.yaml
 
+        # Corrected access for the 'graph' dictionary
+
         physics_options = None
         if CONFIG.reporting and CONFIG.reporting.graph:
-            physics_options = CONFIG.reporting.graph.physics_options
+            physics_options = CONFIG.reporting.graph.get("physics_options")
         if physics_options:
             net.set_options(physics_options)
         net.save_graph(output_path)

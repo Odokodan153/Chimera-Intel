@@ -3,29 +3,30 @@ from httpx import AsyncClient, Client, Timeout
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, cast
 
-# Solution 1: Rename the imported CONFIG to avoid a 'no-redef' mypy error.
-# This allows us to import the raw configuration object and then create a typed version
-# with the same final name 'CONFIG' without conflicts.
 
 from .config_loader import CONFIG as RAW_CONFIG
 from .schemas import AppConfig
 
 # Cast the raw config to the AppConfig schema for proper type hinting and access.
 
+
 CONFIG: AppConfig = cast(AppConfig, RAW_CONFIG)
 
 # Define a global network timeout loaded from the application's configuration.
+
 
 NETWORK_TIMEOUT = CONFIG.network.timeout
 
 # Define reusable HTTP transports with a built-in retry mechanism for resilience.
 # This helps handle transient network errors automatically.
 
+
 transport = httpx.HTTPTransport(retries=3)
 async_transport = httpx.AsyncHTTPTransport(retries=3)
 
 # Global synchronous client for parts of the application that don't use async.
 # It's configured with the standard transport, timeout, and a custom User-Agent.
+
 
 sync_client = Client(
     transport=transport,
@@ -35,6 +36,7 @@ sync_client = Client(
 
 # Global asynchronous client for general-purpose, non-proxied API calls.
 # Reusing this client instance benefits from connection pooling.
+
 
 async_client = AsyncClient(
     transport=async_transport,
@@ -59,15 +61,23 @@ async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     """
     client = None
     try:
-        # Solution 2: Pass the proxies dictionary directly to the client constructor,
-        # which is the correct and intended way to use proxies with httpx.
+        # Create the client without the proxies first.
 
         client = AsyncClient(
             transport=async_transport,
             timeout=Timeout(NETWORK_TIMEOUT),
             headers={"User-Agent": "Chimera-Intel/6.0"},
-            proxies=proxies,
         )
+
+        # If proxies are provided, mount a new transport for each one.
+        # This is the correct way to handle proxies in recent httpx versions.
+
+        if proxies:
+            for scheme, proxy_url in proxies.items():
+                # Ensure the scheme is properly formatted for mounting
+
+                mount_scheme = f"{scheme.split(':')[0]}://"
+                client.mount(mount_scheme, httpx.AsyncHTTPTransport(proxy=proxy_url))
         # Yield the client to the 'with' block for use.
 
         yield client
