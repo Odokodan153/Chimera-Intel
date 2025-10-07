@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 import datetime
-from pydantic import BaseModel, Field, Base 
+from pydantic import BaseModel, Field
 
 # --- General Purpose Models ---
 
