@@ -1879,7 +1879,6 @@ class AVINTResult(BaseModel):
     flights: List[FlightInfo] = []
     error: Optional[str] = None
 
-Base = declarative_base()
 
 # --- ORM Models ---
 class ScanResult(Base):
