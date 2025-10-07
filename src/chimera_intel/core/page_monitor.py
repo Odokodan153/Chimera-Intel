@@ -6,12 +6,14 @@ import typer
 from typing_extensions import Annotated
 import httpx
 from bs4 import BeautifulSoup
-import datetime  # Fix for "type[datetime]" has no attribute "datetime"
+import datetime
+import os
+from rich.console import Console
 from hashlib import sha256
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
-from chimera_intel.core.scheduler import add_job  
+from chimera_intel.core.scheduler import add_job
 from chimera_intel.core.database import save_page_snapshot
 from chimera_intel.core.utils import (
     console,
@@ -46,17 +48,7 @@ async def check_for_changes(url: str, job_id: str):
             clean_text = soup.get_text(separator=" ", strip=True)
             current_hash = sha256(clean_text.encode("utf-8")).hexdigest()
 
-            # --- Database interaction (Placeholder for real DB query/update) ---
-            # In a real system, we'd fetch the last snapshot's hash from the database.
-
-            # Simulated DB lookup:
-
-            last_snapshot = {
-                "hash": "first_run_placeholder"
-            }  # Simulate fetching last hash
-
-            # For demonstration, we'll rely on the save_page_snapshot implementation
-            # to handle the initial run/comparison logic.
+            # The logic relies on save_page_snapshot to handle the persistence and comparison.
 
             change_detected, old_hash = save_page_snapshot(
                 url=url, current_hash=current_hash, content=response.text, job_id=job_id
