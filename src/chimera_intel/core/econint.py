@@ -1,7 +1,6 @@
 import logging
 import asyncio
-from typing import Optional
-from pydantic import BaseModel, Field
+from  .schemas import MacroIndicators, MicroIndicators 
 import httpx
 import wbdata
 import typer
@@ -11,33 +10,6 @@ from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
-
-class MacroIndicators(BaseModel):
-    """Represents key macroeconomic indicators for a country."""
-
-    country: str
-    gdp_latest: Optional[float] = Field(
-        None, description="Most recent Gross Domestic Product (in current US$)."
-    )
-    inflation_latest: Optional[float] = Field(
-        None, description="Most recent inflation rate (annual %)."
-    )
-    unemployment_latest: Optional[float] = Field(
-        None, description="Most recent unemployment rate (%)."
-    )
-    error: Optional[str] = None
-
-
-class MicroIndicators(BaseModel):
-    """Represents key microeconomic indicators for a company."""
-
-    symbol: str
-    latest_price: Optional[float] = Field(None, description="Latest stock price.")
-    market_cap: Optional[str] = Field(
-        None, description="Company's market capitalization."
-    )
-    pe_ratio: Optional[float] = Field(None, description="Price-to-Earnings ratio.")
-    error: Optional[str] = None
 
 
 def get_macro_indicators(country_code: str) -> MacroIndicators:
