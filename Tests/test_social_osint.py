@@ -1,69 +1,122 @@
 import unittest
 import asyncio
-from unittest.mock import patch, AsyncMock
-from chimera_intel.core.social_osint import find_social_profiles
+import json
+from unittest.mock import patch, MagicMock, AsyncMock
+from typer.testing import CliRunner
 
-# FIX: Patch SitesInformation at the class level to prevent network calls during all tests
+from chimera_intel.core.social_osint import find_social_profiles, social_osint_app
+from chimera_intel.core.schemas import SocialOSINTResult, SocialProfile
+
+# Mock the Sherlock result status enum
 
 
-@patch("chimera_intel.core.social_osint.SitesInformation")
-class TestSocialOsint(unittest.TestCase):
-    """Test cases for the social_osint module."""
+class MockClaimedStatus:
+    name = "CLAIMED"
+
+
+runner = CliRunner()
+
+
+class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
+    """Test cases for the Social Media OSINT (Sherlock) module."""
+
+    # --- Function Tests ---
 
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_success(self, mock_sherlock, mock_sites_info):
+    async def test_find_social_profiles_success(self, mock_sherlock):
         """Tests a successful social media profile search."""
-        # This helper class mimics the structure of the Sherlock enum
-
-        class MockStatus:
-            def __init__(self, name):
-                self.name = name
-
-        # Mock the return value of the sherlock function
+        # Arrange
 
         mock_sherlock.return_value = {
             "GitHub": {
-                "status": MockStatus("CLAIMED"),
+                "status": MockClaimedStatus(),
                 "url_user": "https://github.com/testuser",
             },
-            "Twitter": {"status": MockStatus("AVAILABLE"), "url_user": ""},
+            "Twitter": {
+                "status": MockClaimedStatus(),
+                "url_user": "https://twitter.com/testuser",
+            },
         }
 
-        result = asyncio.run(find_social_profiles("testuser"))
+        # Act
 
-        self.assertEqual(len(result.found_profiles), 1)
-        self.assertEqual(result.found_profiles[0].name, "GitHub")
-        self.assertEqual(result.found_profiles[0].url, "https://github.com/testuser")
+        result = await find_social_profiles("testuser")
+
+        # Assert
+
+        self.assertIsInstance(result, SocialOSINTResult)
+        self.assertIsNone(result.error)
+        self.assertEqual(len(result.found_profiles), 2)
+        profile_names = {p.name for p in result.found_profiles}
+        self.assertIn("GitHub", profile_names)
+        self.assertIn("Twitter", profile_names)
+
+    @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
+    async def test_find_social_profiles_no_results(self, mock_sherlock):
+        """Tests a search that yields no results."""
+        # Arrange
+
+        mock_sherlock.return_value = {}
+
+        # Act
+
+        result = await find_social_profiles("nonexistentuser")
+
+        # Assert
+
+        self.assertEqual(len(result.found_profiles), 0)
         self.assertIsNone(result.error)
 
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_no_results(self, mock_sherlock, mock_sites_info):
-        """Tests a search that yields no claimed profiles."""
+    async def test_find_social_profiles_sherlock_error(self, mock_sherlock):
+        """Tests error handling when the Sherlock library raises an exception."""
+        # Arrange
 
-        class MockStatus:
-            def __init__(self, name):
-                self.name = name
+        mock_sherlock.side_effect = Exception("Network timeout")
 
-        mock_sherlock.return_value = {
-            "Twitter": {"status": MockStatus("AVAILABLE"), "url_user": ""}
-        }
+        # Act
 
-        result = asyncio.run(find_social_profiles("testuser_no_profiles"))
-        self.assertEqual(len(result.found_profiles), 0)
+        result = await find_social_profiles("testuser")
 
-    @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    def test_find_social_profiles_sherlock_error(self, mock_sherlock, mock_sites_info):
-        """Tests the search when the sherlock library raises an exception."""
-        # This test is more conceptual for robustness, ensuring the function doesn't crash.
+        # Assert
 
-        mock_sherlock.side_effect = Exception("Sherlock internal error")
-
-        # We expect the function to handle the error gracefully and return an empty list.
-
-        result = asyncio.run(find_social_profiles("testuser"))
-        self.assertEqual(len(result.found_profiles), 0)
         self.assertIsNotNone(result.error)
-        self.assertIn("Sherlock internal error", result.error)
+        self.assertIn("Network timeout", result.error)
+
+    # --- CLI Tests ---
+
+    @patch(
+        "chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock
+    )
+    def test_cli_run_social_osint_scan_success(self, mock_find_profiles):
+        """Tests a successful run of the 'social-osint run' CLI command."""
+        # Arrange
+
+        mock_find_profiles.return_value = SocialOSINTResult(
+            username="cliuser",
+            found_profiles=[
+                SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
+            ],
+        )
+
+        # Act
+
+        result = runner.invoke(social_osint_app, ["run", "cliuser"])
+
+        # Assert
+
+        self.assertEqual(result.exit_code, 0)
+        mock_find_profiles.assert_awaited_with("cliuser")
+        output = json.loads(result.stdout)
+        self.assertEqual(output["username"], "cliuser")
+        self.assertEqual(len(output["found_profiles"]), 1)
+        self.assertEqual(output["found_profiles"][0]["name"], "GitLab")
+
+    def test_cli_run_no_username(self):
+        """Tests that the CLI command fails if no username is provided."""
+        result = runner.invoke(social_osint_app, ["run"])
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("Missing argument 'USERNAME'", result.output)
 
 
 if __name__ == "__main__":

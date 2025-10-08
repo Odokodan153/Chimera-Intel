@@ -26,6 +26,7 @@ The application is composed of several key components that work together to form
     * **Scan Modules** (`footprint.py`, `web_analyzer.py`, etc.): Responsible for *offensive* data gathering. They interact with external APIs and parse the results.
     * **Defensive Module** (`defensive.py`): Responsible for *defensive* counter-intelligence, such as checking for data breaches or finding potential phishing domains.
     * **Analysis Modules** (`ai_core.py`, `strategist.py`, etc.): These modules do not gather new data. Instead, they consume data collected by other modules to perform high-level analysis.
+    * **Economic Intelligence (ECONINT) Module** (`econint.py`): Provides deep analysis of macroeconomic factors and supply chain vulnerabilities. This module integrates global economic indicators, trade data, and shipping logistics to model the impact of geopolitical events on specific industries or companies.
 
 * **Data Schemas (`src/chimera_intel/core/schemas.py`):**
     This file is the **single source of truth for all data structures** in the application. By using Pydantic models, we ensure that all data flowing between modules is validated, type-safe, and predictable. This eliminates a huge category of potential bugs and makes the code much easier to reason about.

@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_metacognition"
+version = "0.1.0"
+description = "A 'ghost in the machine'—an AI that monitors, analyzes, and optimizes the performance of all other modules."
+dependencies = [
+    "chimera-intel",
+]

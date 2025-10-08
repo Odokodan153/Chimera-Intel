@@ -2088,5 +2088,272 @@ class GraphNarrativeResult(BaseModel):
     narrative_text: str
     error: Optional[str] = None
 
+# --- Deep Research ---
+class IntelFinding(BaseModel):
+    """Represents a single piece of structured intelligence."""
+    source_type: str = Field(..., description="The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).")
+    summary: str = Field(..., description="A concise summary of the key finding.")
+    reference: str = Field(..., description="A URL or source reference for verification.")
+    risk_level: str = Field(..., description="Assessed risk: Low, Medium, High, or Critical.")
+    confidence: str = Field(..., description="Confidence level of the finding: Low, Medium, High.")
+
+class KnowledgeGraph(BaseModel):
+    """Represents the constructed knowledge graph of interconnected entities."""
+    nodes: List[Dict[str, Any]] = Field(..., description="List of nodes (entities) in the graph.")
+    edges: List[Dict[str, Any]] = Field(..., description="List of edges (relationships) connecting the nodes.")
+
+class PESTAnalysis(BaseModel):
+    """Represents a Political, Economic, Social, and Technological analysis."""
+    political: List[str] = Field(..., description="Political factors affecting the target.")
+    economic: List[str] = Field(..., description="Economic factors and trends affecting the target.")
+    social: List[str] = Field(..., description="Social and cultural trends relevant to the target.")
+    technological: List[str] = Field(..., description="Technological landscape and disruptions affecting the target.")
+
+class DeepResearchResult(BaseModel):
+    """The final, structured output of a deep research operation."""
+    topic: str
+    target_profile: Dict[str, Any]
+    strategic_summary: str
+    pest_analysis: PESTAnalysis
+    intelligence_gaps: List[str]
+    recommended_actions: List[str]
+    intelligence_findings: List[IntelFinding]
+    knowledge_graph: KnowledgeGraph
+
+# --- Economics ---
+class EconomicIndicators(BaseModel):
+    country: str
+    indicators: Dict[str, Any] = Field(default_factory=dict)
+    error: Optional[str] = None
+
+class TrackingUpdate(BaseModel):
+    """Details of a single tracking event."""
+    status: str
+    message: str
+    timestamp: str
+
+# --- Logistics ---
+class ShipmentDetails(BaseModel):
+    """Comprehensive details of a tracked shipment."""
+    tracking_code: str
+    carrier: str
+    status: str
+    estimated_delivery_date: Optional[str] = None
+    updates: List[TrackingUpdate] = []
+    error: Optional[str] = None
+
+# --- Crypto ---
+class CryptoData(BaseModel):
+    """Represents historical data for a cryptocurrency."""
+
+    symbol: str
+    market: str
+    history: Optional[Dict[str, Dict[str, str]]] = None
+    error: Optional[str] = None
+
+# --- Cyber-Physical Systems Intelligence ---
+class CryptoForecast(BaseModel):
+    """Represents a price forecast for a cryptocurrency."""
+
+    symbol: str
+    forecast: Optional[List[float]] = None
+    error: Optional[str] = None
+
+class CyberPhysicalSystemNode(BaseModel):
+    """A node in the cyber-physical system graph."""
+
+    id: str
+    node_type: str  # e.g., 'PLC', 'SCADA Server', 'Substation', 'GPS Satellite'
+    attributes: Dict[str, Any] = {}
+
+class CascadingFailurePath(BaseModel):
+    """Represents a potential path of cascading failure."""
+
+    path: List[str]
+    description: str
+
+
+class CPSAnalysisResult(BaseModel):
+    """The result of a Cyber-Physical System analysis (without the graph object)."""
+    critical_nodes: List[str] = Field(default_factory=list)
+    failure_paths: List[CascadingFailurePath] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- Systemic Intelligence ---
+class OTAsset(BaseModel):
+    device_id: str
+    location: str
+    vulnerabilities: List[str] = Field(default_factory=list)
+
+class MacroIndicators(BaseModel):
+    country: str
+    gdp: float
+
+class SystemNode(BaseModel):
+    """A node in the systemic intelligence graph."""
+    id: str
+    layer: str
+    attributes: Dict[str, Any] = Field(default_factory=dict)
+
+class EmergentProperty(BaseModel):
+    """Represents an emergent property of the system."""
+    property_type: str
+    nodes: List[str] = Field(default_factory=list)
+    description: str
+
+class SYSINTAnalysisResult(BaseModel):
+    """The result of a Systemic Intelligence analysis (without the graph object)."""
+    emergent_properties: List[EmergentProperty] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- Ethical Governance ---
+class Target(BaseModel):
+    """Represents a structured target for an operation."""
+    id: str
+    category: str  # e.g., 'network', 'individual', 'infrastructure'
+    jurisdiction: Optional[str] = None
+
+class Operation(BaseModel):
+    """Represents a proposed operation with structured targets."""
+    operation_id: str
+    operation_type: str
+    is_offensive: bool = False
+    targets: List[Target] = Field(default_factory=list)
+    targets_eu_citizen: bool = False # Kept for specific GDPR check
+    has_legal_basis: bool = False
+    justification: Optional[str] = None
+
+class ComplianceViolation(BaseModel):
+    """Represents a single rule violation with severity."""
+    rule_id: str
+    framework: str
+    severity: str
+    description: str
+
+class ComplianceResult(BaseModel):
+    """Holds the result of a compliance audit."""
+    operation_id: str
+    is_compliant: bool
+    violations: List[ComplianceViolation] = Field(default_factory=list)
+    audit_log: List[str] = Field(default_factory=list)
+
+# --- Metacognition & Systemic Evolution ---
+class OperationLog(BaseModel):
+    """Represents a log of a single intelligence-gathering action."""
+
+    module_name: str
+    success: bool
+    resource_cost: float  # e.g., API credits, CPU time, etc.
+    intelligence_tags: List[str] = Field(default_factory=list)
+
+
+class ModulePerformance(BaseModel):
+    """Analyzed performance of a single module."""
+
+    module_name: str
+    success_rate: float
+    average_cost: float
+    efficiency_score: float
+
+
+class OptimizationRecommendation(BaseModel):
+    """A recommendation for optimizing future operations."""
+
+    recommendation: str
+    justification: str
+
+
+class IntelligenceGap(BaseModel):
+    """An identified gap in the current intelligence picture."""
+
+    gap_description: str
+    generated_collection_requirement: str
+
+
+class MetacognitionReport(BaseModel):
+    """A complete report from the metacognitive analysis."""
+
+    performance_analysis: List[ModulePerformance] = Field(default_factory=list)
+    optimizations: List[OptimizationRecommendation] = Field(default_factory=list)
+    gaps: List[IntelligenceGap] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- Dissemination & Actionable Output ---
+class IntelligenceFinding(BaseModel):
+    """A single finding within an intelligence report."""
+
+    finding_id: str
+    description: str
+    severity: str  # e.g., 'Low', 'Medium', 'High', 'Critical'
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    raw_data: Optional[Dict[str, Any]] = None
+
+
+class IntelligenceReport(BaseModel):
+    """A complete, finalized intelligence report."""
+
+    report_id: str
+    title: str
+    strategic_summary: str
+    key_findings: List[IntelligenceFinding] = Field(default_factory=list)
+
+class Task(BaseModel):
+    """Represents a single task for a module to execute."""
+
+    id: int
+    module: str
+    params: Dict[str, Any]
+    status: str = "pending"
+    result: Optional[Any] = None
+    severity: int = 1
+
+# --- Autonomous Intelligence Agent ---
+
+class AnalysisResult(BaseModel):
+    """Represents the output from a single intelligence module."""
+
+    module_name: str
+    data: Any
+
+
+class Hypothesis(BaseModel):
+    """Represents a hypothesis generated by the reasoning engine."""
+
+    statement: str
+    confidence: float
+
+
+class Recommendation(BaseModel):
+    """Represents a recommended course of action."""
+
+    action: str
+    priority: str  # e.g., 'Low', 'Medium', 'High'
+
+
+class ReasoningOutput(BaseModel):
+    """The output of the Reasoning Engine's analysis."""
+
+    analytical_summary: str
+    hypotheses: List[Hypothesis] = Field(default_factory=list)
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    next_steps: List[Dict[str, Any]] = Field(default_factory=list)
+class Plan(BaseModel):
+    """Represents the sequence of tasks to achieve an objective."""
+
+    objective: str  # Each plan now has its own objective
+    tasks: List[Task] = Field(default_factory=list)
+
+
+class SynthesizedReport(BaseModel):
+    """The final, synthesized report for the human analyst."""
+
+    objective: str
+    summary: str
+    hypotheses: List[Hypothesis] = Field(default_factory=list)
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    key_findings: List[str] = Field(default_factory=list)
+    raw_outputs: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 
 

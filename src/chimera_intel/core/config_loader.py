@@ -76,6 +76,8 @@ class ApiKeys(BaseSettings):
     courtlistener_api_key: Optional[str] = Field(None, alias="COURTLISTENER_API_KEY")
     twitter_bearer_token: Optional[str] = Field(None, alias="TWITTER_BEARER_TOKEN")
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
+    alpha_vantage_api_key = Field(None, alias="ALPHA_VANTAGE_API_KEY")
+    easypost_api_key = Field(None, alias="EASYPOST_API_KEYUBE_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
     aisstream_api_key: Optional[str] = Field(None, alias="AISSTREAM_API_KEY")
