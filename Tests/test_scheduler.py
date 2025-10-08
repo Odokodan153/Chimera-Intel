@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime
 
 from chimera_intel.core.scheduler import is_time_to_run, add_job

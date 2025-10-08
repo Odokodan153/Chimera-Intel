@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 from .schemas import Operation, ComplianceResult, ComplianceViolation
 import typer
 from rich.console import Console
@@ -17,11 +17,6 @@ logging.basicConfig(
     ]
 )
 audit_logger = logging.getLogger("ETHINT_Audit")
-
-
-# --- Pydantic Models ---
-
-
 
 # --- Core Logic ---
 

@@ -1,6 +1,6 @@
 import unittest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.physical_osint import (
@@ -9,8 +9,7 @@ from chimera_intel.core.physical_osint import (
 )
 from chimera_intel.core.schemas import (
     PhysicalSecurityResult,
-    PhysicalLocation,
-    ProjectConfig,
+    PhysicalLocation
 )
 
 runner = CliRunner()

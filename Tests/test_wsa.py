@@ -1,6 +1,5 @@
 import unittest
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.weak_signal_analyzer import (
@@ -10,8 +9,7 @@ from chimera_intel.core.weak_signal_analyzer import (
 )
 from chimera_intel.core.schemas import (
     AmplifiedEventResult,
-    WeakSignal,
-    ProjectConfig,
+    WeakSignal
 )
 
 runner = CliRunner()

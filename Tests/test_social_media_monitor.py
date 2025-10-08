@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
@@ -11,8 +10,7 @@ from chimera_intel.core.social_media_monitor import (
 from chimera_intel.core.schemas import (
     TwitterMonitoringResult,
     YouTubeMonitoringResult,
-    Tweet,
-    YouTubeVideo,
+    Tweet
 )
 
 runner = CliRunner()

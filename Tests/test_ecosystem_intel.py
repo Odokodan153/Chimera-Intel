@@ -1,5 +1,4 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 import json
@@ -11,10 +10,7 @@ from chimera_intel.core.ecosystem_intel import (
     ecosystem_app,
 )
 from chimera_intel.core.schemas import (
-    EcosystemResult,
     DiscoveredPartner,
-    DiscoveredCompetitor,
-    DiscoveredDistributor,
     GNewsResult,
     TradeDataResult,
     ProjectConfig,

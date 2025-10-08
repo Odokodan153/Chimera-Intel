@@ -1,6 +1,5 @@
 import unittest
-import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.historical_analyzer import (

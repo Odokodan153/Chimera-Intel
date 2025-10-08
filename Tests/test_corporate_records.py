@@ -20,8 +20,7 @@ from chimera_intel.core.corporate_records import (
 from chimera_intel.core.schemas import (
     CorporateRegistryResult,
     SanctionsScreeningResult,
-    PEPScreeningResult,
-    ProjectConfig,
+    PEPScreeningResult
 )
 
 runner = CliRunner()

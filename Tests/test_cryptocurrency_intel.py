@@ -1,5 +1,4 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.cryptocurrency_intel import (
     get_crypto_data,

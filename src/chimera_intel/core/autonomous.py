@@ -9,7 +9,6 @@ from rich.panel import Panel
 import datetime
 import psycopg2
 import requests
-import os
 import pandas as pd
 from scipy.stats import ks_2samp
 
@@ -345,7 +344,7 @@ def run_backtesting(
             if predicted == actual:
                 correct_predictions += 1
         accuracy = (correct_predictions / len(records)) * 100
-        console.print(f"[bold green]Backtesting Complete:[/bold green]")
+        console.print("[bold green]Backtesting Complete:[/bold green]")
         console.print(f"  - Total Forecasts: {len(records)}")
         console.print(f"  - Correct Predictions: {correct_predictions}")
         console.print(f"  - Accuracy: {accuracy:.2f}%")

@@ -1,6 +1,5 @@
 import logging
 import asyncio
-import re
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from urllib.parse import urlparse

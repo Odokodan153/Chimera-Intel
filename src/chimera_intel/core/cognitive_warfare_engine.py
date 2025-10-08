@@ -6,8 +6,7 @@ Analyzes and counters influence operations and weaponized narratives.
 import typer
 from rich.console import Console
 import pandas as pd
-from typing import Optional, List, Dict, Any
-
+from typing import Optional, List
 from .narrative_analyzer import track_narrative
 from .social_media_monitor import monitor_twitter_stream
 
@@ -159,7 +158,7 @@ class CognitiveWarfareEngine:
         counter_narrative = template.format(topic=self.narrative_query)
 
         console.print(
-            f"  - [bold]Dominant Trigger:[/bold] [yellow]{trigger_key.capitalize()}[/yellow]"
+            "  - [bold]Dominant Trigger:[/bold] [yellow]{trigger_key.capitalize()}[/yellow]"
         )
         console.print(f"  - [bold]Generated 'Digital Antibody':[/bold]")
         console.print(f'    [green i]"{counter_narrative}"[/green i]')

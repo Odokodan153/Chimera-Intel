@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-import psycopg2
 
 from chimera_intel.core.humint import (
     add_humint_source,

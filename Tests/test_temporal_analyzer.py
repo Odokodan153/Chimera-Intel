@@ -9,9 +9,7 @@ from chimera_intel.core.temporal_analyzer import (
     temporal_app,
 )
 from chimera_intel.core.schemas import (
-    ShiftingIdentityResult,
-    TemporalSnapshot,
-    ProjectConfig,
+    ShiftingIdentityResult
 )
 
 runner = CliRunner()

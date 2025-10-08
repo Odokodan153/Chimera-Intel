@@ -1,7 +1,6 @@
 import logging
 import asyncio
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from .schemas import ShipmentDetails, TrackingUpdate
 import httpx
 import typer
 from rich.console import Console
@@ -10,24 +9,6 @@ from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
-
-class TrackingUpdate(BaseModel):
-    """Details of a single tracking event."""
-
-    status: str
-    message: str
-    timestamp: str
-
-
-class ShipmentDetails(BaseModel):
-    """Comprehensive details of a tracked shipment."""
-
-    tracking_code: str
-    carrier: str
-    status: str
-    estimated_delivery_date: Optional[str] = None
-    updates: List[TrackingUpdate] = []
-    error: Optional[str] = None
 
 
 async def track_shipment(tracking_code: str, carrier: str) -> ShipmentDetails:

@@ -1,6 +1,5 @@
 import unittest
-import json
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from typer.testing import CliRunner
 
 from chimera_intel.core.grapher import generate_knowledge_graph, graph_app

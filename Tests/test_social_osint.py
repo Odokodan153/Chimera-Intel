@@ -1,7 +1,6 @@
 import unittest
-import asyncio
 import json
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.social_osint import find_social_profiles, social_osint_app

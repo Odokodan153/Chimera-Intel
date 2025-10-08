@@ -1,9 +1,6 @@
 import unittest
-import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 from typer.testing import CliRunner
-import json
-
 from chimera_intel.core.cybint import generate_attack_surface_report, cybint_app
 from chimera_intel.core.schemas import (
     AttackSurfaceReport,

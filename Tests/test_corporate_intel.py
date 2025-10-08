@@ -1,9 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from httpx import Response, RequestError
+from httpx import Response
 from typer.testing import CliRunner
-import json
-
 from chimera_intel.core.corporate_intel import (
     get_hiring_trends,
     get_employee_sentiment,

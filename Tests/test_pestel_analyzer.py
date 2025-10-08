@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.pestel_analyzer import (
@@ -8,8 +8,7 @@ from chimera_intel.core.pestel_analyzer import (
 )
 from chimera_intel.core.schemas import (
     PESTELAnalysisResult,
-    SWOTAnalysisResult,
-    ProjectConfig,
+    SWOTAnalysisResult
 )
 
 runner = CliRunner()

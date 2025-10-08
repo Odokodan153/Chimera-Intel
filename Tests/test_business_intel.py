@@ -1,10 +1,8 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
 import typer
-import json
 
 # Import the specific Typer app for this module
 

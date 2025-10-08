@@ -2,7 +2,6 @@ import unittest
 import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-from PIL import Image
 
 from chimera_intel.core.imint import (
     analyze_image_metadata,

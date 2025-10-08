@@ -1,10 +1,10 @@
 import unittest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.opsec_analyzer import generate_opsec_report, opsec_app
-from chimera_intel.core.schemas import OpsecReport, CompromisedCommitter, ProjectConfig
+from chimera_intel.core.schemas import OpsecReport, CompromisedCommitter
 
 runner = CliRunner()
 

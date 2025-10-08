@@ -1,10 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import json
 from typer.testing import CliRunner
-
 from chimera_intel.core.differ import diff_app
-from chimera_intel.core.schemas import FormattedDiff, MicroSignal, DiffResult
+
 
 runner = CliRunner()
 

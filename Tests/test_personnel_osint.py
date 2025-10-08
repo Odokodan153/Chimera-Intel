@@ -6,7 +6,6 @@ from typer.testing import CliRunner
 from chimera_intel.core.personnel_osint import find_employee_emails, personnel_osint_app
 from chimera_intel.core.schemas import (
     PersonnelOSINTResult,
-    EmployeeProfile,
     ProjectConfig,
 )
 

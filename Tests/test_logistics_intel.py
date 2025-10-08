@@ -1,5 +1,4 @@
 import unittest
-import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 from chimera_intel.core.logistics_intel import track_shipment, ShipmentDetails
 

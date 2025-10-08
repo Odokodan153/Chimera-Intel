@@ -1,8 +1,8 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 import json
+import socket
 
 from chimera_intel.core.offensive import (
     discover_apis,
@@ -84,8 +84,6 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         mock_to_thread.side_effect = socket.gaierror
 
         # This import is needed for the side_effect
-
-        import socket
 
         # Act
 

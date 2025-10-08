@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 from httpx import Response, RequestError
 
 from chimera_intel.core.legint import search_court_dockets, legint_app
-from chimera_intel.core.schemas import DocketSearchResult, CourtRecord, ProjectConfig
+from chimera_intel.core.schemas import DocketSearchResult
 
 runner = CliRunner()
 

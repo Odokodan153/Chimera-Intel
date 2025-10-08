@@ -315,5 +315,5 @@ def run_deep_research_cli(
                 console.print(f"  - [green]{action}[/green]")
     else:
         console.print(
-            f"[bold red]Strategic analysis failed. Check logs for details.[/bold red]"
+            "[bold red]Strategic analysis failed. Check logs for details.[/bold red]"
         )

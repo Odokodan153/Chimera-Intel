@@ -1,5 +1,4 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock, mock_open
 from typer.testing import CliRunner
 import json

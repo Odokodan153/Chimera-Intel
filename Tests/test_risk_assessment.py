@@ -1,12 +1,10 @@
 import unittest
-import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 from chimera_intel.core.risk_assessment import (
     calculate_risk,
     assess_risk_from_indicator,
 )
 from chimera_intel.core.schemas import (
-    RiskAssessmentResult,
     ThreatIntelResult,
     PulseInfo,
     Vulnerability,

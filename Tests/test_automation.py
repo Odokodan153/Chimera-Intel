@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open, AsyncMock
 import subprocess
-import json
 from chimera_intel.core.automation import (
     enrich_iocs,
     enrich_cves,
