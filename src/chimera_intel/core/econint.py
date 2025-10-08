@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from typing import Optional, Dict
+from typing import Optional
 from pydantic import BaseModel, Field
 import httpx
 import wbdata

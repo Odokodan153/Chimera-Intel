@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from chimera_intel.core.correlation_engine import run_correlations, _trigger_scan
 

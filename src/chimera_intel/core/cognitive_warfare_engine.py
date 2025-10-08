@@ -160,8 +160,8 @@ class CognitiveWarfareEngine:
         console.print(
             "  - [bold]Dominant Trigger:[/bold] [yellow]{trigger_key.capitalize()}[/yellow]"
         )
-        console.print(f"  - [bold]Generated 'Digital Antibody':[/bold]")
-        console.print(f'    [green i]"{counter_narrative}"[/green i]')
+        console.print("  - [bold]Generated 'Digital Antibody':[/bold]")
+        console.print('    [green i]"{counter_narrative}"[/green i]')
 
 
 cognitive_warfare_app = typer.Typer()

@@ -22,7 +22,7 @@ from chimera_intel.core.aia_framework import (
 
 # Mock data from other modules for controlled testing
 
-from chimera_intel.core.schemas import FootprintResult, Vulnerability, ThreatIntelResult
+from chimera_intel.core.schemas import FootprintResult, ThreatIntelResult
 
 
 class TestAIAFrameworkWithReasoning(unittest.TestCase):
