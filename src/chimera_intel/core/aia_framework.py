@@ -4,7 +4,6 @@
 import logging
 import json
 import asyncio
-import re
 import uuid
 import os
 import importlib
