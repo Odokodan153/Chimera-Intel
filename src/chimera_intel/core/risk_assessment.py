@@ -72,6 +72,7 @@ def calculate_risk(
             vulnerabilities=vulnerabilities,
             threat_actors=threat_actors,
             mitigation=mitigation,
+            error=None,  # Explicitly set error to None for success path to satisfy mypy
         )
     except Exception as e:
         logger.error(

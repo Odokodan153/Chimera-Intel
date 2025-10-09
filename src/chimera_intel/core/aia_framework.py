@@ -7,6 +7,9 @@ from .schemas import (
     Plan,
     Task,
     SynthesizedReport,
+    Hypothesis,
+    Recommendation,
+    AnalysisResult,
 )
 import typer
 from rich.console import Console
@@ -20,7 +23,6 @@ from .threat_intel import get_threat_intel_otx
 from .advanced_reasoning_engine import (
     generate_reasoning,
     decompose_objective,
-    AnalysisResult,
 )
 
 # --- Logger Configuration ---
@@ -101,9 +103,14 @@ def synthesize_and_refine(plan: Plan) -> Tuple[SynthesizedReport, Plan]:
     """
     Synthesizes results and uses the Reasoning Engine to generate insights and new tasks.
     """
-    # Fix for missing mandatory argument 'summary' for SynthesizedReport
-
-    report = SynthesizedReport(objective=plan.objective, summary="")
+    report = SynthesizedReport(
+        objective=plan.objective,
+        summary="",
+        hypotheses=[],
+        recommendations=[],
+        key_findings=[],
+        raw_outputs=[],
+    )
 
     completed_results = [
         AnalysisResult(module_name=task.module, data=task.result)

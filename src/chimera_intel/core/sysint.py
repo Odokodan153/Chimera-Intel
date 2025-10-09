@@ -79,7 +79,7 @@ def analyze_for_emergent_properties(graph: nx.MultiDiGraph) -> SYSINTAnalysisRes
         # Better check for non-zero centrality
 
         if any(v > 0 for v in centrality.values()):
-            # FIX 2: Use lambda function for explicit key access
+            #: Use lambda function for explicit key access
 
             bridge_nodes = sorted(
                 centrality, key=lambda node: centrality[node], reverse=True
@@ -141,7 +141,7 @@ def run_sysint_analysis(
     try:
         with open(project_file, "r", encoding="utf-8") as f:
             project_data = json.load(f)
-        # FIX 3: Explicitly type the intel_sources dictionary to satisfy mypy
+        #: Explicitly type the intel_sources dictionary to satisfy mypy
 
         intel_sources: Dict[str, List[Any]] = {
             "cyber": [OTAsset(**item) for item in project_data.get("cyber", [])],
