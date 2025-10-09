@@ -8,7 +8,7 @@ from chimera_intel.core.strategist import (
 from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestStrategist(unittest.TestCase):

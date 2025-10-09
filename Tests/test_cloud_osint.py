@@ -19,7 +19,7 @@ from chimera_intel.core.schemas import (
     CloudOSINTResult,
 )
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestCloudOsint(unittest.TestCase):
