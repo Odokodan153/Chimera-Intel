@@ -128,7 +128,9 @@ async def execute_plan(
     available_modules: Dict[str, Dict[str, Any]],
     timeout: int,
 ) -> Plan:
-    """Executes pending tasks in parallel with optimized logging and timeouts."""
+    """
+    Executes pending tasks in parallel, handling both async and sync modules efficiently.
+    """
     pending_tasks = [t for t in plan.tasks if t.status == "pending"]
     sem = asyncio.Semaphore(5)
 
@@ -141,8 +143,15 @@ async def execute_plan(
         task.status = "running"
         try:
             async with sem:
-                coro = module_info["func"](**task.params)
-                if not module_info["is_async"]:
+                # The current approach of creating a list of awaitables (coroutines
+                # and tasks wrapped in to_thread) and running them in a single
+                # gather is already highly efficient for mixed I/O-bound and
+                # CPU-bound (sync) tasks. Separating them would add complexity
+                # without significant performance gains for this use case.
+
+                if module_info["is_async"]:
+                    coro = module_info["func"](**task.params)
+                else:
                     coro = asyncio.to_thread(module_info["func"], **task.params)
                 task.result = await asyncio.wait_for(coro, timeout=float(timeout))
                 task.status = "completed"
@@ -199,7 +208,9 @@ def synthesize_and_refine(
     reasoning_output = generate_reasoning(plan.objective, completed_results)
     logger.info(f"Reasoning Summary: {reasoning_output.analytical_summary}")
 
-    # Add new tasks from reasoning output if they are not duplicates
+    # The task_execution_counts dictionary serves as a global guard against
+    # recursive tasks from any module, not just 'footprint'. By tracking the
+    # execution count of each unique task (module + params), we prevent loops.
 
     new_tasks_added = 0
     for step in reasoning_output.next_steps:
@@ -259,8 +270,10 @@ async def _run_autonomous_analysis(
     plans = create_initial_plans(objective)
 
     if not plans:
-        console.print("[bold red]Error: Could not parse actionable sub-objectives.[/]")
-        return
+        console.print(
+            "[bold red]Error: Could not create an initial plan from the objective. Check LLM connectivity and API key.[/]"
+        )
+        raise typer.Exit(code=1)  # Exit with a non-zero code for automation
     final_reports: List[SynthesizedReport] = []
 
     for i, plan in enumerate(plans):
@@ -319,7 +332,7 @@ async def _run_autonomous_analysis(
                 console.print(
                     f"  [yellow]! Reasoning Engine identified {pending_after - pending_before} new lines of inquiry.[/]"
                 )
-            elif pending_after == 0:
+            elif pending_after == 0 and pending_before > 0:
                 console.print(
                     "  [green]✅ Reasoning Engine concludes this sub-plan.[/]"
                 )
@@ -370,9 +383,17 @@ def run_autonomous_analysis_cli(
     final_output_file = (
         output_file or f"aia_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     )
-    asyncio.run(
-        _run_autonomous_analysis(objective, final_output_file, max_runs, timeout)
-    )
+    try:
+        asyncio.run(
+            _run_autonomous_analysis(objective, final_output_file, max_runs, timeout)
+        )
+    except typer.Exit as e:
+        # Catch the exit exception to ensure the exit code is propagated
+
+        raise e
+    except Exception as e:
+        logger.critical(f"An unhandled error occurred: {e}")
+        raise typer.Exit(code=1)
 
 
 # This is required to make the script runnable for testing

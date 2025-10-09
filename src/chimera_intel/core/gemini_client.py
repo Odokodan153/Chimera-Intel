@@ -4,6 +4,7 @@
 import logging
 import os
 import time
+import random
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -26,14 +27,15 @@ except ValueError as e:
     raise
 
 
-def call_gemini_api(prompt: str, retries: int = 3, delay: int = 5) -> str:
+def call_gemini_api(prompt: str, retries: int = 3, initial_delay: int = 5) -> str:
     """
-    Sends a prompt to the Gemini API with retry logic and returns the response.
+    Sends a prompt to the Gemini API with exponential backoff and jitter.
     """
+    delay = initial_delay
     for attempt in range(retries):
         try:
             model = genai.GenerativeModel("gemini-pro")
-            # Safety settings should be reviewed and adjusted based on the specific use case
+            # Safety settings should be reviewed and adjusted for production
 
             response = model.generate_content(
                 prompt,
@@ -50,7 +52,10 @@ def call_gemini_api(prompt: str, retries: int = 3, delay: int = 5) -> str:
                 f"Gemini API call failed on attempt {attempt + 1}/{retries}: {e}"
             )
             if attempt < retries - 1:
-                time.sleep(delay)
+                # Exponential backoff with jitter
+
+                backoff_time = delay * (2**attempt) + random.uniform(0, 1)
+                time.sleep(backoff_time)
             else:
                 logger.error("All Gemini API retries failed.")
                 return ""  # Return empty string on final failure

@@ -38,7 +38,17 @@ Example for "Investigate the security posture of example.com":
     llm_response = call_gemini_api(prompt)
     if not llm_response:
         logger.error("LLM call for objective decomposition returned an empty response.")
-        return []  # Return an empty list instead of a default task
+        # Minimal safe fallback: notify the user and provide a simple task
+        # A dynamic fallback could attempt to parse the objective with regex
+
+        domain_match = re.search(r"([a-zA-Z0-9.-]+\.[a-z]{2,})", objective)
+        if domain_match:
+            domain = domain_match.group(1)
+            logger.warning(
+                f"Using dynamic fallback, starting with footprint for: {domain}"
+            )
+            return [{"module": "footprint", "params": {"domain": domain}}]
+        return []
     try:
         tasks = json.loads(llm_response)
 
@@ -74,10 +84,12 @@ def generate_reasoning_llm(
 
     serialized_results = []
     for r in results:
-        # Prefer Pydantic's dict() method for better structure, fallback to str()
+        # Prefer Pydantic's dict() method, then check for dict/list, finally fallback to str()
 
         if hasattr(r.data, "dict") and callable(r.data.dict):
             data = r.data.dict()
+        elif isinstance(r.data, (dict, list)):
+            data = r.data
         else:
             data = str(r.data)
         serialized_results.append({"module": r.module_name, "data": data})
