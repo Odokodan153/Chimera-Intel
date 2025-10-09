@@ -168,19 +168,19 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Credibility**                 | `run`                                   | Credibility Assessment Module.                                                          |
 | **Deep Research**               | `run`                                   | Deep Research Module.                                                                   |
 | **Dissemination**               | `run`                                   | Dissemination Suite Module.                                                             |
-| **ETHINT**                      | `run`                                   | Ethical Intelligence (ETHINT) Module.                                                   |
+| **Ethint**                      | `run`                                   | Ethical Intelligence (ETHINT) Module.                                                   |
 | **Metacognition**               | `run`                                   | Metacognition Module.                                                                   |
 | **Autonomous**                  | `run`                                   | Autonomous Intelligence Agent Module.                                                   |
 | **AIA**                         | `run`                                   | Autonomous Intelligence Agent Framework.                                                |
 | **User**                        | `login`, `logout`, `register`, `status` | User management and authentication.                                                     |
 | **TTP**                         | `run`                                   | CVE to MITRE ATT&CK mapping.                                                            |
 | **TPR-Scan**                    | `run`                                   | Third-Party Risk Management scans.                                                      |
-| **SYSINT**                      | `run`                                   | Systemic Intelligence (SYSINT) & Cascade Analyzer.                                      |
-| **SCAINT**                      | `run`                                   | Software Supply Chain Security (SCAINT).                                                |
+| **Sysint**                      | `run`                                   | Systemic Intelligence (SYSINT) & Cascade Analyzer.                                      |
+| **Scanint**                      | `run`                                   | Software Supply Chain Security (SCAINT).                                                |
 | **Risk**                        | `run`                                   | Risk Assessment tools.                                                                  |
 | **Response**                    | `run`                                   | Automated Response & Counter-Offensive Operations.                                      |
 | **Red Team**                    | `run`                                   | Adversarial Simulation & Strategy Validation Engine.                                    |
-| **MASINT**                      | `run`                                   | Measurement and Signature Intelligence (MASINT) Module.                                 |
+| **Masint**                      | `run`                                   | Measurement and Signature Intelligence (MASINT) Module.                                 |
 
 
 
