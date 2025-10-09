@@ -9,10 +9,14 @@ import uuid
 import os
 import importlib
 import pkgutil
+import time
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
 
+# pip install tldextract
+
+import tldextract
 from .schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
 from rich.console import Console
@@ -21,8 +25,11 @@ from rich.table import Table
 
 from .advanced_reasoning_engine import generate_reasoning, decompose_objective
 
-# --- Logger with RotatingFileHandler ---
+# --- Version Info ---
 
+__version__ = "1.3.2"
+
+# --- Logger with RotatingFileHandler ---
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -44,10 +51,19 @@ if not logger.handlers:
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
-    # Only show INFO and above on the console
-
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.INFO)  # Only show INFO and above on the console
     logger.addHandler(console_handler)
+# --- Reasoning Logger ---
+
+reasoning_logger = logging.getLogger("reasoning")
+if not reasoning_logger.handlers:
+    reasoning_logger.setLevel(logging.INFO)
+    reasoning_formatter = logging.Formatter("%(asctime)s - REASONING - %(message)s")
+    reasoning_file_handler = RotatingFileHandler(
+        "reasoning.log", maxBytes=2 * 1024 * 1024, backupCount=2
+    )
+    reasoning_file_handler.setFormatter(reasoning_formatter)
+    reasoning_logger.addHandler(reasoning_file_handler)
 # --- Dynamic Module Loader ---
 
 
@@ -98,12 +114,36 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
 # --- AIA Core Logic ---
 
 
-def create_initial_plans(objective: str) -> List[Plan]:
+def create_initial_plans(objective: str, console: Console) -> List[Plan]:
     """Creates initial plans by decomposing the high-level objective."""
     initial_tasks = decompose_objective(objective)
     if not initial_tasks:
-        logger.error("Objective decomposition failed to produce any tasks.")
-        return []
+        logger.warning(
+            "Objective decomposition failed. Attempting fallback domain extraction."
+        )
+        console.print(
+            "[yellow]Warning: Reasoning engine returned no tasks. Trying fallback analysis...[/]"
+        )
+
+        # Fallback: Extract domain using tldextract and create a footprint task.
+
+        extracted = tldextract.extract(objective)
+        if extracted.registered_domain:
+            domain = extracted.registered_domain
+            logger.info(
+                f"Fallback initiated: Found domain '{domain}' and starting footprint."
+            )
+            initial_tasks = [
+                {
+                    "module": "footprint",
+                    "params": {"domain": domain},
+                }
+            ]
+        else:
+            logger.error(
+                "Fallback failed: No recognizable domain found in the objective."
+            )
+            return []
     # For simplicity, we'll create one plan with all initial tasks.
     # A more advanced implementation could group tasks into multiple plans.
 
@@ -143,12 +183,6 @@ async def execute_plan(
         task.status = "running"
         try:
             async with sem:
-                # The current approach of creating a list of awaitables (coroutines
-                # and tasks wrapped in to_thread) and running them in a single
-                # gather is already highly efficient for mixed I/O-bound and
-                # CPU-bound (sync) tasks. Separating them would add complexity
-                # without significant performance gains for this use case.
-
                 if module_info["is_async"]:
                     coro = module_info["func"](**task.params)
                 else:
@@ -194,28 +228,26 @@ def synthesize_and_refine(
     for task in plan.tasks:
         if task.status == "completed" and task.result:
             try:
-                # Attempt to serialize to dict, otherwise cast to string
+                # Attempt to serialize to dict, otherwise use a safe fallback.
 
-                data = (
-                    task.result.dict()
-                    if hasattr(task.result, "dict")
-                    else json.loads(json.dumps(task.result, default=str))
+                data = json.loads(json.dumps(task.result, default=str))
+            except (TypeError, RecursionError) as e:
+                logger.warning(
+                    f"JSON serialization failed for task {task.id}: {e}. Falling back to repr()."
                 )
-            except (TypeError, json.JSONDecodeError):
-                data = str(task.result)
+                data = repr(task.result)
             completed_results.append(AnalysisResult(module_name=task.module, data=data))
             report.raw_outputs.append({task.module: data})
+    # NOTE: For production, review safety settings (currently BLOCK_NONE in reasoning engine)
+
     reasoning_output = generate_reasoning(plan.objective, completed_results)
-    logger.info(f"Reasoning Summary: {reasoning_output.analytical_summary}")
+    reasoning_logger.info(json.dumps(reasoning_output.dict(), indent=2))
 
     # The task_execution_counts dictionary serves as a global guard against
-    # recursive tasks from any module, not just 'footprint'. By tracking the
-    # execution count of each unique task (module + params), we prevent loops.
+    # recursive tasks from any module.
 
     new_tasks_added = 0
     for step in reasoning_output.next_steps:
-        # More precise duplicate check
-
         is_duplicate = any(
             t.module == step["module"] and t.params == step["params"]
             for t in plan.tasks
@@ -231,7 +263,7 @@ def synthesize_and_refine(
                     id=str(uuid.uuid4()),
                     module=step["module"],
                     params=step["params"],
-                    status="pending",  # Ensure new tasks are ready to be executed
+                    status="pending",
                 )
             )
             new_tasks_added += 1
@@ -253,28 +285,39 @@ app = typer.Typer(
 
 
 async def _run_autonomous_analysis(
-    objective: str, output_file: Optional[str], max_runs: int, timeout: int
+    objective: str,
+    output_file: Optional[str],
+    max_runs: int,
+    timeout: int,
+    max_runtime: int,
 ):
+    start_time = time.time()
     console = Console()
+    console.print(
+        f"[dim]Chimera AIA Framework v{__version__} | Build {datetime.now():%Y%m%d}[/]"
+    )
     console.print(
         Panel(
             f"[bold yellow]Objective Received:[/] '{objective}'", border_style="yellow"
         )
     )
 
-    if os.path.exists(output_file):
+    if output_file and os.path.exists(output_file):
         if not typer.confirm(f"File '{output_file}' already exists. Overwrite?"):
             console.print("[bold red]Aborted.[/]")
             raise typer.Abort()
     available_modules = load_available_modules()
-    plans = create_initial_plans(objective)
+    plans = create_initial_plans(objective, console)
 
     if not plans:
         console.print(
             "[bold red]Error: Could not create an initial plan from the objective. Check LLM connectivity and API key.[/]"
         )
-        raise typer.Exit(code=1)  # Exit with a non-zero code for automation
+        raise typer.Exit(code=1)
     final_reports: List[SynthesizedReport] = []
+
+    # NOTE: Plans are executed sequentially. For future optimization, if multiple independent
+    # plans are generated, they could be run in parallel using asyncio.gather.
 
     for i, plan in enumerate(plans):
         console.print(
@@ -292,6 +335,13 @@ async def _run_autonomous_analysis(
             any(task.status == "pending" for task in plan.tasks)
             and run_count <= max_runs
         ):
+            # Global timeout check
+
+            if max_runtime > 0 and (time.time() - start_time) > max_runtime:
+                console.print(
+                    f"[bold red]Global timeout of {max_runtime}s reached. Halting execution.[/]"
+                )
+                break
             console.print(f"\n[bold]  Executing Run #{run_count}...[/]")
             plan = await execute_plan(plan, console, available_modules, timeout)
             console.print("  ✅ Execution complete.")
@@ -376,7 +426,12 @@ def run_autonomous_analysis_cli(
         5, "--max-runs", help="Maximum number of iterative reasoning cycles."
     ),
     timeout: int = typer.Option(
-        60, "--timeout", help="Timeout for each task in seconds."
+        60, "--timeout", help="Timeout for each individual task in seconds."
+    ),
+    max_runtime: int = typer.Option(
+        300,
+        "--max-runtime",
+        help="Global timeout for the entire operation in seconds (0 for no limit).",
     ),
 ):
     """Takes an objective and autonomously manages the full intelligence cycle."""
@@ -385,7 +440,9 @@ def run_autonomous_analysis_cli(
     )
     try:
         asyncio.run(
-            _run_autonomous_analysis(objective, final_output_file, max_runs, timeout)
+            _run_autonomous_analysis(
+                objective, final_output_file, max_runs, timeout, max_runtime
+            )
         )
     except typer.Exit as e:
         # Catch the exit exception to ensure the exit code is propagated
@@ -397,7 +454,6 @@ def run_autonomous_analysis_cli(
 
 
 # This is required to make the script runnable for testing
-
 
 if __name__ == "__main__":
     app()

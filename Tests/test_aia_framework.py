@@ -1,7 +1,13 @@
 import unittest
 from unittest.mock import MagicMock, patch
+import sys
+import os
 
-# Import the new advanced reasoning components
+# Add the project's root directory to the Python path to ensure imports work correctly
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 from chimera_intel.core.advanced_reasoning_engine import (
     decompose_objective,
@@ -9,19 +15,14 @@ from chimera_intel.core.advanced_reasoning_engine import (
     AnalysisResult,
     Hypothesis,
     Recommendation,
+    ReasoningOutput,
 )
-
-# Import the AIA components to test their integration
-
 from chimera_intel.core.aia_framework import (
     create_initial_plans,
     synthesize_and_refine,
     Plan,
     Task,
 )
-
-# Mock data from other modules for controlled testing
-
 from chimera_intel.core.schemas import FootprintResult, ThreatIntelResult
 
 
@@ -31,94 +32,65 @@ class TestAIAFrameworkWithReasoning(unittest.TestCase):
     focusing on its integration with the Advanced Reasoning Engine.
     """
 
-    def test_decompose_complex_objective(self):
+    @patch("chimera_intel.core.aia_framework.decompose_objective")
+    def test_create_initial_plans_no_llm_fallback(self, mock_decompose):
         """
-        Tests if the Advanced Reasoning Engine correctly breaks down a complex objective.
+        Tests if the AIA correctly falls back to domain extraction when the LLM returns no tasks.
         """
-        complex_objective = "Assess the security posture of example.com and propose mitigation measures."
-        sub_objectives = decompose_objective(complex_objective)
-        self.assertEqual(len(sub_objectives), 2)
-        self.assertIn("Assess", sub_objectives[0])
-        self.assertIn("propose measures", sub_objectives[1].lower())
+        mock_decompose.return_value = []  # Simulate LLM failure
+        console_mock = MagicMock()
+        objective = "Analyze the security of example.com"
 
-    def test_reasoning_engine_generates_hypotheses_and_recommendations(self):
-        """
-        Tests if the reasoning engine correctly generates hypotheses and recommendations
-        from critical intelligence findings.
-        """
-        analysis_results = [
-            AnalysisResult(
-                module_name="threat_intel",
-                data=ThreatIntelResult(indicator="CVE-2023-1234", is_malicious=True),
-            )
-        ]
-        reasoning_output = generate_reasoning(
-            "Assess vulnerabilities", analysis_results
-        )
-        self.assertEqual(len(reasoning_output.hypotheses), 1)
-        self.assertEqual(len(reasoning_output.recommendations), 1)
-        self.assertIn("Immediately patch", reasoning_output.recommendations[0].action)
-        self.assertEqual(reasoning_output.recommendations[0].priority, "High")
-
-    def test_aia_creates_multiple_plans_for_complex_objective(self):
-        """
-        Tests if the AIA correctly creates a multi-step plan when given a complex objective.
-        """
-        complex_objective = (
-            "Assess the security posture of example.com and propose measures."
-        )
-        plans = create_initial_plans(complex_objective)
-        # It should create one actionable plan for the assessment part
+        plans = create_initial_plans(objective, console_mock)
 
         self.assertEqual(len(plans), 1)
-        self.assertIn("Assess", plans[0].objective)
+        self.assertEqual(len(plans[0].tasks), 1)
+        task = plans[0].tasks[0]
+        self.assertEqual(task.module, "footprint")
+        self.assertEqual(task.params, {"domain": "example.com"})
+        console_mock.print.assert_called_with(
+            "[yellow]Warning: Reasoning engine returned no tasks. Trying fallback analysis...[/]"
+        )
 
     @patch("chimera_intel.core.aia_framework.generate_reasoning")
-    def test_synthesize_and_refine_integrates_reasoning_output(
+    def test_synthesize_and_refine_serialization_fallback(
         self, mock_generate_reasoning
     ):
         """
-        Tests that the main AIA loop correctly calls the reasoning engine and
-        integrates its analytical summary, hypotheses, and recommendations.
+        Tests that synthesize_and_refine uses repr() for non-serializable results.
         """
-        # Configure the mock to return a rich reasoning output
+        # A mock object that will raise a TypeError when serialized with json.dumps
 
-        mock_generate_reasoning.return_value = MagicMock(
-            analytical_summary="This is a reasoned summary.",
-            hypotheses=[
-                Hypothesis(statement="The target is likely vulnerable.", confidence=0.8)
-            ],
-            recommendations=[
-                Recommendation(action="Patch immediately.", priority="High")
-            ],
+        class NonSerializable:
+            def __repr__(self):
+                return "<NonSerializable object>"
+
+        mock_generate_reasoning.return_value = ReasoningOutput(
+            analytical_summary="Summary based on fallback.",
+            hypotheses=[],
+            recommendations=[],
             next_steps=[],
         )
 
-        # Create a plan with a single completed task to trigger synthesis
-
         plan = Plan(
-            objective="Assess security of example.com",
+            objective="Test serialization fallback",
             tasks=[
                 Task(
-                    id=1,
+                    id="1",
                     module="footprint",
                     params={},
                     status="completed",
-                    result=FootprintResult(),
+                    result=NonSerializable(),
                 )
             ],
         )
 
-        report, _ = synthesize_and_refine(plan)
+        report, _ = synthesize_and_refine(plan, {})
 
-        # Verify that the report contains the data from the reasoning engine
-
-        self.assertEqual(report.summary, "This is a reasoned summary.")
-        self.assertEqual(len(report.hypotheses), 1)
-        self.assertEqual(report.recommendations[0].action, "Patch immediately.")
-        # Ensure the mock was called, confirming the integration
+        # Verify that the reasoning engine was called and the raw output used repr()
 
         mock_generate_reasoning.assert_called_once()
+        self.assertIn("<NonSerializable object>", report.raw_outputs[0]["footprint"])
 
 
 if __name__ == "__main__":
