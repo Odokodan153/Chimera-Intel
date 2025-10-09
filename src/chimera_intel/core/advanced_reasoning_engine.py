@@ -1,108 +1,132 @@
+# src/chimera_intel/core/advanced_reasoning_engine.py
+
+
 import logging
-from typing import List
-from .schemas import AnalysisResult, Hypothesis, Recommendation, ReasoningOutput
+import json
+import re
+from typing import List, Dict, Any
+
+from .gemini_client import call_gemini_api
+from .schemas import AnalysisResult, ReasoningOutput
 
 logger = logging.getLogger(__name__)
 
 
-def decompose_objective(objective: str) -> List[str]:
+def decompose_objective_llm(objective: str) -> List[Dict[str, Any]]:
     """
-    Decomposes a complex objective into a series of simpler, actionable sub-objectives.
-    This simulates an LLM's ability to break down tasks.
+    Uses the Gemini LLM to decompose a high-level objective into initial, actionable tasks.
     """
-    sub_objectives = []
-    objective_lower = objective.lower()
+    prompt = f"""
+You are a mission planner for a cyber intelligence AI framework.
+Your task is to decompose a high-level objective into a series of initial, concrete tasks for different modules.
 
-    # If the objective is complex, break it down
+Objective: "{objective}"
 
-    if "assess" in objective_lower and "propose measures" in objective_lower:
-        sub_objectives.append(
-            f"Assess the security posture of the target mentioned in '{objective}'"
-        )
-        sub_objectives.append(
-            f"Propose mitigation measures based on the findings from '{objective}'"
-        )
-    else:
-        # If simple, it's its own sub-objective
+Instructions:
+1.  Identify key actionable entities in the objective (e.g., domain names, IP addresses, company names, individuals).
+2.  For each entity, suggest an initial module to run. Available modules are: 'footprint', 'threat_intel', 'vulnerability_scanner'.
+3.  Format the output as a JSON list of objects, where each object has 'module' and 'params' keys.
+    - For 'footprint', the parameter is 'domain'.
+    - For 'threat_intel', the parameter is 'indicator'.
+    - For 'vulnerability_scanner', the parameter is 'host'.
 
-        sub_objectives.append(objective)
-    return sub_objectives
+Example for "Investigate the security posture of example.com":
+[
+    {{"module": "footprint", "params": {{"domain": "example.com"}}}}
+]
+"""
+    llm_response = call_gemini_api(prompt)
+    if not llm_response:
+        logger.error("LLM call for objective decomposition returned an empty response.")
+        return []  # Return an empty list instead of a default task
+    try:
+        tasks = json.loads(llm_response)
+
+        # Basic validation of the LLM output
+
+        if isinstance(tasks, list) and all(
+            isinstance(t, dict) and "module" in t and "params" in t for t in tasks
+        ):
+            logger.info(f"LLM decomposed objective into {len(tasks)} initial tasks.")
+            return tasks
+        else:
+            raise ValueError("LLM output is not in the expected format.")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM JSON response for decomposition: {e}")
+        logger.debug(
+            f"Raw LLM response: {llm_response}"
+        )  # Log raw output for debugging
+    except (ValueError, TypeError) as e:
+        logger.error(f"LLM objective decomposition failed due to invalid format: {e}.")
+    return []  # Return empty list on any failure
 
 
-def generate_reasoning(
-    objective: str, results: List[AnalysisResult]
+def generate_reasoning_llm(
+    objective: str, results: list[AnalysisResult]
 ) -> ReasoningOutput:
     """
-    The core function of the Reasoning Engine. It analyzes results, forms hypotheses,
-    and proposes next steps and recommendations. This simulates LLM-driven reasoning.
+    Uses the Gemini LLM to generate hypotheses, recommendations, and next steps
+    based on completed analysis results.
     """
-    summary_parts = []
-    next_steps = []
-    hypotheses = []
-    recommendations = []
-    known_ips = set()
-    known_cves = set()
-    critical_cves = []
+    output = ReasoningOutput()
 
-    # Analyze the collected data to find new leads
+    # --- Improved Serialization ---
 
-    for result in results:
-        # (The logic for generating next_steps remains the same as the previous reasoning_engine)
+    serialized_results = []
+    for r in results:
+        # Prefer Pydantic's dict() method for better structure, fallback to str()
 
-        if result.module_name == "footprint" and result.data:
-            ips = getattr(result.data, "ip_addresses", [])
-            summary_parts.append(
-                f"Footprint analysis discovered {len(ips)} IP addresses."
-            )
-            for ip in ips:
-                if ip not in known_ips:
-                    next_steps.append(
-                        {"module": "vulnerability_scanner", "params": {"ip": ip}}
-                    )
-                    known_ips.add(ip)
-        elif result.module_name == "vulnerability_scanner" and result.data:
-            vulns = result.data
-            summary_parts.append(f"Vulnerability scan found {len(vulns)} CVEs.")
-            for v in vulns:
-                if v.cve not in known_cves:
-                    next_steps.append(
-                        {"module": "threat_intel", "params": {"indicator": v.cve}}
-                    )
-                    known_cves.add(v.cve)
-        elif result.module_name == "threat_intel" and result.data:
-            if getattr(result.data, "is_malicious", False):
-                summary_parts.append(
-                    f"Threat intelligence for {result.data.indicator} shows it is linked to malicious activity."
-                )
-                critical_cves.append(result.data.indicator)
-    # Generate Hypotheses and Recommendations
+        if hasattr(r.data, "dict") and callable(r.data.dict):
+            data = r.data.dict()
+        else:
+            data = str(r.data)
+        serialized_results.append({"module": r.module_name, "data": data})
+    prompt = f"""
+You are a cyber intelligence analyst AI.
+Objective: {objective}
 
-    if critical_cves:
-        hypotheses.append(
-            Hypothesis(
-                statement=f"The organization is likely targeted by threat actors exploiting {', '.join(critical_cves)}.",
-                confidence=0.75,
-            )
-        )
-        recommendations.append(
-            Recommendation(
-                action=f"Immediately patch systems vulnerable to {', '.join(critical_cves)} and monitor for signs of compromise.",
-                priority="High",
-            )
-        )
-    # Generate a final analytical summary
+Completed Analysis Results:
+{json.dumps(serialized_results, indent=2, default=str)}
 
-    if not summary_parts:
-        analytical_summary = "Not enough data has been collected to form a conclusion."
-    else:
-        analytical_summary = " ".join(summary_parts)
-        if "propose measures" in objective.lower() and recommendations:
-            analytical_summary += " Based on the critical vulnerabilities found, immediate action is required."
-        elif known_cves:
-            analytical_summary += f" The primary attack surface appears to be related to the following CVEs: {', '.join(known_cves)}."
-    return ReasoningOutput(
-        analytical_summary=analytical_summary,
-        hypotheses=hypotheses,
-        recommendations=recommendations,
-        next_steps=next_steps,
-    )
+Instructions:
+- Identify potential threats, patterns, and anomalies (Hypotheses)
+- Recommend next investigative actions (Recommendations)
+- Suggest concrete next steps/tasks for modules (Next Steps), with module name and parameters
+- Provide a concise analytical summary.
+
+Return your answer strictly in JSON with keys:
+'hypotheses', 'recommendations', 'next_steps', 'analytical_summary'.
+"""
+
+    llm_response = call_gemini_api(prompt)
+    if not llm_response:
+        logger.error("LLM call for reasoning returned an empty response.")
+        output.analytical_summary = "Reasoning failed: no response from LLM."
+        return output
+    try:
+        response_json = json.loads(llm_response)
+
+        output.hypotheses = response_json.get("hypotheses", [])
+        output.recommendations = response_json.get("recommendations", [])
+        output.next_steps = response_json.get("next_steps", [])
+        output.analytical_summary = response_json.get("analytical_summary", "")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse LLM JSON response for reasoning: {e}")
+        logger.debug(
+            f"Raw LLM response: {llm_response}"
+        )  # Log raw output for debugging
+        output.analytical_summary = "Reasoning failed due to malformed LLM response."
+    # This guard prevents the reasoning engine from creating a recursive loop
+    # by repeatedly calling the 'footprint' module.
+
+    if any(r.module_name == "footprint" for r in results):
+        output.next_steps = [
+            step for step in output.next_steps if step.get("module") != "footprint"
+        ]
+    return output
+
+
+# Alias the LLM-based functions to be the default
+
+generate_reasoning = generate_reasoning_llm
+decompose_objective = decompose_objective_llm
