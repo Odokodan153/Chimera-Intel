@@ -1904,7 +1904,12 @@ class PageSnapshot(Base): # type: ignore
     # Storing the full content allows for detailed diffing later.
     content = Column(LargeBinary, nullable=False)
 
+# --- Humint ---
+class HumintScenario(BaseModel):
+    """Pydantic model for a HUMINT scenario to be run by the engine."""
 
+    scenario_type: str
+    target: str
 class HumintSource(Base): # type: ignore
     __tablename__ = "humint_sources"
     id = Column(Integer, primary_key=True, index=True)
@@ -2150,8 +2155,6 @@ class CryptoData(BaseModel):
     market: str
     history: Optional[Dict[str, Dict[str, str]]] = None
     error: Optional[str] = None
-
-# --- Cyber-Physical Systems Intelligence ---
 class CryptoForecast(BaseModel):
     """Represents a price forecast for a cryptocurrency."""
 
@@ -2159,6 +2162,7 @@ class CryptoForecast(BaseModel):
     forecast: Optional[List[float]] = None
     error: Optional[str] = None
 
+# --- Cyber-Physical Systems Intelligence ---
 class CyberPhysicalSystemNode(BaseModel):
     """A node in the cyber-physical system graph."""
 
@@ -2178,6 +2182,29 @@ class CPSAnalysisResult(BaseModel):
     critical_nodes: List[str] = Field(default_factory=list)
     failure_paths: List[CascadingFailurePath] = Field(default_factory=list)
     error: Optional[str] = None
+
+class GeoLocation(BaseModel):
+    """Model for a geographic location used in CPS modeling."""
+
+    name: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class SignalIntercept(BaseModel):
+    """Model for a single signal intercept observation used in CPS modeling."""
+
+    signal_id: str
+    frequency: Optional[float] = None
+    timestamp: Optional[str] = None
+
+
+class Vulnerability(BaseModel):
+    """Model for a single system vulnerability, simplifying usage in c_pint.py."""
+
+    cve: str = Field(..., description="The CVE ID or equivalent identifier.")
+    cvss_score: Optional[float] = None
+    description: Optional[str] = None
 
 # --- Systemic Intelligence ---
 class OTAsset(BaseModel):
@@ -2376,6 +2403,46 @@ class SynthesizedReport(BaseModel):
     recommendations: List[Recommendation] = Field(default_factory=list)
     key_findings: List[str] = Field(default_factory=list)
     raw_outputs: List[Dict[str, Any]] = Field(default_factory=list)
+
+# --- Risk Assessment---
+class RiskAssessmentResult(BaseModel):
+    """
+    Represents the result of a risk assessment.
+    """
+
+    asset: str = Field(..., description="The asset at risk.")
+    threat: str = Field(..., description="The threat to the asset.")
+    probability: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="The probability of the threat occurring (0.0 to 1.0).",
+    )
+    impact: float = Field(
+        ...,
+        ge=0.0,
+        le=10.0,
+        description="The impact of the threat if it occurs (0.0 to 10.0).",
+    )
+    risk_score: float = Field(
+        ..., ge=0.0, le=10.0, description="The calculated risk score."
+    )
+    risk_level: str = Field(
+        ..., description="The qualitative risk level (e.g., Low, Medium, High)."
+    )
+    details: Optional[ThreatIntelResult] = Field(
+        None, description="Threat intelligence details."
+    )
+    vulnerabilities: List[CVE] = Field(  # Changed from Vulnerability to CVE
+        [], description="Vulnerabilities associated with the asset."
+    )
+    threat_actors: List[ThreatActor] = Field(
+        [], description="Threat actors associated with the threat."
+    )
+    mitigation: List[str] = Field([], description="Suggested mitigation actions.")
+    error: Optional[str] = Field(
+        None, description="Any error that occurred during the assessment."
+    )
 
 
 

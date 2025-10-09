@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def model_complex_system(intel_sources: Dict[str, List[Any]]) -> nx.MultiDiGraph:
     """Models a complex system using a multi-layered, directed graph."""
-    G = nx.MultiDiGraph()
+    G: nx.MultiDiGraph = nx.MultiDiGraph()  # FIX 1: Added type annotation
 
     for source_name, items in intel_sources.items():
         for item in items:
@@ -79,7 +79,11 @@ def analyze_for_emergent_properties(graph: nx.MultiDiGraph) -> SYSINTAnalysisRes
         # Better check for non-zero centrality
 
         if any(v > 0 for v in centrality.values()):
-            bridge_nodes = sorted(centrality, key=centrality.get, reverse=True)[:3]
+            # FIX 2: Use lambda function for explicit key access
+
+            bridge_nodes = sorted(
+                centrality, key=lambda node: centrality[node], reverse=True
+            )[:3]
             emergent_properties.append(
                 EmergentProperty(
                     property_type="Critical Bridge Node",
@@ -137,7 +141,9 @@ def run_sysint_analysis(
     try:
         with open(project_file, "r", encoding="utf-8") as f:
             project_data = json.load(f)
-        intel_sources = {
+        # FIX 3: Explicitly type the intel_sources dictionary to satisfy mypy
+
+        intel_sources: Dict[str, List[Any]] = {
             "cyber": [OTAsset(**item) for item in project_data.get("cyber", [])],
             "economic": [
                 MacroIndicators(**item) for item in project_data.get("economic", [])

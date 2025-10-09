@@ -25,6 +25,7 @@ from .advanced_reasoning_engine import (
 
 # --- Logger Configuration ---
 
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -100,7 +101,9 @@ def synthesize_and_refine(plan: Plan) -> Tuple[SynthesizedReport, Plan]:
     """
     Synthesizes results and uses the Reasoning Engine to generate insights and new tasks.
     """
-    report = SynthesizedReport(objective=plan.objective)
+    # Fix for missing mandatory argument 'summary' for SynthesizedReport
+
+    report = SynthesizedReport(objective=plan.objective, summary="")
 
     completed_results = [
         AnalysisResult(module_name=task.module, data=task.result)

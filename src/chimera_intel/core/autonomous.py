@@ -35,8 +35,10 @@ def trigger_retraining_pipeline(
         f"[bold cyan]Triggering automated model retraining pipeline for reason: {reason}...[/bold cyan]"
     )
 
-    webhook_url = API_KEYS.cicd_webhook_url  # Fetch URL from config
-    auth_token = API_KEYS.cicd_auth_token  # Fetch auth token from config
+    # These attributes are now available due to the change in config_loader.py
+
+    webhook_url = API_KEYS.cicd_webhook_url
+    auth_token = API_KEYS.cicd_auth_token
 
     if not webhook_url:
         console.print(
@@ -114,6 +116,14 @@ def optimize_models(
             "[bold red]Error:[/bold red] Only the 'forecaster' module is supported for optimization at this time."
         )
         raise typer.Exit(code=1)
+    # Check for AI API key BEFORE calling AI function (Fixes Argument 2 type error)
+
+    ai_api_key = API_KEYS.google_api_key
+    if not ai_api_key:
+        console.print(
+            "[bold red]Error:[/bold red] GOOGLE_API_KEY is not set. Cannot perform AI-powered analysis."
+        )
+        raise typer.Exit(code=1)
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -148,7 +158,9 @@ def optimize_models(
             f"**Performance Data:**\n{performance_summary}"
         )
 
-        ai_result = generate_swot_from_data(prompt, API_KEYS.google_api_key)
+        # ai_api_key is guaranteed to be a str here
+
+        ai_result = generate_swot_from_data(prompt, ai_api_key)
         if ai_result.error:
             console.print(f"[bold red]AI Error:[/bold red] {ai_result.error}")
             raise typer.Exit(code=1)

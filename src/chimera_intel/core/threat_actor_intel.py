@@ -7,10 +7,10 @@ threat actor library within the Chimera Intel database.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import typer
-
+import asyncio
 from .config_loader import API_KEYS
 from .database import save_scan_to_db
 from .http_client import sync_client
@@ -18,6 +18,20 @@ from .schemas import TTP, ThreatActor, ThreatActorIntelResult
 from .utils import console, save_or_print_results
 
 logger = logging.getLogger(__name__)
+
+async def search_threat_actors(indicator: str) -> List[ThreatActor]:
+    """
+    Searches for threat actors associated with a given indicator.
+    It runs the synchronous OTX profile function in a separate thread.
+    """
+    # Use to_thread to run the synchronous network call without blocking the event loop
+    profile_result = await asyncio.to_thread(get_threat_actor_profile, indicator)
+
+    # get_threat_actor_profile returns ThreatActorIntelResult which holds an optional actor.
+    if profile_result.actor:
+        return [profile_result.actor] # Return a list containing the single found actor
+
+    return [] # Return an empty list if no actor is found
 
 
 def get_threat_actor_profile(group_name: str) -> ThreatActorIntelResult:

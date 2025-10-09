@@ -6,7 +6,8 @@ from .schemas import (
     ModulePerformance,
     OptimizationRecommendation,
     IntelligenceGap,
-    MetacognitionReport)
+    MetacognitionReport,
+)
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -61,7 +62,9 @@ def generate_optimizations(
     performance: List[ModulePerformance],
 ) -> List[OptimizationRecommendation]:
     """Generates recommendations based on module performance."""
-    recommendations = []
+    # FIX: Added explicit type annotation for the list
+
+    recommendations: List[OptimizationRecommendation] = []
     if not performance:
         return recommendations
     best_module = performance[0]

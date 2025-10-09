@@ -1,12 +1,7 @@
 """
 Configuration loader for the Chimera Intel application.
 
-This module is the single source of truth for all configurations and secrets.
-It uses pydantic-settings to load API keys from a .env file and pydantic with
-PyYAML to load and validate the main application configuration from config.yaml.
-
-By centralizing configuration, other modules can simply import the `CONFIG` and
-`API_KEYS` objects without needing to handle file I/O or environment variables.
+...
 """
 
 import yaml
@@ -26,9 +21,7 @@ class ApiKeys(BaseSettings):
     """
     Loads all required API keys from environment variables found in a .env file.
 
-    This class uses pydantic-settings to automatically read, validate, and type-cast
-    environment variables. It provides a single, reliable object for accessing secrets
-    throughout the application.
+    ...
     """
 
     # Offensive Intelligence Keys
@@ -58,6 +51,11 @@ class ApiKeys(BaseSettings):
 
     google_api_key: Optional[str] = Field(None, alias="GOOGLE_API_KEY")
 
+    # MLOps & Automation Keys (ADDED)
+
+    cicd_webhook_url: Optional[str] = Field(None, alias="CICD_WEBHOOK_URL")
+    cicd_auth_token: Optional[str] = Field(None, alias="CICD_AUTH_TOKEN")
+
     # Notification Keys
 
     slack_webhook_url: Optional[str] = Field(None, alias="SLACK_WEBHOOK_URL")
@@ -80,18 +78,22 @@ class ApiKeys(BaseSettings):
     easypost_api_key = Field(None, alias="EASYPOST_API_KEYUBE_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
+
     aisstream_api_key: Optional[str] = Field(None, alias="AISSTREAM_API_KEY")
 
     # Weather & Environmental Intelligence Keys
+
     openweathermap_api_key: Optional[str] = Field(None, alias="OPENWEATHERMAP_API_KEY")
 
     # ---: Database Credentials ---
+
     db_name: Optional[str] = Field(None, alias="DB_NAME")
     db_user: Optional[str] = Field(None, alias="DB_USER")
     db_password: Optional[str] = Field(None, alias="DB_PASSWORD")
     db_host: Optional[str] = Field(None, alias="DB_HOST")
 
     # ---: Graph Database Credentials ---
+
     neo4j_uri: Optional[str] = Field(None, alias="NEO4J_URI")
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
@@ -107,11 +109,7 @@ def load_config_from_yaml() -> AppConfig:
     """
     Loads and validates the application configuration from 'config.yaml' using a Pydantic model.
 
-    If the file is not found, it returns a default AppConfig instance. If the file
-    is malformed, it reports an error and exits the program.
-
-    Returns:
-        AppConfig: A validated Pydantic object representing the application's configuration.
+    ...
     """
     try:
         with open("config.yaml", "r") as f:

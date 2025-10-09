@@ -1,15 +1,13 @@
 import logging
 import json
 from .schemas import IntelligenceReport
-from typing import Optional
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from typing import Optional, List
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Flowable
 from reportlab.lib.styles import getSampleStyleSheet
 import typer
 from rich.console import Console
 
 logger = logging.getLogger(__name__)
-
-
 
 
 # --- Core Logic ---
@@ -20,7 +18,10 @@ def generate_executive_briefing(report: IntelligenceReport, output_path: str) ->
     try:
         doc = SimpleDocTemplate(output_path)
         styles = getSampleStyleSheet()
-        story = []
+
+        # FIX: Explicitly type story as a list of Flowables to resolve mypy error.
+
+        story: List[Flowable] = []
 
         story.append(Paragraph(report.title, styles["h1"]))
         story.append(Spacer(1, 12))

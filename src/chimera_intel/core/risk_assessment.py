@@ -7,50 +7,15 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from .threat_intel import get_threat_intel_otx, ThreatIntelResult
-from .vulnerability_scanner import search_vulnerabilities, Vulnerability
-from .threat_actor_intel import search_threat_actors, ThreatActor
+from .vulnerability_scanner import search_vulnerabilities
+from .threat_actor_intel import search_threat_actors
+from .schemas import (
+    CVE,
+    ThreatActor,
+    RiskAssessmentResult,
+)  # Corrected imports: using CVE and ThreatActor from schemas
 
 logger = logging.getLogger(__name__)
-
-
-class RiskAssessmentResult(BaseModel):
-    """
-    Represents the result of a risk assessment.
-    """
-
-    asset: str = Field(..., description="The asset at risk.")
-    threat: str = Field(..., description="The threat to the asset.")
-    probability: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description="The probability of the threat occurring (0.0 to 1.0).",
-    )
-    impact: float = Field(
-        ...,
-        ge=0.0,
-        le=10.0,
-        description="The impact of the threat if it occurs (0.0 to 10.0).",
-    )
-    risk_score: float = Field(
-        ..., ge=0.0, le=10.0, description="The calculated risk score."
-    )
-    risk_level: str = Field(
-        ..., description="The qualitative risk level (e.g., Low, Medium, High)."
-    )
-    details: Optional[ThreatIntelResult] = Field(
-        None, description="Threat intelligence details."
-    )
-    vulnerabilities: List[Vulnerability] = Field(
-        [], description="Vulnerabilities associated with the asset."
-    )
-    threat_actors: List[ThreatActor] = Field(
-        [], description="Threat actors associated with the threat."
-    )
-    mitigation: List[str] = Field([], description="Suggested mitigation actions.")
-    error: Optional[str] = Field(
-        None, description="Any error that occurred during the assessment."
-    )
 
 
 def calculate_risk(
@@ -59,7 +24,7 @@ def calculate_risk(
     probability: float,
     impact: float,
     details: Optional[ThreatIntelResult] = None,
-    vulnerabilities: List[Vulnerability] = [],
+    vulnerabilities: List[CVE] = [],  # Changed from Vulnerability to CVE
     threat_actors: List[ThreatActor] = [],
 ) -> RiskAssessmentResult:
     """
@@ -124,6 +89,11 @@ def calculate_risk(
             risk_score=0.0,
             risk_level="Unknown",
             error=f"An error occurred during risk calculation: {e}",
+            # Explicitly setting optional fields to satisfy mypy
+            details=None,
+            vulnerabilities=[],
+            threat_actors=[],
+            mitigation=[],
         )
 
 
@@ -157,6 +127,11 @@ async def assess_risk_from_indicator(
                 if threat_intel
                 else "Could not fetch threat intelligence."
             ),
+            # Explicitly setting optional fields to satisfy mypy
+            details=None,
+            vulnerabilities=[],
+            threat_actors=[],
+            mitigation=[],
         )
     # Determine probability based on pulse count
 
@@ -241,17 +216,20 @@ def run_indicator_assessment(
 
     if result.vulnerabilities:
         vuln_table = Table(title="Vulnerabilities")
-        vuln_table.add_column("CVE", style="yellow")
-        vuln_table.add_column("Severity", style="red")
+        vuln_table.add_column("CVE ID", style="yellow")
+        vuln_table.add_column("CVSS Score", style="red")
         for v in result.vulnerabilities:
-            vuln_table.add_row(v.cve, v.severity)
+            vuln_table.add_row(v.id, str(v.cvss_score))
         console.print(vuln_table)
     if result.threat_actors:
         actor_table = Table(title="Associated Threat Actors")
         actor_table.add_column("Name", style="yellow")
-        actor_table.add_column("TTPs", style="red")
+        actor_table.add_column("TTPs (IDs)", style="red")
         for a in result.threat_actors:
-            actor_table.add_row(a.name, ", ".join(a.ttps))
+            # Extracting technique IDs from the list of TTP objects
+
+            ttp_ids = [ttp.technique_id for ttp in a.known_ttps]
+            actor_table.add_row(a.name, ", ".join(ttp_ids))
         console.print(actor_table)
     if result.mitigation:
         mitigation_panel = Panel(

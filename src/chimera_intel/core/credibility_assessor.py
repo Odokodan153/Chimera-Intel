@@ -161,6 +161,7 @@ async def assess_source_credibility(url: str) -> CredibilityResult:
             url=url,
             credibility_score=round(final_score, 2),
             factors=factors,
+            error=None,  # ADDED: Explicitly set error to None for success path to resolve mypy error
         )
     except Exception as e:
         logger.error(f"Error assessing credibility for URL '{url}': {e}")
@@ -173,6 +174,7 @@ async def assess_source_credibility(url: str) -> CredibilityResult:
 
 
 # --- CLI Integration ---
+
 
 app = typer.Typer(
     name="credibility",

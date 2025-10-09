@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from  .schemas import MacroIndicators, MicroIndicators 
+from .schemas import MacroIndicators, MicroIndicators
 import httpx
 import wbdata
 import typer
@@ -9,7 +9,6 @@ from rich.table import Table
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
-
 
 
 def get_macro_indicators(country_code: str) -> MacroIndicators:
@@ -37,15 +36,33 @@ def get_macro_indicators(country_code: str) -> MacroIndicators:
 
         latest_values = data.iloc[-1].to_dict()
 
+        # Explicitly retrieving values and casting to float (or None) to satisfy mypy
+
+        gdp_val = latest_values.get("NY.GDP.MKTP.CD")
+        inflation_val = latest_values.get("FP.CPI.TOTL.ZG")
+        unemployment_val = latest_values.get("SL.UEM.TOTL.ZS")
+
         return MacroIndicators(
             country=country_name,
-            gdp_latest=latest_values.get("NY.GDP.MKTP.CD"),
-            inflation_latest=latest_values.get("FP.CPI.TOTL.ZG"),
-            unemployment_latest=latest_values.get("SL.UEM.TOTL.ZS"),
+            gdp_latest=float(gdp_val) if gdp_val is not None else None,
+            inflation_latest=(
+                float(inflation_val) if inflation_val is not None else None
+            ),
+            unemployment_latest=(
+                float(unemployment_val) if unemployment_val is not None else None
+            ),
         )
     except Exception as e:
         logger.error(f"Failed to fetch World Bank data for {country_code}: {e}")
-        return MacroIndicators(country=country_code, error=str(e))
+        # Explicitly setting optional fields to None in the error case to satisfy mypy
+
+        return MacroIndicators(
+            country=country_code,
+            error=str(e),
+            gdp_latest=None,
+            inflation_latest=None,
+            unemployment_latest=None,
+        )
 
 
 async def get_micro_indicators(symbol: str) -> MicroIndicators:
@@ -61,7 +78,11 @@ async def get_micro_indicators(symbol: str) -> MicroIndicators:
     api_key = API_KEYS.alpha_vantage_api_key
     if not api_key:
         return MicroIndicators(
-            symbol=symbol, error="Alpha Vantage API key is not configured."
+            symbol=symbol,
+            error="Alpha Vantage API key is not configured.",
+            latest_price=None,  # Explicitly setting optional fields to None
+            market_cap=None,
+            pe_ratio=None,
         )
     url = f"https://www.alphavantage.co/query?function=OVERVIEW&symbol={symbol}&apikey={api_key}"
 
@@ -71,18 +92,44 @@ async def get_micro_indicators(symbol: str) -> MicroIndicators:
             response.raise_for_status()
             data = response.json()
 
-            if "Note" in data or not data:  # Handle API rate limiting or invalid symbol
+            # Helper function to correctly handle AlphaVantage's "None" string or missing keys
+
+            def clean_value(val):
+                return val if val and val != "None" else None
+
+            if "Note" in data or not data or data.get("Symbol") is None:
                 error_msg = data.get("Note", "Invalid symbol or no data received.")
-                return MicroIndicators(symbol=symbol, error=error_msg)
+                return MicroIndicators(
+                    symbol=symbol,
+                    error=error_msg,
+                    latest_price=None,  # Explicitly setting optional fields to None
+                    market_cap=None,
+                    pe_ratio=None,
+                )
+            # Safely retrieve and clean string values
+
+            last_price = clean_value(data.get("LastPrice"))
+            market_cap_val = clean_value(data.get("MarketCapitalization"))
+            pe_ratio = clean_value(data.get("PERatio"))
+
             return MicroIndicators(
                 symbol=data.get("Symbol"),
-                latest_price=float(data.get("LastPrice", 0.0)),
-                market_cap=data.get("MarketCapitalization"),
-                pe_ratio=float(data.get("PERatio", 0.0)),
+                # Convert to float if a valid value is present, otherwise use None.
+                latest_price=float(last_price) if last_price else None,
+                market_cap=market_cap_val,
+                pe_ratio=float(pe_ratio) if pe_ratio else None,
             )
         except Exception as e:
             logger.error(f"Failed to fetch Alpha Vantage data for {symbol}: {e}")
-            return MicroIndicators(symbol=symbol, error=str(e))
+            # Explicitly setting optional fields to None in the error case to satisfy mypy
+
+            return MicroIndicators(
+                symbol=symbol,
+                error=str(e),
+                latest_price=None,
+                market_cap=None,
+                pe_ratio=None,
+            )
 
 
 app = typer.Typer(

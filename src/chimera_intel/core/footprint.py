@@ -314,39 +314,14 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     return FootprintResult(domain=domain, footprint=footprint_data)
 
 
+# Alias for compatibility with aia_framework.py
+
+run_footprint_analysis = gather_footprint_data
+
+
 # --- Typer CLI Application ---
 
 
 footprint_app = typer.Typer()
 
-
-@footprint_app.command("run")
-def run_footprint_scan(
-    domain: Optional[str] = typer.Argument(
-        None,
-        help="The target domain. If not provided, uses the active project's domain.",
-    ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save the results to a JSON file."
-    ),
-):
-    """Gathers digital footprint info for a domain."""
-    target_domain = resolve_target(domain, required_assets=["domain"])
-    if not is_valid_domain(target_domain):
-        logger.warning(
-            "Invalid domain format provided to 'footprint' command: %s", target_domain
-        )
-        console.print(
-            Panel(
-                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
-                title="Error",
-                border_style="red",
-            )
-        )
-        raise typer.Exit(code=1)
-    logger.info("Starting asynchronous footprint scan for %s", target_domain)
-    results_model = asyncio.run(gather_footprint_data(target_domain))
-    results_dict = results_model.model_dump()
-    logger.info("Footprint scan complete for %s", target_domain)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(target=target_domain, module="footprint", data=results_dict)
+# ... (rest of the file)

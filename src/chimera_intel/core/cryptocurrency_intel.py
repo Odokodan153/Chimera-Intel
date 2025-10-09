@@ -113,6 +113,11 @@ def run_crypto_forecast(
     if forecast_result.error:
         console.print(f"[bold red]Error:[/] {forecast_result.error}")
         return
+    # FIX: Explicitly check for the forecast data to satisfy the type checker (mypy).
+
+    if forecast_result.forecast is None:
+        console.print("[bold red]Error:[/] Forecast generation failed to produce data.")
+        return
     table = Table(title=f"{days}-Day Price Forecast for {symbol}")
     table.add_column("Day", style="cyan")
     table.add_column("Predicted Price (USD)", style="magenta")
