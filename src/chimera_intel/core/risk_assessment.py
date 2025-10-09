@@ -1,7 +1,6 @@
 import logging
 import asyncio
 from typing import Optional, List
-from pydantic import BaseModel, Field
 import typer
 from rich.console import Console
 from rich.table import Table

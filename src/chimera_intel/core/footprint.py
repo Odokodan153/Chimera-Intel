@@ -4,14 +4,12 @@ import dns.resolver
 import asyncio
 import re
 import shodan  # type: ignore
-from rich.panel import Panel
 from dotenv import load_dotenv
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import logging
 import time
 from httpx import RequestError, HTTPStatusError
-from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
-from chimera_intel.core.database import save_scan_to_db
+from chimera_intel.core.utils import console
 from chimera_intel.core.config_loader import CONFIG, API_KEYS
 from chimera_intel.core.schemas import (
     FootprintResult,
@@ -21,7 +19,6 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.http_client import async_client
 from .threat_intel import get_threat_intel_otx
-from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)
 load_dotenv()

@@ -18,7 +18,6 @@ from .utils import console
 # --- HUMINT SCENARIO COMPONENTS (Integrated with System Dependencies) ---
 
 
-
 def run_humint_scenario(scenario: HumintScenario) -> Dict[str, Any]:
     """
     Executes a high-fidelity simulation of a HUMINT scenario.
@@ -71,7 +70,7 @@ def run_humint_scenario(scenario: HumintScenario) -> Dict[str, Any]:
         recommendation = "Resolve API Configuration Error."
         key_finding = f"Operational Status: {op_status}. Raw intelligence collected: {raw_intelligence}"
     else:
-        # Conceptual process of calling the AI Core's synthesis function (generate_swot_from_data)
+        # Prepare prompt for the AI Core's synthesis function (generate_swot_from_data)
 
         ai_prompt = f"""
         Analyze the following operational result for a HUMINT operation:
@@ -84,22 +83,26 @@ def run_humint_scenario(scenario: HumintScenario) -> Dict[str, Any]:
         and provide a definitive next step recommendation.
         """
 
-        # Simulating the AI call's structured output based on the result
+        # Call the actual AI Core's synthesis function
 
-        if success:
-            ai_synthesis = f"""
-            **AI CORE SYNTHESIS (SUCCESS - High Confidence):** The AI confirms a high probability of success (PoS {prob_success:.2f}) and validated the gathered field data. 
-            The raw intelligence confirms the target's vulnerability.
-            """
-            recommendation = "Exploitation Window: OPEN. Recommend deploying Cybint-Core assets immediately for data acquisition."
+        ai_result = generate_swot_from_data(ai_prompt, api_key)
+
+        if ai_result.error:
+            ai_synthesis = f"AI Synthesis Failed: Error during analysis: {ai_result.error}. Cannot generate final report."
+            recommendation = "Investigate AI Core failure. Review API connectivity and prompt complexity."
+            key_finding = f"Operational Status: {op_status}. Raw intelligence collected: {raw_intelligence}"
         else:
-            ai_synthesis = f"""
-            **AI CORE SYNTHESIS (FAILURE - Post-Mortem Analysis):**
-            The AI flags the operational compromise, noting the high Target Opsec Score ({target_opsec_score}/10) relative to the scenario risk ({scenario_risk:.2f}). 
-            The operational methodology requires review.
-            """
-            recommendation = "Exploitation Window: CLOSED. Recommend a full Post-Mortem and revising the approach to a Deception or Legint scenario."
-        key_finding = raw_intelligence
+            # Use the actual AI-generated analysis text for the synthesis
+
+            ai_synthesis = ai_result.analysis_text
+            key_finding = raw_intelligence
+
+            # Set a high-level operational recommendation based on the outcome, directing the user to the detailed AI synthesis.
+
+            if success:
+                recommendation = "Review AI Synthesis for detailed next steps. Further action is likely warranted."
+            else:
+                recommendation = "Review AI Synthesis for Post-Mortem. A revised scenario strategy is recommended."
     # Generate the final report string
 
     outcome_report = f"""
@@ -128,7 +131,7 @@ def run_humint_scenario(scenario: HumintScenario) -> Dict[str, Any]:
         f"[bold blue]Status:[/bold blue] {'SUCCESSFUL' if success else 'COMPROMISED'}"
     )
     console.print(
-        f"[bold yellow]Next Step:[/bold yellow] Disseminate intelligence via Project Manager module."
+        "[bold yellow]Next Step:[/bold yellow] Disseminate intelligence via Project Manager module."
     )
 
     return {
@@ -239,7 +242,6 @@ def analyze_humint_reports(topic: str) -> Optional[str]:
         """
 
         # In a real environment, this line would be executed:
-        # ai_result = generate_swot_from_data(prompt, api_key)
 
         ai_result = generate_swot_from_data(prompt, api_key)
 
