@@ -15,6 +15,7 @@ from datetime import datetime
 
 # pip install tldextract
 
+
 import tldextract
 from .schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
@@ -26,9 +27,11 @@ from .advanced_reasoning_engine import generate_reasoning, decompose_objective
 
 # --- Version Info ---
 
+
 __version__ = "1.3.2"
 
 # --- Logger with RotatingFileHandler ---
+
 
 logger = logging.getLogger(__name__)
 if not logger.handlers:
@@ -53,6 +56,7 @@ if not logger.handlers:
     console_handler.setLevel(logging.INFO)  # Only show INFO and above on the console
     logger.addHandler(console_handler)
 # --- Reasoning Logger ---
+
 
 reasoning_logger = logging.getLogger("reasoning")
 if not reasoning_logger.handlers:
@@ -151,7 +155,7 @@ def create_initial_plans(objective: str, console: Console) -> List[Plan]:
             objective=objective,
             tasks=[
                 Task(
-                    id=str(uuid.uuid4()),
+                    id=uuid.uuid4().int,
                     module=task["module"],
                     params=task["params"],
                 )
@@ -195,7 +199,9 @@ async def execute_plan(
             task.status = "failed"
             task.result = {"error": f"{type(e).__name__}: {e}"}
         finally:
-            logger.info(f"[{task.status.upper()}] Task {task.id[:8]} ({task.module})")
+            logger.info(
+                f"[{task.status.upper()}] Task {str(task.id)[:8]} ({task.module})"
+            )
         return task
 
     if pending_tasks:
@@ -259,7 +265,7 @@ def synthesize_and_refine(
                 continue
             plan.tasks.append(
                 Task(
-                    id=str(uuid.uuid4()),
+                    id=uuid.uuid4().int,
                     module=step["module"],
                     params=step["params"],
                     status="pending",
@@ -453,6 +459,7 @@ def run_autonomous_analysis_cli(
 
 
 # This is required to make the script runnable for testing
+
 
 if __name__ == "__main__":
     app()

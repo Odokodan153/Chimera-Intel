@@ -78,7 +78,7 @@ def generate_reasoning_llm(
     Uses the Gemini LLM to generate hypotheses, recommendations, and next steps
     based on completed analysis results.
     """
-    output = ReasoningOutput()
+    output = ReasoningOutput(analytical_summary="")
 
     # --- Improved Serialization ---
 
@@ -139,6 +139,7 @@ Return your answer strictly in JSON with keys:
 
 
 # Alias the LLM-based functions to be the default
+
 
 generate_reasoning = generate_reasoning_llm
 decompose_objective = decompose_objective_llm

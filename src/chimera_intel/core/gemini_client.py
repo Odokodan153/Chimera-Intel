@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 # --- API Key Validation ---
 
+
 try:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -58,4 +59,4 @@ def call_gemini_api(prompt: str, retries: int = 3, initial_delay: int = 5) -> st
                 time.sleep(backoff_time)
             else:
                 logger.error("All Gemini API retries failed.")
-                return ""  # Return empty string on final failure
+    return ""  # Return empty string on final failure
