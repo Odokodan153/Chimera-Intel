@@ -10,11 +10,6 @@ sys.path.insert(
 )
 
 from chimera_intel.core.advanced_reasoning_engine import (
-    decompose_objective,
-    generate_reasoning,
-    AnalysisResult,
-    Hypothesis,
-    Recommendation,
     ReasoningOutput,
 )
 from chimera_intel.core.aia_framework import (
@@ -23,7 +18,6 @@ from chimera_intel.core.aia_framework import (
     Plan,
     Task,
 )
-from chimera_intel.core.schemas import FootprintResult, ThreatIntelResult
 
 
 class TestAIAFrameworkWithReasoning(unittest.TestCase):
