@@ -213,3 +213,39 @@ async def websocket_endpoint(
         logger.error(f"WebSocket error for negotiation {negotiation_id}: {e}")
     finally:
         await websocket.close()
+        
+@router.post(
+    "/negotiations",
+    response_model=schemas.Negotiation,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_negotiation(
+    negotiation: schemas.NegotiationCreate, db: Session = Depends(get_db)
+):
+    """Initializes a new negotiation session with multiple participants."""
+    try:
+        session_id = str(uuid.uuid4())
+        db_negotiation = models.NegotiationSession(
+            id=session_id, subject=negotiation.subject
+        )
+        db.add(db_negotiation)
+        
+        # Add participants to the new table
+        for participant in negotiation.participants:
+            db_participant = models.NegotiationParticipant(
+                session_id=session_id,
+                participant_id=participant.participant_id,
+                participant_name=participant.participant_name,
+            )
+            db.add(db_participant)
+
+        db.commit()
+        db.refresh(db_negotiation)
+        logger.info(f"Multi-party negotiation session created successfully with ID: {session_id}")
+        return db_negotiation
+    except Exception as e:
+        logger.error(f"Database error while creating negotiation session: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create negotiation session.",
+        )

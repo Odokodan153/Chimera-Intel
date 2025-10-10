@@ -1,11 +1,11 @@
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.negotiation_cli import negotiation_app  # Import the app from the core
+from chimera_intel.core.negotiation.py import negotiation_app  # Import the app from the consolidated engine.py
 
 class NegotiationPlugin(ChimeraPlugin):
     """
     AI Negotiation Analysis plugin for Chimera Intel.
-    This plugin registers the 'negotiation' command group.
+    This plugin registers the unified 'negotiation' command group.
     """
 
     @property
@@ -19,5 +19,5 @@ class NegotiationPlugin(ChimeraPlugin):
         return negotiation_app
 
     def initialize(self):
-        """Initializes the Negotiation plugin (no-op)."""
+        """Initializes the Negotiation plugin."""
         pass

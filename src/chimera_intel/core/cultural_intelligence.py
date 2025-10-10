@@ -103,3 +103,27 @@ def populate_initial_cultural_data():
     ]
     for profile in initial_profiles:
         add_cultural_profile(profile)
+
+def get_all_cultural_profiles() -> list[dict[str, any]]:
+    """Retrieves all cultural profiles from the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM cultural_profiles ORDER BY country_name;")
+        records = cursor.fetchall()
+        profiles = []
+        if records:
+            for record in records:
+                profiles.append({
+                    "country_code": record[0],
+                    "country_name": record[1],
+                    "directness": record[2],
+                    "formality": record[3],
+                    "power_distance": record[4],
+                    "individualism": record[5],
+                    "uncertainty_avoidance": record[6],
+                })
+        return profiles
+    except Exception as e:
+        console.print(f"[bold red]Database Error:[/bold red] Could not retrieve cultural profiles: {e}")
+        return []

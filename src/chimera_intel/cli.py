@@ -5,9 +5,7 @@ from chimera_intel.core.plugin_manager import discover_plugins
 from chimera_intel.core.project_manager import project_app
 from chimera_intel.core.briefing_generator import briefing_app
 from chimera_intel.core.graph_cli import graph_app
-from .core.negotiation_cli import negotiation_app
-from .core.analytics_cli import analytics_app
-from .core.simulator_cli import simulator_app
+
 
 # --- : Startup Banner ---
 BANNER = """
@@ -35,9 +33,6 @@ def get_cli_app():
     app.add_typer(project_app, name="project", help="Manage intelligence projects.")
     app.add_typer(briefing_app, name="briefing", help="Generate AI-powered executive briefings.")  
     app.add_typer(graph_app, name="graph", help="Interact with the Chimera Intelligence Graph.")
-    app.add_typer(negotiation_app, name="negotiation")
-    app.add_typer(analytics_app, name="analytics")
-    app.add_typer(simulator_app, name="simulator")
 
     @app.command(name="version", help="Show Chimera Intel version.")
     def version():

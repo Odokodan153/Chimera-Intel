@@ -197,6 +197,17 @@ def initialize_database() -> None:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_participants (
+                session_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,
+                participant_id TEXT NOT NULL,
+                participant_name TEXT NOT NULL,
+                PRIMARY KEY (session_id, participant_id)
+            );
+            """
+        )
+
         conn.commit()
         cursor.close()
         conn.close()

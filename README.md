@@ -176,11 +176,20 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **TTP**                         | `run`                                   | CVE to MITRE ATT&CK mapping.                                                            |
 | **TPR-Scan**                    | `run`                                   | Third-Party Risk Management scans.                                                      |
 | **Sysint**                      | `run`                                   | Systemic Intelligence (SYSINT) & Cascade Analyzer.                                      |
-| **Scanint**                      | `run`                                   | Software Supply Chain Security (SCAINT).                                                |
+| **Scanint**                     | `run`                                   | Software Supply Chain Security (SCAINT).                                                |
 | **Risk**                        | `run`                                   | Risk Assessment tools.                                                                  |
 | **Response**                    | `run`                                   | Automated Response & Counter-Offensive Operations.                                      |
 | **Red Team**                    | `run`                                   | Adversarial Simulation & Strategy Validation Engine.                                    |
 | **Masint**                      | `run`                                   | Measurement and Signature Intelligence (MASINT) Module.                                 |
+| **Negotiation**                 | `start`                                 | Starts a new negotiation session.                                                       |
+|                                 | `join`                                  | Joins an existing negotiation session.                                                  |
+|                                 | `leave`                                 | Leaves a negotiation session.                                                           |
+|                                 | `status`                                | Gets the status of a negotiation session.                                               |
+|                                 | `offer`                                 | Makes an offer in a negotiation.                                                        |
+|                                 | `accept`                                | Accepts an offer.                                                                       |
+|                                 | `reject`                                | Rejects an offer.                                                                       |
+|                                 | `history`                               | Gets the history of a negotiation.                                                      |
+
 
 
 

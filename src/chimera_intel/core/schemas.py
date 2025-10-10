@@ -2712,6 +2712,28 @@ class Negotiation(BaseModel):
     counterparties: List[Counterparty] = Field(default_factory=list)
     market_context: List[MarketIndicator] = Field(default_factory=list)
 
+class NegotiationParticipant(BaseModel):
+    """Represents a single participant in a negotiation session."""
+    participant_id: str
+    participant_name: str
+
+class Negotiation(NegotiationBase):
+    id: str
+    start_time: datetime
+    status: str
+    messages: List[Message] = []
+    participants: List[NegotiationParticipant] = [] # Updated to use the new model
+
+class Config:
+        orm_mode = True
+
+class VoiceAnalysis(BaseModel):
+    """Represents the analysis of vocal tone from an audio message."""
+    vocal_sentiment: str
+    confidence_score: float
+    pace: str
+    pitch_variation: str
+
 
 
 
