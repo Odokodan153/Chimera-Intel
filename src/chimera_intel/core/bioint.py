@@ -52,16 +52,16 @@ def monitor_sequences(
             prompt=True,
         ),
     ],
-    db: Annotated[
-        str,
-        typer.Option("--db", "-d", help="The database to monitor.", default="GenBank"),
-    ],
     email: Annotated[
         str,
         typer.Option(
             "--email", "-e", help="Your email address (required by NCBI).", prompt=True
         ),
     ],
+    db: Annotated[
+        str,
+        typer.Option("--db", "-d", help="The database to monitor."),
+    ] = "GenBank",
 ):
     """
     Continuously scans public genetic sequence databases for specific gene fragments,
