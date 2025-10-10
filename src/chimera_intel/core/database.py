@@ -38,6 +38,8 @@ def initialize_database() -> None:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Existing Chimera Intel Tables
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -108,6 +110,33 @@ def initialize_database() -> None:
             );
             """
         )
+
+        # New Tables for the Negotiation Engine
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_sessions (
+                id TEXT PRIMARY KEY,
+                subject TEXT,
+                start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                status TEXT NOT NULL DEFAULT 'ongoing'
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                id TEXT PRIMARY KEY,
+                negotiation_id TEXT REFERENCES negotiation_sessions(id),
+                sender_id TEXT,
+                content TEXT,
+                analysis JSONB,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+
         conn.commit()
         cursor.close()
         conn.close()

@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import timedelta, datetime
+from .routers import negotiation
 
 # Adjust path to import from the core Chimera Intel library
 
@@ -38,6 +39,7 @@ from src.chimera_intel.core.project_manager import list_projects
 
 app = FastAPI()
 
+app.include_router(negotiation.router, prefix="/api/v1", tags=["negotiation"])
 # Mount static files and templates
 
 static_path = os.path.join(os.path.dirname(__file__), "static")
@@ -181,3 +183,7 @@ async def read_root(request: Request, current_user: User = Depends(get_current_u
     return templates.TemplateResponse(
         "index.html", {"request": request, "user": current_user, "data": dashboard_data}
     )
+
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Chimera Intel API"}

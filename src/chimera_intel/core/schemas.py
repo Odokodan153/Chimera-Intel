@@ -9,11 +9,14 @@ from sqlalchemy import (
     JSON,
     Boolean,
     LargeBinary,
+    Enum as SQLAlchemyEnum
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-import datetime
+from datetime import datetime 
 from pydantic import BaseModel, Field
+import uuid
+from enum import Enum
 
 # --- General Purpose Models ---
 
@@ -2463,7 +2466,136 @@ class CredibilityResult(BaseModel):
         None, description="Any error that occurred during the assessment."
     )
 
+# --- Negotiation---
+class PartyType(str, Enum):
+    COMPANY = "company"
+    INDIVIDUAL = "individual"
+    GOVERNMENT = "government"
+    OTHER = "other"
 
+class NegotiationStatus(str, Enum):
+    ONGOING = "ongoing"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"
+
+class Channel(str, Enum):
+    EMAIL = "email"
+    CHAT = "chat"
+    VOICE = "voice"
+    MEETING = "meeting"
+    CLI = "cli"
+
+# --- Main Data Models ---
+
+class Party(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    type: PartyType
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Negotiation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    status: NegotiationStatus = NegotiationStatus.ONGOING
+    created_by: str
+    start_at: datetime = Field(default_factory=datetime.utcnow)
+    end_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    participants: List[Party] = Field(default_factory=list)
+
+class Offer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    negotiation_id: str
+    party_id: str
+    amount_terms: Dict[str, Any]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    accepted: Optional[bool] = None
+    accepted_at: Optional[datetime] = None
+    
+    # --- Extended economic and versioning metadata ---
+    currency: Optional[str] = "USD"
+    valid_until: Optional[datetime] = None
+    confidence_score: Optional[float] = None  # AI-generated score
+    revision: int = 1
+    previous_offer_id: Optional[str] = None
+
+class Message(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    negotiation_id: str
+    sender_id: str
+    channel: Channel
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    
+    # --- Expanded NLP and sentiment analysis fields ---
+    tone_score: Optional[float] = None
+    sentiment_label: Optional[str] = None  # e.g., "positive", "neutral", "negative"
+    intent_label: Optional[str] = None
+    language: Optional[str] = "en" # Default to English, can be detected
+class PartyType(str, Enum):
+    COMPANY = "company"
+    INDIVIDUAL = "individual"
+    GOVERNMENT = "government"
+    OTHER = "other"
+
+class NegotiationStatus(str, Enum):
+    ONGOING = "ongoing"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"
+
+class ChannelType(str, Enum):
+    EMAIL = "email"
+    CHAT = "chat"
+    VOICE = "voice"
+    MEETING = "meeting"
+
+class NegotiationParty(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    type: PartyType
+
+class Negotiation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    status: NegotiationStatus = NegotiationStatus.ONGOING
+    participants: List[NegotiationParty] = Field(default_factory=list)
+    history: List[Dict[str, Any]] = Field(default_factory=list) # To store conversation history
+
+class Message(BaseModel):
+    negotiation_id: str
+    sender_id: str
+    content: str
+    channel: ChannelType
+
+class SimulationScenario(BaseModel):
+    our_min: float
+    our_max: float
+    their_min: float
+    their_max: float
+
+class NegotiationModel(Base):
+    __tablename__ = "negotiations"
+
+    id = Column(String, primary_key=True, index=True)
+    subject = Column(String, index=True)
+    status = Column(SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    messages = relationship("MessageModel", back_populates="negotiation")
+
+class MessageModel(Base):
+    __tablename__ = "messages"
+
+    id = Column(String, primary_key=True, index=True)
+    negotiation_id = Column(String, ForeignKey("negotiations.id"))
+    sender_id = Column(String)
+    content = Column(String)
+    analysis = Column(JSON) # Store sentiment, intent, etc.
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+    negotiation = relationship("NegotiationModel", back_populates="messages")
 
 
 
