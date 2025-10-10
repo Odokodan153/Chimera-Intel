@@ -162,3 +162,69 @@ def test_initial_recommendation(engine):
     """Tests the initial recommendation when there is no history."""
     recommendation = engine.recommend_tactic([])
     assert "Opening Move" in recommendation["tactic"]
+
+def setUp(self):
+        """Set up a new NegotiationEngine for each test."""
+        # We test with the placeholder model for simplicity
+        self.engine = NegotiationEngine()
+
+def test_analyze_message(self):
+        """Test the message analysis functionality."""
+        message = "I can offer $5,000 for the lot."
+        analysis = self.engine.analyze_message(message)
+        self.assertIn("tone_score", analysis)
+        self.assertIn("sentiment", analysis)
+        self.assertEqual(analysis["intent"], "offer")
+        self.assertEqual(analysis["sentiment"], "neutral")
+
+def test_recommend_tactic_opening_move(self):
+        """Test the opening move recommendation."""
+        recommendation = self.engine.recommend_tactic([])
+        self.assertEqual(recommendation["tactic"], "Opening Move")
+
+def test_recommend_tactic_strategic_concession(self):
+        """Test the strategic concession recommendation."""
+        history = [{"analysis": {"tone_score": -0.8}}]
+        recommendation = self.engine.recommend_tactic(history)
+        self.assertEqual(recommendation["tactic"], "Strategic Concession")
+
+def test_recommend_tactic_collaborative_exploration(self):
+        """Test the collaborative exploration recommendation."""
+        history = [{"analysis": {"tone_score": 0.2}}]
+        recommendation = self.engine.recommend_tactic(history)
+        self.assertEqual(recommendation["tactic"], "Collaborative Exploration")
+
+def test_simulate_outcome(self):
+        """Test the Monte Carlo simulation."""
+        scenario = {
+            "our_min": 5000,
+            "our_max": 10000,
+            "their_min": 7000,
+            "their_max": 12000,
+        }
+        result = self.engine.simulate_outcome(scenario)
+        self.assertIn("success_probability", result)
+        self.assertGreaterEqual(result["success_probability"], 0)
+        self.assertLessEqual(result["success_probability"], 1)
+
+def test_assess_batna(self):
+        """Test the BATNA assessment."""
+        alternatives = [
+            {"name": "Option A", "value": 8000},
+            {"name": "Option B", "value": 9500},
+            {"name": "Option C", "value": 8500},
+        ]
+        batna = self.engine.assess_batna(alternatives)
+        self.assertEqual(batna["best_alternative"]["name"], "Option B")
+
+def test_calculate_zopa(self):
+        """Test the ZOPA calculation."""
+        zopa = self.engine.calculate_zopa(
+            our_min=5000, our_max=10000, their_min=7000, their_max=12000
+        )
+        self.assertEqual(zopa, (7000, 10000))
+
+        no_zopa = self.engine.calculate_zopa(
+            our_min=5000, our_max=6000, their_min=7000, their_max=8000
+        )
+        self.assertIsNone(no_zopa)

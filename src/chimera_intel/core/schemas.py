@@ -9,12 +9,13 @@ from sqlalchemy import (
     JSON,
     Boolean,
     LargeBinary,
-    Enum as SQLAlchemyEnum
+    Enum as SQLAlchemyEnum,
+    Float,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 import uuid
 from enum import Enum
 
@@ -2596,6 +2597,86 @@ class MessageModel(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
     negotiation = relationship("NegotiationModel", back_populates="messages")
+
+class MessageBase(BaseModel):
+    sender_id: str
+    content: str
+
+class MessageCreate(MessageBase):
+    pass
+
+class Message(MessageBase):
+    id: str
+    negotiation_id: str
+    timestamp: datetime
+    analysis: Optional[dict]
+
+    class Config:
+        orm_mode = True
+
+class NegotiationBase(BaseModel):
+    subject: str
+
+class NegotiationCreate(NegotiationBase):
+    pass
+
+class Negotiation(NegotiationBase):
+    id: str
+    start_time: datetime
+    status: str
+    messages: List[Message] = []
+
+    class Config:
+        orm_mode = True
+
+class SimulationScenario(BaseModel):
+    our_min: float
+    our_max: float
+    their_min: float
+    their_max: float
+
+    @validator('our_max')
+    def our_max_must_be_greater_than_our_min(cls, v, values, **kwargs):
+        if 'our_min' in values and v <= values['our_min']:
+            raise ValueError('our_max must be greater than our_min')
+        return v
+
+class NegotiationParty(BaseModel):
+    party_id: str
+    role: str # e.g., 'buyer', 'seller'
+
+class NegotiationSession(Base):
+    __tablename__ = 'negotiation_sessions'
+    id = Column(String, primary_key=True)
+    subject = Column(String)
+    start_time = Column(DateTime, default=datetime.datetime.utcnow)
+    end_time = Column(DateTime)
+    status = Column(String, default='ongoing')
+    outcome = Column(String)
+    messages = relationship("Message", back_populates="session")
+    offers = relationship("Offer", back_populates="session")
+
+class Message(Base):
+    __tablename__ = 'messages'
+    id = Column(String, primary_key=True)
+    session_id = Column(String, ForeignKey('negotiation_sessions.id'))
+    sender = Column(String)
+    text = Column(String)
+    sentiment = Column(Float)
+    intent = Column(String)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    session = relationship("NegotiationSession", back_populates="messages")
+    offer = relationship("Offer", uselist=False, back_populates="message")
+
+class Offer(Base):
+    __tablename__ = 'offers'
+    id = Column(String, primary_key=True)
+    session_id = Column(String, ForeignKey('negotiation_sessions.id'))
+    message_id = Column(String, ForeignKey('messages.id'))
+    amount = Column(Float)
+    accepted = Column(String, default='pending') # pending, accepted, rejected
+    session = relationship("NegotiationSession", back_populates="offers")
+    message = relationship("Message", back_populates="offer")
 
 
 
