@@ -137,6 +137,66 @@ def initialize_database() -> None:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS counterparties (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                industry TEXT,
+                country TEXT,
+                notes TEXT
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_counterparties (
+                negotiation_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,
+                counterparty_id TEXT REFERENCES counterparties(id) ON DELETE CASCADE,
+                PRIMARY KEY (negotiation_id, counterparty_id)
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS behavioral_profiles (
+                id TEXT PRIMARY KEY,
+                counterparty_id TEXT UNIQUE REFERENCES counterparties(id) ON DELETE CASCADE,
+                communication_style TEXT,
+                risk_appetite TEXT,
+                key_motivators JSONB
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS market_indicators (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                value REAL,
+                source TEXT,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cultural_profiles (
+                country_code TEXT PRIMARY KEY,
+                country_name TEXT NOT NULL,
+                directness INTEGER, -- Scale of 1-10 (Indirect to Direct)
+                formality INTEGER, -- Scale of 1-10 (Informal to Formal)
+                power_distance INTEGER, -- Hofstede's Power Distance
+                individualism INTEGER, -- Hofstede's Individualism vs. Collectivism
+                uncertainty_avoidance INTEGER -- Hofstede's Uncertainty Avoidance
+            );
+            """
+        )
+
         conn.commit()
         cursor.close()
         conn.close()

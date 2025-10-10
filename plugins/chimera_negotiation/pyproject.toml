@@ -3,27 +3,28 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "chimera-negotiation"
-version = "0.1.0"
+name = "negotiation-engine"
+version = "1.0.0"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" },
+  { name="Your Name", email="you@example.com" },
 ]
-description = "A negotiation support module for Chimera Intel."
+description = "A powerful, AI-driven engine for negotiation analysis and simulation."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "typer[standard]",
-    "rich",
-    "pydantic",
     "textblob",
     "scikit-learn",
-    "numpy"
+    "numpy",
+    "joblib",
+    "transformers",
+    "torch"
 ]
 
-[project.entry-points."chimera_intel.plugins"]
-negotiation = "chimera_negotiation.main:plugin"
+[project.urls]
+"Homepage" = "https://github.com/your-username/negotiation-engine"
+"Bug Tracker" = "https://github.com/your-username/negotiation-engine/issues"

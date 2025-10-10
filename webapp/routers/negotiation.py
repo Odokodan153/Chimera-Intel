@@ -10,7 +10,10 @@ from functools import lru_cache
 
 from chimera_intel.core.database import get_db
 from chimera_intel.core import schemas, models
-from chimera_intel.core.negotiation import NegotiationEngine
+
+# Updated import to use the plugin's engine
+
+from chimera_negotiation.engine import NegotiationEngine
 
 # Configure structured logging for production
 
@@ -25,17 +28,12 @@ def get_engine():
     """
     Initializes and returns a cached instance of the NegotiationEngine.
     The model is loaded only once to avoid performance bottlenecks.
-    Includes a fallback to a simpler model if the transformer fails to load.
     """
     model_path = "models/negotiation_intent_model"
     try:
-        # Attempt to load the fine-tuned transformer model
-
         return NegotiationEngine(model_path=model_path)
     except Exception as e:
         logger.error(f"FATAL: Could not load transformer model at {model_path}: {e}")
-        # Fallback to the placeholder model for resilience
-
         logger.warning(
             "Resilience Alert: Falling back to the placeholder Naive Bayes model."
         )
@@ -110,8 +108,6 @@ def analyze_new_message(
         db.add(db_message)
         db.commit()
 
-        # Fetch history for tactic recommendation
-
         history = [{"analysis": msg.analysis} for msg in db_negotiation.messages]
         recommendation = engine.recommend_tactic(history)
         simulation = engine.simulate_outcome(
@@ -125,7 +121,7 @@ def analyze_new_message(
             "analysis": analysis,
             "recommended_tactic": recommendation,
             "simulation": simulation,
-            "history": history[-10:],  # Return the last 10 messages for context
+            "history": history[-10:],
         }
     except Exception as e:
         logger.error(f"Error analyzing message for negotiation {negotiation_id}: {e}")
@@ -155,8 +151,6 @@ def get_negotiation_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Negotiation session not found",
         )
-    # Apply pagination to the messages relationship
-
     db_negotiation.messages = db_negotiation.messages[skip : skip + limit]
     return db_negotiation
 
@@ -181,33 +175,21 @@ async def websocket_endpoint(
         return
     try:
         while True:
-            # Receive message from the client
-
             user_message = await websocket.receive_text()
-
-            # Analyze the user's message
-
             analysis = engine.analyze_message(user_message)
-
-            # Save the user's message to the database
-
             db_user_message = models.Message(
                 id=str(uuid.uuid4()),
                 negotiation_id=negotiation_id,
-                sender_id="user",  # Or a dynamic user ID
+                sender_id="user",
                 content=user_message,
                 analysis=analysis,
             )
             db.add(db_user_message)
             db.commit()
 
-            # Get a recommendation and bot response
-
             history = [{"analysis": msg.analysis} for msg in db_negotiation.messages]
             recommendation = engine.recommend_tactic(history)
             bot_reply = recommendation["bot_response"]
-
-            # Send the AI's response back to the client
 
             await websocket.send_json(
                 {
@@ -216,8 +198,6 @@ async def websocket_endpoint(
                     "tactic": recommendation["tactic"],
                 }
             )
-
-            # Save the bot's message to the database
 
             bot_analysis = engine.analyze_message(bot_reply)
             db_bot_message = models.Message(

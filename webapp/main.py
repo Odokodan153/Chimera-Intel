@@ -15,11 +15,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import timedelta, datetime
-from .routers import negotiation
 
 # Adjust path to import from the core Chimera Intel library
+# This makes sure we can access the 'src' directory
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from src.chimera_intel.core.user_manager import (
     get_password_hash,
@@ -31,15 +31,22 @@ from src.chimera_intel.core.database import (
     get_user_from_db,
     create_user_in_db,
     get_scan_history,
+    initialize_database,
 )
 from src.chimera_intel.core.schemas import User
 from src.chimera_intel.core.project_manager import list_projects
+from webapp.routers import negotiation, simulator_router
 
 # --- FastAPI App Initialization ---
 
+
 app = FastAPI()
 
+# Include API routers
+
 app.include_router(negotiation.router, prefix="/api/v1", tags=["negotiation"])
+app.include_router(simulator_router.router, prefix="/api/v1", tags=["simulator"])
+
 # Mount static files and templates
 
 static_path = os.path.join(os.path.dirname(__file__), "static")
@@ -47,7 +54,14 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 templates_path = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_path)
 
-# --- Authentication Routes (remain the same) ---
+
+@app.on_event("startup")
+def on_startup():
+    """Ensures the database is initialized when the application starts."""
+    initialize_database()
+
+
+# --- Authentication Routes ---
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -67,7 +81,7 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=timedelta(minutes=30)
     )
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="access_token", value=f"Bearer {access_token}", httponly=True
     )
@@ -75,7 +89,8 @@ async def login_for_access_token(
 
 
 @app.get("/logout")
-def logout(response: RedirectResponse = RedirectResponse(url="/login")):
+def logout():
+    response = RedirectResponse(url="/login")
     response.delete_cookie(key="access_token")
     return response
 
@@ -113,34 +128,27 @@ async def websocket_scan_endpoint(websocket: WebSocket):
             await websocket.send_text("Error: Missing module or target.")
             await websocket.close()
             return
-        # Construct the chimera CLI command
-
         command = ["chimera", "scan", module, "run", target]
-
         await websocket.send_text(f"🚀 Starting '{' '.join(command)}'...\n")
-
-        # Use asyncio.create_subprocess_exec to run the command asynchronously
 
         process = await asyncio.create_subprocess_exec(
             *command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
-        # Stream stdout and stderr back to the client
+        async def stream_output(stream, prefix=""):
+            while stream and not stream.at_eof():
+                line = await stream.readline()
+                if line:
+                    await websocket.send_text(f"{prefix}{line.decode().strip()}")
 
-        if process.stdout:
-            while not process.stdout.at_eof():
-                line = await process.stdout.readline()
-                if line:
-                    await websocket.send_text(line.decode().strip())
-        if process.stderr:
-            while not process.stderr.at_eof():
-                line = await process.stderr.readline()
-                if line:
-                    await websocket.send_text(f"ERROR: {line.decode().strip()}")
+        await asyncio.gather(
+            stream_output(process.stdout), stream_output(process.stderr, "ERROR: ")
+        )
+
         await process.wait()
         await websocket.send_text("\n✅ Scan complete.")
     except WebSocketDisconnect:
-        print("Client disconnected")
+        print("Client disconnected from scan WebSocket")
     except Exception as e:
         await websocket.send_text(f"An unexpected error occurred: {e}")
     finally:
@@ -152,6 +160,16 @@ async def websocket_scan_endpoint(websocket: WebSocket):
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, current_user: User = Depends(get_current_user)):
+    """Redirects to the dashboard if logged in, otherwise to login."""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def get_dashboard(
+    request: Request, current_user: User = Depends(get_current_user)
+):
     """Serves the main dashboard page."""
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -184,6 +202,26 @@ async def read_root(request: Request, current_user: User = Depends(get_current_u
         "index.html", {"request": request, "user": current_user, "data": dashboard_data}
     )
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to Chimera Intel API"}
+
+@app.get("/negotiate", response_class=HTMLResponse)
+def get_negotiation_chat(
+    request: Request, current_user: User = Depends(get_current_user)
+):
+    """Serves the real-time negotiation chat page."""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse(
+        "negotiation_chat.html", {"request": request, "user": current_user}
+    )
+
+
+@app.get("/simulator", response_class=HTMLResponse)
+def get_negotiation_simulator(
+    request: Request, current_user: User = Depends(get_current_user)
+):
+    """Serves the web-based negotiation training simulator."""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse(
+        "simulator.html", {"request": request, "user": current_user}
+    )

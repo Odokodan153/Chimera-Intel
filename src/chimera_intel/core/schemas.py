@@ -2678,6 +2678,40 @@ class Offer(Base):
     session = relationship("NegotiationSession", back_populates="offers")
     message = relationship("Message", back_populates="offer")
 
+class BehavioralProfile(BaseModel):
+    """Model for the behavioral profile of a negotiation party."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    party_id: str
+    communication_style: Optional[str] = None # e.g., "Formal", "Informal"
+    risk_appetite: Optional[str] = None      # e.g., "Risk-averse", "Risk-seeking"
+    key_motivators: List[str] = Field(default_factory=list)
+
+class Counterparty(BaseModel):
+    """Model for a counterparty in a negotiation."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    historical_deals: List[Dict[str, Any]] = Field(default_factory=list)
+    behavioral_profile: Optional[BehavioralProfile] = None
+
+class MarketIndicator(BaseModel):
+    """Model for a relevant market indicator."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    value: float
+    source: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+# Update the main Negotiation model to include this new context
+class Negotiation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    status: NegotiationStatus = NegotiationStatus.ONGOING
+    participants: List[Party] = Field(default_factory=list)
+    counterparties: List[Counterparty] = Field(default_factory=list)
+    market_context: List[MarketIndicator] = Field(default_factory=list)
+
 
 
 

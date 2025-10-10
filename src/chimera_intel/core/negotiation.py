@@ -8,7 +8,7 @@ import joblib
 from transformers import pipeline
 import logging
 
-# Configure logging
+# Configure logging for production readiness
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 class NegotiationEngine:
     """
     A unified negotiation core that includes ML analysis, economic assessment,
-    context-aware recommendations, and outcome simulation. It can now also
-    generate bot responses to act as an AI negotiator.
+    context-aware recommendations, and outcome simulation. It is now capable of
+    acting as an interactive AI negotiator.
     """
 
     def __init__(self, model_path: Optional[str] = None):
@@ -33,19 +33,19 @@ class NegotiationEngine:
         self.message_history = []
         try:
             if model_path:
-                # In production, load a fine-tuned transformer model
+                # In production, load a fine-tuned transformer model for intent classification
 
                 self.intent_classifier = pipeline(
                     "text-classification", model=model_path
                 )
                 logger.info(f"Successfully loaded transformer model from {model_path}")
             else:
-                raise ValueError("Model path not provided.")
+                raise ValueError("Model path not provided for production mode.")
         except (Exception, ValueError) as e:
             logger.warning(
-                f"Failed to load transformer model: {e}. Falling back to Naive Bayes."
+                f"Failed to load transformer model: {e}. Falling back to a simpler Naive Bayes model."
             )
-            # For development, we use a simple placeholder
+            # Fallback for development or if the primary model fails
 
             self.intent_vectorizer = TfidfVectorizer()
             self.intent_classifier_nb = MultinomialNB()
@@ -66,7 +66,7 @@ class NegotiationEngine:
 
     def _extract_offer_amount(self, message_content: str) -> Optional[float]:
         """Extracts a numeric offer amount from a message, handling various formats."""
-        # Handles formats like $5,000, 5k, €5000, 5000 dollars
+        # This enhanced regex handles formats like $5,000, 5k, €5000, 5000 dollars
 
         match = re.search(
             r"[\$€£]?\s?(\d{1,3}(,\d{3})*(\.\d+)?)\s?(k|thousand|million|billion)?\s?(dollars|euros|pounds)?",
@@ -106,7 +106,7 @@ class NegotiationEngine:
                 message_vec = self.intent_vectorizer.transform([message_content])
                 intent_label = self.intent_classifier_nb.predict(message_vec)[0]
         except Exception as e:
-            logger.error(f"Failed to predict intent: {e}")
+            logger.error(f"Intent classification failed: {e}")
             intent_label = "unknown"
         analysis = {
             "tone_score": tone_score,
@@ -172,7 +172,7 @@ class NegotiationEngine:
         return (zopa_start, zopa_end) if zopa_start < zopa_end else None
 
     def simulate_outcome(self, scenario: Dict[str, Any]) -> Dict[str, Any]:
-        """Simulates a negotiation outcome using a Monte Carlo method."""
+        """Simulates a negotiation outcome using a Monte Carlo method with realistic data."""
         num_simulations = 1000
         # Use provided scenario data, with fallbacks for safety
 

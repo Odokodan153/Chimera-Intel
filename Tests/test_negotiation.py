@@ -228,3 +228,82 @@ def test_calculate_zopa(self):
             our_min=5000, our_max=6000, their_min=7000, their_max=8000
         )
         self.assertIsNone(no_zopa)
+
+@pytest.fixture
+def engine():
+    """Provides a NegotiationEngine instance for testing."""
+    return NegotiationEngine()
+
+def test_analyze_message_positive(engine):
+    """Tests message analysis with positive sentiment."""
+    result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
+    assert result["sentiment"] == "positive"
+
+def test_analyze_message_negative(engine):
+    """Tests message analysis with negative sentiment."""
+    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
+    assert result["sentiment"] == "negative"
+
+def test_assess_batna(engine):
+    """Tests the BATNA assessment functionality."""
+    alternatives = [
+        {"name": "Option A", "value": 10000},
+        {"name": "Option B", "value": 15000},
+        {"name": "Option C", "value": 12000},
+    ]
+    result = engine.assess_batna(alternatives)
+    assert result["best_alternative"]["name"] == "Option B"
+    assert result["best_alternative"]["value"] == 15000
+
+def test_calculate_zopa_exists(engine):
+    """Tests ZOPA calculation when an agreement zone exists."""
+    zopa = engine.calculate_zopa(our_min=100, our_max=200, their_min=150, their_max=250)
+    assert zopa == (150, 200)
+
+def test_calculate_zopa_no_overlap(engine):
+    """Tests ZOPA calculation when no agreement zone exists."""
+    zopa = engine.calculate_zopa(our_min=100, our_max=140, their_min=150, their_max=250)
+    assert zopa is None
+
+def test_recommend_tactic_no_history(engine):
+    """Tests the initial recommendation when there is no history."""
+    recommendation = engine.recommend_tactic([])
+    assert "Opening" in recommendation["tactic"]
+
+def test_simulate_outcome(engine):
+    """Tests the negotiation outcome simulation."""
+    scenario = {
+        "our_min": 10000, "our_max": 15000,
+        "their_min": 12000, "their_max": 18000,
+    }
+    result = engine.simulate_outcome(scenario)
+    assert "success_probability" in result
+    assert 0 <= result["success_probability"] <= 1
+
+def test_create_negotiation_endpoint():
+    """Tests the creation of a new negotiation session via the API."""
+    response = client.post(
+        "/api/v1/negotiations",
+        json={"subject": "API Test Negotiation"}
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["subject"] == "API Test Negotiation"
+    assert "id" in data
+
+def test_analyze_message_endpoint():
+    """Tests analyzing and saving a message via the API."""
+    neg_response = client.post(
+        "/api/v1/negotiations",
+        json={"subject": "API Message Test"}
+    )
+    negotiation_id = neg_response.json()["id"]
+
+    msg_response = client.post(
+        f"/api/v1/negotiations/{negotiation_id}/messages",
+        json={"sender_id": "api_user", "content": "This is another test message."}
+    )
+    assert msg_response.status_code == 201
+    data = msg_response.json()
+    assert "analysis" in data
+    assert "recommended_tactic" in data
