@@ -69,7 +69,7 @@ dependencies = [
     "SpeechRecognition",
     "Wappalyzer",
     "pymodes",
-    "sherlock",
+    "sherlock-project",
     "python-louvain",
     # Associated types for core libraries
     "types-PyYAML>=6.0.12.12,<7.0.0.0",

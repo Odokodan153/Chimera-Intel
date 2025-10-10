@@ -23,11 +23,10 @@ from chimera_intel.core.ai_core import (
 )
 from chimera_intel.core.schemas import (
     SWOTAnalysisResult,
-    EntityGraphResult,
     SentimentAnalysisResult,
     AnomalyDetectionResult,
 )
-from chimera_intel.core.graph_schemas import GraphNarrativeResult
+from chimera_intel.core.graph_schemas import GraphNarrativeResult, EntityGraphResult
 
 runner = CliRunner()
 

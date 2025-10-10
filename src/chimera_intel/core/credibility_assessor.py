@@ -1,7 +1,7 @@
 import logging
 import asyncio
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional
+from.schemas import CredibilityResult
 from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
@@ -14,27 +14,6 @@ from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
-# --- Data Schemas ---
-
-
-class CredibilityResult(BaseModel):
-    """
-    Represents the result of a credibility assessment.
-    """
-
-    url: str = Field(..., description="The URL that was assessed.")
-    credibility_score: float = Field(
-        ...,
-        ge=0.0,
-        le=10.0,
-        description="A score from 0 (not credible) to 10 (highly credible).",
-    )
-    factors: List[str] = Field(
-        ..., description="A list of factors that contributed to the score."
-    )
-    error: Optional[str] = Field(
-        None, description="Any error that occurred during the assessment."
-    )
 
 
 # --- Core Logic ---

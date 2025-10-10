@@ -2444,6 +2444,25 @@ class RiskAssessmentResult(BaseModel):
         None, description="Any error that occurred during the assessment."
     )
 
+class CredibilityResult(BaseModel):
+    """
+    Represents the result of a credibility assessment.
+    """
+
+    url: str = Field(..., description="The URL that was assessed.")
+    credibility_score: float = Field(
+        ...,
+        ge=0.0,
+        le=10.0,
+        description="A score from 0 (not credible) to 10 (highly credible).",
+    )
+    factors: List[str] = Field(
+        ..., description="A list of factors that contributed to the score."
+    )
+    error: Optional[str] = Field(
+        None, description="Any error that occurred during the assessment."
+    )
+
 
 
 
