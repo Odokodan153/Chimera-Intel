@@ -42,23 +42,21 @@ class EthicalFramework:
             },
         }
 
-    def check_message(self, message_content: str) -> Optional[Dict[str, Any]]:
+    def check_message(self, message_content: str) -> List[Dict[str, Any]]:
         """
         Checks a given message against the ethical rulebook.
-
-        Args:
-            message_content (str): The text of the message to check.
-
-        Returns:
-            A dictionary describing the violation if one is found, otherwise None.
         """
+        violations = []
+        message_lower = message_content.lower()
         for rule_name, rule_data in self.rules.items():
             for keyword in rule_data["keywords"]:
-                if keyword in message_content.lower():
-                    return {
-                        "violation": rule_name,
-                        "description": rule_data["description"],
-                        "severity": rule_data["severity"],
-                        "triggered_by": keyword,
-                    }
-        return None
+                if keyword in message_lower:
+                    violations.append(
+                        {
+                            "violation": rule_name,
+                            "description": rule_data["description"],
+                            "severity": rule_data["severity"],
+                            "triggered_by": keyword,
+                        }
+                    )
+        return violations

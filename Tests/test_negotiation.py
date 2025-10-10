@@ -307,3 +307,134 @@ def test_analyze_message_endpoint():
     data = msg_response.json()
     assert "analysis" in data
     assert "recommended_tactic" in data
+
+def test_analyze_message_positive(engine):
+    """Tests message analysis with positive sentiment."""
+    result = engine.analyze_message(
+        "This is a fantastic offer, I'm very happy with it."
+    )
+    assert result["sentiment"] == "positive"
+    assert "intent" in result  # Check that an intent was classified
+
+
+def test_analyze_message_negative(engine):
+    """Tests message analysis with negative sentiment."""
+    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
+    assert result["sentiment"] == "negative"
+
+
+def test_assess_batna(engine):
+    """Tests the BATNA assessment functionality."""
+    alternatives = [
+        {"name": "Option A", "value": 10000},
+        {"name": "Option B", "value": 15000},
+        {"name": "Option C", "value": 12000},
+    ]
+    result = engine.assess_batna(alternatives)
+    assert result["best_alternative"]["name"] == "Option B"
+    assert result["best_alternative"]["value"] == 15000
+
+
+def test_calculate_zopa_exists(engine):
+    """Tests ZOPA calculation when an agreement zone exists."""
+    zopa = engine.calculate_zopa(
+        our_min=100, our_max=200, their_min=150, their_max=250
+    )
+    assert zopa == (150, 200)
+
+
+def test_calculate_zopa_no_overlap(engine):
+    """Tests ZOPA calculation when no agreement zone exists."""
+    zopa = engine.calculate_zopa(
+        our_min=100, our_max=140, their_min=150, their_max=250
+    )
+    assert zopa is None
+
+
+def test_recommend_tactic_no_history(engine):
+    """Tests the initial recommendation when there is no history."""
+    recommendation = engine.recommend_tactic([])
+    assert "Opening Move" in recommendation["tactic"]
+    assert "reason" in recommendation
+
+
+def test_recommend_tactic_with_negative_history(engine):
+    """Tests that recommendations change based on negative history."""
+    history = [
+        {
+            "sender_id": "them",
+            "content": "This is a terrible offer.",
+            "analysis": {"tone_score": -0.8},
+        }
+    ]
+    recommendation = engine.recommend_tactic(history)
+    assert "De-escalate" in recommendation["tactic"]
+    assert "negative" in recommendation["reason"]
+
+
+def test_recommend_tactic_with_stable_history(engine):
+    """Tests the recommendation for a stable, neutral negotiation."""
+    history = [
+        {
+            "sender_id": "them",
+            "content": "That's an interesting point.",
+            "analysis": {"tone_score": 0.2},
+        }
+    ]
+    recommendation = engine.recommend_tactic(history)
+    assert "Collaborative Exploration" in recommendation["tactic"]
+    assert "stable" in recommendation["reason"]
+
+
+def test_simulate_outcome(engine):
+    """Tests the negotiation outcome simulation."""
+    scenario = {
+        "our_min": 10000,
+        "our_max": 15000,
+        "their_min": 12000,
+        "their_max": 18000,
+    }
+    result = engine.simulate_outcome(scenario)
+    assert "success_probability" in result
+    assert 0 <= result["success_probability"] <= 1
+
+
+def test_full_engine_functionality(engine):
+    """A comprehensive test that checks all core methods of the unified engine."""
+
+    # 1. Message Analysis
+    message = "I'm not happy with this price, it's too high."
+    analysis = engine.analyze_message(message)
+    assert analysis["sentiment"] == "negative"
+    assert "intent" in analysis
+
+    # 2. BATNA Assessment
+    alternatives = [
+        {"name": "Supplier A", "value": 12000},
+        {"name": "Supplier B", "value": 15000},
+    ]
+    batna_result = engine.assess_batna(alternatives)
+    assert batna_result["best_alternative"]["name"] == "Supplier B"
+
+    # 3. ZOPA Calculation
+    zopa = engine.calculate_zopa(
+        our_min=10000, our_max=16000, their_min=14000, their_max=18000
+    )
+    assert zopa == (14000, 16000)
+
+    # 4. Context-Aware Recommendation
+    history = [{"sender_id": "them", "content": message, "analysis": analysis}]
+    recommendation = engine.recommend_tactic(history)
+    assert "De-escalate" in recommendation["tactic"]
+    assert "negative" in recommendation["reason"]
+
+    # 5. Simulation
+    scenario = {
+        "our_min": 10000,
+        "our_max": 16000,
+        "their_min": 14000,
+        "their_max": 18000,
+    }
+    simulation = engine.simulate_outcome(scenario)
+    assert "success_probability" in simulation
+    assert 0 <= simulation["success_probability"] <= 1

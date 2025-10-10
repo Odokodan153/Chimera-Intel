@@ -12,7 +12,8 @@ import numpy as np
 from transformers import pipeline
 import logging
 
-# Import all necessary modules for both engine and CLI logic
+# --- (Existing imports) ---
+
 
 from .negotiation_rl_env import NegotiationEnv
 from .negotiation_rl_agent import QLearningAgent
@@ -29,6 +30,7 @@ from .negotiation_simulator import get_personas
 from .config_loader import API_KEYS
 
 # --- CLI Application Definition ---
+
 
 console = Console()
 negotiation_app = typer.Typer(
@@ -48,10 +50,14 @@ class NegotiationEngine:
         model_path: Optional[str] = None,
         db_params: Optional[Dict[str, Any]] = None,
         rl_model_path: Optional[str] = None,
+        positive_sentiment_threshold: float = 0.1,
+        negative_sentiment_threshold: float = -0.1,
     ):
         """
         Initializes the engine and its components.
         """
+        self.positive_sentiment_threshold = positive_sentiment_threshold
+        self.negative_sentiment_threshold = negative_sentiment_threshold
         try:
             if model_path:
                 self.intent_classifier = pipeline(
@@ -73,7 +79,9 @@ class NegotiationEngine:
         if rl_model_path:
             try:
                 self.rl_agent.load_model(rl_model_path)
-                self.rl_agent.epsilon = 0.1
+                self.rl_agent.epsilon = (
+                    0.1  # Set to a low exploration rate for inference
+                )
                 logging.info(f"Successfully loaded RL model from {rl_model_path}")
             except FileNotFoundError:
                 logging.warning(
@@ -101,18 +109,14 @@ class NegotiationEngine:
         if not conn:
             return None
         try:
-            with conn.cursor() as cursor:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
                 cursor.execute(
                     "SELECT communication_style, risk_appetite, key_motivators FROM behavioral_profiles WHERE counterparty_id = %s",
                     (counterparty_id,),
                 )
                 record = cursor.fetchone()
                 if record:
-                    return {
-                        "communication_style": record[0],
-                        "risk_appetite": record[1],
-                        "key_motivators": record[2],
-                    }
+                    return dict(record)
             return None
         finally:
             if conn:
@@ -133,21 +137,25 @@ class NegotiationEngine:
 
     def _extract_offer_amount(self, message_content: str) -> Optional[float]:
         """Extracts a numeric offer amount from a message."""
+        # Improved regex to handle more formats
+
         match = re.search(
-            r"[\$€£]?\s?(\d{1,3}(,\d{3})*(\.\d+)?)\s?(k|thousand|million|billion)?\s?(dollars|euros|pounds)?",
+            r"([\$€£]?\s?(\d{1,3}(,\d{3})*(\.\d+)?)\s?(k|thousand|m|million|b|billion)?\s?(dollars|euros|pounds)?)",
             message_content,
             re.IGNORECASE,
         )
         if match:
             try:
-                value = float(match.group(1).replace(",", ""))
+                value_str = re.sub(r"[^\d\.]", "", match.group(2))
+                value = float(value_str)
                 multiplier = 1
-                if match.group(4):
-                    if match.group(4).lower() in ["k", "thousand"]:
+                if match.group(5):
+                    unit = match.group(5).lower()
+                    if unit in ["k", "thousand"]:
                         multiplier = 1000
-                    elif match.group(4).lower() == "million":
+                    elif unit in ["m", "million"]:
                         multiplier = 1000000
-                    elif match.group(4).lower() == "billion":
+                    elif unit in ["b", "billion"]:
                         multiplier = 1000000000
                 return value * multiplier
             except (ValueError, IndexError):
@@ -160,8 +168,12 @@ class NegotiationEngine:
         tone_score = blob.sentiment.polarity
         sentiment = (
             "positive"
-            if tone_score > 0.1
-            else "negative" if tone_score < -0.1 else "neutral"
+            if tone_score > self.positive_sentiment_threshold
+            else (
+                "negative"
+                if tone_score < self.negative_sentiment_threshold
+                else "neutral"
+            )
         )
 
         try:
@@ -194,7 +206,7 @@ class NegotiationEngine:
         counterparty_country_code: Optional[str] = None,
         use_rl: bool = False,
         voice_analysis: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """Recommends a tactic, validating it against ethical and cultural frameworks."""
         recommendation = self._generate_initial_recommendation(
             history, batna, zopa, counterparty_id, counterparty_country_code, use_rl
@@ -205,24 +217,24 @@ class NegotiationEngine:
                 voice_analysis.get("vocal_sentiment") == "hesitant"
                 and voice_analysis.get("confidence_score", 1.0) < 0.7
             ):
-                recommendation["tactic"] = "Probing Question"
-                recommendation["reason"] = (
-                    "Vocal analysis detects hesitation. There may be an unstated concern or opportunity."
-                )
-                recommendation["bot_response"] = (
-                    "I sense there might be something we haven't fully addressed. Is there anything else on your mind regarding this point?"
+                recommendation.update(
+                    {
+                        "tactic": "Probing Question",
+                        "reason": "Vocal analysis detects hesitation. There may be an unstated concern or opportunity.",
+                        "bot_response": "I sense there might be something we haven't fully addressed. Is there anything else on your mind regarding this point?",
+                    }
                 )
         bot_response = recommendation.get("bot_response", "")
-        ethical_check = self.ethical_framework.check_message(bot_response)
+        ethical_violations = self.ethical_framework.check_message(bot_response)
 
-        if ethical_check:
-            recommendation["ethical_warning"] = (
-                f"Warning ({ethical_check['severity']}): "
-                f"The suggested response may violate the '{ethical_check['violation']}' guideline."
-            )
-            recommendation["bot_response"] = (
-                "Let's re-evaluate. What would be a fair path forward?"
-            )
+        if ethical_violations:
+            warnings = [
+                f"Warning ({violation['severity']}): The suggested response may violate the '{violation['violation']}' guideline."
+                for violation in ethical_violations
+            ]
+            recommendation["ethical_warnings"] = warnings
+            # We no longer overwrite the bot_response, just add a warning.
+            # The user can decide how to proceed.
         return recommendation
 
     def _generate_initial_recommendation(
@@ -238,7 +250,11 @@ class NegotiationEngine:
         if use_rl:
             state = self.rl_env.get_state_from_history(history)
             action = self.rl_agent.choose_action(state)
-            action_map = {0: "Hold Firm", 1: "Strategic Concession", 2: "Propose Offer"}
+            action_map = {
+                0: "Hold Firm",
+                1: "Strategic Concession",
+                2: "Propose Offer",
+            }
             return {
                 "tactic": f"RL: {action_map.get(action, 'Unknown')}",
                 "reason": "Recommendation from the trained reinforcement learning agent.",
@@ -284,6 +300,9 @@ class NegotiationEngine:
         last_analysis = last_message.get("analysis", {})
         last_sentiment = last_analysis.get("tone_score", 0)
 
+        # More comprehensive history analysis can be added here
+        # For example, tracking sentiment over time, frequency of certain tactics, etc.
+
         if last_analysis.get("argument_tactics"):
             detected_tactic = last_analysis["argument_tactics"][0]
             if detected_tactic["tactic"] == "scarcity":
@@ -320,7 +339,7 @@ class NegotiationEngine:
         """Assesses the Best Alternative To a Negotiated Agreement (BATNA)."""
         if not alternatives:
             return {"best_alternative": None, "value": -np.inf}
-        best_alternative = max(alternatives, key=lambda x: x["value"])
+        best_alternative = max(alternatives, key=lambda x: x.get("value", -np.inf))
         return {"best_alternative": best_alternative}
 
     def calculate_zopa(
@@ -349,7 +368,8 @@ class NegotiationEngine:
         return {"success_probability": successful_deals / num_simulations}
 
 
-# --- Analytics Sub-Command ---
+# --- (CLI commands remain largely the same, but with logging instead of console.print) ---
+
 
 analytics_cmd = typer.Typer(
     help="Tools for negotiation analytics and decision support."
@@ -373,6 +393,7 @@ def show_analytics():
 
 # --- Simulator Sub-Command ---
 
+
 simulator_cmd = typer.Typer(help="Train your negotiation skills against AI personas.")
 negotiation_app.add_typer(simulator_cmd, name="simulator")
 
@@ -392,6 +413,7 @@ def start_simulation(persona_name: str = typer.Argument("cooperative")):
 
 
 # --- Cultural Intelligence Sub-Command ---
+
 
 cultural_cmd = typer.Typer(help="Tools for managing Cultural Intelligence profiles.")
 negotiation_app.add_typer(cultural_cmd, name="cultural")
@@ -428,6 +450,7 @@ def list_profiles_cli():
 
 
 # --- Engine Management Sub-Command ---
+
 
 engine_cmd = typer.Typer(help="Direct commands for managing the negotiation engine.")
 negotiation_app.add_typer(engine_cmd, name="engine")

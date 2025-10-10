@@ -1,73 +1,83 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from .database import get_db_connection
 from .utils import console
+import logging
 
 
 def add_cultural_profile(profile_data: Dict[str, Any]):
     """Adds or updates a cultural profile in the database."""
+    conn = get_db_connection()
+    if not conn:
+        logging.error("Cannot add cultural profile: No database connection.")
+        return
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO cultural_profiles (country_code, country_name, directness, formality, power_distance, individualism, uncertainty_avoidance)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (country_code) DO UPDATE SET
-                country_name = EXCLUDED.country_name,
-                directness = EXCLUDED.directness,
-                formality = EXCLUDED.formality,
-                power_distance = EXCLUDED.power_distance,
-                individualism = EXCLUDED.individualism,
-                uncertainty_avoidance = EXCLUDED.uncertainty_avoidance;
-            """,
-            (
-                profile_data["country_code"],
-                profile_data["country_name"],
-                profile_data["directness"],
-                profile_data["formality"],
-                profile_data["power_distance"],
-                profile_data["individualism"],
-                profile_data["uncertainty_avoidance"],
-            ),
-        )
-        conn.commit()
-        cursor.close()
-        conn.close()
-        console.print(
-            f"[bold green]Successfully added/updated cultural profile for {profile_data['country_name']}.[/bold green]"
-        )
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO cultural_profiles (country_code, country_name, directness, formality, power_distance, individualism, uncertainty_avoidance)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (country_code) DO UPDATE SET
+                    country_name = EXCLUDED.country_name,
+                    directness = EXCLUDED.directness,
+                    formality = EXCLUDED.formality,
+                    power_distance = EXCLUDED.power_distance,
+                    individualism = EXCLUDED.individualism,
+                    uncertainty_avoidance = EXCLUDED.uncertainty_avoidance;
+                """,
+                (
+                    profile_data["country_code"],
+                    profile_data["country_name"],
+                    profile_data["directness"],
+                    profile_data["formality"],
+                    profile_data["power_distance"],
+                    profile_data["individualism"],
+                    profile_data["uncertainty_avoidance"],
+                ),
+            )
+            conn.commit()
+            console.print(
+                f"[bold green]Successfully added/updated cultural profile for {profile_data['country_name']}.[/bold green]"
+            )
     except Exception as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not add cultural profile: {e}"
         )
+    finally:
+        if conn:
+            conn.close()
 
 
 def get_cultural_profile(country_code: str) -> Optional[Dict[str, Any]]:
     """Retrieves a cultural profile from the database."""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM cultural_profiles WHERE country_code = %s",
-            (country_code.upper(),),
-        )
-        record = cursor.fetchone()
-        if record:
-            return {
-                "country_code": record[0],
-                "country_name": record[1],
-                "directness": record[2],
-                "formality": record[3],
-                "power_distance": record[4],
-                "individualism": record[5],
-                "uncertainty_avoidance": record[6],
-            }
+    conn = get_db_connection()
+    if not conn:
+        logging.error("Cannot retrieve cultural profile: No database connection.")
         return None
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM cultural_profiles WHERE country_code = %s",
+                (country_code.upper(),),
+            )
+            record = cursor.fetchone()
+            if record:
+                return {
+                    "country_code": record[0],
+                    "country_name": record[1],
+                    "directness": record[2],
+                    "formality": record[3],
+                    "power_distance": record[4],
+                    "individualism": record[5],
+                    "uncertainty_avoidance": record[6],
+                }
     except Exception as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not retrieve cultural profile: {e}"
         )
-        return None
+    finally:
+        if conn:
+            conn.close()
+    return None
 
 
 def populate_initial_cultural_data():
@@ -104,26 +114,36 @@ def populate_initial_cultural_data():
     for profile in initial_profiles:
         add_cultural_profile(profile)
 
-def get_all_cultural_profiles() -> list[dict[str, any]]:
+
+def get_all_cultural_profiles() -> List[Dict[str, Any]]:
     """Retrieves all cultural profiles from the database."""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM cultural_profiles ORDER BY country_name;")
-        records = cursor.fetchall()
-        profiles = []
-        if records:
-            for record in records:
-                profiles.append({
-                    "country_code": record[0],
-                    "country_name": record[1],
-                    "directness": record[2],
-                    "formality": record[3],
-                    "power_distance": record[4],
-                    "individualism": record[5],
-                    "uncertainty_avoidance": record[6],
-                })
-        return profiles
-    except Exception as e:
-        console.print(f"[bold red]Database Error:[/bold red] Could not retrieve cultural profiles: {e}")
+    conn = get_db_connection()
+    if not conn:
+        logging.error("Cannot retrieve cultural profiles: No database connection.")
         return []
+    profiles = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM cultural_profiles ORDER BY country_name;")
+            records = cursor.fetchall()
+            if records:
+                for record in records:
+                    profiles.append(
+                        {
+                            "country_code": record[0],
+                            "country_name": record[1],
+                            "directness": record[2],
+                            "formality": record[3],
+                            "power_distance": record[4],
+                            "individualism": record[5],
+                            "uncertainty_avoidance": record[6],
+                        }
+                    )
+    except Exception as e:
+        console.print(
+            f"[bold red]Database Error:[/bold red] Could not retrieve cultural profiles: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+    return profiles

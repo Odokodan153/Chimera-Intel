@@ -16,10 +16,14 @@ class QLearningAgent:
         learning_rate: float = 0.1,
         discount_factor: float = 0.9,
         exploration_rate: float = 1.0,
+        min_exploration_rate: float = 0.01,
+        exploration_decay_rate: float = 0.995,
     ):
         self.lr = learning_rate
         self.gamma = discount_factor
         self.epsilon = exploration_rate
+        self.min_epsilon = min_exploration_rate
+        self.epsilon_decay = exploration_decay_rate
         self.action_space_n = action_space_n
         self.state_bins = state_bins
 
@@ -36,7 +40,8 @@ class QLearningAgent:
     def _discretize_state(self, state: np.ndarray) -> tuple:
         """Converts a continuous state vector into a discrete tuple for the Q-table."""
         discretized = [
-            np.digitize(state[i], self.bins[i]) - 1 for i in range(len(state))
+            np.clip(np.digitize(state[i], self.bins[i]) - 1, 0, self.state_bins - 1)
+            for i in range(len(state))
         ]
         return tuple(discretized)
 
@@ -62,6 +67,11 @@ class QLearningAgent:
             reward + self.gamma * next_max
         )
         self.q_table[discrete_state][action] = new_value
+
+        # Decay epsilon
+
+        if self.epsilon > self.min_epsilon:
+            self.epsilon *= self.epsilon_decay
 
     def save_model(self, path: str):
         with open(path, "wb") as f:

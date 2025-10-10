@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 
 class AdvancedNLPAnalyzer:
@@ -44,17 +44,12 @@ class AdvancedNLPAnalyzer:
     def detect_argument_tactics(self, message_content: str) -> List[Dict[str, Any]]:
         """
         Analyzes a message to detect the presence of specific argumentation tactics.
-
-        Args:
-            message_content (str): The text of the message to analyze.
-
-        Returns:
-            A list of detected tactics, if any.
         """
         detected = []
+        message_lower = message_content.lower()
         for tactic_name, tactic_data in self.argument_tactics.items():
             for keyword in tactic_data["keywords"]:
-                if keyword in message_content.lower():
+                if keyword in message_lower:
                     detected.append(
                         {
                             "tactic": tactic_name,

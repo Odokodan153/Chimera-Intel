@@ -1,62 +1,62 @@
-# src/chimera_intel/core/gemini_client.py
-
-
-import logging
-import os
-import time
-import random
 import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
-logger = logging.getLogger(__name__)
-
-# --- API Key Validation ---
+import logging
+from .config_loader import API_KEYS
 
 
-try:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        # Enforce API key presence by raising an exception
+class GeminiClient:
+    """A client for interacting with the Google Gemini API."""
 
-        raise ValueError("FATAL: GEMINI_API_KEY environment variable is not set.")
-    genai.configure(api_key=api_key)
-    logger.info("Gemini API key configured successfully.")
-except ValueError as e:
-    logger.error(e)
-    # This will stop the application if the key is missing
-
-    raise
-
-
-def call_gemini_api(prompt: str, retries: int = 3, initial_delay: int = 5) -> str:
-    """
-    Sends a prompt to the Gemini API with exponential backoff and jitter.
-    """
-    delay = initial_delay
-    for attempt in range(retries):
+    def __init__(self):
+        """Initializes the Gemini client and configures the API key."""
+        self.api_key = getattr(API_KEYS, "gemini_api_key", None)
+        if not self.api_key:
+            logging.error("Gemini API key not found in configuration.")
+            self.model = None
+            return
         try:
-            model = genai.GenerativeModel("gemini-pro")
-            # Safety settings should be reviewed and adjusted for production
-
-            response = model.generate_content(
-                prompt,
-                safety_settings={
-                    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-                    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-                },
-            )
-            return response.text
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel("gemini-1.5-flash")
         except Exception as e:
-            logger.warning(
-                f"Gemini API call failed on attempt {attempt + 1}/{retries}: {e}"
-            )
-            if attempt < retries - 1:
-                # Exponential backoff with jitter
+            logging.error(f"Failed to configure Gemini client: {e}")
+            self.model = None
 
-                backoff_time = delay * (2**attempt) + random.uniform(0, 1)
-                time.sleep(backoff_time)
-            else:
-                logger.error("All Gemini API retries failed.")
-    return ""  # Return empty string on final failure
+    def classify_intent(self, message: str) -> str:
+        """
+        Classifies the intent of a message using the Gemini API.
+
+        Args:
+            message (str): The message to classify.
+
+        Returns:
+            The classified intent as a string, or "unknown" if classification fails.
+        """
+        if not self.model:
+            return "unknown"
+        try:
+            prompt = f"Classify the intent of the following message into one of these categories: offer, condition, rejection, discussion, acceptance. Message: '{message}'"
+            response = self.model.generate_content(prompt)
+            return response.text.strip().lower()
+        except Exception as e:
+            logging.error(f"Gemini intent classification failed: {e}")
+            return "unknown"
+
+    def generate_response(self, persona_prompt: str) -> str:
+        """
+        Generates a bot response using the Gemini API based on a persona.
+
+        Args:
+            persona_prompt (str): The prompt defining the persona and context.
+
+        Returns:
+            The generated response, or a fallback message if generation fails.
+        """
+        if not self.model:
+            return "I am not available to respond right now."
+        try:
+            response = self.model.generate_content(persona_prompt)
+            return response.text.strip()
+        except Exception as e:
+            logging.error(f"Gemini response generation failed: {e}")
+            return (
+                "I am having trouble formulating a response. Could you please rephrase?"
+            )

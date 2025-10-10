@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 import uuid
-import json
 import logging
 from functools import lru_cache
 
@@ -10,12 +17,9 @@ from functools import lru_cache
 
 from chimera_intel.core.database import get_db
 from chimera_intel.core import schemas, models
+from chimera_intel.core.negotiation import NegotiationEngine
 
-# Updated import to use the plugin's engine
-
-from chimera_negotiation.engine import NegotiationEngine
-
-# Configure structured logging for production
+# Configure structured logging
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -29,14 +33,18 @@ def get_engine():
     Initializes and returns a cached instance of the NegotiationEngine.
     The model is loaded only once to avoid performance bottlenecks.
     """
-    model_path = "models/negotiation_intent_model"
+    model_path = "models/negotiation_intent_model"  # Example path
     try:
+        # Attempt to load a potentially fine-tuned transformer model
+
         return NegotiationEngine(model_path=model_path)
     except Exception as e:
         logger.error(f"FATAL: Could not load transformer model at {model_path}: {e}")
         logger.warning(
             "Resilience Alert: Falling back to the placeholder Naive Bayes model."
         )
+        # Fallback to the simpler, non-model-dependent engine
+
         return NegotiationEngine()
 
 
@@ -51,16 +59,28 @@ router = APIRouter()
 def create_negotiation(
     negotiation: schemas.NegotiationCreate, db: Session = Depends(get_db)
 ):
-    """Initializes a new negotiation session and saves it to the database."""
+    """Initializes a new negotiation session with multiple participants."""
     try:
         session_id = str(uuid.uuid4())
         db_negotiation = models.NegotiationSession(
             id=session_id, subject=negotiation.subject
         )
         db.add(db_negotiation)
+
+        # Add participants to the new table
+
+        for participant in negotiation.participants:
+            db_participant = models.NegotiationParticipant(
+                session_id=session_id,
+                participant_id=participant.participant_id,
+                participant_name=participant.participant_name,
+            )
+            db.add(db_participant)
         db.commit()
         db.refresh(db_negotiation)
-        logger.info(f"Negotiation session created successfully with ID: {session_id}")
+        logger.info(
+            f"Multi-party negotiation session created successfully with ID: {session_id}"
+        )
         return db_negotiation
     except Exception as e:
         logger.error(f"Database error while creating negotiation session: {e}")
@@ -73,7 +93,6 @@ def create_negotiation(
 @router.post(
     "/negotiations/{negotiation_id}/messages",
     response_model=schemas.AnalysisResponse,
-    status_code=status.HTTP_201_CREATED,
 )
 def analyze_new_message(
     negotiation_id: str,
@@ -83,7 +102,7 @@ def analyze_new_message(
 ):
     """
     Analyzes a new message and returns a structured response including
-    analysis, recommendation, simulation, and paginated history.
+    analysis, recommendation, and simulation.
     """
     db_negotiation = (
         db.query(models.NegotiationSession)
@@ -103,16 +122,41 @@ def analyze_new_message(
             negotiation_id=negotiation_id,
             sender_id=message.sender_id,
             content=message.content,
-            analysis=analysis,  # Store the full analysis object as JSONB
+            analysis=analysis,
         )
         db.add(db_message)
         db.commit()
 
-        history = [{"analysis": msg.analysis} for msg in db_negotiation.messages]
-        recommendation = engine.recommend_tactic(history)
-        simulation = engine.simulate_outcome(
-            {"our_min": 5000, "our_max": 10000, "their_min": 7000, "their_max": 12000}
+        # Fetch recent messages to provide context for the recommendation
+
+        recent_messages = (
+            db.query(models.Message)
+            .filter(models.Message.negotiation_id == negotiation_id)
+            .order_by(models.Message.timestamp.desc())
+            .limit(20)
+            .all()
         )
+        history = [
+            {
+                "sender_id": msg.sender_id,
+                "content": msg.content,
+                "analysis": msg.analysis,
+            }
+            for msg in reversed(recent_messages)
+        ]
+
+        recommendation = engine.recommend_tactic(history)
+
+        # NOTE: Simulation parameters are hardcoded here for demonstration.
+        # In a real application, these would likely be configurable per-negotiation.
+
+        simulation_scenario = {
+            "our_min": 5000,
+            "our_max": 10000,
+            "their_min": 7000,
+            "their_max": 12000,
+        }
+        simulation = engine.simulate_outcome(simulation_scenario)
 
         logger.info(f"Message in negotiation {negotiation_id} analyzed successfully.")
 
@@ -121,7 +165,6 @@ def analyze_new_message(
             "analysis": analysis,
             "recommended_tactic": recommendation,
             "simulation": simulation,
-            "history": history[-10:],
         }
     except Exception as e:
         logger.error(f"Error analyzing message for negotiation {negotiation_id}: {e}")
@@ -144,6 +187,8 @@ def get_negotiation_history(
     db_negotiation = (
         db.query(models.NegotiationSession)
         .filter(models.NegotiationSession.id == negotiation_id)
+        .offset(skip)
+        .limit(limit)
         .first()
     )
     if not db_negotiation:
@@ -151,19 +196,18 @@ def get_negotiation_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Negotiation session not found",
         )
-    db_negotiation.messages = db_negotiation.messages[skip : skip + limit]
     return db_negotiation
 
 
 @router.websocket("/ws/{negotiation_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    negotiation_id: str,
-    db: Session = Depends(get_db),
-    engine: NegotiationEngine = Depends(get_engine),
-):
+async def websocket_endpoint(websocket: WebSocket, negotiation_id: str):
     """Handles real-time negotiation chat via WebSocket."""
     await websocket.accept()
+
+    # WebSocket dependencies need to be handled manually
+
+    db: Session = next(get_db())
+    engine: NegotiationEngine = get_engine()
 
     db_negotiation = (
         db.query(models.NegotiationSession)
@@ -177,6 +221,9 @@ async def websocket_endpoint(
         while True:
             user_message = await websocket.receive_text()
             analysis = engine.analyze_message(user_message)
+
+            # Save user message
+
             db_user_message = models.Message(
                 id=str(uuid.uuid4()),
                 negotiation_id=negotiation_id,
@@ -187,17 +234,30 @@ async def websocket_endpoint(
             db.add(db_user_message)
             db.commit()
 
-            history = [{"analysis": msg.analysis} for msg in db_negotiation.messages]
+            # Generate and send bot reply
+
+            history = [
+                {
+                    "sender_id": msg.sender_id,
+                    "content": msg.content,
+                    "analysis": msg.analysis,
+                }
+                for msg in db_negotiation.messages
+            ]
             recommendation = engine.recommend_tactic(history)
-            bot_reply = recommendation["bot_response"]
+            bot_reply = recommendation.get(
+                "bot_response", "I'm not sure how to respond to that."
+            )
 
             await websocket.send_json(
                 {
                     "sender": "ai_negotiator",
                     "text": bot_reply,
-                    "tactic": recommendation["tactic"],
+                    "tactic": recommendation.get("tactic", "Unknown"),
                 }
             )
+
+            # Save bot message
 
             bot_analysis = engine.analyze_message(bot_reply)
             db_bot_message = models.Message(
@@ -209,43 +269,10 @@ async def websocket_endpoint(
             )
             db.add(db_bot_message)
             db.commit()
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for negotiation {negotiation_id}")
     except Exception as e:
         logger.error(f"WebSocket error for negotiation {negotiation_id}: {e}")
     finally:
-        await websocket.close()
-        
-@router.post(
-    "/negotiations",
-    response_model=schemas.Negotiation,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_negotiation(
-    negotiation: schemas.NegotiationCreate, db: Session = Depends(get_db)
-):
-    """Initializes a new negotiation session with multiple participants."""
-    try:
-        session_id = str(uuid.uuid4())
-        db_negotiation = models.NegotiationSession(
-            id=session_id, subject=negotiation.subject
-        )
-        db.add(db_negotiation)
-        
-        # Add participants to the new table
-        for participant in negotiation.participants:
-            db_participant = models.NegotiationParticipant(
-                session_id=session_id,
-                participant_id=participant.participant_id,
-                participant_name=participant.participant_name,
-            )
-            db.add(db_participant)
-
-        db.commit()
-        db.refresh(db_negotiation)
-        logger.info(f"Multi-party negotiation session created successfully with ID: {session_id}")
-        return db_negotiation
-    except Exception as e:
-        logger.error(f"Database error while creating negotiation session: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create negotiation session.",
-        )
+        db.close()
+        logger.info(f"Closed DB session for WebSocket negotiation {negotiation_id}")

@@ -15,9 +15,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import timedelta, datetime
+import logging
 
 # Adjust path to import from the core Chimera Intel library
-# This makes sure we can access the 'src' directory
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -35,7 +35,14 @@ from src.chimera_intel.core.database import (
 )
 from src.chimera_intel.core.schemas import User
 from src.chimera_intel.core.project_manager import list_projects
-from webapp.routers import negotiation, simulator_router
+from webapp.routers import negotiation, simulator as simulator_router
+
+# Configure structured logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 # --- FastAPI App Initialization ---
 
@@ -76,21 +83,26 @@ async def login_for_access_token(
     user = get_user_from_db(username)
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid username or password"}
+            "login.html",
+            {"request": request, "error": "Invalid username or password"},
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=timedelta(minutes=30)
     )
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     response.set_cookie(
-        key="access_token", value=f"Bearer {access_token}", httponly=True
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        samesite="strict",
     )
     return response
 
 
 @app.get("/logout")
 def logout():
-    response = RedirectResponse(url="/login")
+    response = RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(key="access_token")
     return response
 
@@ -106,7 +118,9 @@ async def register_user(
 ):
     if get_user_from_db(username):
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Username already exists"}
+            "register.html",
+            {"request": request, "error": "Username already exists"},
+            status_code=status.HTTP_409_CONFLICT,
         )
     hashed_password = get_password_hash(password)
     create_user_in_db(username, hashed_password)
@@ -126,7 +140,7 @@ async def websocket_scan_endpoint(websocket: WebSocket):
 
         if not module or not target:
             await websocket.send_text("Error: Missing module or target.")
-            await websocket.close()
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
         command = ["chimera", "scan", module, "run", target]
         await websocket.send_text(f"🚀 Starting '{' '.join(command)}'...\n")
@@ -148,8 +162,9 @@ async def websocket_scan_endpoint(websocket: WebSocket):
         await process.wait()
         await websocket.send_text("\n✅ Scan complete.")
     except WebSocketDisconnect:
-        print("Client disconnected from scan WebSocket")
+        logger.info("Client disconnected from scan WebSocket")
     except Exception as e:
+        logger.error(f"An unexpected error occurred in the scan WebSocket: {e}")
         await websocket.send_text(f"An unexpected error occurred: {e}")
     finally:
         await websocket.close()
@@ -186,8 +201,8 @@ async def get_dashboard(
         day = scan["timestamp"].strftime("%Y-%m-%d")
         if day in scans_by_day:
             scans_by_day[day] += 1
-    chart_labels = list(reversed(scans_by_day.keys()))
-    chart_data = list(reversed(scans_by_day.values()))
+    chart_labels = list(reversed(list(scans_by_day.keys())))
+    chart_data = list(reversed(list(scans_by_day.values())))
 
     dashboard_data = {
         "total_projects": len(projects),
@@ -199,7 +214,8 @@ async def get_dashboard(
     }
 
     return templates.TemplateResponse(
-        "index.html", {"request": request, "user": current_user, "data": dashboard_data}
+        "index.html",
+        {"request": request, "user": current_user, "data": dashboard_data},
     )
 
 
