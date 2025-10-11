@@ -72,6 +72,8 @@ class NegotiationEnv:
         - Maintaining a positive sentiment throughout the negotiation.
         - Avoiding unethical tactics.
         """
+        # Medium Priority: Write unit tests for the get_reward function.
+
         if not history:
             return 0
         last_message = history[-1]

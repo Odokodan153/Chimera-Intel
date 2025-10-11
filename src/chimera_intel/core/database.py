@@ -222,6 +222,19 @@ def initialize_database() -> None:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rl_logs (
+                log_id SERIAL PRIMARY KEY,
+                state JSONB,
+                action INTEGER,
+                reward REAL,
+                timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+
         conn.commit()
         cursor.close()
         conn.close()

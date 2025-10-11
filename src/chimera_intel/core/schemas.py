@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, EmailStr
 import uuid
 from enum import Enum
 
@@ -1813,11 +1813,18 @@ class PodcastAnalysisResult(BaseModel):
 
 # ---: User Management Models ---
 class User(BaseModel):
-    """Model for a user in the database."""
-
-    id: int
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     username: str
+    email: EmailStr
     hashed_password: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Project(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    owner_id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # --- Threat Hunter Models ---
@@ -2735,5 +2742,52 @@ class VoiceAnalysis(BaseModel):
     pitch_variation: str
 
 
+# --- Negotiation & Simulation ---
+class NegotiationMessage(BaseModel):
+    negotiation_id: str
+    sender_id: str
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    analysis: Dict[str, Any]
+
+
+class LLMLog(BaseModel):
+    model_name: str
+    prompt: str
+    response: str
+    ethical_flags: List[str]
+    cultural_context: Dict[str, Any]
+    state: Dict[str, Any]
+    action: int
+    reward: float
+
+
+class RLLog(BaseModel):
+    state: Dict[str, Any]
+    action: int
+    reward: float
+
+
+# --- Application Configuration ---
+class IntelSourceConfig(BaseModel):
+    enabled: bool = True
+    api_key_required: bool = False
+
+
+class FeatureFlags(BaseModel):
+    enable_dark_web_monitoring: bool = Field(
+        True, description="Enable continuous monitoring of dark web forums."
+    )
+    enable_social_media_monitoring: bool = Field(
+        True, description="Enable real-time social media listening."
+    )
+
+
+class AppConfig(BaseModel):
+    app_name: str = "Chimera Intel"
+    version: str = "1.0.0"
+    log_level: str = "INFO"
+    intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
+    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
 
 

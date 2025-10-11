@@ -3,99 +3,101 @@ import pickle
 from typing import Dict, Any, List
 import json
 import logging
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
 
 # --- Local Imports ---
+
 
 from .llm_interface import LLMInterface
 from .ethical_guardrails import EthicalFramework
 from .cultural_intelligence import get_cultural_profile
 
-# --- Existing QLearningAgent class ---
+# --- New QLearningAgent with Neural Network ---
 
 
 class QLearningAgent:
     """
-    A simple Q-learning agent for the negotiation task.
-    It uses a Q-table to learn the optimal action for each state.
+    A Q-learning agent that uses a neural network for function approximation.
     """
 
     def __init__(
         self,
-        state_bins: int = 10,
+        state_size: int = 5,
         action_space_n: int = 3,
-        learning_rate: float = 0.1,
+        learning_rate: float = 0.001,
         discount_factor: float = 0.9,
         exploration_rate: float = 1.0,
         min_exploration_rate: float = 0.01,
         exploration_decay_rate: float = 0.995,
+        use_exponential_decay: bool = False,
     ):
         """
-        Initializes the Q-learning agent.
+        Initializes the Q-learning agent with a neural network.
         """
+        self.state_size = state_size
+        self.action_space_n = action_space_n
         self.lr = learning_rate
         self.gamma = discount_factor
         self.epsilon = exploration_rate
         self.min_epsilon = min_exploration_rate
         self.epsilon_decay = exploration_decay_rate
-        self.action_space_n = action_space_n
-        self.state_bins = state_bins
+        self.use_exponential_decay = use_exponential_decay
+        self.model = self._build_model()
 
-        # Discretize the state space for the Q-table
-
-        self.bins = [
-            np.linspace(0, 20000, state_bins),  # Offer range
-            np.linspace(0, 20000, state_bins),  # Offer range
-            np.linspace(-1, 1, state_bins),  # Sentiment range
-            np.linspace(-2, 2, state_bins),  # Sentiment trend
-            np.linspace(0, 25, state_bins),  # Turn count
-        ]
-        self.q_table = np.zeros(tuple([state_bins] * len(self.bins) + [action_space_n]))
-
-    def _discretize_state(self, state: np.ndarray) -> tuple:
-        """Converts a continuous state vector into a discrete tuple for the Q-table."""
-        discretized = [
-            np.clip(np.digitize(state[i], self.bins[i]) - 1, 0, self.state_bins - 1)
-            for i in range(len(state))
-        ]
-        return tuple(discretized)
+    def _build_model(self):
+        """Builds a simple neural network for Q-value approximation."""
+        model = Sequential()
+        model.add(Dense(24, input_dim=self.state_size, activation="relu"))
+        model.add(Dense(24, activation="relu"))
+        model.add(Dense(self.action_space_n, activation="linear"))
+        model.compile(loss="mse", optimizer=Adam(learning_rate=self.lr))
+        return model
 
     def choose_action(self, state: np.ndarray) -> int:
         """Chooses an action using an epsilon-greedy policy."""
-        if np.random.uniform(0, 1) < self.epsilon:
-            return np.random.choice(self.action_space_n)  # Explore
-        else:
-            discrete_state = self._discretize_state(state)
-            return np.argmax(self.q_table[discrete_state])  # Exploit
+        if np.random.rand() <= self.epsilon:
+            return np.random.choice(self.action_space_n)
+        state = np.reshape(state, [1, self.state_size])
+        act_values = self.model.predict(state)
+        return np.argmax(act_values[0])
 
-    def update_q_table(
-        self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray
+    def update_q_values(
+        self,
+        state: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
     ):
-        """Updates the Q-table based on the Bellman equation."""
-        discrete_state = self._discretize_state(state)
-        next_discrete_state = self._discretize_state(next_state)
-
-        old_value = self.q_table[discrete_state][action]
-        next_max = np.max(self.q_table[next_discrete_state])
-
-        new_value = (1 - self.lr) * old_value + self.lr * (
-            reward + self.gamma * next_max
-        )
-        self.q_table[discrete_state][action] = new_value
-
-        # Decay epsilon
+        """Updates the Q-values using the Bellman equation."""
+        state = np.reshape(state, [1, self.state_size])
+        next_state = np.reshape(next_state, [1, self.state_size])
+        target = reward
+        if not done:
+            target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
+        target_f = self.model.predict(state)
+        target_f[0][action] = target
+        self.model.fit(state, target_f, epochs=1, verbose=0)
 
         if self.epsilon > self.min_epsilon:
-            self.epsilon *= self.epsilon_decay
+            if self.use_exponential_decay:
+                # Low Priority: Experiment with adaptive decay schedules.
+                self.epsilon = self.min_epsilon + (
+                    self.epsilon - self.min_epsilon
+                ) * np.exp(-self.epsilon_decay)
+            else:
+                self.epsilon *= self.epsilon_decay
 
     def save_model(self, path: str):
-        """Saves the Q-table to a file."""
-        with open(path, "wb") as f:
-            pickle.dump(self.q_table, f)
+        """Saves the model weights to a file."""
+        self.model.save_weights(path)
 
     def load_model(self, path: str):
-        """Loads a Q-table from a file."""
-        with open(path, "rb") as f:
-            self.q_table = pickle.load(f)
+        """Loads model weights from a file."""
+        self.model.load_weights(path)
 
 
 # --- New QLearningLLMAgent class ---
@@ -140,8 +142,6 @@ class QLearningLLMAgent(QLearningAgent):
                 "directness": 5,
                 "formality": 5,
             }
-        # Provide the last 5 messages as context to the LLM
-
         conversation_history = "\n".join(
             [
                 f"{msg.get('sender_id', 'unknown')}: {msg.get('content', '')}"
@@ -167,17 +167,15 @@ class QLearningLLMAgent(QLearningAgent):
         Based on all this information, determine the best tactic and generate a response.
         """
 
+        # Medium Priority: Refactor the LLMInterface to use asynchronous calls (e.g., httpx, aiohttp).
         llm_output = self.llm.generate_message(
             prompt, system_role="You are a master negotiator in a simulation."
         )
-
-        # Perform ethical validation on the generated message
 
         message_content = llm_output.get("message", "")
         violations = self.ethics.check_message(message_content)
         if violations:
             llm_output["ethical_violations"] = [v["violation"] for v in violations]
-            # Append a warning, but do not alter the core message to allow for analysis
 
             llm_output[
                 "message"

@@ -10,8 +10,12 @@ from sklearn.naive_bayes import MultinomialNB
 import numpy as np
 from transformers import pipeline
 import logging
+from enum import Enum
 
 # --- Imports for LLM Integration ---
+# Medium Priority: Asynchronous LLM Calls
+# Note: Refactoring for asynchronous calls is a significant change that will be addressed in a future update.
+# To implement, consider using libraries like httpx or aiohttp.
 
 from .llm_interface import LLMInterface, MockLLMInterface
 from .negotiation_rl_agent import QLearningLLMAgent, QLearningAgent
@@ -19,13 +23,21 @@ from .ethical_guardrails import EthicalFramework
 from .cultural_intelligence import get_cultural_profile
 from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
+from .analytics import plot_sentiment_trajectory
 
 # --- CLI Application Definition ---
+
 
 console = Console()
 negotiation_app = typer.Typer(
     help="A comprehensive suite for AI-assisted negotiation, analysis, and training."
 )
+
+
+class SimulationMode(str, Enum):
+    training = "training"
+    inference = "inference"
+
 
 # --- Engine Class Definition ---
 
@@ -42,7 +54,7 @@ class NegotiationEngine:
         positive_sentiment_threshold: float = 0.1,
         negative_sentiment_threshold: float = -0.1,
         use_llm: bool = False,
-        use_mock_llm: bool = False,
+        mode: SimulationMode = SimulationMode.inference,
     ):
         """
         Initializes the engine and its components.
@@ -53,22 +65,29 @@ class NegotiationEngine:
         self.ethical_framework = EthicalFramework()
         self.advanced_nlp_analyzer = AdvancedNLPAnalyzer()
         self.llm = None
+        self.mode = mode
 
-        # Conditionally initialize the appropriate agent (LLM or standard)
+        # In training mode, always use the MockLLMInterface to avoid API calls
+
+        use_mock_llm = self.mode == SimulationMode.training
 
         if use_llm:
             try:
                 if use_mock_llm:
                     self.llm = MockLLMInterface()
-                    logging.info("Using Mock LLM Interface for testing.")
+                    logging.info("Using Mock LLM Interface for training.")
                 else:
                     self.llm = LLMInterface()
-                    logging.info("Using live Gemini LLM Interface.")
+                    logging.info("Using live Gemini LLM Interface for inference.")
+                # High Priority: Transition from Q-table to a neural network for function approximation.
+                # This will handle a continuous and high-dimensional state space more effectively.
+                # The QLearningLLMAgent will need to be updated to use a neural network model.
+
                 self.rl_agent = QLearningLLMAgent(
                     llm=self.llm,
                     ethics=self.ethical_framework,
                     db_params=self.db_params,
-                    action_space_n=3,  # Corresponds to actions like "Generate Offer", "Generate Query", etc.
+                    action_space_n=3,
                 )
                 logging.info("Initialized with QLearningLLMAgent.")
             except ValueError as e:
@@ -79,14 +98,10 @@ class NegotiationEngine:
         else:
             self.rl_agent = QLearningAgent(action_space_n=3)
             logging.info("Initialized with standard QLearningAgent.")
-        # Load a pre-trained RL model if a path is provided
-
         if rl_model_path:
             try:
                 self.rl_agent.load_model(rl_model_path)
-                self.rl_agent.epsilon = (
-                    0.1  # Set to a low exploration rate for inference
-                )
+                self.rl_agent.epsilon = 0.1
                 logging.info(f"Successfully loaded RL model from {rl_model_path}")
             except FileNotFoundError:
                 logging.warning(
@@ -135,24 +150,42 @@ class NegotiationEngine:
         Selects a tactic and generates a response, using the LLM if available.
         """
         state_representation = self._get_state_from_history(history)
+        action = self.rl_agent.choose_action(state_representation)
+        reward = self.get_reward(state_representation)
 
-        # If using the LLM-powered agent, generate a dynamic response
+        # Log the RL agent's decision-making process for analytics.
+
+        self._log_rl_step(state_representation, action, reward)
 
         if isinstance(self.rl_agent, QLearningLLMAgent):
             bot_response = self.rl_agent.generate_negotiation_message(
                 state_representation, counterparty_country_code
             )
             self._log_llm_interaction(
-                state_representation, bot_response, counterparty_country_code
+                state_representation,
+                action,
+                reward,
+                bot_response,
+                counterparty_country_code,
             )
             return {
                 "tactic": "LLM-Generated Response",
                 "reason": "Dynamically generated by the language model based on the negotiation context.",
                 "bot_response": bot_response,
             }
-        # Fallback to a simple rule-based recommendation if not using the LLM
-
         return self._generate_rule_based_recommendation(history)
+
+    def get_reward(self, state: Dict[str, Any]) -> float:
+        """
+        Calculates a reward based on the current state.
+        This is a simplified reward function. A more sophisticated one would be needed for a real-world scenario.
+        """
+        reward = 0
+        if state.get("last_message_sentiment") == "positive":
+            reward += 0.1
+        elif state.get("last_message_sentiment") == "negative":
+            reward -= 0.1
+        return reward
 
     def _get_state_from_history(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Creates a state summary from the message history for the LLM."""
@@ -169,8 +202,34 @@ class NegotiationEngine:
             "negotiation_turn_number": len(history),
         }
 
+    def _log_rl_step(self, state: Dict[str, Any], action: int, reward: float):
+        """Logs the state, action, and reward for RL analytics."""
+        conn = self._get_db_connection()
+        if not conn:
+            return
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO rl_logs (state, action, reward)
+                    VALUES (%s, %s, %s);
+                """,
+                    (json.dumps(state), action, reward),
+                )
+                conn.commit()
+        except Exception as e:
+            logging.error(f"Database Error: Failed to log RL step: {e}")
+        finally:
+            if conn:
+                conn.close()
+
     def _log_llm_interaction(
-        self, state: Dict[str, Any], response: str, country_code: Optional[str]
+        self,
+        state: Dict[str, Any],
+        action: int,
+        reward: float,
+        response: str,
+        country_code: Optional[str],
     ):
         """Logs the LLM interaction details to the database."""
         conn = self._get_db_connection()
@@ -179,16 +238,14 @@ class NegotiationEngine:
         cultural_profile = get_cultural_profile(country_code) if country_code else {}
         ethical_violations = self.ethical_framework.check_message(response)
 
-        # Construct a readable prompt for logging purposes
-
         prompt_for_log = f"State: {json.dumps(state)}, Cultural Profile: {json.dumps(cultural_profile)}"
 
         try:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO llm_logs (model_name, prompt, response, ethical_flags, cultural_context)
-                    VALUES (%s, %s, %s, %s, %s);
+                    INSERT INTO llm_logs (model_name, prompt, response, ethical_flags, cultural_context, state, action, reward)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
                 """,
                     (
                         (
@@ -200,6 +257,9 @@ class NegotiationEngine:
                         response,
                         json.dumps([v["violation"] for v in ethical_violations]),
                         json.dumps(cultural_profile),
+                        json.dumps(state),
+                        action,
+                        reward,
                     ),
                 )
                 conn.commit()
@@ -241,19 +301,24 @@ def run_simulation(
     use_llm: bool = typer.Option(
         False, "--llm", help="Enable the Gemini LLM for generating responses."
     ),
-    use_mock_llm: bool = typer.Option(
-        False, "--mock", help="Use a mock LLM for testing (avoids API calls)."
+    mode: SimulationMode = typer.Option(
+        SimulationMode.inference,
+        "--mode",
+        help="Set the simulation mode to 'training' or 'inference'.",
     ),
     country_code: str = typer.Option(
         "US", "--country", help="Set the counterparty's country code (e.g., JP, DE)."
     ),
+    deterministic_opponent: bool = typer.Option(
+        False,
+        "--deterministic",
+        help="Use a deterministic opponent for reproducible training.",
+    ),
 ):
     """Starts an interactive negotiation simulation."""
     console.print(
-        f"[bold yellow]--- Starting Negotiation Simulation (LLM Enabled: {use_llm}) ---[/bold yellow]"
+        f"[bold yellow]--- Starting Negotiation Simulation (Mode: {mode.value}, LLM Enabled: {use_llm}) ---[/bold yellow]"
     )
-
-    # Initialize the engine with database parameters from API_KEYS
 
     db_params = {
         "dbname": getattr(API_KEYS, "db_name", None),
@@ -262,32 +327,37 @@ def run_simulation(
         "host": getattr(API_KEYS, "db_host", None),
     }
 
-    engine = NegotiationEngine(
-        db_params=db_params, use_llm=use_llm, use_mock_llm=use_mock_llm
-    )
+    engine = NegotiationEngine(db_params=db_params, use_llm=use_llm, mode=mode)
     history = []
 
-    # Initial AI message to kick off the conversation
-
     recommendation = engine.recommend_tactic(history, country_code)
-    console.print(f"\\n[bold green]AI:[/bold green] {recommendation['bot_response']}")
+    console.print(f"\n[bold green]AI:[/bold green] {recommendation['bot_response']}")
     history.append(
         {"sender": "ai", "content": recommendation["bot_response"], "analysis": {}}
     )
 
-    # Main simulation loop
-
     while True:
-        user_input = console.input("\\n[bold blue]You:[/bold blue] ")
+        if deterministic_opponent:
+            # Low Priority: For more reproducible training, the deterministic opponent follows a set of predefined rules.
+
+            user_input = "I can offer a 10% reduction."
+            console.print(
+                f"\n[bold blue]Deterministic Opponent:[/bold blue] {user_input}"
+            )
+        else:
+            user_input = console.input("\n[bold blue]You:[/bold blue] ")
         if user_input.lower() in ["exit", "quit"]:
             console.print("[bold yellow]--- Simulation Ended ---[/bold yellow]")
+            # Medium Priority: Plot the sentiment trajectory at the end of the simulation.
+            # plot_sentiment_trajectory(db_params)
+
             break
         analysis = engine.analyze_message(user_input)
         history.append({"sender": "user", "content": user_input, "analysis": analysis})
 
         recommendation = engine.recommend_tactic(history, country_code)
         console.print(
-            f"\\n[bold green]AI:[/bold green] {recommendation['bot_response']}"
+            f"\n[bold green]AI:[/bold green] {recommendation['bot_response']}"
         )
         history.append(
             {"sender": "ai", "content": recommendation["bot_response"], "analysis": {}}

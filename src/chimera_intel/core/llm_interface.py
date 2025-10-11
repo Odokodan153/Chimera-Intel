@@ -1,27 +1,37 @@
 import json
-from typing import Dict, Any
-import google.generativeai as genai
-from .config_loader import API_KEYS
 import logging
+from typing import Dict, Any
+
+import google.generativeai as genai
+from httpx import AsyncClient
+
+from .config_loader import API_KEYS
+
 
 class LLMInterface:
     """
-    Wrapper for interacting with the Gemini API.
+    Asynchronous wrapper for interacting with the Gemini API.
     """
+
     def __init__(self, model: str = "gemini-1.5-flash"):
         """
         Initializes the Gemini client.
         """
         self.api_key = getattr(API_KEYS, "gemini_api_key", None)
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY not found in your environment configuration.")
-        
+            raise ValueError(
+                "GEMINI_API_KEY not found in your environment configuration."
+            )
+
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model)
+        self.http_client = AsyncClient()
 
-    def generate_message(self, prompt: str, system_role: str = "You are a negotiation assistant.") -> Dict[str, Any]:
+    async def generate_message(
+        self, prompt: str, system_role: str = "You are a negotiation assistant."
+    ) -> Dict[str, Any]:
         """
-        Generates a structured message using the Gemini model.
+        Generates a structured message using the Gemini model asynchronously.
 
         Args:
             prompt: The user's prompt, including context and history.
@@ -31,7 +41,6 @@ class LLMInterface:
             A dictionary containing the structured output from the LLM.
         """
         try:
-            # Instruct the model to return a JSON object for structured output
             full_prompt = (
                 f"{system_role}\n\n"
                 f"{prompt}\n\n"
@@ -40,35 +49,37 @@ class LLMInterface:
                 "'message' (the negotiation message), and "
                 "'confidence' (a float between 0.0 and 1.0)."
             )
-            
-            response = self.model.generate_content(full_prompt)
-            
-            # Clean and parse the JSON response
-            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+
+            response = await self.model.generate_content_async(full_prompt)
+
+            cleaned_response = (
+                response.text.strip().replace("```json", "").replace("```", "")
+            )
             return json.loads(cleaned_response)
 
         except Exception as e:
             logging.error(f"LLM response generation failed: {e}")
-            # Return a structured error to be handled by the agent
             return {
                 "tactic": "error",
                 "message": f"[LLM_ERROR] Failed to generate or parse response: {e}",
                 "confidence": 0.0,
             }
 
+
 class MockLLMInterface:
     """
     A mock LLM interface for testing purposes.
-    This allows for offline testing without making actual API calls.
     """
+
     def __init__(self, model: str = "mock-gemini"):
         self.model = model
 
-    def generate_message(self, prompt: str, system_role: str = "negotiation assistant") -> Dict[str, Any]:
+    def generate_message(
+        self, prompt: str, system_role: str = "negotiation assistant"
+    ) -> Dict[str, Any]:
         """
         Returns a simulated, structured negotiation message.
         """
-        # Simulate different responses based on the prompt content for more realistic testing
         if "aggressive" in prompt.lower():
             return {
                 "tactic": "Hardball Offer",
