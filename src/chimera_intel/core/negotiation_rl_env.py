@@ -1,55 +1,121 @@
 import numpy as np
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 
 class NegotiationEnv:
     """
-    Defines the environment for the Reinforcement Learning agent.
-    This includes the state space, action space, and reward function.
+    An enhanced negotiation environment for the RL agent.
     """
 
-    def __init__(self):
-        # States: [our_last_offer, their_last_offer, last_sentiment]
+    def __init__(self, opponent_persona: Dict[str, Any] = None):
+        """
+        Initializes the environment with an optional opponent persona.
+        """
+        self.action_space_n = (
+            3  # 0: Hold Firm, 1: Strategic Concession, 2: Propose Offer
+        )
+        self.zopa = (8000, 12000)  # Example Zone of Possible Agreement (ZOPA)
 
-        self.state_space_shape = (3,)
-        # Actions: 0=hold, 1=concede, 2=make_offer
+        if opponent_persona is None:
+            self.opponent_persona = {"name": "neutral", "risk_appetite": "medium"}
+        else:
+            self.opponent_persona = opponent_persona
 
-        self.action_space_n = 3
+    def get_state_from_history(
+        self, history: List[Dict[str, Any]], last_n_turns: int = 3
+    ) -> np.ndarray:
+        """
+        Generates a state vector from the negotiation history.
 
-    def get_state_from_history(self, history: List[Dict[str, Any]]) -> np.ndarray:
-        """Converts negotiation history into a state vector."""
+        The state vector is designed to capture the recent dynamics of the negotiation, including:
+        - Rolling average of the last N offers from both the AI and the opponent.
+        - Rolling average of the sentiment scores from the last N messages.
+        - The trend of the sentiment (e.g., is the conversation becoming more positive or negative?).
+        - The total number of turns, to track the length of the negotiation.
+        """
+        if not history:
+            return np.zeros(5)
+        # Extract recent offers and sentiments for trend analysis
+
         our_offers = [
-            msg.get("analysis", {}).get("offer_amount")
-            for msg in history
+            msg["analysis"].get("offer_amount", 0)
+            for msg in history[-last_n_turns:]
             if msg.get("sender_id") == "ai_negotiator"
-            and msg.get("analysis", {}).get("offer_amount")
         ]
         their_offers = [
-            msg.get("analysis", {}).get("offer_amount")
-            for msg in history
-            if msg.get("sender_id") != "ai_negotiator"
-            and msg.get("analysis", {}).get("offer_amount")
+            msg["analysis"].get("offer_amount", 0)
+            for msg in history[-last_n_turns:]
+            if msg.get("sender_id") == "them"
         ]
-        last_sentiment = (
-            history[-1].get("analysis", {}).get("tone_score", 0) if history else 0
+        sentiments = [
+            msg["analysis"].get("tone_score", 0) for msg in history[-last_n_turns:]
+        ]
+
+        # Calculate features for the state vector
+
+        avg_our_offer = np.mean(our_offers) if our_offers else 0
+        avg_their_offer = np.mean(their_offers) if their_offers else 0
+        avg_sentiment = np.mean(sentiments) if sentiments else 0
+        sentiment_trend = sentiments[-1] - sentiments[0] if len(sentiments) > 1 else 0
+        turn_count = len(history)
+
+        return np.array(
+            [avg_our_offer, avg_their_offer, avg_sentiment, sentiment_trend, turn_count]
         )
 
-        our_last_offer = our_offers[-1] if our_offers else 0
-        their_last_offer = their_offers[-1] if their_offers else 0
-
-        return np.array([our_last_offer, their_last_offer, last_sentiment])
-
     def get_reward(self, history: List[Dict[str, Any]], action: int) -> float:
-        """Calculates the reward based on the outcome of an action."""
+        """
+        Calculates the reward based on the outcome of an action.
+
+        The reward function is designed to encourage desirable negotiation behaviors, such as:
+        - Reaching a deal within the Zone of Possible Agreement (ZOPA).
+        - Maintaining a positive sentiment throughout the negotiation.
+        - Avoiding unethical tactics.
+        """
         if not history:
             return 0
-        last_intent = history[-1].get("analysis", {}).get("intent")
-        if last_intent == "acceptance":
-            return 100.0  # High reward for successful deal
-        if last_intent == "rejection":
-            return -50.0  # Penalty for rejection
-        # Small penalty for conceding to encourage holding firm
+        last_message = history[-1]
+        analysis = last_message.get("analysis", {})
+        intent = analysis.get("intent", "unknown")
+        reward = 0
 
-        if action == 1:  # Concede
-            return -5.0
-        return 1.0  # Small reward for continuing the negotiation
+        # Reward for successful deals within the ZOPA
+
+        if intent == "acceptance":
+            last_offer = analysis.get("offer_amount", 0)
+            if self.zopa[0] <= last_offer <= self.zopa[1]:
+                reward += 15  # Strong reward for a successful outcome
+            else:
+                reward -= 10  # Penalize deals outside the acceptable range
+        # Penalize rejections to discourage unsuccessful tactics
+
+        elif intent == "rejection":
+            reward -= 7
+        # Reward for positive sentiment, penalize negative sentiment
+
+        if analysis.get("sentiment") == "positive":
+            reward += 2
+        elif analysis.get("sentiment") == "negative":
+            reward -= 4  # Penalize negativity more heavily to encourage de-escalation
+        # Penalize the use of unethical tactics
+
+        if analysis.get("ethical_violations"):
+            reward -= 15  # Strong penalty for unethical behavior
+        return reward
+
+    def is_done(self, history: List[Dict[str, Any]]) -> bool:
+        """
+        Determines if the negotiation episode has concluded.
+
+        An episode ends if:
+        - A deal is accepted or rejected.
+        - The negotiation reaches an impasse (e.g., exceeds a maximum number of turns).
+        """
+        if not history:
+            return False
+        last_intent = history[-1].get("analysis", {}).get("intent", "unknown")
+        if last_intent in ["acceptance", "rejection"]:
+            return True
+        if len(history) > 25:  # End after 25 turns to represent a potential impasse
+            return True
+        return False

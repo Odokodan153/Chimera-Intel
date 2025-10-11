@@ -208,6 +208,20 @@ def initialize_database() -> None:
             """
         )
 
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS llm_logs (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT NOW(),
+                model_name TEXT,
+                prompt TEXT,
+                response TEXT,
+                ethical_flags TEXT,
+                cultural_context JSONB
+            );
+            """
+        )
+
         conn.commit()
         cursor.close()
         conn.close()
