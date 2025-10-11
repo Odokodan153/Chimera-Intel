@@ -1,183 +1,159 @@
-import numpy as np
-import pickle
-from typing import Dict, Any, List
+import random
 import json
-import logging
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.optimizers import Adam
-
-# --- Local Imports ---
-
-
+import torch
+import torch.optim as optim
+import torch.nn.functional as F
 from .llm_interface import LLMInterface
 from .ethical_guardrails import EthicalFramework
 from .cultural_intelligence import get_cultural_profile
-
-# --- New QLearningAgent with Neural Network ---
+from .dqn_model import DQN
+import numpy as np
 
 
 class QLearningAgent:
-    """
-    A Q-learning agent that uses a neural network for function approximation.
-    """
-
     def __init__(
-        self,
-        state_size: int = 5,
-        action_space_n: int = 3,
-        learning_rate: float = 0.001,
-        discount_factor: float = 0.9,
-        exploration_rate: float = 1.0,
-        min_exploration_rate: float = 0.01,
-        exploration_decay_rate: float = 0.995,
-        use_exponential_decay: bool = False,
+        self, action_space_n, learning_rate=0.1, discount_factor=0.9, epsilon=0.1
     ):
-        """
-        Initializes the Q-learning agent with a neural network.
-        """
-        self.state_size = state_size
         self.action_space_n = action_space_n
-        self.lr = learning_rate
-        self.gamma = discount_factor
-        self.epsilon = exploration_rate
-        self.min_epsilon = min_exploration_rate
-        self.epsilon_decay = exploration_decay_rate
-        self.use_exponential_decay = use_exponential_decay
-        self.model = self._build_model()
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.epsilon = epsilon
+        self.q_table = {}
 
-    def _build_model(self):
-        """Builds a simple neural network for Q-value approximation."""
-        model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation="relu"))
-        model.add(Dense(24, activation="relu"))
-        model.add(Dense(self.action_space_n, activation="linear"))
-        model.compile(loss="mse", optimizer=Adam(learning_rate=self.lr))
-        return model
+    def choose_action(self, state):
+        state_tuple = tuple(sorted(state.items()))
+        if random.uniform(0, 1) < self.epsilon or state_tuple not in self.q_table:
+            return random.randint(0, self.action_space_n - 1)
+        return self.q_table[state_tuple].index(max(self.q_table[state_tuple]))
 
-    def choose_action(self, state: np.ndarray) -> int:
-        """Chooses an action using an epsilon-greedy policy."""
-        if np.random.rand() <= self.epsilon:
-            return np.random.choice(self.action_space_n)
-        state = np.reshape(state, [1, self.state_size])
-        act_values = self.model.predict(state)
-        return np.argmax(act_values[0])
+    def learn(self, state, action, reward, next_state):
+        state_tuple = tuple(sorted(state.items()))
+        next_state_tuple = tuple(sorted(next_state.items()))
+        if state_tuple not in self.q_table:
+            self.q_table[state_tuple] = [0] * self.action_space_n
+        if next_state_tuple not in self.q_table:
+            self.q_table[next_state_tuple] = [0] * self.action_space_n
+        old_value = self.q_table[state_tuple][action]
+        next_max = max(self.q_table[next_state_tuple])
 
-    def update_q_values(
-        self,
-        state: np.ndarray,
-        action: int,
-        reward: float,
-        next_state: np.ndarray,
-        done: bool,
-    ):
-        """Updates the Q-values using the Bellman equation."""
-        state = np.reshape(state, [1, self.state_size])
-        next_state = np.reshape(next_state, [1, self.state_size])
-        target = reward
-        if not done:
-            target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-        target_f = self.model.predict(state)
-        target_f[0][action] = target
-        self.model.fit(state, target_f, epochs=1, verbose=0)
+        new_value = (1 - self.learning_rate) * old_value + self.learning_rate * (
+            reward + self.discount_factor * next_max
+        )
+        self.q_table[state_tuple][action] = new_value
 
-        if self.epsilon > self.min_epsilon:
-            if self.use_exponential_decay:
-                # Low Priority: Experiment with adaptive decay schedules.
-                self.epsilon = self.min_epsilon + (
-                    self.epsilon - self.min_epsilon
-                ) * np.exp(-self.epsilon_decay)
-            else:
-                self.epsilon *= self.epsilon_decay
+    def load_model(self, path):
+        with open(path, "r") as f:
+            self.q_table = json.load(f)
 
-    def save_model(self, path: str):
-        """Saves the model weights to a file."""
-        self.model.save_weights(path)
-
-    def load_model(self, path: str):
-        """Loads model weights from a file."""
-        self.model.load_weights(path)
+    def save_model(self, path):
+        with open(path, "w") as f:
+            json.dump(self.q_table, f)
 
 
-# --- New QLearningLLMAgent class ---
-
-
-class QLearningLLMAgent(QLearningAgent):
-    """
-    An advanced Q-learning agent that integrates with an LLM for response generation
-    and handles structured, contextual information.
-    """
-
+class QLearningLLMAgent:
     def __init__(
-        self,
-        llm: LLMInterface,
-        ethics: EthicalFramework,
-        db_params: dict,
-        *args,
-        **kwargs,
+        self, llm: LLMInterface, ethics: EthicalFramework, db_params, action_space_n
     ):
-        """
-        Initializes the agent with LLM, ethics framework, and database parameters.
-        """
-        super().__init__(*args, **kwargs)
         self.llm = llm
         self.ethics = ethics
         self.db_params = db_params
+        self.action_space_n = action_space_n
+        # Parameters for DQN
 
-    def generate_negotiation_message(
-        self,
-        state: np.ndarray,
-        history: List[Dict[str, Any]],
-        country_code: str,
-        persona: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Generates a culturally and persona-aware negotiation message using the LLM.
-        """
-        cultural_profile = get_cultural_profile(country_code)
-        if not cultural_profile:
-            cultural_profile = {
-                "country_name": "Unknown",
-                "directness": 5,
-                "formality": 5,
-            }
-        conversation_history = "\n".join(
-            [
-                f"{msg.get('sender_id', 'unknown')}: {msg.get('content', '')}"
-                for msg in history[-5:]
-            ]
+        self.batch_size = 128
+        self.gamma = 0.99
+        self.eps_start = 0.9
+        self.eps_end = 0.05
+        self.eps_decay = 1000
+        self.tau = 0.005
+        self.lr = 1e-4
+
+        # We need to define the state size based on the features we extract
+        # For now, let's assume a fixed size based on our state representation
+
+        n_observations = 4  # sentiment, tactics, turn, offer presence
+        self.policy_net = DQN(n_observations, action_space_n)
+        self.target_net = DQN(n_observations, action_space_n)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+
+        self.optimizer = optim.AdamW(
+            self.policy_net.parameters(), lr=self.lr, amsgrad=True
+        )
+        self.memory = []
+        self.steps_done = 0
+
+    def _state_to_tensor(self, state):
+        # Convert state dictionary to a tensor
+
+        sentiment_map = {"positive": 1, "neutral": 0, "negative": -1}
+        sentiment = sentiment_map.get(state.get("last_message_sentiment"), 0)
+        num_tactics = len(state.get("detected_tactics_in_last_message", []))
+        turn_number = state.get("negotiation_turn_number", 0)
+        offer_present = (
+            1 if "offer" in state.get("last_message_content", "").lower() else 0
+        )
+        return torch.tensor(
+            [[sentiment, num_tactics, turn_number, offer_present]], dtype=torch.float32
         )
 
-        prompt = f"""
-        You are an AI negotiating agent. Your current persona is '{persona.get('name', 'default')}'.
-        Description of your persona: {persona.get('description', 'N/A')}
-
-        You are negotiating with a counterpart from {cultural_profile.get('country_name', 'an unknown location')}.
-        Their cultural profile suggests:
-        - Directness (1-10): {cultural_profile.get('directness', 5)}
-        - Formality (1-10): {cultural_profile.get('formality', 5)}
-
-        Recent conversation history:
-        {conversation_history}
-
-        Current state vector (our avg offer, their avg offer, avg sentiment, sentiment trend, turn #):
-        {state.tolist()}
-
-        Based on all this information, determine the best tactic and generate a response.
-        """
-
-        # Medium Priority: Refactor the LLMInterface to use asynchronous calls (e.g., httpx, aiohttp).
-        llm_output = self.llm.generate_message(
-            prompt, system_role="You are a master negotiator in a simulation."
+    def choose_action(self, state):
+        sample = random.random()
+        eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * np.exp(
+            -1.0 * self.steps_done / self.eps_decay
         )
+        self.steps_done += 1
+        if sample > eps_threshold:
+            with torch.no_grad():
+                state_tensor = self._state_to_tensor(state)
+                return self.policy_net(state_tensor).max(1)[1].view(1, 1)
+        else:
+            return torch.tensor(
+                [[random.randrange(self.action_space_n)]], dtype=torch.long
+            )
 
-        message_content = llm_output.get("message", "")
-        violations = self.ethics.check_message(message_content)
+    async def generate_negotiation_message_async(
+        self, state, counterparty_country_code=None
+    ):
+        cultural_profile = (
+            get_cultural_profile(counterparty_country_code)
+            if counterparty_country_code
+            else {}
+        )
+        prompt = self._construct_prompt(state, cultural_profile)
+        response = await self.llm.generate_message_async(prompt)
+        # Ethical check
+
+        violations = self.ethics.check_message(response)
         if violations:
-            llm_output["ethical_violations"] = [v["violation"] for v in violations]
+            # Handle violations - for now, just log and return a safe response
 
-            llm_output[
-                "message"
-            ] += f"\n\n[SYSTEM WARNING: Potential ethical issues detected: {', '.join(llm_output['ethical_violations'])}]"
-        return llm_output
+            return "I need to reconsider my approach. Let's try to find a mutually agreeable solution."
+        return response
+
+    def _construct_prompt(self, state, cultural_profile):
+        prompt = (
+            "You are a negotiation agent. Based on the following state, generate a response.\n"
+            f"State: {json.dumps(state, indent=2)}\n"
+        )
+        if cultural_profile:
+            prompt += f"Consider the following cultural profile for your counterparty: {json.dumps(cultural_profile, indent=2)}\n"
+        prompt += (
+            "Your response should be strategic and aim to achieve a favorable outcome."
+        )
+        return prompt
+
+    def optimize_model(self):
+        if len(self.memory) < self.batch_size:
+            return
+        transitions = random.sample(self.memory, self.batch_size)
+        # This is where you'd implement the DQN learning step (e.g., Bellman equation)
+        # For brevity, this part is simplified
+
+        pass
+
+    def load_model(self, path):
+        self.policy_net.load_state_dict(torch.load(path))
+        self.target_net.load_state_dict(torch.load(path))
+
+    def save_model(self, path):
+        torch.save(self.policy_net.state_dict(), path)

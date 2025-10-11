@@ -438,3 +438,46 @@ def test_full_engine_functionality(engine):
     simulation = engine.simulate_outcome(scenario)
     assert "success_probability" in simulation
     assert 0 <= simulation["success_probability"] <= 1
+
+def test_analyze_message_positive(engine):
+    """Tests message analysis with positive sentiment."""
+    result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
+    assert result["sentiment"] == "positive"
+    assert "argument_tactics" in result
+
+def test_analyze_message_negative(engine):
+    """Tests message analysis with negative sentiment."""
+    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
+    assert result["sentiment"] == "negative"
+
+def test_get_reward(engine):
+    """Tests the get_reward function to ensure it calculates rewards as expected."""
+    positive_state = {"last_message_sentiment": "positive"}
+    negative_state = {"last_message_sentiment": "negative"}
+    neutral_state = {"last_message_sentiment": "neutral"}
+    offer_state = {"last_message_content": "I offer $100"}
+    accept_state = {"last_message_content": "I accept"}
+    reject_state = {"last_message_content": "I reject"}
+
+    assert engine.get_reward(positive_state) == 0.2
+    assert engine.get_reward(negative_state) == -0.2
+    assert engine.get_reward(neutral_state) == 0
+    assert engine.get_reward(offer_state) > 0
+    assert engine.get_reward(accept_state) > 0
+    assert engine.get_reward(reject_state) < 0
+
+def test_simulate_outcome(engine):
+    """Tests the negotiation outcome simulation."""
+    scenario_deal = {
+        "our_min": 10000, "our_max": 15000,
+        "their_min": 12000, "their_max": 18000,
+    }
+    scenario_no_deal = {
+        "our_min": 10000, "our_max": 11000,
+        "their_min": 12000, "their_max": 18000,
+    }
+    result_deal = engine.simulate_outcome(scenario_deal)
+    result_no_deal = engine.simulate_outcome(scenario_no_deal)
+
+    assert result_deal["outcome"] == "Deal is Possible"
+    assert result_no_deal["outcome"] == "No Deal Likely"

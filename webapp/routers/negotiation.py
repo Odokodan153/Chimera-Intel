@@ -8,18 +8,20 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
 import uuid
 import logging
 from functools import lru_cache
 
 # Core Chimera Intel imports
 
+
 from chimera_intel.core.database import get_db
 from chimera_intel.core import schemas, models
 from chimera_intel.core.negotiation import NegotiationEngine
 
 # Configure structured logging
+
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -90,6 +92,58 @@ def create_negotiation(
         )
 
 
+@router.post("/negotiations/{negotiation_id}/join", status_code=status.HTTP_200_OK)
+def join_negotiation(
+    negotiation_id: str,
+    participant: schemas.NegotiationParticipantCreate,
+    db: Session = Depends(get_db),
+):
+    """Adds a participant to a negotiation session."""
+    db_negotiation = (
+        db.query(models.NegotiationSession)
+        .filter(models.NegotiationSession.id == negotiation_id)
+        .first()
+    )
+    if not db_negotiation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Negotiation session not found",
+        )
+    db_participant = models.NegotiationParticipant(
+        session_id=negotiation_id,
+        participant_id=participant.participant_id,
+        participant_name=participant.participant_name,
+    )
+    db.add(db_participant)
+    db.commit()
+    return {"message": "Participant added to the negotiation session."}
+
+
+@router.post("/negotiations/{negotiation_id}/leave", status_code=status.HTTP_200_OK)
+def leave_negotiation(
+    negotiation_id: str,
+    participant: schemas.NegotiationParticipantCreate,
+    db: Session = Depends(get_db),
+):
+    """Removes a participant from a negotiation session."""
+    db_participant = (
+        db.query(models.NegotiationParticipant)
+        .filter(
+            models.NegotiationParticipant.session_id == negotiation_id,
+            models.NegotiationParticipant.participant_id == participant.participant_id,
+        )
+        .first()
+    )
+    if not db_participant:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Participant not found in the negotiation session.",
+        )
+    db.delete(db_participant)
+    db.commit()
+    return {"message": "Participant removed from the negotiation session."}
+
+
 @router.post(
     "/negotiations/{negotiation_id}/messages",
     response_model=schemas.AnalysisResponse,
@@ -97,6 +151,7 @@ def create_negotiation(
 def analyze_new_message(
     negotiation_id: str,
     message: schemas.MessageCreate,
+    simulation_scenario: Dict[str, int],
     db: Session = Depends(get_db),
     engine: NegotiationEngine = Depends(get_engine),
 ):
@@ -147,15 +202,6 @@ def analyze_new_message(
 
         recommendation = engine.recommend_tactic(history)
 
-        # NOTE: Simulation parameters are hardcoded here for demonstration.
-        # In a real application, these would likely be configurable per-negotiation.
-
-        simulation_scenario = {
-            "our_min": 5000,
-            "our_max": 10000,
-            "their_min": 7000,
-            "their_max": 12000,
-        }
         simulation = engine.simulate_outcome(simulation_scenario)
 
         logger.info(f"Message in negotiation {negotiation_id} analyzed successfully.")
@@ -244,7 +290,7 @@ async def websocket_endpoint(websocket: WebSocket, negotiation_id: str):
                 }
                 for msg in db_negotiation.messages
             ]
-            recommendation = engine.recommend_tactic(history)
+            recommendation = await engine.recommend_tactic_async(history)
             bot_reply = recommendation.get(
                 "bot_response", "I'm not sure how to respond to that."
             )

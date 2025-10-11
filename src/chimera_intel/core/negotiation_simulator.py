@@ -22,16 +22,19 @@ def train_rl_agent(
     """
     training_logs = []
     for episode in range(episodes):
+        agent.clear_prediction_cache()
         history = []
         state = env.get_state_from_history(history)
         done = False
         total_reward = 0
+        turn = 0
 
         while not done:
-            action = agent.choose_action(state)
-
-            # Low Priority: Use a deterministic opponent for reproducible training.
-
+            try:
+                action = agent.choose_action(state)
+            except Exception as e:
+                logging.error(f"Error in choose_action: {e}")
+                break  # End episode on error
             if deterministic_opponent:
                 opponent_response = {
                     "sender_id": "them",
@@ -39,19 +42,18 @@ def train_rl_agent(
                     "analysis": {
                         "intent": "offer",
                         "sentiment": "neutral",
-                        "offer_amount": 11000,  # Example fixed offer
+                        "tone_score": 0.0,
+                        "offer_amount": 11000,
                     },
                 }
             else:
-                # In a real scenario, the opponent's response would be generated here.
-                # For now, we'll simulate a simple response.
-
                 opponent_response = {
                     "sender_id": "them",
                     "content": "That's an interesting offer. Let me consider it.",
                     "analysis": {
                         "intent": "neutral",
                         "sentiment": "neutral",
+                        "tone_score": 0.0,
                         "offer_amount": np.random.uniform(7000, 13000),
                     },
                 }
@@ -61,23 +63,28 @@ def train_rl_agent(
             next_state = env.get_state_from_history(history)
             done = env.is_done(history)
 
-            agent.update_q_values(state, action, reward, next_state, done)
+            try:
+                agent.update_q_values(state, action, reward, next_state, done)
+            except Exception as e:
+                logging.error(f"Error in update_q_values: {e}")
+                break  # End episode on error
             state = next_state
             total_reward += reward
+            turn += 1
+        agent.decay_epsilon(episode)
 
-            # Log the step for analytics
+        training_logs.append(
+            {
+                "episode": episode,
+                "total_reward": total_reward,
+                "epsilon": agent.epsilon,
+                "turns": turn,
+                "final_intent": (
+                    history[-1].get("analysis", {}).get("intent") if history else "N/A"
+                ),
+            }
+        )
 
-            training_logs.append(
-                {
-                    "episode": episode,
-                    "turn": len(history),
-                    "state": state.tolist(),
-                    "action": action,
-                    "reward": reward,
-                    "total_reward": total_reward,
-                    "epsilon": agent.epsilon,
-                }
-            )
         if (episode + 1) % 100 == 0:
             logging.info(
                 f"Episode {episode + 1}/{episodes} | Total Reward: {total_reward} | Epsilon: {agent.epsilon:.4f}"
@@ -87,17 +94,11 @@ def train_rl_agent(
     logging.info(f"Training logs saved to {log_file}")
 
 
-# High Priority: Splitting Training and Inference
-
-
 def run_training_mode():
     """
     Runs the negotiation agent in training mode.
     """
     logging.info("--- Running in Training Mode ---")
-    # In training mode, we use the MockLLMInterface to avoid API calls.
-    # Medium Priority: Write unit tests for the MockLLMInterface.
-
     agent = QLearningAgent(use_exponential_decay=True)
     env = NegotiationEnv()
     train_rl_agent(agent, env, episodes=500, deterministic_opponent=True)
@@ -113,17 +114,13 @@ def run_inference_mode(use_llm: bool = False):
     agent = QLearningAgent()
     try:
         agent.load_model("negotiation_rl_model.h5")
-        agent.epsilon = 0  # No exploration in inference mode
+        agent.epsilon = 0
         logging.info("Successfully loaded pre-trained model.")
-    except FileNotFoundError:
+    except (FileNotFoundError, IOError):
         logging.warning("No pre-trained model found. Using a new agent.")
-    # The rest of the inference logic would go here, similar to the original `run_simulation`.
-    # This would involve interacting with a user or another AI in real-time.
 
 
 if __name__ == "__main__":
-    # Example of how to switch between modes
-
     TRAINING = True
     if TRAINING:
         run_training_mode()

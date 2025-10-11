@@ -5,18 +5,15 @@ import typer
 from rich.console import Console
 from typing import List, Dict, Any, Tuple, Optional
 from textblob import TextBlob
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
 import numpy as np
-from transformers import pipeline
 import logging
 from enum import Enum
+import asyncio
+import uuid
 
 # --- Imports for LLM Integration ---
-# Medium Priority: Asynchronous LLM Calls
-# Note: Refactoring for asynchronous calls is a significant change that will be addressed in a future update.
-# To implement, consider using libraries like httpx or aiohttp.
 
+import httpx
 from .llm_interface import LLMInterface, MockLLMInterface
 from .negotiation_rl_agent import QLearningLLMAgent, QLearningAgent
 from .ethical_guardrails import EthicalFramework
@@ -24,6 +21,8 @@ from .cultural_intelligence import get_cultural_profile
 from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
+from . import models
+from .database import get_db
 
 # --- CLI Application Definition ---
 
@@ -67,8 +66,6 @@ class NegotiationEngine:
         self.llm = None
         self.mode = mode
 
-        # In training mode, always use the MockLLMInterface to avoid API calls
-
         use_mock_llm = self.mode == SimulationMode.training
 
         if use_llm:
@@ -79,10 +76,6 @@ class NegotiationEngine:
                 else:
                     self.llm = LLMInterface()
                     logging.info("Using live Gemini LLM Interface for inference.")
-                # High Priority: Transition from Q-table to a neural network for function approximation.
-                # This will handle a continuous and high-dimensional state space more effectively.
-                # The QLearningLLMAgent will need to be updated to use a neural network model.
-
                 self.rl_agent = QLearningLLMAgent(
                     llm=self.llm,
                     ethics=self.ethical_framework,
@@ -141,24 +134,22 @@ class NegotiationEngine:
             "argument_tactics": detected_tactics,
         }
 
-    def recommend_tactic(
+    async def recommend_tactic_async(
         self,
         history: List[Dict[str, Any]],
         counterparty_country_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Selects a tactic and generates a response, using the LLM if available.
+        Selects a tactic and generates a response asynchronously, using the LLM if available.
         """
         state_representation = self._get_state_from_history(history)
         action = self.rl_agent.choose_action(state_representation)
         reward = self.get_reward(state_representation)
 
-        # Log the RL agent's decision-making process for analytics.
-
         self._log_rl_step(state_representation, action, reward)
 
         if isinstance(self.rl_agent, QLearningLLMAgent):
-            bot_response = self.rl_agent.generate_negotiation_message(
+            bot_response = await self.rl_agent.generate_negotiation_message_async(
                 state_representation, counterparty_country_code
             )
             self._log_llm_interaction(
@@ -175,16 +166,32 @@ class NegotiationEngine:
             }
         return self._generate_rule_based_recommendation(history)
 
-    def get_reward(self, state: Dict[str, Any]) -> float:
+    def get_reward(self, state: Dict[str, Any], history: List[Dict[str, Any]]) -> float:
         """
-        Calculates a reward based on the current state.
-        This is a simplified reward function. A more sophisticated one would be needed for a real-world scenario.
+        Calculates a more sophisticated reward based on the current state and history.
         """
         reward = 0
+        # Sentiment-based reward
         if state.get("last_message_sentiment") == "positive":
-            reward += 0.1
+            reward += 0.2
         elif state.get("last_message_sentiment") == "negative":
-            reward -= 0.1
+            reward -= 0.2
+
+        # Reward for making progress
+        if "offer" in state.get("last_message_content", "").lower():
+            reward += 0.3
+        if "accept" in state.get("last_message_content", "").lower():
+            reward += 1.0  # Strong reward for reaching an agreement
+        if "reject" in state.get("last_message_content", "").lower():
+            reward -= 0.5  # Penalty for rejection
+
+        # Reward for concessions (a simple heuristic)
+        if len(history) > 1:
+            last_message = history[-1]
+            if "offer" in last_message.get("content", "").lower():
+                # A more complex implementation would parse the offer amounts
+                reward += 0.1 # Small reward for making a concession
+        
         return reward
 
     def _get_state_from_history(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -292,8 +299,33 @@ class NegotiationEngine:
             "bot_response": "That's an interesting point. How can we build on that idea together?",
         }
 
+    def simulate_outcome(self, simulation_scenario: Dict[str, int]) -> Dict[str, Any]:
+        """
+        Simulates a negotiation outcome based on a simple scenario.
+        """
+        our_min = simulation_scenario.get("our_min", 5000)
+        our_max = simulation_scenario.get("our_max", 10000)
+        their_min = simulation_scenario.get("their_min", 7000)
+        their_max = simulation_scenario.get("their_max", 12000)
 
-# --- CLI Command for Simulation ---
+        overlap_min = max(our_min, their_min)
+        overlap_max = min(our_max, their_max)
+
+        if overlap_min > overlap_max:
+            return {
+                "outcome": "No Deal Likely",
+                "reason": "There is no overlapping range between the two parties.",
+                "settlement_point": None,
+            }
+        settlement_point = (overlap_min + overlap_max) / 2
+        return {
+            "outcome": "Deal is Possible",
+            "reason": f"An overlapping negotiation range exists between {overlap_min} and {overlap_max}.",
+            "settlement_point": settlement_point,
+        }
+
+
+# --- CLI Commands ---
 
 
 @negotiation_app.command("simulate")
@@ -330,7 +362,7 @@ def run_simulation(
     engine = NegotiationEngine(db_params=db_params, use_llm=use_llm, mode=mode)
     history = []
 
-    recommendation = engine.recommend_tactic(history, country_code)
+    recommendation = asyncio.run(engine.recommend_tactic_async(history, country_code))
     console.print(f"\n[bold green]AI:[/bold green] {recommendation['bot_response']}")
     history.append(
         {"sender": "ai", "content": recommendation["bot_response"], "analysis": {}}
@@ -338,9 +370,12 @@ def run_simulation(
 
     while True:
         if deterministic_opponent:
-            # Low Priority: For more reproducible training, the deterministic opponent follows a set of predefined rules.
-
-            user_input = "I can offer a 10% reduction."
+            if len(history) % 4 == 1:
+                user_input = "I can offer a 10% reduction."
+            elif len(history) % 4 == 3:
+                user_input = "That's not good enough."
+            else:
+                user_input = "What else can you do for me?"
             console.print(
                 f"\n[bold blue]Deterministic Opponent:[/bold blue] {user_input}"
             )
@@ -348,20 +383,196 @@ def run_simulation(
             user_input = console.input("\n[bold blue]You:[/bold blue] ")
         if user_input.lower() in ["exit", "quit"]:
             console.print("[bold yellow]--- Simulation Ended ---[/bold yellow]")
-            # Medium Priority: Plot the sentiment trajectory at the end of the simulation.
-            # plot_sentiment_trajectory(db_params)
-
+            plot_sentiment_trajectory(db_params)
             break
         analysis = engine.analyze_message(user_input)
         history.append({"sender": "user", "content": user_input, "analysis": analysis})
 
-        recommendation = engine.recommend_tactic(history, country_code)
+        recommendation = asyncio.run(
+            engine.recommend_tactic_async(history, country_code)
+        )
         console.print(
             f"\n[bold green]AI:[/bold green] {recommendation['bot_response']}"
         )
         history.append(
             {"sender": "ai", "content": recommendation["bot_response"], "analysis": {}}
         )
+
+
+@negotiation_app.command("start")
+def start_negotiation(
+    subject: str = typer.Argument(..., help="The subject of the negotiation.")
+):
+    """
+    Starts a new negotiation session.
+    """
+    db = next(get_db())
+    session_id = str(uuid.uuid4())
+    db_negotiation = models.NegotiationSession(id=session_id, subject=subject)
+    db.add(db_negotiation)
+    db.commit()
+    db.refresh(db_negotiation)
+    console.print(
+        f"Negotiation session started with ID: [bold yellow]{session_id}[/bold yellow]"
+    )
+
+
+@negotiation_app.command("join")
+def join_negotiation(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session."),
+    user_id: str = typer.Argument(..., help="The ID of the user joining the session."),
+):
+    """
+    Adds a user to an existing negotiation session.
+    """
+    db = next(get_db())
+    session = (
+        db.query(models.NegotiationSession)
+        .filter(models.NegotiationSession.id == session_id)
+        .first()
+    )
+    if not session:
+        console.print(f"Negotiation session with ID {session_id} not found.")
+        return
+    # Assuming a simple user model for now
+
+    participant = models.NegotiationParticipant(
+        session_id=session_id, participant_id=user_id, participant_name=user_id
+    )
+    db.add(participant)
+    db.commit()
+    console.print(f"User {user_id} has joined negotiation {session_id}.")
+
+
+@negotiation_app.command("leave")
+def leave_negotiation(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session."),
+    user_id: str = typer.Argument(..., help="The ID of the user leaving the session."),
+):
+    """
+    Removes a user from a negotiation session.
+    """
+    db = next(get_db())
+    participant = (
+        db.query(models.NegotiationParticipant)
+        .filter(
+            models.NegotiationParticipant.session_id == session_id,
+            models.NegotiationParticipant.participant_id == user_id,
+        )
+        .first()
+    )
+    if not participant:
+        console.print(f"User {user_id} not found in negotiation {session_id}.")
+        return
+    db.delete(participant)
+    db.commit()
+    console.print(f"User {user_id} has left negotiation {session_id}.")
+
+
+@negotiation_app.command("offer")
+def make_offer(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session."),
+    user_id: str = typer.Argument(..., help="The ID of the user making the offer."),
+    offer: str = typer.Argument(..., help="The offer being made."),
+):
+    """
+    Makes an offer in a negotiation.
+    """
+    db = next(get_db())
+    message = models.Message(
+        id=str(uuid.uuid4()),
+        negotiation_id=session_id,
+        sender_id=user_id,
+        content=f"Offer: {offer}",
+        analysis={},
+    )
+    db.add(message)
+    db.commit()
+    console.print(f"Offer from {user_id} in session {session_id} recorded.")
+
+
+@negotiation_app.command("accept")
+def accept_offer(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session."),
+    user_id: str = typer.Argument(..., help="The ID of the user accepting the offer."),
+):
+    """
+    Accepts an offer in a negotiation.
+    """
+    db = next(get_db())
+    message = models.Message(
+        id=str(uuid.uuid4()),
+        negotiation_id=session_id,
+        sender_id=user_id,
+        content="Offer accepted.",
+        analysis={},
+    )
+    db.add(message)
+    db.commit()
+    console.print(f"Acceptance from {user_id} in session {session_id} recorded.")
+
+
+@negotiation_app.command("reject")
+def reject_offer(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session."),
+    user_id: str = typer.Argument(..., help="The ID of the user rejecting the offer."),
+):
+    """
+    Rejects an offer in a negotiation.
+    """
+    db = next(get_db())
+    message = models.Message(
+        id=str(uuid.uuid4()),
+        negotiation_id=session_id,
+        sender_id=user_id,
+        content="Offer rejected.",
+        analysis={},
+    )
+    db.add(message)
+    db.commit()
+    console.print(f"Rejection from {user_id} in session {session_id} recorded.")
+
+
+@negotiation_app.command("history")
+def get_history(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session.")
+):
+    """
+    Gets the history of a negotiation session.
+    """
+    db = next(get_db())
+    session = (
+        db.query(models.NegotiationSession)
+        .filter(models.NegotiationSession.id == session_id)
+        .first()
+    )
+    if not session:
+        console.print(f"Negotiation session with ID {session_id} not found.")
+        return
+    for message in session.messages:
+        console.print(f"  [{message.sender_id}] {message.content}")
+
+
+@negotiation_app.command("status")
+def negotiation_status(
+    session_id: str = typer.Argument(..., help="The ID of the negotiation session.")
+):
+    """
+    Gets the status of a negotiation session.
+    """
+    db = next(get_db())
+    session = (
+        db.query(models.NegotiationSession)
+        .filter(models.NegotiationSession.id == session_id)
+        .first()
+    )
+    if not session:
+        console.print(f"Negotiation session with ID {session_id} not found.")
+        return
+    console.print(f"Subject: {session.subject}")
+    console.print(f"Started at: {session.start_time}")
+    for message in session.messages:
+        console.print(f"  [{message.sender_id}] {message.content}")
 
 
 if __name__ == "__main__":
