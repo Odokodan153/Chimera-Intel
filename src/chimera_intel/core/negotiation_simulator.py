@@ -1,11 +1,60 @@
 import json
 import logging
+from collections import namedtuple
 import numpy as np
 
 from .negotiation_rl_agent import QLearningAgent
 from .negotiation_rl_env import NegotiationEnv
 
 # High Priority: Comprehensive Logging for Analytics
+
+
+Persona = namedtuple("Persona", ["name", "description", "generate_response"])
+
+
+def get_personas():
+    """
+    Returns a dictionary of predefined negotiation personas.
+    """
+
+    def cooperative_response(user_input, history):
+        return {
+            "persona_response": "That's a reasonable point. I'm willing to work with you on this.",
+            "tactic": "Acknowledge and Concede",
+            "analysis": {"intent": "agreement"},
+        }
+
+    def aggressive_response(user_input, history):
+        return {
+            "persona_response": "I'm not going to waste time with that. Give me a better offer.",
+            "tactic": "High-pressure",
+            "analysis": {"intent": "demand"},
+        }
+
+    def analytical_response(user_input, history):
+        return {
+            "persona_response": "Let's look at the data. The market trends don't support that price.",
+            "tactic": "Data-driven argument",
+            "analysis": {"intent": "justification"},
+        }
+
+    return {
+        "cooperative": Persona(
+            name="Cooperative",
+            description="Aims for a win-win outcome and is willing to make concessions.",
+            generate_response=cooperative_response,
+        ),
+        "aggressive": Persona(
+            name="Aggressive",
+            description="Focuses on winning and may use pressure tactics.",
+            generate_response=aggressive_response,
+        ),
+        "analytical": Persona(
+            name="Analytical",
+            description="Relies on data and logic to make their case.",
+            generate_response=analytical_response,
+        ),
+    }
 
 
 def train_rl_agent(

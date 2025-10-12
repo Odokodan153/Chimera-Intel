@@ -2,13 +2,14 @@ import random
 import json
 import torch
 import torch.optim as optim
-from .llm_interface import LLMInterface
+from .llm_interface import LLMInterface, MockLLMInterface
 from .ethical_guardrails import EthicalFramework
 from .cultural_intelligence import get_cultural_profile
 from .dqn_model import DQN
 import numpy as np
 from collections import namedtuple
 import torch.nn as nn
+from typing import Union
 
 
 class QLearningAgent:
@@ -53,7 +54,11 @@ class QLearningAgent:
 
 class QLearningLLMAgent:
     def __init__(
-        self, llm: LLMInterface, ethics: EthicalFramework, db_params, action_space_n
+        self,
+        llm: Union[LLMInterface, MockLLMInterface],
+        ethics: EthicalFramework,
+        db_params,
+        action_space_n,
     ):
         self.llm = llm
         self.ethics = ethics
@@ -112,8 +117,8 @@ class QLearningLLMAgent:
                 [[random.randrange(self.action_space_n)]], dtype=torch.long
             )
 
-    async def generate_negotiation_message_async(
-        self, state, counterparty_country_code=None
+    def generate_negotiation_message(
+        self, state, history, counterparty_country_code=None, persona=None
     ):
         cultural_profile = (
             get_cultural_profile(counterparty_country_code)
@@ -121,14 +126,19 @@ class QLearningLLMAgent:
             else {}
         )
         prompt = self._construct_prompt(state, cultural_profile)
-        response = await self.llm.generate_message_async(prompt)
+        response = self.llm.generate_message(prompt)
         # Ethical check
 
         violations = self.ethics.check_message(response)
         if violations:
             # Handle violations - for now, just log and return a safe response
 
-            return "I need to reconsider my approach. Let's try to find a mutually agreeable solution."
+            return {
+                "tactic": "error",
+                "message": "I need to reconsider my approach. Let's try to find a mutually agreeable solution.",
+                "confidence": 0.0,
+                "ethical_violations": violations,
+            }
         return response
 
     def _construct_prompt(self, state, cultural_profile):
@@ -143,24 +153,28 @@ class QLearningLLMAgent:
         )
         return prompt
 
+
 def optimize_model(self):
     if len(self.memory) < self.batch_size:
         return
-    Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+    Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
     transitions = self.memory.sample(self.batch_size)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
+
     batch = Transition(*zip(*transitions))
 
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=self.device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+
+    non_final_mask = torch.tensor(
+        tuple(map(lambda s: s is not None, batch.next_state)),
+        device=self.device,
+        dtype=torch.bool,
+    )
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
@@ -168,6 +182,7 @@ def optimize_model(self):
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
+
     state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for all next states.
@@ -175,16 +190,22 @@ def optimize_model(self):
     # on the "older" target_net; selecting their best reward with max(1)[0].
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case of a final state.
+
     next_state_values = torch.zeros(self.batch_size, device=self.device)
-    next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()
+    next_state_values[non_final_mask] = (
+        self.target_net(non_final_next_states).max(1)[0].detach()
+    )
     # Compute the expected Q values
+
     expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
     # Compute Huber loss
+
     criterion = nn.SmoothL1Loss()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
+
     self.optimizer.zero_grad()
     loss.backward()
     for param in self.policy_net.parameters():

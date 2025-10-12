@@ -110,7 +110,7 @@ def train_rl_agent(
 
             next_state = env.get_state_from_history(history)
             reward = env.get_reward(history, action)
-            agent.update_q_table(state, action, reward, next_state)
+            agent.learn(state, action, reward, next_state)
             state = next_state
 
             if env.is_done(history):
@@ -154,7 +154,10 @@ def simulate_llm_message(
             f"[bold red]Error:[/bold red] Persona '{persona_name}' not found."
         )
         raise typer.Exit()
-    agent = QLearningLLMAgent(llm=llm, ethics=ethics, db_params={})
+    env = NegotiationEnv(opponent_persona=persona)
+    agent = QLearningLLMAgent(
+        llm=llm, ethics=ethics, db_params={}, action_space_n=env.action_space_n
+    )
 
     # Create a realistic sample history for context
 
@@ -175,7 +178,6 @@ def simulate_llm_message(
         },
     ]
 
-    env = NegotiationEnv(opponent_persona=persona)
     state = env.get_state_from_history(history)
 
     # Generate the structured message

@@ -63,14 +63,6 @@ class ApiKeys(BaseSettings):
 
     secret_key: str = Field("default_secret_key_for_dev", alias="SECRET_KEY")
 
-    # --- Database Credentials ---
-
-    db_user: str = Field("user", alias="DB_USER")
-    db_password: str = Field("password", alias="DB_PASSWORD")
-    db_host: str = Field("localhost", alias="DB_HOST")
-    db_name: str = Field("chimera_intel", alias="DB_NAME")
-    db_port: int = Field(5432, alias="DB_PORT")
-
     # --- SQLAlchemy Database URL (constructed automatically) ---
 
     database_url: Optional[PostgresDsn] = None
