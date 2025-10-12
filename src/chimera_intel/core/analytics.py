@@ -105,10 +105,10 @@ def plot_sentiment_trajectory(
                 timestamp,
                 (analysis->>'tone_score')::float as sentiment
             FROM messages
-            WHERE negotiation_id = %s
+            WHERE negotiation_id = %(negotiation_id)s
             ORDER BY timestamp;
         """
-        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
+        df = pd.read_sql_query(query, conn, params={'negotiation_id': negotiation_id})
 
         if df.empty:
             print(f"No messages found for negotiation ID: {negotiation_id}")
