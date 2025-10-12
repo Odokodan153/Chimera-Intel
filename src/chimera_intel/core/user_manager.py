@@ -10,10 +10,10 @@ import logging
 from typing import Optional
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from . import models, schemas
+from . import schemas
 from jose import jwt
 from .schemas import User
-from .database import create_user_in_db, get_user_from_db
+from .database import create_user_in_db, get_user_from_db, User as UserModel
 from .utils import console
 
 logger = logging.getLogger(__name__)
@@ -65,32 +65,36 @@ def logout_user() -> None:
         os.remove(USER_CONTEXT_FILE)
     logger.info("User logged out.")
 
+
 def get_user(self, username: str):
-        return self.db.query(models.User).filter(models.User.username == username).first()
+    return self.db.query(UserModel).filter(UserModel.username == username).first()
+
 
 def create_user(self, user: schemas.UserCreate):
-        hashed_password = pwd_context.hash(user.password)
-        db_user = models.User(username=user.username, hashed_password=hashed_password)
-        self.db.add(db_user)
-        self.db.commit()
-        self.db.refresh(db_user)
-        return db_user
+    hashed_password = pwd_context.hash(user.password)
+    db_user = UserModel(username=user.username, hashed_password=hashed_password)
+    self.db.add(db_user)
+    self.db.commit()
+    self.db.refresh(db_user)
+    return db_user
 
-def authenticate_user(self, username: str, password: str) -> Optional[models.User]:
-        user = self.get_user(username)
-        if not user or not pwd_context.verify(password, user.hashed_password):
-            return None
-        return user
+
+def authenticate_user(self, username: str, password: str) -> Optional[UserModel]:
+    user = self.get_user(username)
+    if not user or not pwd_context.verify(password, user.hashed_password):
+        return None
+    return user
+
 
 def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None):
-        to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(minutes=15)
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return encoded_jwt
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 # --- Typer CLI Application ---
@@ -111,7 +115,8 @@ def add_user_command(
         console.print(f"[bold red]Error:[/bold red] User '{username}' already exists.")
         raise typer.Exit(code=1)
     hashed_password = get_password_hash(password)
-    create_user_in_db(username, hashed_password)
+    user_data = schemas.UserCreate(username=username, password=hashed_password)
+    create_user_in_db(user_data)
     console.print(f"[bold green]Successfully created user '{username}'.[/bold green]")
 
 

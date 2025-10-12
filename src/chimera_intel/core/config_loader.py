@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 import hvac
 import yaml
-from pydantic import Field, PostgresDsn, ValidationError
+from pydantic import Field, PostgresDsn, ValidationError, computed_field
 from pydantic_settings import BaseSettings
 
 from .schemas import AppConfig
@@ -62,10 +62,6 @@ class ApiKeys(BaseSettings):
     # --- JWT Secret Key ---
 
     secret_key: str = Field("default_secret_key_for_dev", alias="SECRET_KEY")
-
-    # --- SQLAlchemy Database URL (constructed automatically) ---
-
-    database_url: Optional[PostgresDsn] = None
 
     # --- All other API keys ---
 
@@ -120,7 +116,7 @@ class ApiKeys(BaseSettings):
     twitter_bearer_token: Optional[str] = Field(None, alias="TWITTER_BEARER_TOKEN")
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
     alpha_vantage_api_key: Optional[str] = Field(None, alias="ALPHA_VANTAGE_API_KEY")
-    easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEYUBE_API_KEY")
+    easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
 
@@ -144,11 +140,13 @@ class ApiKeys(BaseSettings):
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
 
-    def __init__(self, **values: Any):
-        super().__init__(**values)
-        # Construct the database URL after loading all other values
-
-        self.database_url = f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+    @computed_field
+    @property
+    def database_url(self) -> Optional[PostgresDsn]:
+        """Constructs the database URL from its component parts."""
+        if all([self.db_user, self.db_password, self.db_host, self.db_name]):
+            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return None
 
     class Config:
         """Pydantic-settings configuration."""

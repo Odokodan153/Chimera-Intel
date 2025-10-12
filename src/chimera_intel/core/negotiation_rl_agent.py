@@ -9,7 +9,11 @@ from .dqn_model import DQN
 import numpy as np
 from collections import namedtuple
 import torch.nn as nn
-from typing import Union
+from typing import Union, List
+
+# Define the Transition named tuple at the module level
+
+Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
 
 
 class QLearningAgent:
@@ -81,11 +85,12 @@ class QLearningLLMAgent:
         self.policy_net = DQN(n_observations, action_space_n)
         self.target_net = DQN(n_observations, action_space_n)
         self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.device = next(self.policy_net.parameters()).device
 
         self.optimizer = optim.AdamW(
             self.policy_net.parameters(), lr=self.lr, amsgrad=True
         )
-        self.memory = []
+        self.memory: List[Transition] = []
         self.steps_done = 0
 
     def _state_to_tensor(self, state):
@@ -99,7 +104,9 @@ class QLearningLLMAgent:
             1 if "offer" in state.get("last_message_content", "").lower() else 0
         )
         return torch.tensor(
-            [[sentiment, num_tactics, turn_number, offer_present]], dtype=torch.float32
+            [[sentiment, num_tactics, turn_number, offer_present]],
+            dtype=torch.float32,
+            device=self.device,
         )
 
     def choose_action(self, state):
@@ -114,7 +121,9 @@ class QLearningLLMAgent:
                 return self.policy_net(state_tensor).max(1)[1].view(1, 1)
         else:
             return torch.tensor(
-                [[random.randrange(self.action_space_n)]], dtype=torch.long
+                [[random.randrange(self.action_space_n)]],
+                dtype=torch.long,
+                device=self.device,
             )
 
     def generate_negotiation_message(
@@ -153,64 +162,63 @@ class QLearningLLMAgent:
         )
         return prompt
 
+    def optimize_model(self):
+        if len(self.memory) < self.batch_size:
+            return
+        transitions = random.sample(self.memory, self.batch_size)
+        # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
+        # detailed explanation). This converts batch-array of Transitions
+        # to Transition of batch-arrays.
 
-def optimize_model(self):
-    if len(self.memory) < self.batch_size:
-        return
-    Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"))
+        batch = Transition(*zip(*transitions))
 
-    transitions = self.memory.sample(self.batch_size)
-    # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-    # detailed explanation). This converts batch-array of Transitions
-    # to Transition of batch-arrays.
+        # Compute a mask of non-final states and concatenate the batch elements
+        # (a final state would've been the one after which simulation ended)
 
-    batch = Transition(*zip(*transitions))
+        non_final_mask = torch.tensor(
+            tuple(map(lambda s: s is not None, batch.next_state)),
+            device=self.device,
+            dtype=torch.bool,
+        )
+        non_final_next_states = torch.cat(
+            [s for s in batch.next_state if s is not None]
+        )
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
 
-    # Compute a mask of non-final states and concatenate the batch elements
-    # (a final state would've been the one after which simulation ended)
+        # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
+        # columns of actions taken. These are the actions which would've been taken
+        # for each batch state according to policy_net
 
-    non_final_mask = torch.tensor(
-        tuple(map(lambda s: s is not None, batch.next_state)),
-        device=self.device,
-        dtype=torch.bool,
-    )
-    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
+        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
-    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-    # columns of actions taken. These are the actions which would've been taken
-    # for each batch state according to policy_net
+        # Compute V(s_{t+1}) for all next states.
+        # Expected values of actions for non_final_next_states are computed based
+        # on the "older" target_net; selecting their best reward with max(1)[0].
+        # This is merged based on the mask, such that we'll have either the expected
+        # state value or 0 in case of a final state.
 
-    state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        next_state_values = torch.zeros(self.batch_size, device=self.device)
+        with torch.no_grad():
+            next_state_values[non_final_mask] = self.target_net(
+                non_final_next_states
+            ).max(1)[0]
+        # Compute the expected Q values
 
-    # Compute V(s_{t+1}) for all next states.
-    # Expected values of actions for non_final_next_states are computed based
-    # on the "older" target_net; selecting their best reward with max(1)[0].
-    # This is merged based on the mask, such that we'll have either the expected
-    # state value or 0 in case of a final state.
+        expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
-    next_state_values = torch.zeros(self.batch_size, device=self.device)
-    next_state_values[non_final_mask] = (
-        self.target_net(non_final_next_states).max(1)[0].detach()
-    )
-    # Compute the expected Q values
+        # Compute Huber loss
 
-    expected_state_action_values = (next_state_values * self.gamma) + reward_batch
+        criterion = nn.SmoothL1Loss()
+        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
-    # Compute Huber loss
+        # Optimize the model
 
-    criterion = nn.SmoothL1Loss()
-    loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
-    # Optimize the model
-
-    self.optimizer.zero_grad()
-    loss.backward()
-    for param in self.policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
-    self.optimizer.step()
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
+        self.optimizer.step()
 
     def load_model(self, path):
         self.policy_net.load_state_dict(torch.load(path))

@@ -12,11 +12,14 @@ def get_negotiation_kpis(db_params: Dict[str, Any]) -> Dict[str, Any]:
     Calculates and returns a dictionary of Key Performance Indicators (KPIs)
     for negotiation performance.
     """
-    conn = psycopg2.connect(**db_params)
-    if not conn:
-        return {"error": "Could not connect to the database."}
-    kpis = {}
+    conn = None
+    if not all(db_params.values()):
+        return {"error": "Database connection parameters are missing."}
     try:
+        conn = psycopg2.connect(**db_params)
+        if not conn:
+            return {"error": "Could not connect to the database."}
+        kpis = {}
         with conn.cursor() as cursor:
             # --- Success Rate ---
 
@@ -88,11 +91,15 @@ def plot_sentiment_trajectory(
         "password": getattr(API_KEYS, "db_password", None),
         "host": getattr(API_KEYS, "db_host", None),
     }
-    conn = psycopg2.connect(**db_params)
-    if not conn:
-        print("Error: Could not connect to the database.")
+    conn = None
+    if not all(db_params.values()):
+        print("Error: Database connection parameters are missing.")
         return
     try:
+        conn = psycopg2.connect(**db_params)
+        if not conn:
+            print("Error: Could not connect to the database.")
+            return
         query = """
             SELECT
                 timestamp,
@@ -101,7 +108,7 @@ def plot_sentiment_trajectory(
             WHERE negotiation_id = %s
             ORDER BY timestamp;
         """
-        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
+        df = pd.read_sql_query(query, conn, params=[negotiation_id])
 
         if df.empty:
             print(f"No messages found for negotiation ID: {negotiation_id}")

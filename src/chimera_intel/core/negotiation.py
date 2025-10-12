@@ -19,7 +19,7 @@ from .cultural_intelligence import get_cultural_profile
 from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
-from . import models
+from .schemas import NegotiationSession, Message, NegotiationParticipant
 from .database import get_db_connection
 
 # --- CLI Application Definition ---
@@ -413,7 +413,7 @@ def start_negotiation(
     """
     db = next(get_db_connection())
     session_id = str(uuid.uuid4())
-    db_negotiation = models.NegotiationSession(id=session_id, subject=subject)
+    db_negotiation = NegotiationSession(id=session_id, subject=subject)
     db.add(db_negotiation)
     db.commit()
     db.refresh(db_negotiation)
@@ -432,8 +432,8 @@ def join_negotiation(
     """
     db = next(get_db_connection())
     session = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == session_id)
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
         .first()
     )
     if not session:
@@ -441,7 +441,7 @@ def join_negotiation(
         return
     # Assuming a simple user model for now
 
-    participant = models.NegotiationParticipant(
+    participant = NegotiationParticipant(
         session_id=session_id, participant_id=user_id, participant_name=user_id
     )
     db.add(participant)
@@ -459,10 +459,10 @@ def leave_negotiation(
     """
     db = next(get_db_connection())
     participant = (
-        db.query(models.NegotiationParticipant)
+        db.query(NegotiationParticipant)
         .filter(
-            models.NegotiationParticipant.session_id == session_id,
-            models.NegotiationParticipant.participant_id == user_id,
+            NegotiationParticipant.session_id == session_id,
+            NegotiationParticipant.participant_id == user_id,
         )
         .first()
     )
@@ -484,7 +484,7 @@ def make_offer(
     Makes an offer in a negotiation.
     """
     db = next(get_db_connection())
-    message = models.Message(
+    message = Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
         sender_id=user_id,
@@ -505,7 +505,7 @@ def accept_offer(
     Accepts an offer in a negotiation.
     """
     db = next(get_db_connection())
-    message = models.Message(
+    message = Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
         sender_id=user_id,
@@ -526,7 +526,7 @@ def reject_offer(
     Rejects an offer in a negotiation.
     """
     db = next(get_db_connection())
-    message = models.Message(
+    message = Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
         sender_id=user_id,
@@ -547,8 +547,8 @@ def get_history(
     """
     db = next(get_db_connection())
     session = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == session_id)
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
         .first()
     )
     if not session:
@@ -567,8 +567,8 @@ def negotiation_status(
     """
     db = next(get_db_connection())
     session = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == session_id)
+        db.query(NegotiationSession)
+        .filter(NegotiationSession.id == session_id)
         .first()
     )
     if not session:
