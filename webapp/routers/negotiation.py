@@ -9,7 +9,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from typing import List, Dict, Any
+from typing import Dict
 import uuid
 import logging
 from functools import lru_cache

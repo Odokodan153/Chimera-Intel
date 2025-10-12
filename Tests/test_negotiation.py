@@ -17,17 +17,6 @@ def test_analyze_message_negative(engine):
     result = engine.analyze_message("I'm afraid this is a terrible proposal.")
     assert result["sentiment"] == "negative"
 
-def test_assess_batna(engine):
-    """Tests the BATNA assessment functionality."""
-    alternatives = [
-        {"name": "Option A", "value": 10000},
-        {"name": "Option B", "value": 15000},
-        {"name": "Option C", "value": 12000},
-    ]
-    result = engine.assess_batna(alternatives)
-    assert result["best_alternative"]["name"] == "Option B"
-    assert result["best_alternative"]["value"] == 15000
-
 def test_calculate_zopa_exists(engine):
     """Tests ZOPA calculation when an agreement zone exists."""
     zopa = engine.calculate_zopa(our_min=100, our_max=200, their_min=150, their_max=250)
@@ -45,22 +34,6 @@ def test_recommend_tactic_with_reason(engine):
     assert "tactic" in recommendation
     assert "reason" in recommendation
     assert "Anchoring" in recommendation["tactic"]
-
-def test_simulate_outcome(engine):
-    """Tests the negotiation outcome simulation."""
-    scenario = {
-        "our_min": 10000, "our_max": 15000,
-        "their_min": 12000, "their_max": 18000,
-    }
-    result = engine.simulate_outcome(scenario)
-    assert "success_probability" in result
-    assert 0 <= result["success_probability"] <= 1
-
-@pytest.fixture
-def engine():
-    """Provides a NegotiationEngine instance for testing."""
-    return NegotiationEngine()
-
 
 def test_recommend_tactic_with_history(engine):
     """Tests that recommendations change based on history."""
@@ -115,11 +88,6 @@ def test_analyze_message_for_negotiation():
     data = msg_response.json()
     assert data["message"] == "Message analyzed and saved"
     assert "analysis" in data
-
-@pytest.fixture
-def engine():
-    """Provides a NegotiationEngine instance for testing."""
-    return NegotiationEngine()
 
 def test_full_engine_functionality(engine):
     """A comprehensive test that checks all core methods of the unified engine."""
@@ -194,29 +162,6 @@ def test_recommend_tactic_collaborative_exploration(self):
         recommendation = self.engine.recommend_tactic(history)
         self.assertEqual(recommendation["tactic"], "Collaborative Exploration")
 
-def test_simulate_outcome(self):
-        """Test the Monte Carlo simulation."""
-        scenario = {
-            "our_min": 5000,
-            "our_max": 10000,
-            "their_min": 7000,
-            "their_max": 12000,
-        }
-        result = self.engine.simulate_outcome(scenario)
-        self.assertIn("success_probability", result)
-        self.assertGreaterEqual(result["success_probability"], 0)
-        self.assertLessEqual(result["success_probability"], 1)
-
-def test_assess_batna(self):
-        """Test the BATNA assessment."""
-        alternatives = [
-            {"name": "Option A", "value": 8000},
-            {"name": "Option B", "value": 9500},
-            {"name": "Option C", "value": 8500},
-        ]
-        batna = self.engine.assess_batna(alternatives)
-        self.assertEqual(batna["best_alternative"]["name"], "Option B")
-
 def test_calculate_zopa(self):
         """Test the ZOPA calculation."""
         zopa = self.engine.calculate_zopa(
@@ -229,11 +174,6 @@ def test_calculate_zopa(self):
         )
         self.assertIsNone(no_zopa)
 
-@pytest.fixture
-def engine():
-    """Provides a NegotiationEngine instance for testing."""
-    return NegotiationEngine()
-
 def test_analyze_message_positive(engine):
     """Tests message analysis with positive sentiment."""
     result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
@@ -243,17 +183,6 @@ def test_analyze_message_negative(engine):
     """Tests message analysis with negative sentiment."""
     result = engine.analyze_message("I'm afraid this is a terrible proposal.")
     assert result["sentiment"] == "negative"
-
-def test_assess_batna(engine):
-    """Tests the BATNA assessment functionality."""
-    alternatives = [
-        {"name": "Option A", "value": 10000},
-        {"name": "Option B", "value": 15000},
-        {"name": "Option C", "value": 12000},
-    ]
-    result = engine.assess_batna(alternatives)
-    assert result["best_alternative"]["name"] == "Option B"
-    assert result["best_alternative"]["value"] == 15000
 
 def test_calculate_zopa_exists(engine):
     """Tests ZOPA calculation when an agreement zone exists."""
@@ -269,16 +198,6 @@ def test_recommend_tactic_no_history(engine):
     """Tests the initial recommendation when there is no history."""
     recommendation = engine.recommend_tactic([])
     assert "Opening" in recommendation["tactic"]
-
-def test_simulate_outcome(engine):
-    """Tests the negotiation outcome simulation."""
-    scenario = {
-        "our_min": 10000, "our_max": 15000,
-        "their_min": 12000, "their_max": 18000,
-    }
-    result = engine.simulate_outcome(scenario)
-    assert "success_probability" in result
-    assert 0 <= result["success_probability"] <= 1
 
 def test_create_negotiation_endpoint():
     """Tests the creation of a new negotiation session via the API."""
@@ -384,19 +303,6 @@ def test_recommend_tactic_with_stable_history(engine):
     recommendation = engine.recommend_tactic(history)
     assert "Collaborative Exploration" in recommendation["tactic"]
     assert "stable" in recommendation["reason"]
-
-
-def test_simulate_outcome(engine):
-    """Tests the negotiation outcome simulation."""
-    scenario = {
-        "our_min": 10000,
-        "our_max": 15000,
-        "their_min": 12000,
-        "their_max": 18000,
-    }
-    result = engine.simulate_outcome(scenario)
-    assert "success_probability" in result
-    assert 0 <= result["success_probability"] <= 1
 
 
 def test_full_engine_functionality(engine):

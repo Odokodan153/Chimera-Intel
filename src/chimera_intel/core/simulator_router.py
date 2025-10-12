@@ -1,6 +1,5 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict
-from chimera_intel.core.negotiation_simulator import get_personas, AIPersona
+from chimera_intel.core.negotiation_simulator import get_personas
 
 router = APIRouter()
 personas = get_personas()
