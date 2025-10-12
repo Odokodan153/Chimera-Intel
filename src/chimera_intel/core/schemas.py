@@ -2700,21 +2700,6 @@ class UserRole(str, Enum):
 class UserBase(BaseModel):
     username: str
 
-class UserCreate(UserBase):
-    password: str
-    role: UserRole = UserRole.USER  # Default role for new users
-
-class User(UserBase):
-    id: Union[int, str] = Field(default_factory=lambda: str(uuid.uuid4()))
-    email: EmailStr
-    hashed_password: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    is_active: bool = True
-    role: UserRole = UserRole.USER
-
-    class Config:
-        orm_mode = True
-
 # --- Application Configuration Schemas ---
 class NetworkConfig(BaseModel):
     timeout: float = 20.0
