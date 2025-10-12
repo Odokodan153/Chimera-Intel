@@ -121,6 +121,11 @@ test = [
     "pip-audit",
 ]
 
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
 [project.scripts]
 chimera = "chimera_intel.cli:app"
 

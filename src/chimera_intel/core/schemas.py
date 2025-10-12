@@ -2570,12 +2570,6 @@ class Message(BaseModel):
     content: str
     channel: ChannelType
 
-class SimulationScenario(BaseModel):
-    our_min: float
-    our_max: float
-    their_min: float
-    their_max: float
-
 class NegotiationModel(Base):
     __tablename__ = "negotiations"
 

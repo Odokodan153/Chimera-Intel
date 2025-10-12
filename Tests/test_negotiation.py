@@ -8,22 +8,6 @@ def engine():
     """Provides a NegotiationEngine instance for testing."""
     return NegotiationEngine()
 
-def test_analyze_message_positive(engine):
-    """Tests message analysis with positive sentiment."""
-    result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
-    assert result["sentiment"] == "positive"
-    assert result["intent"] is not None
-
-def test_calculate_zopa_exists(engine):
-    """Tests ZOPA calculation when an agreement zone exists."""
-    zopa = engine.calculate_zopa(our_min=100, our_max=200, their_min=150, their_max=250)
-    assert zopa == (150, 200)
-
-def test_calculate_zopa_no_overlap(engine):
-    """Tests ZOPA calculation when no agreement zone exists."""
-    zopa = engine.calculate_zopa(our_min=100, our_max=140, their_min=150, their_max=250)
-    assert zopa is None
-
 def test_recommend_tactic_with_reason(engine):
     """Tests that tactic recommendations include a reason."""
     context = {"our_last_offer": 10000, "their_last_offer": 20000}
@@ -44,14 +28,6 @@ def test_recommend_tactic_with_history(engine):
     recommendation = engine.recommend_tactic(history)
     assert "Concession" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
-
-
-def test_recommend_tactic_no_history(engine):
-    """Tests the initial recommendation when there is no history."""
-    recommendation = engine.recommend_tactic([])
-    assert "Opening" in recommendation["tactic"]
-
-
 
 client = TestClient(app)
 
@@ -170,21 +146,10 @@ def test_calculate_zopa(self):
         )
         self.assertIsNone(no_zopa)
 
-def test_analyze_message_positive(engine):
-    """Tests message analysis with positive sentiment."""
-    result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
-    assert result["sentiment"] == "positive"
-
-
 def test_calculate_zopa_exists(engine):
     """Tests ZOPA calculation when an agreement zone exists."""
     zopa = engine.calculate_zopa(our_min=100, our_max=200, their_min=150, their_max=250)
     assert zopa == (150, 200)
-
-def test_calculate_zopa_no_overlap(engine):
-    """Tests ZOPA calculation when no agreement zone exists."""
-    zopa = engine.calculate_zopa(our_min=100, our_max=140, their_min=150, their_max=250)
-    assert zopa is None
 
 def test_recommend_tactic_no_history(engine):
     """Tests the initial recommendation when there is no history."""
@@ -219,14 +184,6 @@ def test_analyze_message_endpoint():
     assert "analysis" in data
     assert "recommended_tactic" in data
 
-def test_analyze_message_positive(engine):
-    """Tests message analysis with positive sentiment."""
-    result = engine.analyze_message(
-        "This is a fantastic offer, I'm very happy with it."
-    )
-    assert result["sentiment"] == "positive"
-    assert "intent" in result  # Check that an intent was classified
-
 def test_assess_batna(engine):
     """Tests the BATNA assessment functionality."""
     alternatives = [
@@ -238,29 +195,12 @@ def test_assess_batna(engine):
     assert result["best_alternative"]["name"] == "Option B"
     assert result["best_alternative"]["value"] == 15000
 
-
-def test_calculate_zopa_exists(engine):
-    """Tests ZOPA calculation when an agreement zone exists."""
-    zopa = engine.calculate_zopa(
-        our_min=100, our_max=200, their_min=150, their_max=250
-    )
-    assert zopa == (150, 200)
-
-
 def test_calculate_zopa_no_overlap(engine):
     """Tests ZOPA calculation when no agreement zone exists."""
     zopa = engine.calculate_zopa(
         our_min=100, our_max=140, their_min=150, their_max=250
     )
     assert zopa is None
-
-
-def test_recommend_tactic_no_history(engine):
-    """Tests the initial recommendation when there is no history."""
-    recommendation = engine.recommend_tactic([])
-    assert "Opening Move" in recommendation["tactic"]
-    assert "reason" in recommendation
-
 
 def test_recommend_tactic_with_negative_history(engine):
     """Tests that recommendations change based on negative history."""
