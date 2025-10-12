@@ -19,8 +19,11 @@ from .cultural_intelligence import get_cultural_profile
 from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
-from .schemas import NegotiationSession, Message, NegotiationParticipant
+from .schemas import NegotiationSession, Message, NegotiationParticipant as NegotiationParticipantSchema, ChannelType, Base
 from .database import get_db_connection
+from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy.orm import relationship
+
 
 # --- CLI Application Definition ---
 
@@ -36,6 +39,13 @@ logger = logging.getLogger(__name__)
 class SimulationMode(str, Enum):
     training = "training"
     inference = "inference"
+
+
+class NegotiationParticipant(Base):
+    __tablename__ = 'negotiation_participants'
+    session_id = Column(String, ForeignKey('negotiation_sessions.id'), primary_key=True)
+    participant_id = Column(String, primary_key=True)
+    participant_name = Column(String)
 
 
 # --- Engine Class Definition ---
@@ -490,6 +500,7 @@ def make_offer(
         sender_id=user_id,
         content=f"Offer: {offer}",
         analysis={},
+        channel=ChannelType.CHAT,
     )
     db.add(message)
     db.commit()
@@ -511,6 +522,7 @@ def accept_offer(
         sender_id=user_id,
         content="Offer accepted.",
         analysis={},
+        channel=ChannelType.CHAT,
     )
     db.add(message)
     db.commit()
@@ -532,6 +544,7 @@ def reject_offer(
         sender_id=user_id,
         content="Offer rejected.",
         analysis={},
+        channel=ChannelType.CHAT,
     )
     db.add(message)
     db.commit()

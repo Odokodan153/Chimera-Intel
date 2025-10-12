@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 
 class NegotiationEnv:
@@ -7,9 +7,11 @@ class NegotiationEnv:
     An enhanced negotiation environment for the RL agent.
     """
 
+    opponent_persona: Dict[str, Any]
+
     def __init__(
         self,
-        opponent_persona: Dict[str, Any] = None,
+        opponent_persona: Optional[Dict[str, Any]] = None,
         zopa: Tuple[float, float] = (8000, 12000),
     ):
         """

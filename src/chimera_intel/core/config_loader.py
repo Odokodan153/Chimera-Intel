@@ -207,4 +207,4 @@ def load_config_from_yaml() -> AppConfig:
 
 
 CONFIG = load_config_from_yaml()
-API_KEYS = ApiKeys()
+API_KEYS = ApiKeys() # type: ignore

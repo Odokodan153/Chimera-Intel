@@ -72,7 +72,9 @@ def get_user(self, username: str):
 
 def create_user(self, user: schemas.UserCreate):
     hashed_password = pwd_context.hash(user.password)
-    db_user = UserModel(username=user.username, hashed_password=hashed_password)
+    db_user = UserModel(
+        username=user.username, email=user.email, hashed_password=hashed_password
+    )
     self.db.add(db_user)
     self.db.commit()
     self.db.refresh(db_user)
@@ -106,6 +108,7 @@ user_app = typer.Typer()
 @user_app.command("add")
 def add_user_command(
     username: str = typer.Argument(..., help="The username for the new user."),
+    email: str = typer.Argument(..., help="The email for the new user."),
     password: str = typer.Option(
         ..., "--password", prompt=True, hide_input=True, help="The user's password."
     ),
@@ -115,7 +118,9 @@ def add_user_command(
         console.print(f"[bold red]Error:[/bold red] User '{username}' already exists.")
         raise typer.Exit(code=1)
     hashed_password = get_password_hash(password)
-    user_data = schemas.UserCreate(username=username, password=hashed_password)
+    user_data = schemas.UserCreate(
+        username=username, email=email, password=hashed_password
+    )
     create_user_in_db(user_data)
     console.print(f"[bold green]Successfully created user '{username}'.[/bold green]")
 

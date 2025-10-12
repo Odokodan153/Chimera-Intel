@@ -1108,7 +1108,6 @@ class ConfigReporting(BaseModel):
     graph: Dict[str, Any] = {}
     pdf: ConfigPDF = ConfigPDF()
 
-
 class ConfigModules(BaseModel):
     """Configuration for all modules from config.yaml."""
 
@@ -2679,11 +2678,17 @@ class IntelSourceConfig(BaseModel):
 
 
 class FeatureFlags(BaseModel):
-    enable_dark_web_monitoring: bool = Field(
-        True, description="Enable continuous monitoring of dark web forums."
+    """Defines the feature flags for enabling or disabling modules."""
+
+    enable_offensive_modules: bool = Field(
+        True, description="Enable all offensive intelligence modules."
     )
-    enable_social_media_monitoring: bool = Field(
-        True, description="Enable real-time social media listening."
+    enable_defensive_modules: bool = Field(
+        True, description="Enable all defensive intelligence modules."
+    )
+    enable_ai_core: bool = Field(True, description="Enable the AI core functionalities.")
+    enable_mlops_automation: bool = Field(
+        True, description="Enable MLOps and automation features."
     )
 
 # --- Role Definitions ---
@@ -2773,5 +2778,23 @@ class AppConfig(BaseModel):
     feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
     notifications: ConfigNotifications = ConfigNotifications()
     graph_db: ConfigGraphDB = ConfigGraphDB()
+
+class User(BaseModel):
+    """User model for authentication and context."""
+
+    id: Optional[int] = None
+    username: str
+    email: EmailStr
+    hashed_password: str
+
+    class Config:
+        orm_mode = True
+
+class UserCreate(BaseModel):
+    """Schema for creating a new user."""
+
+    username: str
+    email: EmailStr
+    password: str
 
 
