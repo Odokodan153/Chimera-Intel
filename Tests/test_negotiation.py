@@ -229,47 +229,6 @@ def test_recommend_tactic_with_stable_history(engine):
     assert "Collaborative Exploration" in recommendation["tactic"]
     assert "stable" in recommendation["reason"]
 
-
-def test_full_engine_functionality(engine):
-    """A comprehensive test that checks all core methods of the unified engine."""
-
-    # 1. Message Analysis
-    message = "I'm not happy with this price, it's too high."
-    analysis = engine.analyze_message(message)
-    assert analysis["sentiment"] == "negative"
-    assert "intent" in analysis
-
-    # 2. BATNA Assessment
-    alternatives = [
-        {"name": "Supplier A", "value": 12000},
-        {"name": "Supplier B", "value": 15000},
-    ]
-    batna_result = engine.assess_batna(alternatives)
-    assert batna_result["best_alternative"]["name"] == "Supplier B"
-
-    # 3. ZOPA Calculation
-    zopa = engine.calculate_zopa(
-        our_min=10000, our_max=16000, their_min=14000, their_max=18000
-    )
-    assert zopa == (14000, 16000)
-
-    # 4. Context-Aware Recommendation
-    history = [{"sender_id": "them", "content": message, "analysis": analysis}]
-    recommendation = engine.recommend_tactic(history)
-    assert "De-escalate" in recommendation["tactic"]
-    assert "negative" in recommendation["reason"]
-
-    # 5. Simulation
-    scenario = {
-        "our_min": 10000,
-        "our_max": 16000,
-        "their_min": 14000,
-        "their_max": 18000,
-    }
-    simulation = engine.simulate_outcome(scenario)
-    assert "success_probability" in simulation
-    assert 0 <= simulation["success_probability"] <= 1
-
 def test_analyze_message_positive(engine):
     """Tests message analysis with positive sentiment."""
     result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")

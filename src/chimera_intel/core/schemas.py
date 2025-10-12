@@ -1135,17 +1135,6 @@ class ConfigGraphDB(BaseModel):
     username: str = "neo4j"
     password: str = "password"
 
-
-class AppConfig(BaseModel):
-    """The main model for validating the entire config.yaml file."""
-
-    network: ConfigNetwork
-    modules: ConfigModules
-    reporting: ConfigReporting = ConfigReporting()
-    notifications: ConfigNotifications = ConfigNotifications()
-    graph_db: ConfigGraphDB = ConfigGraphDB()
-
-
 # --- Blockchain & Cryptocurrency OSINT Models ---
 
 
@@ -1812,13 +1801,6 @@ class PodcastAnalysisResult(BaseModel):
 
 
 # ---: User Management Models ---
-class User(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    username: str
-    email: EmailStr
-    hashed_password: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
 class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
@@ -1968,11 +1950,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Model for the data encoded in a JWT."""
     username: Optional[str] = None
-
-class UserCreate(BaseModel):
-    """Model for creating a new user from a web form."""
-    username: str
-    password: str
 
 class DashboardData(BaseModel):
     """Model for the data to be displayed on the main dashboard."""
@@ -2503,24 +2480,20 @@ class Party(BaseModel):
     country: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class Negotiation(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    subject: str
-    status: NegotiationStatus = NegotiationStatus.ONGOING
-    created_by: str
-    start_at: datetime = Field(default_factory=datetime.utcnow)
-    end_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    participants: List[Party] = Field(default_factory=list)
-
 class Offer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     negotiation_id: str
     party_id: str
+    message_id: Optional[str] = None
     amount_terms: Dict[str, Any]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    accepted: Optional[bool] = None
+    accepted: Optional[str] = 'pending'  # pending, accepted, rejected
     accepted_at: Optional[datetime] = None
+    currency: Optional[str] = "USD"
+    valid_until: Optional[datetime] = None
+    confidence_score: Optional[float] = None
+    revision: int = 1
+    previous_offer_id: Optional[str] = None
     
     # --- Extended economic and versioning metadata ---
     currency: Optional[str] = "USD"
@@ -2529,19 +2502,6 @@ class Offer(BaseModel):
     revision: int = 1
     previous_offer_id: Optional[str] = None
 
-class Message(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    negotiation_id: str
-    sender_id: str
-    channel: Channel
-    content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    
-    # --- Expanded NLP and sentiment analysis fields ---
-    tone_score: Optional[float] = None
-    sentiment_label: Optional[str] = None  # e.g., "positive", "neutral", "negative"
-    intent_label: Optional[str] = None
-    language: Optional[str] = "en" # Default to English, can be detected
 class PartyType(str, Enum):
     COMPANY = "company"
     INDIVIDUAL = "individual"
@@ -2561,14 +2521,26 @@ class ChannelType(str, Enum):
 
 class NegotiationParty(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    party_id: str
     name: str
     type: PartyType
+    role: str  # e.g., 'buyer', 'seller'
 
 class Message(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     negotiation_id: str
     sender_id: str
     content: str
     channel: ChannelType
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    analysis: Optional[dict]
+    tone_score: Optional[float] = None
+    sentiment_label: Optional[str] = None
+    intent_label: Optional[str] = None
+    language: Optional[str] = "en"
+
+    class Config:
+        orm_mode = True
 
 class NegotiationModel(Base):
     __tablename__ = "negotiations"
@@ -2611,10 +2583,15 @@ class Message(MessageBase):
 class NegotiationBase(BaseModel):
     subject: str
 
-class Negotiation(NegotiationBase):
-    id: str
-    start_time: datetime
-    status: str
+class Negotiation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    start_time: datetime = Field(default_factory=datetime.utcnow)
+    status: NegotiationStatus = NegotiationStatus.ONGOING
+    created_by: str
+    end_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    participants: List[Party] = Field(default_factory=list)
     messages: List[Message] = []
 
     class Config:
@@ -2631,10 +2608,6 @@ class SimulationScenario(BaseModel):
         if 'our_min' in values and v <= values['our_min']:
             raise ValueError('our_max must be greater than our_min')
         return v
-
-class NegotiationParty(BaseModel):
-    party_id: str
-    role: str # e.g., 'buyer', 'seller'
 
 class NegotiationSession(Base):
     __tablename__ = 'negotiation_sessions'
@@ -2658,16 +2631,6 @@ class Message(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     session = relationship("NegotiationSession", back_populates="messages")
     offer = relationship("Offer", uselist=False, back_populates="message")
-
-class Offer(Base):
-    __tablename__ = 'offers'
-    id = Column(String, primary_key=True)
-    session_id = Column(String, ForeignKey('negotiation_sessions.id'))
-    message_id = Column(String, ForeignKey('messages.id'))
-    amount = Column(Float)
-    accepted = Column(String, default='pending') # pending, accepted, rejected
-    session = relationship("NegotiationSession", back_populates="offers")
-    message = relationship("Message", back_populates="offer")
 
 class BehavioralProfile(BaseModel):
     """Model for the behavioral profile of a negotiation party."""
@@ -2699,13 +2662,6 @@ class NegotiationParticipant(BaseModel):
     """Represents a single participant in a negotiation session."""
     participant_id: str
     participant_name: str
-
-class Negotiation(NegotiationBase):
-    id: str
-    start_time: datetime
-    status: str
-    messages: List[Message] = []
-    participants: List[NegotiationParticipant] = [] # Updated to use the new model
 
 class Config:
         orm_mode = True
@@ -2771,14 +2727,6 @@ class FeatureFlags(BaseModel):
         True, description="Enable real-time social media listening."
     )
 
-
-class AppConfig(BaseModel):
-    app_name: str = "Chimera Intel"
-    version: str = "1.0.0"
-    log_level: str = "INFO"
-    intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
-    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
-
 # --- Role Definitions ---
 class UserRole(str, Enum):
     USER = "user"
@@ -2793,9 +2741,12 @@ class UserCreate(UserBase):
     role: UserRole = UserRole.USER  # Default role for new users
 
 class User(UserBase):
-    id: int
-    is_active: bool
-    role: UserRole
+    id: Union[int, str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: EmailStr
+    hashed_password: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_active: bool = True
+    role: UserRole = UserRole.USER
 
     class Config:
         orm_mode = True
@@ -2853,8 +2804,15 @@ class ReportingConfig(BaseModel):
     pdf: ReportingPdfConfig = Field(default_factory=ReportingPdfConfig)
 
 class AppConfig(BaseModel):
+    app_name: str = "Chimera Intel"
+    version: str = "1.0.0"
+    log_level: str = "INFO"
     network: NetworkConfig = Field(default_factory=NetworkConfig)
     modules: ModulesConfig = Field(default_factory=ModulesConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
+    intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
+    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
+    notifications: ConfigNotifications = ConfigNotifications()
+    graph_db: ConfigGraphDB = ConfigGraphDB()
 
 
