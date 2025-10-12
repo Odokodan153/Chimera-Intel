@@ -17,10 +17,10 @@ class LLMInterface:
         """
         Initializes the Gemini client.
         """
-        self.api_key = getattr(API_KEYS, "gemini_api_key", None)
+        self.api_key = getattr(API_KEYS, "google_api_key", None)
         if not self.api_key:
             raise ValueError(
-                "GEMINI_API_KEY not found in your environment configuration."
+                "GOOGLE_GEMINI_API_KEY not found in your environment configuration."
             )
 
         genai.configure(api_key=self.api_key)

@@ -93,7 +93,7 @@ async def generate_attack_surface_report(domain: str) -> AttackSurfaceReport:
     # --- Step 3: Generate AI Risk Assessment ---
 
     ai_summary = "AI analysis skipped: GOOGLE_API_KEY not configured."
-    google_api_key = API_KEYS.google_api_key
+    google_api_key = getattr(API_KEYS, "google_api_key", None)
     if google_api_key:
         with console.status(
             "[bold cyan]Generating AI-powered risk summary...[/bold cyan]"

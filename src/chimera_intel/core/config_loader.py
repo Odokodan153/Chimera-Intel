@@ -77,6 +77,8 @@ class ApiKeys(BaseSettings):
 
     # --- All other API keys ---
 
+    # Offensive Intelligence Keys
+
     virustotal_api_key: Optional[str] = Field(None, alias="VIRUSTOTAL_API_KEY")
     builtwith_api_key: Optional[str] = Field(None, alias="BUILTWITH_API_KEY")
     wappalyzer_api_key: Optional[str] = Field(None, alias="WAPPALYZER_API_KEY")
@@ -86,6 +88,9 @@ class ApiKeys(BaseSettings):
     open_corporates_api_key: Optional[str] = Field(
         None, alias="OPEN_CORPORATES_API_KEY"
     )
+
+    # Defensive Counter-Intelligence Keys
+
     hibp_api_key: Optional[str] = Field(None, alias="HIBP_API_KEY")
     github_pat: Optional[str] = Field(None, alias="GITHUB_PAT")
     shodan_api_key: Optional[str] = Field(None, alias="SHODAN_API_KEY")
@@ -94,11 +99,23 @@ class ApiKeys(BaseSettings):
     otx_api_key: Optional[str] = Field(None, alias="OTX_API_KEY")
     sec_api_io_key: Optional[str] = Field(None, alias="SEC_API_IO_KEY")
     sec_api_user_agent: Optional[str] = Field(None, alias="SEC_API_USER_AGENT")
-    gemini_api_key: Optional[str] = Field(None, alias="GEMINI_API_KEY")
+
+    # AI Core Keys
+
+    google_api_key: Optional[str] = Field(None, alias="GOOGLE_API_KEY")
+
+    # MLOps & Automation Keys (ADDED)
+
     cicd_webhook_url: Optional[str] = Field(None, alias="CICD_WEBHOOK_URL")
     cicd_auth_token: Optional[str] = Field(None, alias="CICD_AUTH_TOKEN")
+
+    # Notification Keys
+
     slack_webhook_url: Optional[str] = Field(None, alias="SLACK_WEBHOOK_URL")
     teams_webhook_url: Optional[str] = Field(None, alias="TEAMS_WEBHOOK_URL")
+
+    # Corporate & Strategic Intelligence Keys
+
     aura_api_key: Optional[str] = Field(None, alias="AURA_API_KEY")
     lobbying_data_api_key: Optional[str] = Field(None, alias="LOBBYING_DATA_API_KEY")
     spycloud_api_key: Optional[str] = Field(None, alias="SPYCLOUD_API_KEY")
@@ -112,8 +129,24 @@ class ApiKeys(BaseSettings):
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
     alpha_vantage_api_key: Optional[str] = Field(None, alias="ALPHA_VANTAGE_API_KEY")
     easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEYUBE_API_KEY")
+
+    # Maritime & Shipping Intelligence Keys
+
     aisstream_api_key: Optional[str] = Field(None, alias="AISSTREAM_API_KEY")
+
+    # Weather & Environmental Intelligence Keys
+
     openweathermap_api_key: Optional[str] = Field(None, alias="OPENWEATHERMAP_API_KEY")
+
+    # ---: Database Credentials ---
+
+    db_name: Optional[str] = Field(None, alias="DB_NAME")
+    db_user: Optional[str] = Field(None, alias="DB_USER")
+    db_password: Optional[str] = Field(None, alias="DB_PASSWORD")
+    db_host: Optional[str] = Field(None, alias="DB_HOST")
+
+    # ---: Graph Database Credentials ---
+
     neo4j_uri: Optional[str] = Field(None, alias="NEO4J_URI")
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
