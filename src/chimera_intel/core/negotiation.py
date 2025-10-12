@@ -21,7 +21,7 @@ from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
 from .schemas import NegotiationSession, Message, ChannelType, Base
 from .database import get_db_connection
-from sqlalchemy import Column, String, ForeignKey
+from .schemas import NegotiationParticipant, SimulationMode
 
 
 # --- CLI Application Definition ---
@@ -33,19 +33,6 @@ negotiation_app = typer.Typer(
 )
 
 logger = logging.getLogger(__name__)
-
-
-class SimulationMode(str, Enum):
-    training = "training"
-    inference = "inference"
-
-
-class NegotiationParticipant(Base):
-    __tablename__ = 'negotiation_participants'
-    session_id = Column(String, ForeignKey('negotiation_sessions.id'), primary_key=True)
-    participant_id = Column(String, primary_key=True)
-    participant_name = Column(String)
-
 
 # --- Engine Class Definition ---
 
