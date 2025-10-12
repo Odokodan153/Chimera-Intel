@@ -1,5 +1,5 @@
 import psycopg2
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import typer
@@ -108,9 +108,7 @@ def plot_sentiment_trajectory(
             WHERE negotiation_id = %s
             ORDER BY timestamp;
         """
-        # Explicitly type the params list as List[Any] to help mypy resolve the overload
-        params: List[Any] = [negotiation_id]
-        df = pd.read_sql_query(query, conn, params=params)
+        df = pd.read_sql_query(query, conn, params=[negotiation_id])  # type: ignore
 
         if df.empty:
             print(f"No messages found for negotiation ID: {negotiation_id}")
