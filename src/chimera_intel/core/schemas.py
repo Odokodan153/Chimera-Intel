@@ -2760,7 +2760,7 @@ class AppConfig(BaseModel):
     modules: ModulesConfig = Field(default_factory=ModulesConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
-    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
+    feature_flags: FeatureFlags = Field(default_factory=lambda: FeatureFlags())
     notifications: ConfigNotifications = ConfigNotifications()
     graph_db: ConfigGraphDB = ConfigGraphDB()
 

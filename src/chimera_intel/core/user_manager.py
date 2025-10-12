@@ -118,10 +118,7 @@ def add_user_command(
         console.print(f"[bold red]Error:[/bold red] User '{username}' already exists.")
         raise typer.Exit(code=1)
     hashed_password = get_password_hash(password)
-    user_data = schemas.UserCreate(
-        username=username, email=email, password=hashed_password
-    )
-    create_user_in_db(user_data)
+    create_user_in_db(username, email, hashed_password)
     console.print(f"[bold green]Successfully created user '{username}'.[/bold green]")
 
 
