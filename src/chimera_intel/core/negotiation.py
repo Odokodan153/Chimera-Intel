@@ -19,7 +19,7 @@ from .cultural_intelligence import get_cultural_profile
 from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
-from .schemas import NegotiationSession, Message, ChannelType, Base
+from .schemas import NegotiationSession, Message, ChannelType
 from .database import get_db_connection
 from .schemas import NegotiationParticipant, SimulationMode
 

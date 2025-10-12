@@ -2615,12 +2615,6 @@ class MarketIndicator(BaseModel):
     source: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-
-class NegotiationParticipant(BaseModel):
-    """Represents a single participant in a negotiation session."""
-    participant_id: str
-    participant_name: str
-
 class Config:
         orm_mode = True
 
@@ -2691,16 +2685,10 @@ class IntelSourceConfig(BaseModel):
 class FeatureFlags(BaseModel):
     """Defines the feature flags for enabling or disabling modules."""
 
-    enable_offensive_modules: bool = Field(
-        True, description="Enable all offensive intelligence modules."
-    )
-    enable_defensive_modules: bool = Field(
-        True, description="Enable all defensive intelligence modules."
-    )
-    enable_ai_core: bool = Field(True, description="Enable the AI core functionalities.")
-    enable_mlops_automation: bool = Field(
-        True, description="Enable MLOps and automation features."
-    )
+    enable_offensive_modules: bool = True
+    enable_defensive_modules: bool = True
+    enable_ai_core: bool = True
+    enable_mlops_automation: bool = True
 
 # --- Role Definitions ---
 class UserRole(str, Enum):
@@ -2771,9 +2759,9 @@ class AppConfig(BaseModel):
     modules: ModulesConfig = Field(default_factory=ModulesConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
-    feature_flags: FeatureFlags = Field(default_factory=lambda: FeatureFlags())
-    notifications: ConfigNotifications = ConfigNotifications()
-    graph_db: ConfigGraphDB = ConfigGraphDB()
+    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
+    notifications: ConfigNotifications = Field(default_factory=ConfigNotifications)
+    graph_db: ConfigGraphDB = Field(default_factory=ConfigGraphDB)
 
 class User(BaseModel):
     """User model for authentication and context."""
