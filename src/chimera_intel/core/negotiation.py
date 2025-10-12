@@ -11,6 +11,7 @@ import uuid
 
 # --- Imports for LLM Integration ---
 
+
 from .llm_interface import LLMInterface, MockLLMInterface
 from .negotiation_rl_agent import QLearningLLMAgent, QLearningAgent
 from .ethical_guardrails import EthicalFramework
@@ -19,7 +20,7 @@ from .advanced_nlp import AdvancedNLPAnalyzer
 from .config_loader import API_KEYS
 from .analytics import plot_sentiment_trajectory
 from . import models
-from .database import get_db
+from .database import get_db_connection
 
 # --- CLI Application Definition ---
 
@@ -255,9 +256,7 @@ class NegotiationEngine:
         try:
             with conn.cursor() as cursor:
                 model_name = "mock_llm"
-                if hasattr(self.llm, "model") and hasattr(
-                    self.llm.model, "model_name"
-                ):
+                if hasattr(self.llm, "model") and hasattr(self.llm.model, "model_name"):
                     model_name = self.llm.model.model_name
                 cursor.execute(
                     """
@@ -389,7 +388,7 @@ def run_simulation(
             user_input = console.input("\n[bold blue]You:[/bold blue] ")
         if user_input.lower() in ["exit", "quit"]:
             console.print("[bold yellow]--- Simulation Ended ---[/bold yellow]")
-            plot_sentiment_trajectory(db_params)
+            plot_sentiment_trajectory("")
             break
         analysis = engine.analyze_message(user_input)
         history.append({"sender": "user", "content": user_input, "analysis": analysis})
@@ -412,7 +411,7 @@ def start_negotiation(
     """
     Starts a new negotiation session.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     session_id = str(uuid.uuid4())
     db_negotiation = models.NegotiationSession(id=session_id, subject=subject)
     db.add(db_negotiation)
@@ -431,7 +430,7 @@ def join_negotiation(
     """
     Adds a user to an existing negotiation session.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     session = (
         db.query(models.NegotiationSession)
         .filter(models.NegotiationSession.id == session_id)
@@ -458,7 +457,7 @@ def leave_negotiation(
     """
     Removes a user from a negotiation session.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     participant = (
         db.query(models.NegotiationParticipant)
         .filter(
@@ -484,7 +483,7 @@ def make_offer(
     """
     Makes an offer in a negotiation.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     message = models.Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
@@ -505,7 +504,7 @@ def accept_offer(
     """
     Accepts an offer in a negotiation.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     message = models.Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
@@ -526,7 +525,7 @@ def reject_offer(
     """
     Rejects an offer in a negotiation.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     message = models.Message(
         id=str(uuid.uuid4()),
         negotiation_id=session_id,
@@ -546,7 +545,7 @@ def get_history(
     """
     Gets the history of a negotiation session.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     session = (
         db.query(models.NegotiationSession)
         .filter(models.NegotiationSession.id == session_id)
@@ -566,7 +565,7 @@ def negotiation_status(
     """
     Gets the status of a negotiation session.
     """
-    db = next(get_db())
+    db = next(get_db_connection())
     session = (
         db.query(models.NegotiationSession)
         .filter(models.NegotiationSession.id == session_id)

@@ -2523,7 +2523,7 @@ class Message(BaseModel):
     class Config:
         orm_mode = True
 
-class NegotiationModel(Base):
+class NegotiationModel(Base): # type: ignore
     __tablename__ = "negotiations"
 
     id = Column(String, primary_key=True, index=True)
@@ -2533,7 +2533,7 @@ class NegotiationModel(Base):
     
     messages = relationship("MessageModel", back_populates="negotiation")
 
-class MessageModel(Base):
+class MessageModel(Base): # type: ignore
     __tablename__ = "messages"
 
     id = Column(String, primary_key=True, index=True)
@@ -2581,7 +2581,7 @@ class SimulationScenario(BaseModel):
             raise ValueError('our_max must be greater than our_min')
         return v
 
-class NegotiationSession(Base):
+class NegotiationSession(Base): # type: ignore
     __tablename__ = 'negotiation_sessions'
     id = Column(String, primary_key=True)
     subject = Column(String)

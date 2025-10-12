@@ -6,10 +6,11 @@ import json
 import re
 from typing import List, Dict, Any
 
-from .gemini_client import call_gemini_api
+from .gemini_client import GeminiClient
 from .schemas import AnalysisResult, ReasoningOutput
 
 logger = logging.getLogger(__name__)
+gemini_client = GeminiClient()
 
 
 def decompose_objective_llm(objective: str) -> List[Dict[str, Any]]:
@@ -35,7 +36,7 @@ Example for "Investigate the security posture of example.com":
     {{"module": "footprint", "params": {{"domain": "example.com"}}}}
 ]
 """
-    llm_response = call_gemini_api(prompt)
+    llm_response = gemini_client.generate_response(prompt)
     if not llm_response:
         logger.error("LLM call for objective decomposition returned an empty response.")
         # Minimal safe fallback: notify the user and provide a simple task
@@ -110,7 +111,7 @@ Return your answer strictly in JSON with keys:
 'hypotheses', 'recommendations', 'next_steps', 'analytical_summary'.
 """
 
-    llm_response = call_gemini_api(prompt)
+    llm_response = gemini_client.generate_response(prompt)
     if not llm_response:
         logger.error("LLM call for reasoning returned an empty response.")
         output.analytical_summary = "Reasoning failed: no response from LLM."

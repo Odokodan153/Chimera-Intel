@@ -1,6 +1,7 @@
 import json
 import logging
 from collections import namedtuple
+from typing import Any, Dict, List
 import numpy as np
 
 from .negotiation_rl_agent import QLearningAgent
@@ -69,11 +70,10 @@ def train_rl_agent(
     """
     training_logs = []
     for episode in range(episodes):
-        agent.clear_prediction_cache()
-        history = []
+        history: List[Dict[str, Any]] = []
         state = env.get_state_from_history(history)
         done = False
-        total_reward = 0
+        total_reward = 0.0
         turn = 0
 
         while not done:
@@ -111,15 +111,13 @@ def train_rl_agent(
             done = env.is_done(history)
 
             try:
-                agent.update_q_values(state, action, reward, next_state, done)
+                agent.learn(state, action, reward, next_state)
             except Exception as e:
                 logging.error(f"Error in update_q_values: {e}")
                 break  # End episode on error
             state = next_state
             total_reward += reward
             turn += 1
-        agent.decay_epsilon(episode)
-
         training_logs.append(
             {
                 "episode": episode,
@@ -146,7 +144,7 @@ def run_training_mode():
     Runs the negotiation agent in training mode.
     """
     logging.info("--- Running in Training Mode ---")
-    agent = QLearningAgent(use_exponential_decay=True)
+    agent = QLearningAgent(action_space_n=10)
     env = NegotiationEnv()
     train_rl_agent(agent, env, episodes=500, deterministic_opponent=True)
     agent.save_model("negotiation_rl_model.h5")
@@ -158,7 +156,7 @@ def run_inference_mode(use_llm: bool = False):
     Runs the negotiation agent in inference mode.
     """
     logging.info("--- Running in Inference Mode ---")
-    agent = QLearningAgent()
+    agent = QLearningAgent(action_space_n=10)
     try:
         agent.load_model("negotiation_rl_model.h5")
         agent.epsilon = 0
