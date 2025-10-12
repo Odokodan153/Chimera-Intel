@@ -2458,11 +2458,6 @@ class PartyType(str, Enum):
     GOVERNMENT = "government"
     OTHER = "other"
 
-class NegotiationStatus(str, Enum):
-    ONGOING = "ongoing"
-    CLOSED = "closed"
-    CANCELLED = "cancelled"
-
 class Channel(str, Enum):
     EMAIL = "email"
     CHAT = "chat"
@@ -2571,15 +2566,6 @@ class MessageBase(BaseModel):
 class MessageCreate(MessageBase):
     pass
 
-class Message(MessageBase):
-    id: str
-    negotiation_id: str
-    timestamp: datetime
-    analysis: Optional[dict]
-
-    class Config:
-        orm_mode = True
-
 class NegotiationBase(BaseModel):
     subject: str
 
@@ -2619,19 +2605,6 @@ class NegotiationSession(Base):
     outcome = Column(String)
     messages = relationship("Message", back_populates="session")
     offers = relationship("Offer", back_populates="session")
-
-class Message(Base):
-    __tablename__ = 'messages'
-    id = Column(String, primary_key=True)
-    session_id = Column(String, ForeignKey('negotiation_sessions.id'))
-    sender = Column(String)
-    text = Column(String)
-    sentiment = Column(Float)
-    intent = Column(String)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
-    session = relationship("NegotiationSession", back_populates="messages")
-    offer = relationship("Offer", uselist=False, back_populates="message")
-
 class BehavioralProfile(BaseModel):
     """Model for the behavioral profile of a negotiation party."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
