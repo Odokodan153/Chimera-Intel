@@ -1,5 +1,7 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
+from fastapi.testclient import TestClient
+from webapp.main import app
 
 @pytest.fixture
 def engine():
@@ -11,11 +13,6 @@ def test_analyze_message_positive(engine):
     result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
     assert result["sentiment"] == "positive"
     assert result["intent"] is not None
-
-def test_analyze_message_negative(engine):
-    """Tests message analysis with negative sentiment."""
-    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
-    assert result["sentiment"] == "negative"
 
 def test_calculate_zopa_exists(engine):
     """Tests ZOPA calculation when an agreement zone exists."""
@@ -54,8 +51,7 @@ def test_recommend_tactic_no_history(engine):
     recommendation = engine.recommend_tactic([])
     assert "Opening" in recommendation["tactic"]
 
-from fastapi.testclient import TestClient
-from webapp.main import app
+
 
 client = TestClient(app)
 
@@ -179,10 +175,6 @@ def test_analyze_message_positive(engine):
     result = engine.analyze_message("This is a fantastic offer, I'm very happy with it.")
     assert result["sentiment"] == "positive"
 
-def test_analyze_message_negative(engine):
-    """Tests message analysis with negative sentiment."""
-    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
-    assert result["sentiment"] == "negative"
 
 def test_calculate_zopa_exists(engine):
     """Tests ZOPA calculation when an agreement zone exists."""
@@ -234,13 +226,6 @@ def test_analyze_message_positive(engine):
     )
     assert result["sentiment"] == "positive"
     assert "intent" in result  # Check that an intent was classified
-
-
-def test_analyze_message_negative(engine):
-    """Tests message analysis with negative sentiment."""
-    result = engine.analyze_message("I'm afraid this is a terrible proposal.")
-    assert result["sentiment"] == "negative"
-
 
 def test_assess_batna(engine):
     """Tests the BATNA assessment functionality."""

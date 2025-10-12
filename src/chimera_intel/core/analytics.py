@@ -1,6 +1,5 @@
 import psycopg2
-import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import typer

@@ -1,11 +1,9 @@
-import re
 import psycopg2
 import json
 import typer
 from rich.console import Console
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Optional
 from textblob import TextBlob
-import numpy as np
 import logging
 from enum import Enum
 import asyncio
@@ -13,8 +11,6 @@ import uuid
 
 # --- Imports for LLM Integration ---
 
-
-import httpx
 from .llm_interface import LLMInterface, MockLLMInterface
 from .negotiation_rl_agent import QLearningLLMAgent, QLearningAgent
 from .ethical_guardrails import EthicalFramework

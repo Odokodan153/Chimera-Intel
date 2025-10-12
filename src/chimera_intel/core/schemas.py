@@ -2617,9 +2617,6 @@ class Message(MessageBase):
 class NegotiationBase(BaseModel):
     subject: str
 
-class NegotiationCreate(NegotiationBase):
-    pass
-
 class Negotiation(NegotiationBase):
     id: str
     start_time: datetime

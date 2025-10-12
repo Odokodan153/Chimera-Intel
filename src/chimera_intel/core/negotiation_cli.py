@@ -1,8 +1,6 @@
 import typer
 from rich.console import Console
-from rich.table import Table
 import numpy as np
-import json
 from . import data_ingestion
 from .schemas import Counterparty, MarketIndicator
 from .negotiation_rl_env import NegotiationEnv

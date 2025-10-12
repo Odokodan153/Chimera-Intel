@@ -1,6 +1,5 @@
 import uuid
 import json
-from typing import Dict, Any, Optional, List
 from .database import get_db_connection
 from .schemas import Counterparty, BehavioralProfile, MarketIndicator
 from .utils import console
