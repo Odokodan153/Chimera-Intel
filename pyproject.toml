@@ -23,7 +23,7 @@ classifiers = [
 # Essential packages for the application to run.
 dependencies = [
     "typer[standard]>=0.19.2,<0.20.0",
-    "pydantic>=2.11.9,<3.0.0",
+    "pydantic[email]>=2.11.9,<3.0.0",
     "pydantic-settings>=2.10.1,<3.0.0",
     "pyyaml>=6.0.3,<7.0.0",
     "requests==2.31.0",
@@ -73,6 +73,7 @@ dependencies = [
     "sherlock-project",
     "python-louvain",
     "alembic",
+    "hvac",
 ]
 
 [project.optional-dependencies]
