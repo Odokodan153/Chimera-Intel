@@ -8,6 +8,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from typing import List, Dict, Any
 import uuid
 import logging
@@ -15,13 +16,13 @@ from functools import lru_cache
 
 # Core Chimera Intel imports
 
-
 from chimera_intel.core.database import get_db
 from chimera_intel.core import schemas, models
 from chimera_intel.core.negotiation import NegotiationEngine
+from chimera_intel.core.config_loader import CONFIG
+from .auth import get_current_user
 
 # Configure structured logging
-
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -35,7 +36,7 @@ def get_engine():
     Initializes and returns a cached instance of the NegotiationEngine.
     The model is loaded only once to avoid performance bottlenecks.
     """
-    model_path = "models/negotiation_intent_model"  # Example path
+    model_path = CONFIG.modules.negotiation.model_path
     try:
         # Attempt to load a potentially fine-tuned transformer model
 
@@ -59,7 +60,9 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 def create_negotiation(
-    negotiation: schemas.NegotiationCreate, db: Session = Depends(get_db)
+    negotiation: schemas.NegotiationCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Initializes a new negotiation session with multiple participants."""
     try:
@@ -84,11 +87,28 @@ def create_negotiation(
             f"Multi-party negotiation session created successfully with ID: {session_id}"
         )
         return db_negotiation
-    except Exception as e:
+    except IntegrityError as e:
+        db.rollback()
+        logger.error(
+            f"Database integrity error while creating negotiation session: {e}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A negotiation session with the same identifier already exists.",
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
         logger.error(f"Database error while creating negotiation session: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create negotiation session.",
+            detail="Failed to create negotiation session due to a database error.",
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"An unexpected error occurred: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
         )
 
 
@@ -97,6 +117,7 @@ def join_negotiation(
     negotiation_id: str,
     participant: schemas.NegotiationParticipantCreate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Adds a participant to a negotiation session."""
     db_negotiation = (
@@ -124,6 +145,7 @@ def leave_negotiation(
     negotiation_id: str,
     participant: schemas.NegotiationParticipantCreate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Removes a participant from a negotiation session."""
     db_participant = (
@@ -154,6 +176,7 @@ def analyze_new_message(
     simulation_scenario: Dict[str, int],
     db: Session = Depends(get_db),
     engine: NegotiationEngine = Depends(get_engine),
+    current_user: models.User = Depends(get_current_user),
 ):
     """
     Analyzes a new message and returns a structured response including
@@ -201,9 +224,7 @@ def analyze_new_message(
         ]
 
         recommendation = engine.recommend_tactic(history)
-
         simulation = engine.simulate_outcome(simulation_scenario)
-
         logger.info(f"Message in negotiation {negotiation_id} analyzed successfully.")
 
         return {
@@ -226,6 +247,7 @@ def get_negotiation_history(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    current_user: models.User = Depends(get_current_user),
 ):
     """
     Fetches the full history of a negotiation session with robust pagination.
@@ -246,13 +268,19 @@ def get_negotiation_history(
 
 
 @router.websocket("/ws/{negotiation_id}")
-async def websocket_endpoint(websocket: WebSocket, negotiation_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    negotiation_id: str,
+    token: str = Query(...),
+):
     """Handles real-time negotiation chat via WebSocket."""
+    db: Session = next(get_db())
+    user = await get_current_user(token, db)
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
     await websocket.accept()
 
-    # WebSocket dependencies need to be handled manually
-
-    db: Session = next(get_db())
     engine: NegotiationEngine = get_engine()
 
     db_negotiation = (

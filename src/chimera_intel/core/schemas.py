@@ -2564,13 +2564,6 @@ class NegotiationParty(BaseModel):
     name: str
     type: PartyType
 
-class Negotiation(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    subject: str
-    status: NegotiationStatus = NegotiationStatus.ONGOING
-    participants: List[NegotiationParty] = Field(default_factory=list)
-    history: List[Dict[str, Any]] = Field(default_factory=list) # To store conversation history
-
 class Message(BaseModel):
     negotiation_id: str
     sender_id: str
@@ -2710,14 +2703,6 @@ class MarketIndicator(BaseModel):
     source: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-# Update the main Negotiation model to include this new context
-class Negotiation(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    subject: str
-    status: NegotiationStatus = NegotiationStatus.ONGOING
-    participants: List[Party] = Field(default_factory=list)
-    counterparties: List[Counterparty] = Field(default_factory=list)
-    market_context: List[MarketIndicator] = Field(default_factory=list)
 
 class NegotiationParticipant(BaseModel):
     """Represents a single participant in a negotiation session."""
@@ -2767,6 +2752,19 @@ class RLLog(BaseModel):
     action: int
     reward: float
 
+class AnalysisResponse(BaseModel):
+    message_id: str
+    analysis: Dict[str, Any]
+    recommended_tactic: Dict[str, str]
+    simulation: Dict[str, Any]
+
+class NegotiationParticipantCreate(BaseModel):
+    participant_id: str
+    participant_name: str
+
+class NegotiationCreate(BaseModel):
+    subject: str
+    participants: List[NegotiationParticipantCreate]
 
 # --- Application Configuration ---
 class IntelSourceConfig(BaseModel):
@@ -2789,5 +2787,83 @@ class AppConfig(BaseModel):
     log_level: str = "INFO"
     intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
     feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
+
+# --- Role Definitions ---
+class UserRole(str, Enum):
+    USER = "user"
+    ADMIN = "admin"
+
+# --- User Schemas ---
+class UserBase(BaseModel):
+    username: str
+
+class UserCreate(UserBase):
+    password: str
+    role: UserRole = UserRole.USER  # Default role for new users
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    role: UserRole
+
+    class Config:
+        orm_mode = True
+
+# --- Application Configuration Schemas ---
+class NetworkConfig(BaseModel):
+    timeout: float = 20.0
+
+class FootprintModuleConfig(BaseModel):
+    dns_records_to_query: List[str] = ["A", "AAAA", "MX", "TXT", "NS", "CNAME"]
+
+class WebAnalyzerModuleConfig(BaseModel):
+    placeholder: bool = True
+
+class DarkWebModuleConfig(BaseModel):
+    tor_proxy_url: str = "socks5://127.0.0.1:9150"
+
+class MarintModuleConfig(BaseModel):
+    placeholder: bool = True
+
+class NegotiationModuleConfig(BaseModel):
+    model_path: str = "models/negotiation_intent_model"
+
+class ModulesConfig(BaseModel):
+    footprint: FootprintModuleConfig = Field(default_factory=FootprintModuleConfig)
+    web_analyzer: WebAnalyzerModuleConfig = Field(default_factory=WebAnalyzerModuleConfig)
+    dark_web: DarkWebModuleConfig = Field(default_factory=DarkWebModuleConfig)
+    marint: MarintModuleConfig = Field(default_factory=MarintModuleConfig)
+    negotiation: NegotiationModuleConfig = Field(default_factory=NegotiationModuleConfig)
+
+class ReportingGraphConfig(BaseModel):
+    physics_options: str = Field(
+        default="""
+      var options = {
+        "physics": {
+          "barnesHut": {
+            "gravitationalConstant": -40000,
+            "centralGravity": 0.4,
+            "springLength": 180
+          },
+          "minVelocity": 0.75
+        }
+      }
+    """
+    )
+
+class ReportingPdfConfig(BaseModel):
+    logo_path: str = "src/chimera_intel/assets/my_logo.png"
+    title_text: str = "Chimera Intel - Intelligence Report"
+    footer_text: str = "Confidential | Prepared by Chimera Intel"
+
+class ReportingConfig(BaseModel):
+    project_report_scans: List[str] = ["footprint", "web_analyzer", "defensive_breaches"]
+    graph: ReportingGraphConfig = Field(default_factory=ReportingGraphConfig)
+    pdf: ReportingPdfConfig = Field(default_factory=ReportingPdfConfig)
+
+class AppConfig(BaseModel):
+    network: NetworkConfig = Field(default_factory=NetworkConfig)
+    modules: ModulesConfig = Field(default_factory=ModulesConfig)
+    reporting: ReportingConfig = Field(default_factory=ReportingConfig)
 
 

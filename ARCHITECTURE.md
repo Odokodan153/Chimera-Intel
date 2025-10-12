@@ -32,7 +32,7 @@ The application is composed of several key components that work together to form
     This file is the **single source of truth for all data structures** in the application. By using Pydantic models, we ensure that all data flowing between modules is validated, type-safe, and predictable. This eliminates a huge category of potential bugs and makes the code much easier to reason about.
 
 * **Historical Database (`src/chimera_intel/core/database.py`):**
-    A simple `SQLite` database (in WAL mode for concurrency) gives the application a "memory." Its purpose is to enable powerful historical features like the `diff` and `forecast` commands. By storing timestamped JSON snapshots of every scan, it lays the foundation for all time-series analysis and change detection.
+    For local development and testing, a simple `SQLite` database (in WAL mode for concurrency) gives the application a "memory." For production environments, **PostgreSQL** is the official database. Its purpose is to enable powerful historical features like the `diff` and `forecast` commands. By storing timestamped JSON snapshots of every scan, it lays the foundation for all time-series analysis and change detection.
 
 * **Web Dashboard (`webapp/main.py`):**
     A `FastAPI`-based web application provides a graphical user interface (GUI), making the tool accessible to non-technical users. It reuses the core logic from the intelligence modules, proving the effectiveness of the decoupled architecture.

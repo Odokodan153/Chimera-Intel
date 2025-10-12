@@ -13,6 +13,7 @@ import uuid
 
 # --- Imports for LLM Integration ---
 
+
 import httpx
 from .llm_interface import LLMInterface, MockLLMInterface
 from .negotiation_rl_agent import QLearningLLMAgent, QLearningAgent
@@ -31,6 +32,8 @@ console = Console()
 negotiation_app = typer.Typer(
     help="A comprehensive suite for AI-assisted negotiation, analysis, and training."
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SimulationMode(str, Enum):
@@ -72,44 +75,44 @@ class NegotiationEngine:
             try:
                 if use_mock_llm:
                     self.llm = MockLLMInterface()
-                    logging.info("Using Mock LLM Interface for training.")
+                    logger.info("Using Mock LLM Interface for training.")
                 else:
                     self.llm = LLMInterface()
-                    logging.info("Using live Gemini LLM Interface for inference.")
+                    logger.info("Using live Gemini LLM Interface for inference.")
                 self.rl_agent = QLearningLLMAgent(
                     llm=self.llm,
                     ethics=self.ethical_framework,
                     db_params=self.db_params,
                     action_space_n=3,
                 )
-                logging.info("Initialized with QLearningLLMAgent.")
+                logger.info("Initialized with QLearningLLMAgent.")
             except ValueError as e:
-                logging.error(
+                logger.error(
                     f"LLM Initialization Failed: {e}. Falling back to standard agent."
                 )
                 self.rl_agent = QLearningAgent(action_space_n=3)
         else:
             self.rl_agent = QLearningAgent(action_space_n=3)
-            logging.info("Initialized with standard QLearningAgent.")
+            logger.info("Initialized with standard QLearningAgent.")
         if rl_model_path:
             try:
                 self.rl_agent.load_model(rl_model_path)
                 self.rl_agent.epsilon = 0.1
-                logging.info(f"Successfully loaded RL model from {rl_model_path}")
+                logger.info(f"Successfully loaded RL model from {rl_model_path}")
             except FileNotFoundError:
-                logging.warning(
+                logger.warning(
                     f"RL model not found at {rl_model_path}. Using a new, untrained agent."
                 )
 
     def _get_db_connection(self):
         """Establishes a connection to the database."""
         if not self.db_params:
-            logging.warning("Database parameters are not configured.")
+            logger.warning("Database parameters are not configured.")
             return None
         try:
             return psycopg2.connect(**self.db_params)
         except psycopg2.OperationalError as e:
-            logging.error(f"Database Connection Error: {e}")
+            logger.error(f"Database Connection Error: {e}")
             return None
 
     def analyze_message(self, message_content: str) -> Dict[str, Any]:
@@ -172,26 +175,27 @@ class NegotiationEngine:
         """
         reward = 0
         # Sentiment-based reward
+
         if state.get("last_message_sentiment") == "positive":
             reward += 0.2
         elif state.get("last_message_sentiment") == "negative":
             reward -= 0.2
-
         # Reward for making progress
+
         if "offer" in state.get("last_message_content", "").lower():
             reward += 0.3
         if "accept" in state.get("last_message_content", "").lower():
             reward += 1.0  # Strong reward for reaching an agreement
         if "reject" in state.get("last_message_content", "").lower():
             reward -= 0.5  # Penalty for rejection
-
         # Reward for concessions (a simple heuristic)
+
         if len(history) > 1:
             last_message = history[-1]
             if "offer" in last_message.get("content", "").lower():
                 # A more complex implementation would parse the offer amounts
-                reward += 0.1 # Small reward for making a concession
-        
+
+                reward += 0.1  # Small reward for making a concession
         return reward
 
     def _get_state_from_history(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -225,7 +229,7 @@ class NegotiationEngine:
                 )
                 conn.commit()
         except Exception as e:
-            logging.error(f"Database Error: Failed to log RL step: {e}")
+            logger.error(f"Database Error: Failed to log RL step: {e}")
         finally:
             if conn:
                 conn.close()
@@ -271,7 +275,7 @@ class NegotiationEngine:
                 )
                 conn.commit()
         except Exception as e:
-            logging.error(f"Database Error: Failed to log LLM interaction: {e}")
+            logger.error(f"Database Error: Failed to log LLM interaction: {e}")
         finally:
             if conn:
                 conn.close()

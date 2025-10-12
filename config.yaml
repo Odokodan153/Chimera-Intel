@@ -28,6 +28,9 @@ modules:
     # Add settings for MARINT here in the future
     placeholder: true
 
+  negotiation:
+    model_path: "models/negotiation_intent_model"
+
 # Settings for report generation
 reporting:
   # Defines the list of scans to be executed by the 'project report' command.

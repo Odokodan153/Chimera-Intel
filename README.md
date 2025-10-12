@@ -311,3 +311,16 @@ graph TD
         N --> O[AI Models / Historical Comparison];
         O --> P[Final Report/Analysis];
     end
+
+## 🚀 Deployment
+
+### Secret Management
+
+For production deployments, Chimera Intel is configured to use **HashiCorp Vault** for secure secret management. This is the recommended approach for handling sensitive credentials like API keys and database passwords.
+
+To configure the application to use Vault, you must set the following environment variables:
+
+```bash
+export VAULT_ADDR="[https://your-vault-server.com](https://your-vault-server.com)"
+export VAULT_TOKEN="your-vault-access-token"
+export VAULT_SECRET_PATH="kv/data/chimera-intel" # The path to your secrets in Vault
