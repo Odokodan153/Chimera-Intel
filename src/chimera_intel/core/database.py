@@ -45,6 +45,7 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
                 hashed_password TEXT NOT NULL
             );
             """
@@ -234,7 +235,6 @@ def initialize_database() -> None:
             """
         )
 
-
         conn.commit()
         cursor.close()
         conn.close()
@@ -244,14 +244,14 @@ def initialize_database() -> None:
         )
 
 
-def create_user_in_db(username: str, hashed_password: str) -> None:
+def create_user_in_db(username: str, email: str, hashed_password: str) -> None:
     """Creates a new user in the database."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO users (username, hashed_password) VALUES (%s, %s)",
-            (username, hashed_password),
+            "INSERT INTO users (username, email, hashed_password) VALUES (%s, %s, %s)",
+            (username, email, hashed_password),
         )
         conn.commit()
         cursor.close()
@@ -268,14 +268,19 @@ def get_user_from_db(username: str) -> Optional[User]:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, username, hashed_password FROM users WHERE username = %s",
+            "SELECT id, username, email, hashed_password FROM users WHERE username = %s",
             (username,),
         )
         record = cursor.fetchone()
         cursor.close()
         conn.close()
         if record:
-            return User(id=record[0], username=record[1], hashed_password=record[2])
+            return User(
+                id=record[0],
+                username=record[1],
+                email=record[2],
+                hashed_password=record[3],
+            )
         return None
     except (psycopg2.Error, ConnectionError) as e:
         console.print(f"[bold red]Database Error:[/bold red] Could not fetch user: {e}")

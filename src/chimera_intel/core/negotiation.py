@@ -2,7 +2,7 @@ import psycopg2
 import json
 import typer
 from rich.console import Console
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from textblob import TextBlob
 import logging
 from enum import Enum
@@ -62,8 +62,9 @@ class NegotiationEngine:
         self.db_params = db_params
         self.ethical_framework = EthicalFramework()
         self.advanced_nlp_analyzer = AdvancedNLPAnalyzer()
-        self.llm = None
+        self.llm: Optional[Union[LLMInterface, MockLLMInterface]] = None
         self.mode = mode
+        self.rl_agent: Union[QLearningLLMAgent, QLearningAgent]
 
         use_mock_llm = self.mode == SimulationMode.training
 
@@ -75,13 +76,16 @@ class NegotiationEngine:
                 else:
                     self.llm = LLMInterface()
                     logger.info("Using live Gemini LLM Interface for inference.")
-                self.rl_agent = QLearningLLMAgent(
-                    llm=self.llm,
-                    ethics=self.ethical_framework,
-                    db_params=self.db_params,
-                    action_space_n=3,
-                )
-                logger.info("Initialized with QLearningLLMAgent.")
+                if self.llm:
+                    self.rl_agent = QLearningLLMAgent(
+                        llm=self.llm,
+                        ethics=self.ethical_framework,
+                        db_params=self.db_params,
+                        action_space_n=3,
+                    )
+                    logger.info("Initialized with QLearningLLMAgent.")
+                else:
+                    self.rl_agent = QLearningAgent(action_space_n=3)
             except ValueError as e:
                 logger.error(
                     f"LLM Initialization Failed: {e}. Falling back to standard agent."
@@ -92,8 +96,9 @@ class NegotiationEngine:
             logger.info("Initialized with standard QLearningAgent.")
         if rl_model_path:
             try:
-                self.rl_agent.load_model(rl_model_path)
-                self.rl_agent.epsilon = 0.1
+                if isinstance(self.rl_agent, QLearningAgent):
+                    self.rl_agent.load_model(rl_model_path)
+                    self.rl_agent.epsilon = 0.1
                 logger.info(f"Successfully loaded RL model from {rl_model_path}")
             except FileNotFoundError:
                 logger.warning(
@@ -143,12 +148,12 @@ class NegotiationEngine:
         """
         state_representation = self._get_state_from_history(history)
         action = self.rl_agent.choose_action(state_representation)
-        reward = self.get_reward(state_representation)
+        reward = self.get_reward(state_representation, history)
 
         self._log_rl_step(state_representation, action, reward)
 
         if isinstance(self.rl_agent, QLearningLLMAgent):
-            bot_response = await self.rl_agent.generate_negotiation_message_async(
+            bot_response = self.rl_agent.generate_negotiation_message(
                 state_representation, counterparty_country_code
             )
             self._log_llm_interaction(
@@ -169,7 +174,7 @@ class NegotiationEngine:
         """
         Calculates a more sophisticated reward based on the current state and history.
         """
-        reward = 0
+        reward: float = 0.0
         # Sentiment-based reward
 
         if state.get("last_message_sentiment") == "positive":
@@ -240,7 +245,7 @@ class NegotiationEngine:
     ):
         """Logs the LLM interaction details to the database."""
         conn = self._get_db_connection()
-        if not conn or not isinstance(self.rl_agent, QLearningLLMAgent):
+        if not conn or not isinstance(self.rl_agent, QLearningLLMAgent) or not self.llm:
             return
         cultural_profile = get_cultural_profile(country_code) if country_code else {}
         ethical_violations = self.ethical_framework.check_message(response)
@@ -249,17 +254,18 @@ class NegotiationEngine:
 
         try:
             with conn.cursor() as cursor:
+                model_name = "mock_llm"
+                if hasattr(self.llm, "model") and hasattr(
+                    self.llm.model, "model_name"
+                ):
+                    model_name = self.llm.model.model_name
                 cursor.execute(
                     """
                     INSERT INTO llm_logs (model_name, prompt, response, ethical_flags, cultural_context, state, action, reward)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
                 """,
                     (
-                        (
-                            self.llm.model.model_name
-                            if hasattr(self.llm, "model")
-                            else "mock_llm"
-                        ),
+                        model_name,
                         prompt_for_log,
                         response,
                         json.dumps([v["violation"] for v in ethical_violations]),
@@ -360,7 +366,7 @@ def run_simulation(
     }
 
     engine = NegotiationEngine(db_params=db_params, use_llm=use_llm, mode=mode)
-    history = []
+    history: List[Dict[str, Any]] = []
 
     recommendation = asyncio.run(engine.recommend_tactic_async(history, country_code))
     console.print(f"\n[bold green]AI:[/bold green] {recommendation['bot_response']}")

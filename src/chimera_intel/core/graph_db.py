@@ -56,6 +56,7 @@ class GraphDatabase:
 
 # Corrected configuration access to match the schema definition
 
+
 graph_db_instance = GraphDatabase(
     uri=CONFIG.graph_db.uri,
     user=CONFIG.graph_db.username,
@@ -173,7 +174,7 @@ def build_and_save_graph(
 
         physics_options = None
         if CONFIG.reporting and CONFIG.reporting.graph:
-            physics_options = CONFIG.reporting.graph.get("physics_options")
+            physics_options = CONFIG.reporting.graph.physics_options
         if physics_options:
             net.set_options(physics_options)
         net.save_graph(output_path)

@@ -136,6 +136,7 @@ class ApiKeys(BaseSettings):
     db_user: Optional[str] = Field(None, alias="DB_USER")
     db_password: Optional[str] = Field(None, alias="DB_PASSWORD")
     db_host: Optional[str] = Field(None, alias="DB_HOST")
+    db_port: Optional[int] = Field(5432, alias="DB_PORT")
 
     # ---: Graph Database Credentials ---
 

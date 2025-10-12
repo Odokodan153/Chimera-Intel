@@ -1880,7 +1880,7 @@ class ScanResult(Base): # type: ignore
     id = Column(Integer, primary_key=True, index=True)
     project_name = Column(String, index=True, nullable=False)
     module = Column(String, index=True, nullable=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
     # The result is stored as a JSON string in the database.
     result = Column(Text, nullable=False)
 
@@ -1891,7 +1891,7 @@ class PageSnapshot(Base): # type: ignore
     __tablename__ = "page_snapshots"
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, index=True, nullable=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
     content_hash = Column(String, nullable=False)
     # Storing the full content allows for detailed diffing later.
     content = Column(LargeBinary, nullable=False)
@@ -1915,7 +1915,7 @@ class HumintReport(Base): # type: ignore
     __tablename__ = "humint_reports"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
     source_id = Column(Integer, ForeignKey("humint_sources.id"))
     source = relationship("HumintSource", back_populates="reports")
 
@@ -1939,7 +1939,7 @@ class ForecastPerformance(Base): # type: ignore
     prediction = Column(Text)  # The AI's generated forecast
     outcome = Column(Text)  # The real-world result, logged later
     is_correct = Column(Boolean)  # Was the prediction accurate?
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 class Token(BaseModel):
     """Model for a JWT access token."""
@@ -2488,19 +2488,6 @@ class Offer(BaseModel):
     confidence_score: Optional[float] = None
     revision: int = 1
     previous_offer_id: Optional[str] = None
-    
-    # --- Extended economic and versioning metadata ---
-    currency: Optional[str] = "USD"
-    valid_until: Optional[datetime] = None
-    confidence_score: Optional[float] = None  # AI-generated score
-    revision: int = 1
-    previous_offer_id: Optional[str] = None
-
-class PartyType(str, Enum):
-    COMPANY = "company"
-    INDIVIDUAL = "individual"
-    GOVERNMENT = "government"
-    OTHER = "other"
 
 class NegotiationStatus(str, Enum):
     ONGOING = "ongoing"
@@ -2542,7 +2529,7 @@ class NegotiationModel(Base):
     id = Column(String, primary_key=True, index=True)
     subject = Column(String, index=True)
     status = Column(SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     messages = relationship("MessageModel", back_populates="negotiation")
 
@@ -2554,7 +2541,7 @@ class MessageModel(Base):
     sender_id = Column(String)
     content = Column(String)
     analysis = Column(JSON) # Store sentiment, intent, etc.
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
     negotiation = relationship("NegotiationModel", back_populates="messages")
 
@@ -2598,7 +2585,7 @@ class NegotiationSession(Base):
     __tablename__ = 'negotiation_sessions'
     id = Column(String, primary_key=True)
     subject = Column(String)
-    start_time = Column(DateTime, default=datetime.datetime.utcnow)
+    start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime)
     status = Column(String, default='ongoing')
     outcome = Column(String)

@@ -8,7 +8,7 @@ class GeminiClient:
 
     def __init__(self):
         """Initializes the Gemini client and configures the API key."""
-        self.api_key = getattr(API_KEYS, "gemini_api_key", None)
+        self.api_key = getattr(API_KEYS, "google_api_key", None)
         if not self.api_key:
             logging.error("Gemini API key not found in configuration.")
             self.model = None
