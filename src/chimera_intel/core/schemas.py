@@ -9,8 +9,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     LargeBinary,
-    Enum as SQLAlchemyEnum,
-    Float,
+    Enum as SQLAlchemyEnum
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
