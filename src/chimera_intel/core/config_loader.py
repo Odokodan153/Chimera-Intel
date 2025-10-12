@@ -11,18 +11,16 @@ It also centralizes the creation of the SQLAlchemy database URL.
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import hvac
 import yaml
-from pydantic import Field, PostgresDsn, ValidationError, computed_field
+from pydantic import Field, PostgresDsn, ValidationError, field_validator
 from pydantic_settings import BaseSettings
 
 from .schemas import AppConfig
 
 # Get a logger instance for this specific file
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -140,13 +138,20 @@ class ApiKeys(BaseSettings):
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
 
-    @computed_field
-    @property
-    def database_url(self) -> Optional[PostgresDsn]:
-        """Constructs the database URL from its component parts."""
-        if all([self.db_user, self.db_password, self.db_host, self.db_name]):
-            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        return None
+    database_url: Union[PostgresDsn, str, None] = None
+
+    @field_validator("database_url", mode="before")
+    def assemble_db_connection(cls, v: Optional[str], values: Any) -> Any:
+        if isinstance(v, str):
+            return v
+        db_host = values.data.get("DB_HOST")
+        db_user = values.data.get("DB_USER")
+        db_port = values.data.get("DB_PORT")
+        db_password = values.data.get("DB_PASSWORD")
+        db_name = values.data.get("DB_NAME")
+        if all([db_host, db_user, db_port, db_password, db_name]):
+            return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        return v
 
     class Config:
         """Pydantic-settings configuration."""
