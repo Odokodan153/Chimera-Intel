@@ -235,9 +235,12 @@
     <span class="n">github</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+<div class="viewcode-block" id="KnowledgeGraph">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.KnowledgeGraph">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">KnowledgeGraph</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
-    <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span></div>
+
 
 <div class="viewcode-block" id="FootprintData">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.FootprintData">[docs]</a>
@@ -269,6 +272,11 @@
     <span class="n">footprint</span><span class="p">:</span> <span class="n">FootprintData</span></div>
 
 
+<div class="viewcode-block" id="IpInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IpInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IpInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">asn</span><span class="p">:</span> <span class="n">AsnInfo</span>
+    <span class="n">geolocation</span><span class="p">:</span> <span class="n">IpGeolocation</span></div>
 
 
 
@@ -2888,14 +2896,6 @@
     <span class="n">reference</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A URL or source reference for verification.&quot;</span><span class="p">)</span>
     <span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Assessed risk: Low, Medium, High, or Critical.&quot;</span><span class="p">)</span>
     <span class="n">confidence</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Confidence level of the finding: Low, Medium, High.&quot;</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="KnowledgeGraph">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.KnowledgeGraph">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">KnowledgeGraph</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents the constructed knowledge graph of interconnected entities.&quot;&quot;&quot;</span>
-    <span class="n">nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of nodes (entities) in the graph.&quot;</span><span class="p">)</span>
-    <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;List of edges (relationships) connecting the nodes.&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="PESTAnalysis">
