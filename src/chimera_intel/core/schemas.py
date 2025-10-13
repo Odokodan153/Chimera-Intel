@@ -69,21 +69,86 @@ class SubdomainReport(BaseModel):
     total_unique: int
     results: List[ScoredResult]
 
+class DnssecInfo(BaseModel):
+    dnssec_enabled: bool
+    spf_record: str
+    dmarc_record: str
+
+class TlsCertInfo(BaseModel):
+    issuer: str
+    subject: str
+    sans: List[str]
+    not_before: str
+    not_after: str
+
+class AsnInfo(BaseModel):
+    asn: Optional[str] = None
+    owner: Optional[str] = None
+    country: Optional[str] = None
+    prefix: Optional[str] = None
+
+class HistoricalDns(BaseModel):
+    a_records: List[str]
+    aaaa_records: List[str]
+    mx_records: List[str]
+
+class IpGeolocation(BaseModel):
+    ip: str
+    city: Optional[str] = None
+    country: Optional[str] = None
+    provider: Optional[str] = None
+
+class BreachInfo(BaseModel):
+    source: str
+    breaches: List[str]
+
+class PortScanResult(BaseModel):
+    open_ports: Dict[int, str]
+
+class WebTechInfo(BaseModel):
+    cms: Optional[str] = None
+    framework: Optional[str] = None
+    web_server: Optional[str] = None
+    js_library: Optional[str] = None
+
+class PersonnelInfo(BaseModel):
+    employees: List[Dict[str, str]]
+
+class SocialMediaPresence(BaseModel):
+    twitter: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+
+class KnowledgeGraph(BaseModel):
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
 
 class FootprintData(BaseModel):
-    """A model for the nested data within the footprint module."""
-
     whois_info: Dict[str, Any]
     dns_records: Dict[str, Any]
     subdomains: SubdomainReport
-    ip_threat_intelligence: List[ThreatIntelResult]
-
+    ip_threat_intelligence: List[Any]
+    historical_dns: HistoricalDns
+    reverse_ip: Dict[str, List[str]]
+    asn_info: Dict[str, AsnInfo]
+    tls_cert_info: TlsCertInfo
+    dnssec_info: DnssecInfo
+    ip_geolocation: Dict[str, IpGeolocation]
+    cdn_provider: Optional[str] = None
+    breach_info: BreachInfo
+    port_scan_results: Dict[str, PortScanResult]
+    web_technologies: WebTechInfo
+    personnel_info: PersonnelInfo
+    knowledge_graph: KnowledgeGraph
 
 class FootprintResult(BaseModel):
     """The main, top-level result model for a footprint scan."""
 
     domain: str
     footprint: FootprintData
+
+
+
 
 
 # --- Web Analyzer Module Models ---

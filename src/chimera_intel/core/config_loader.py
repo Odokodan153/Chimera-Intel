@@ -162,7 +162,7 @@ class ApiKeys(BaseSettings):
 
     @classmethod
     def settings_customise_sources(
-        cls, settings_cls, init_settings, env_settings, file_secret_settings
+        cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
     ):
         """
         Customizes the loading priority for settings.
@@ -174,6 +174,7 @@ class ApiKeys(BaseSettings):
         return (
             init_settings,
             get_secrets_from_vault,
+            dotenv_settings,
             env_settings,
             file_secret_settings,
         )

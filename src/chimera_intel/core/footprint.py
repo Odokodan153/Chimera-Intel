@@ -4,21 +4,39 @@ import dns.resolver
 import asyncio
 import re
 import shodan  # type: ignore
+import nmap  # type: ignore
+import hibpapi
+from rich.panel import Panel
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 import logging
 import time
 from httpx import RequestError, HTTPStatusError
-from chimera_intel.core.utils import console
+from wappalyzer import Wappalyzer, WebPage
+from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
+from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import CONFIG, API_KEYS
 from chimera_intel.core.schemas import (
     FootprintResult,
     FootprintData,
     SubdomainReport,
     ScoredResult,
+    DnssecInfo,
+    TlsCertInfo,
+    AsnInfo,
+    HistoricalDns,
+    IpGeolocation,
+    BreachInfo,
+    PortScanResult,
+    WebTechInfo,
+    PersonnelInfo,
+    SocialMediaPresence,
+    KnowledgeGraph,
+    IpInfo,
 )
 from chimera_intel.core.http_client import async_client
 from .threat_intel import get_threat_intel_otx
+from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -34,7 +52,14 @@ CACHE_TTL_SECONDS = 600  # Cache results for 10 minutes
 
 
 def get_whois_info(domain: str) -> Dict[str, Any]:
-    """Retrieves WHOIS information for a given domain."""
+    """Retrieves WHOIS information for a given domain.
+
+    Args:
+        domain (str): The domain to perform the WHOIS lookup on.
+
+    Returns:
+        Dict[str, Any]: A dictionary of the WHOIS record, or an error message.
+    """
     try:
         domain_info = whois.whois(domain)
         if domain_info and domain_info.get("domain_name"):
@@ -47,7 +72,15 @@ def get_whois_info(domain: str) -> Dict[str, Any]:
 
 
 def get_dns_records(domain: str) -> Dict[str, Any]:
-    """Retrieves common DNS records for a given domain from config.yaml."""
+    """Retrieves common DNS records for a given domain from config.yaml.
+
+    Args:
+        domain (str): The domain to query for DNS records.
+
+    Returns:
+        Dict[str, Any]: A dictionary where keys are record types (e.g., 'A', 'MX')
+                        and values are lists of records, or an error message.
+    """
     dns_results: Dict[str, Any] = {}
     record_types = CONFIG.modules.footprint.dns_records_to_query
     for record_type in record_types:
@@ -71,7 +104,15 @@ def get_dns_records(domain: str) -> Dict[str, Any]:
 
 
 async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
-    """Asynchronously retrieves subdomains from the VirusTotal API."""
+    """Asynchronously retrieves subdomains from the VirusTotal API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+        api_key (str): The VirusTotal API key.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
     if not api_key:
         return []
     headers = {"x-apikey": api_key}
@@ -96,7 +137,14 @@ async def get_subdomains_virustotal(domain: str, api_key: str) -> List[str]:
 
 
 async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
-    """Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens."""
+    """Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
     url = "https://dnsdumpster.com/"
     cache_key = f"{url}_{domain}"
     if (
@@ -135,7 +183,14 @@ async def get_subdomains_dnsdumpster(domain: str) -> List[str]:
 
 
 async def get_subdomains_threatminer(domain: str) -> List[str]:
-    """Asynchronously retrieves subdomains from the ThreatMiner API."""
+    """Asynchronously retrieves subdomains from the ThreatMiner API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
     url = f"https://api.threatminer.org/v2/domain.php?q={domain}&rt=5"
     if (
         url in API_CACHE
@@ -158,7 +213,14 @@ async def get_subdomains_threatminer(domain: str) -> List[str]:
 
 
 async def get_subdomains_urlscan(domain: str) -> List[str]:
-    """Asynchronously retrieves subdomains from the URLScan.io API."""
+    """Asynchronously retrieves subdomains from the URLScan.io API.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
     url = f"https://urlscan.io/api/v1/search/?q=domain:{domain}"
     if (
         url in API_CACHE
@@ -184,7 +246,18 @@ async def get_subdomains_urlscan(domain: str) -> List[str]:
 
 
 async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
-    """Asynchronously retrieves subdomains from the Shodan API."""
+    """Asynchronously retrieves subdomains from the Shodan API.
+
+    This function runs the synchronous Shodan library in a separate thread
+    to avoid blocking the asyncio event loop.
+
+    Args:
+        domain (str): The domain to query for subdomains.
+        api_key (str): The Shodan API key.
+
+    Returns:
+        List[str]: A list of subdomain strings found.
+    """
     if not api_key:
         return []
     query = f"hostname:.{domain}"
@@ -214,17 +287,376 @@ async def get_subdomains_shodan(domain: str, api_key: str) -> List[str]:
     return await asyncio.to_thread(search)
 
 
+# --- Extended Intelligence Functions ---
+
+
+async def get_ip_info(ip_address: str) -> IpInfo:
+    """Retrieves combined ASN and geolocation info for an IP address using ipinfo.io.
+
+    Args:
+        ip_address (str): The IP address to query.
+
+    Returns:
+        IpInfo: A Pydantic model containing combined IP information.
+    """
+    url = f"https://ipinfo.io/{ip_address}/json"
+    if (
+        url in API_CACHE
+        and (time.time() - API_CACHE[url]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached IP info for {ip_address}")
+        return API_CACHE[url]["data"]
+    try:
+        response = await async_client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        ip_info = IpInfo(
+            asn=AsnInfo(
+                asn=data.get("org"),
+                owner=data.get("org"),
+                country=data.get("country"),
+                prefix=data.get("org"),
+            ),
+            geolocation=IpGeolocation(
+                ip=ip_address,
+                city=data.get("city"),
+                country=data.get("country"),
+                provider=data.get("org"),
+            ),
+        )
+        API_CACHE[url] = {"timestamp": time.time(), "data": ip_info}
+        return ip_info
+    except (HTTPStatusError, RequestError) as e:
+        logger.error(f"Error fetching IP info from ipinfo.io for '{ip_address}': {e}")
+        return IpInfo(
+            asn=AsnInfo(asn="", owner="", country="", prefix=""),
+            geolocation=IpGeolocation(ip=ip_address, city="", country="", provider=""),
+        )
+
+
+async def get_passive_dns(domain: str, api_key: str) -> HistoricalDns:
+    """Retrieves passive DNS information from VirusTotal.
+
+    Args:
+        domain (str): The domain to query.
+        api_key (str): The VirusTotal API key.
+
+    Returns:
+        HistoricalDns: A Pydantic model containing historical DNS records.
+    """
+    if not api_key:
+        return HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
+    url = f"https://www.virustotal.com/api/v3/domains/{domain}/resolutions"
+    headers = {"x-apikey": api_key}
+    cache_key = f"{url}_{domain}"
+    if (
+        cache_key in API_CACHE
+        and (time.time() - API_CACHE[cache_key]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached passive DNS data for {domain}")
+        return API_CACHE[cache_key]["data"]
+
+    try:
+        response = await async_client.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json().get("data", [])
+        a_records = [
+            f"{item['attributes']['ip_address']} ({item['attributes']['date']})"
+            for item in data
+            if item["attributes"]["ip_address"]
+        ]
+        API_CACHE[cache_key] = {
+            "timestamp": time.time(),
+            "data": HistoricalDns(a_records=a_records, aaaa_records=[], mx_records=[]),
+        }
+        return API_CACHE[cache_key]["data"]
+    except (HTTPStatusError, RequestError) as e:
+        logger.error(f"Error fetching passive DNS from VirusTotal for '{domain}': {e}")
+        return HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
+
+
+async def get_reverse_ip_lookup(ip_address: str) -> List[str]:
+    """Performs a reverse IP lookup to find other domains on the same IP.
+
+    Args:
+        ip_address (str): The IP address to perform the reverse lookup on.
+
+    Returns:
+        List[str]: A list of domain names hosted on the IP address.
+    """
+    try:
+        reversed_ip = dns.reversename.from_address(ip_address)
+        return [str(ptr) for ptr in dns.resolver.resolve(reversed_ip, "PTR")]
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        return []
+    except Exception as e:
+        logger.error(f"Error performing reverse IP lookup for '{ip_address}': {e}")
+        return []
+
+
+async def get_tls_cert_info(domain: str) -> TlsCertInfo:
+    """Analyzes TLS/SSL certificate information from crt.sh.
+
+    Args:
+        domain (str): The domain to query for certificates.
+
+    Returns:
+        TlsCertInfo: A Pydantic model containing certificate information.
+    """
+    url = f"https://crt.sh/?q=%25.{domain}&output=json"
+    cache_key = f"{url}_{domain}"
+    if (
+        cache_key in API_CACHE
+        and (time.time() - API_CACHE[cache_key]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached TLS certificate info for {domain}")
+        return API_CACHE[cache_key]["data"]
+    try:
+        response = await async_client.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if not data:
+            return TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
+        latest_cert = data[0]
+        cert_info = TlsCertInfo(
+            issuer=latest_cert.get("issuer_name"),
+            subject=latest_cert.get("common_name"),
+            sans=latest_cert.get("name_value", "").split("\n"),
+            not_before=latest_cert.get("not_before"),
+            not_after=latest_cert.get("not_after"),
+        )
+        API_CACHE[cache_key] = {"timestamp": time.time(), "data": cert_info}
+        return cert_info
+    except (HTTPStatusError, RequestError) as e:
+        logger.error(f"Error fetching TLS certificate info from crt.sh for '{domain}': {e}")
+        return TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
+
+
+async def check_dnssec(domain: str) -> DnssecInfo:
+    """Validates DNSSEC, SPF, DKIM, and DMARC records.
+
+    Args:
+        domain (str): The domain to check.
+
+    Returns:
+        DnssecInfo: A Pydantic model containing DNS security information.
+    """
+    dnssec_enabled = False
+    spf_record = ""
+    dmarc_record = ""
+    try:
+        dnskey_response = dns.resolver.resolve(domain, dns.rdatatype.DNSKEY)
+        if dnskey_response:
+            dnssec_enabled = True
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        pass  # DNSSEC not enabled
+    except Exception as e:
+        logger.error(f"Error checking DNSSEC for '{domain}': {e}")
+
+
+    try:
+        spf_response = dns.resolver.resolve(domain, "TXT")
+        for record in spf_response:
+            if "v=spf1" in str(record):
+                spf_record = str(record)
+                break
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        pass
+    except Exception as e:
+        logger.error(f"Error checking SPF for '{domain}': {e}")
+
+    try:
+        dmarc_response = dns.resolver.resolve(f"_dmarc.{domain}", "TXT")
+        for record in dmarc_response:
+            if "v=DMARC1" in str(record):
+                dmarc_record = str(record)
+                break
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        pass
+    except Exception as e:
+        logger.error(f"Error checking DMARC for '{domain}': {e}")
+
+
+    return DnssecInfo(
+        dnssec_enabled=dnssec_enabled,
+        spf_record=spf_record.strip('"'),
+        dmarc_record=dmarc_record.strip('"'),
+    )
+
+
+async def detect_cdn(domain: str) -> Optional[str]:
+    """Detects if a domain is using a CDN.
+
+    Args:
+        domain (str): The domain to check.
+
+    Returns:
+        Optional[str]: The name of the CDN provider if detected, otherwise None.
+    """
+    try:
+        answers = dns.resolver.resolve(domain, "CNAME")
+        for rdata in answers:
+            cname = str(rdata.target)
+            if "cloudflare" in cname:
+                return "Cloudflare"
+            elif "akamai" in cname:
+                return "Akamai"
+            elif "fastly" in cname:
+                return "Fastly"
+            elif "aws" in cname:
+                return "Amazon CloudFront"
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        pass
+    except Exception as e:
+        logger.error(f"Error detecting CDN for '{domain}': {e}")
+    return None
+
+
+async def get_breach_info(domain: str, api_key: str) -> BreachInfo:
+    """Checks for data breaches and leaks associated with a domain using HaveIBeenPwned.
+
+    Args:
+        domain (str): The domain to check for breaches.
+        api_key (str): The HIBP API key.
+
+    Returns:
+        BreachInfo: A Pydantic model containing breach information.
+    """
+    if not api_key:
+        return BreachInfo(source="HaveIBeenPwned", breaches=[])
+    cache_key = f"hibp_{domain}"
+    if (
+        cache_key in API_CACHE
+        and (time.time() - API_CACHE[cache_key]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached breach info for {domain}")
+        return API_CACHE[cache_key]["data"]
+
+    try:
+        with hibpapi.HIBP(api_key=api_key) as hibp:
+            breaches = hibp.get_breaches_for_account(email=f"test@{domain}")
+        breach_names = [breach.name for breach in breaches]
+        breach_info = BreachInfo(source="HaveIBeenPwned", breaches=breach_names)
+        API_CACHE[cache_key] = {"timestamp": time.time(), "data": breach_info}
+        return breach_info
+    except Exception as e:
+        logger.error(f"Error fetching breach info from HIBP for '{domain}': {e}")
+        return BreachInfo(source="HaveIBeenPwned", breaches=[])
+
+
+async def perform_port_scan(ip_address: str) -> PortScanResult:
+    """Performs a light port scan to identify open ports and services using python-nmap.
+
+    WARNING: Port scanning can have legal implications. Use responsibly.
+
+    Args:
+        ip_address (str): The IP address to scan.
+
+    Returns:
+        PortScanResult: A Pydantic model containing open ports and services.
+    """
+    nm = nmap.PortScanner()
+    try:
+        # Scanning top 1000 ports
+        nm.scan(ip_address, "1-1000")
+        open_ports = {}
+        if ip_address in nm.all_hosts():
+            for proto in nm[ip_address].all_protocols():
+                lport = nm[ip_address][proto].keys()
+                for port in lport:
+                    open_ports[port] = nm[ip_address][proto][port]["name"]
+        return PortScanResult(open_ports=open_ports)
+    except Exception as e:
+        logger.error(f"Error performing port scan on '{ip_address}': {e}")
+        return PortScanResult(open_ports={})
+
+
+async def get_web_technologies(url: str) -> WebTechInfo:
+    """Profiles web technologies used by a website using Wappalyzer.
+
+    Args:
+        url (str): The URL of the website to profile.
+
+    Returns:
+        WebTechInfo: A Pydantic model containing web technology information.
+    """
+    try:
+        wappalyzer = Wappalyzer.latest()
+        webpage = WebPage.new_from_url(url)
+        technologies = wappalyzer.analyze_with_versions(webpage)
+        web_tech_info = WebTechInfo(
+            cms=technologies.get("cms", [None])[0],
+            framework=technologies.get("javascript-frameworks", [None])[0],
+            web_server=technologies.get("web-servers", [None])[0],
+            js_library=technologies.get("javascript-libraries", [None])[0],
+        )
+        return web_tech_info
+    except Exception as e:
+        logger.error(f"Error profiling web technologies for '{url}': {e}")
+        return WebTechInfo(cms="", framework="", web_server="", js_library="")
+
+
+async def discover_personnel(domain: str, api_key: str) -> PersonnelInfo:
+    """Discovers employee and contact information related to a domain using Hunter.io.
+
+    Args:
+        domain (str): The domain to query.
+        api_key (str): The Hunter.io API key.
+
+    Returns:
+        PersonnelInfo: A Pydantic model containing personnel information.
+    """
+    if not api_key:
+        return PersonnelInfo(employees=[])
+    url = f"https://api.hunter.io/v2/domain-search?domain={domain}&api_key={api_key}"
+    cache_key = f"hunter_{domain}"
+    if (
+        cache_key in API_CACHE
+        and (time.time() - API_CACHE[cache_key]["timestamp"]) < CACHE_TTL_SECONDS
+    ):
+        logger.info(f"Returning cached personnel info for {domain}")
+        return API_CACHE[cache_key]["data"]
+
+    try:
+        response = await async_client.get(url)
+        response.raise_for_status()
+        data = response.json().get("data", {}).get("emails", [])
+        employees = [
+            {
+                "name": f"{email.get('first_name', '')} {email.get('last_name', '')}".strip(),
+                "email": email.get("value"),
+                "title": email.get("position"),
+            }
+            for email in data
+        ]
+        personnel_info = PersonnelInfo(employees=employees)
+        API_CACHE[cache_key] = {"timestamp": time.time(), "data": personnel_info}
+        return personnel_info
+    except (HTTPStatusError, RequestError) as e:
+        logger.error(f"Error fetching personnel info from Hunter.io for '{domain}': {e}")
+        return PersonnelInfo(employees=[])
+
+
 # --- Core Logic Function ---
 
 
 async def gather_footprint_data(domain: str) -> FootprintResult:
     """
     Orchestrates the gathering of all footprint data.
+
+    Args:
+        domain (str): The target domain for the footprint scan.
+
+    Returns:
+        FootprintResult: A Pydantic model containing all the gathered
+                         and processed data.
     """
     # --- Stage 1: Initial Data Gathering ---
 
     vt_api_key = API_KEYS.virustotal_api_key
     shodan_api_key = API_KEYS.shodan_api_key
+    hibp_api_key = API_KEYS.hibp_api_key
+    hunter_api_key = API_KEYS.hunter_api_key
 
     initial_tasks = [
         (
@@ -242,9 +674,29 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         ),
         asyncio.to_thread(get_whois_info, domain),
         asyncio.to_thread(get_dns_records, domain),
+        get_passive_dns(domain, vt_api_key) if vt_api_key else asyncio.sleep(0, result=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])),
+        get_tls_cert_info(domain),
+        check_dnssec(domain),
+        get_breach_info(domain, hibp_api_key) if hibp_api_key else asyncio.sleep(0, result=BreachInfo(source="HaveIBeenPwned", breaches=[])),
+        get_web_technologies(f"https://{domain}"),
+        discover_personnel(domain, hunter_api_key) if hunter_api_key else asyncio.sleep(0, result=PersonnelInfo(employees=[])),
     ]
     results = await asyncio.gather(*initial_tasks)
-    vt, dd, tm, us, sh, whois_data, dns_data = results
+    (
+        vt,
+        dd,
+        tm,
+        us,
+        sh,
+        whois_data,
+        dns_data,
+        passive_dns_data,
+        tls_cert_data,
+        dnssec_data,
+        breach_data,
+        web_tech_data,
+        personnel_data,
+    ) = results
 
     # --- Stage 2: Consolidate and Prepare for Enrichment ---
 
@@ -270,7 +722,36 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     )
     for ip in main_domain_ips:
         indicators_to_check.add(ip)
-    # --- Stage 3: Threat Intelligence Enrichment ---
+
+    # --- Stage 3: IP-based Enrichment ---
+
+    ip_enrichment_tasks = [
+        (ip, get_ip_info(ip)) for ip in main_domain_ips
+    ]
+    ip_enrichment_tasks.extend(
+        [
+            (ip, get_reverse_ip_lookup(ip)) for ip in main_domain_ips
+        ]
+    )
+    ip_enrichment_tasks.extend(
+        [
+            (ip, perform_port_scan(ip)) for ip in main_domain_ips
+        ]
+    )
+
+
+    ip_enrichment_results: Dict[str, Dict[str, Any]] = {ip: {} for ip in main_domain_ips}
+    for ip, task in ip_enrichment_tasks:
+        result = await task
+        if isinstance(result, IpInfo):
+            ip_enrichment_results[ip]["ip_info"] = result
+        elif isinstance(result, list):
+            ip_enrichment_results[ip]["reverse_ip"] = result
+        elif isinstance(result, PortScanResult):
+            ip_enrichment_results[ip]["port_scan"] = result
+
+
+    # --- Stage 4: Threat Intelligence Enrichment ---
 
     threat_intel_results: Dict[str, Any] = {}
     if API_KEYS.otx_api_key:
@@ -284,7 +765,8 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
             for res in ti_results:
                 if res:
                     threat_intel_results[res.indicator] = res
-    # --- Stage 4: Final Assembly ---
+
+    # --- Stage 5: Final Assembly ---
 
     available_sources = sum(1 for key in [vt_api_key, shodan_api_key] if key) + 3
     scored_results = [
@@ -307,6 +789,18 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         dns_records=dns_data if isinstance(dns_data, dict) else {},
         subdomains=subdomain_report,
         ip_threat_intelligence=ip_threat_intelligence,
+        historical_dns=passive_dns_data,
+        reverse_ip={ip: ip_enrichment_results[ip].get("reverse_ip", []) for ip in main_domain_ips},
+        asn_info={ip: ip_enrichment_results[ip].get("ip_info", {}).get("asn") for ip in main_domain_ips},
+        tls_cert_info=tls_cert_data,
+        dnssec_info=dnssec_data,
+        ip_geolocation={ip: ip_enrichment_results[ip].get("ip_info", {}).get("geolocation") for ip in main_domain_ips},
+        cdn_provider=await detect_cdn(domain),
+        breach_info=breach_data,
+        port_scan_results={ip: ip_enrichment_results[ip].get("port_scan") for ip in main_domain_ips},
+        web_technologies=web_tech_data,
+        personnel_info=personnel_data,
+        knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
     )
     return FootprintResult(domain=domain, footprint=footprint_data)
 
@@ -321,4 +815,41 @@ run_footprint_analysis = gather_footprint_data
 
 footprint_app = typer.Typer()
 
-# ... (rest of the file)
+
+@footprint_app.command("run")
+def run_footprint_scan(
+    domain: Optional[str] = typer.Argument(
+        None,
+        help="The target domain. If not provided, uses the active project's domain.",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save the results to a JSON file."
+    ),
+):
+    """Gathers digital footprint info for a domain."""
+    target_domain = resolve_target(domain, required_assets=["domain"])
+
+    if not is_valid_domain(target_domain):
+        logger.warning(
+            "Invalid domain format provided to 'footprint' command: %s", target_domain
+        )
+        console.print(
+            Panel(
+                f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",
+                title="Error",
+                border_style="red",
+            )
+        )
+        raise typer.Exit(code=1)
+    logger.info("Starting asynchronous footprint scan for %s", target_domain)
+
+    results_model = asyncio.run(gather_footprint_data(target_domain))
+    results_dict = results_model.model_dump()
+
+    logger.info("Footprint scan complete for %s", target_domain)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(target=target_domain, module="footprint", data=results_dict)
+
+
+if __name__ == "__main__":
+    footprint_app()
