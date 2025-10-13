@@ -1,0 +1,410 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.offensive &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.offensive</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.offensive</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module for advanced offensive and reconnaissance operations.</span>
+
+<span class="sd">This module contains functions for discovering and fingerprinting APIs,</span>
+<span class="sd">enumerating hidden web content, and performing advanced cloud reconnaissance.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dns.resolver</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">APIDiscoveryResult</span><span class="p">,</span>
+    <span class="n">DiscoveredAPI</span><span class="p">,</span>
+    <span class="n">ContentEnumerationResult</span><span class="p">,</span>
+    <span class="n">DiscoveredContent</span><span class="p">,</span>
+    <span class="n">AdvancedCloudResult</span><span class="p">,</span>
+    <span class="n">SubdomainTakeoverResult</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_or_print_results</span><span class="p">,</span> <span class="n">console</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_scan_to_db</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1"># --- API Discovery ---</span>
+
+
+<div class="viewcode-block" id="discover_apis">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.discover_apis">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">discover_apis</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">APIDiscoveryResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Searches for common API endpoints and documentation specifications.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting API discovery for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">discovered</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">endpoints_to_check</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Swagger/OpenAPI&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/swagger.json&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/openapi.json&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/api/docs&quot;</span><span class="p">,</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;GraphQL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/graphql&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;REST&quot;</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;https://api.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/v1/&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/api/v1/&quot;</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_endpoint</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">404</span><span class="p">:</span>
+                <span class="n">discovered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">DiscoveredAPI</span><span class="p">(</span>
+                        <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">api_type</span><span class="o">=</span><span class="n">api_type</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">check_endpoint</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">api_type</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">api_type</span><span class="p">,</span> <span class="n">urls</span> <span class="ow">in</span> <span class="n">endpoints_to_check</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">urls</span>
+    <span class="p">]</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">APIDiscoveryResult</span><span class="p">(</span><span class="n">target_domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">discovered_apis</span><span class="o">=</span><span class="n">discovered</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Content Enumeration ---</span>
+
+
+<div class="viewcode-block" id="enumerate_directories">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.enumerate_directories">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enumerate_directories</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContentEnumerationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Performs directory and file enumeration using a small, common wordlist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performing content enumeration on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># A small but effective list of common paths</span>
+
+    <span class="n">common_paths</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;login&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dashboard&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;api&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;wp-admin&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;test&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;.git/config&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;.env&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;config.json&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;backup.zip&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;robots.txt&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">found_content</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DiscoveredContent</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="c1"># We check for all status codes except 404 (Not Found)</span>
+
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">!=</span> <span class="mi">404</span><span class="p">:</span>
+                <span class="c1"># We use &#39;content-length&#39; from the headers if available</span>
+
+                <span class="n">content_length_str</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content-length&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
+                <span class="n">found_content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">DiscoveredContent</span><span class="p">(</span>
+                        <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
+                        <span class="n">status_code</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
+                        <span class="n">content_length</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">content_length_str</span><span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># Ignore connection errors</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">check_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">common_paths</span><span class="p">]</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ContentEnumerationResult</span><span class="p">(</span><span class="n">target_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span> <span class="n">found_content</span><span class="o">=</span><span class="n">found_content</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Advanced Cloud Recon ---</span>
+
+
+<div class="viewcode-block" id="check_subdomain_takeover">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.check_subdomain_takeover">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdvancedCloudResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks for dangling DNS records pointing to de-provisioned cloud services.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checking for potential subdomain takeovers on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Fingerprints of vulnerable services</span>
+
+    <span class="n">vulnerable_fingerprints</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;S3 Bucket&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;NoSuchBucket&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;Heroku&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;no such app&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;GitHub Pages&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;There isn&#39;t a GitHub Pages site here.&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;Shopify&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Sorry, this shop is currently unavailable.&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;Ghost&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;The thing you were looking for is no longer here&quot;</span><span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Common subdomains to check</span>
+
+    <span class="n">subdomains_to_check</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;www&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;assets&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;blog&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;dev&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;staging&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;api&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;files&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;images&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="n">potential_takeovers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SubdomainTakeoverResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_subdomain</span><span class="p">(</span><span class="n">sub</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">full_domain</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sub</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 1. Check for a CNAME record</span>
+
+            <span class="n">resolver</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">Resolver</span><span class="p">()</span>
+            <span class="n">cname_answers</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span>
+                <span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">,</span> <span class="n">full_domain</span><span class="p">,</span> <span class="s2">&quot;CNAME&quot;</span>
+            <span class="p">)</span>
+            <span class="n">cname_target</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">cname_answers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+
+            <span class="c1"># 2. Check the page content for fingerprints</span>
+
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;http://</span><span class="si">{</span><span class="n">full_domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+            <span class="n">page_content</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">service</span><span class="p">,</span> <span class="n">fingerprints</span> <span class="ow">in</span> <span class="n">vulnerable_fingerprints</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">fingerprint</span> <span class="ow">in</span> <span class="n">fingerprints</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">fingerprint</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">page_content</span><span class="p">:</span>
+                        <span class="n">potential_takeovers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="n">SubdomainTakeoverResult</span><span class="p">(</span>
+                                <span class="n">subdomain</span><span class="o">=</span><span class="n">full_domain</span><span class="p">,</span>
+                                <span class="n">vulnerable_service</span><span class="o">=</span><span class="n">service</span><span class="p">,</span>
+                                <span class="n">details</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;CNAME points to &#39;</span><span class="si">{</span><span class="n">cname_target</span><span class="si">}</span><span class="s2">&#39; and page contains fingerprint: &#39;</span><span class="si">{</span><span class="n">fingerprint</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="k">return</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
+            <span class="c1"># This is normal if the subdomain has no CNAME or does not exist</span>
+
+            <span class="k">pass</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># Ignore other errors (e.g., connection timeout)</span>
+
+            <span class="k">pass</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">check_subdomain</span><span class="p">(</span><span class="n">sub</span><span class="p">)</span> <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">subdomains_to_check</span><span class="p">]</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">AdvancedCloudResult</span><span class="p">(</span>
+        <span class="n">target_domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">potential_takeovers</span><span class="o">=</span><span class="n">potential_takeovers</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">offensive_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_api_discovery">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_api_discovery">[docs]</a>
+<span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;api-discover&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_api_discovery</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain to scan for APIs.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discovers potential API endpoints and specifications.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold cyan]Discovering APIs on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">discover_apis</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_api_discover&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_content_enumeration">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_content_enumeration">[docs]</a>
+<span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;enum-content&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_content_enumeration</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain to enumerate.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumerates common directories and files on a web server.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold cyan]Enumerating content on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enumerate_directories</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_enum_content&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_cloud_takeover_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_cloud_takeover_check">[docs]</a>
+<span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;cloud-takeover&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_cloud_takeover_check</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The root domain to check for takeovers.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Checks for potential subdomain takeovers.&quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;[bold cyan]Checking for subdomain takeovers on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span>
+    <span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_cloud_takeover&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Change CLI functions to be async</span>
+
+
+<div class="viewcode-block" id="callback">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.callback">[docs]</a>
+<span class="nd">@offensive_app</span><span class="o">.</span><span class="n">callback</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">callback</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Advanced offensive and reconnaissance operations.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+
+<span class="c1"># Wrapper to run async CLI commands</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="c1"># Typer does not directly support async functions, so we use this wrapper</span>
+    <span class="c1"># for the commands in this file.</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+
+    <span class="c1"># Create a new event loop</span>
+
+    <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
+    <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+
+    <span class="c1"># Run the Typer app within the event loop</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">offensive_app</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

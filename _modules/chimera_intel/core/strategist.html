@@ -1,0 +1,226 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.strategist &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.strategist</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.strategist</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.markdown</span><span class="w"> </span><span class="kn">import</span> <span class="n">Markdown</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_aggregated_data_for_target</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">API_KEYS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategicProfileResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_target</span>
+
+<span class="c1"># Get a logger instance for this specific file</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="generate_strategic_profile">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.strategist.generate_strategic_profile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_strategic_profile</span><span class="p">(</span>
+    <span class="n">aggregated_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrategicProfileResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Uses a Generative AI model (Google Gemini Pro) to create a high-level strategic profile.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        aggregated_data (dict): The combined OSINT data for the target.</span>
+<span class="sd">        api_key (str): The Google AI API key for authentication.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        StrategicProfileResult: A Pydantic model containing the AI-generated markdown</span>
+<span class="sd">                                analysis or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">StrategicProfileResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;GOOGLE_API_KEY not found in .env file.&quot;</span><span class="p">)</span>
+    <span class="n">genai</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-pro&quot;</span><span class="p">)</span>
+
+    <span class="n">data_str</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">aggregated_data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    As an expert business intelligence analyst, your task is to synthesize the following OSINT data into a high-level strategic profile of the target company.</span>
+<span class="s2">    Focus on deducing their likely strategies based ONLY on the provided data.</span>
+
+<span class="s2">    OSINT DATA:</span>
+<span class="s2">    ```json</span>
+<span class="s2">    </span><span class="si">{</span><span class="n">data_str</span><span class="si">}</span>
+<span class="s2">    ```</span>
+
+<span class="s2">    Based on the data, provide a concise analysis covering the following points. Present the entire output in Markdown format.</span>
+<span class="s2">    </span>
+<span class="s2">    1.  **Marketing &amp; Sales Strategy:** Based on their web technologies, traffic sources, and news, what is their likely go-to-market strategy? Are they targeting consumers (B2C) or businesses (B2B)?</span>
+<span class="s2">    2.  **Technology &amp; Innovation Strategy:** Based on their tech stack and patents, are they a technology leader, a fast follower, or lagging in their industry? What are their R&amp;D priorities?</span>
+<span class="s2">    3.  **Expansion &amp; Growth Strategy:** Are there any signals (e.g., in news, financials) that suggest they are planning to expand into new markets, launch new products, or are in a phase of aggressive growth?</span>
+<span class="s2">    4.  **Overall Summary:** Provide a concluding paragraph summarizing their likely strategic position in the market.</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">StrategicProfileResult</span><span class="p">(</span><span class="n">profile_text</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;An error occurred with the Google AI API during strategy generation: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">StrategicProfileResult</span><span class="p">(</span>
+            <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred with the Google AI API: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">strategy_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_strategy_analysis">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.strategist.run_strategy_analysis">[docs]</a>
+<span class="nd">@strategy_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_strategy_analysis</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target to analyze. Uses active project if not provided.&quot;</span>
+    <span class="p">)</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates an AI-powered strategic profile of a competitor by aggregating all known data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Generating strategic profile for target: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target_name</span><span class="p">)</span>
+
+    <span class="n">aggregated_data</span> <span class="o">=</span> <span class="n">get_aggregated_data_for_target</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">aggregated_data</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Error:[/bold red] No historical data found for &#39;</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">&#39;. Run other scans first.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Submitting aggregated data to AI strategist for analysis.&quot;</span><span class="p">)</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">google_api_key</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;Error: Google API key not found. Please set GOOGLE_API_KEY in your .env file.&quot;</span><span class="p">,</span>
+            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
+        <span class="s2">&quot;[bold cyan]Generating AI-powered strategic profile...[/bold cyan]&quot;</span>
+    <span class="p">):</span>
+        <span class="n">strategic_result</span> <span class="o">=</span> <span class="n">generate_strategic_profile</span><span class="p">(</span><span class="n">aggregated_data</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- [bold]Automated Strategic Profile[/bold] ---</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">strategic_result</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Error: Failed to generate strategic profile: </span><span class="si">{</span><span class="n">strategic_result</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Markdown</span><span class="p">(</span><span class="n">strategic_result</span><span class="o">.</span><span class="n">profile_text</span> <span class="ow">or</span> <span class="s2">&quot;No analysis generated.&quot;</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

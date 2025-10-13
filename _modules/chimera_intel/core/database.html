@@ -1,0 +1,659 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.database &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.database</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.database</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">psycopg2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">API_KEYS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span>
+
+
+<div class="viewcode-block" id="get_db_connection">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_db_connection">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_db_connection</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Establishes a connection to the PostgreSQL database using credentials from the environment.&quot;&quot;&quot;</span>
+    <span class="n">db_name</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">API_KEYS</span><span class="p">,</span> <span class="s2">&quot;db_name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">db_user</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">API_KEYS</span><span class="p">,</span> <span class="s2">&quot;db_user&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">db_password</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">API_KEYS</span><span class="p">,</span> <span class="s2">&quot;db_password&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">db_host</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">API_KEYS</span><span class="p">,</span> <span class="s2">&quot;db_host&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="n">db_name</span><span class="p">,</span> <span class="n">db_user</span><span class="p">,</span> <span class="n">db_password</span><span class="p">,</span> <span class="n">db_host</span><span class="p">]):</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="s2">&quot;[bold red]Database Configuration Error:[/bold red] One or more database connection variables (DB_NAME, DB_USER, DB_PASSWORD, DB_HOST) are not set in your .env file.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="s2">&quot;Database credentials not configured.&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">psycopg2</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+            <span class="n">dbname</span><span class="o">=</span><span class="n">db_name</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">db_user</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">db_password</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="n">db_host</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">psycopg2</span><span class="o">.</span><span class="n">OperationalError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Connection Error:[/bold red] Could not connect to PostgreSQL. Is the database running and accessible? Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span></div>
+
+
+
+<div class="viewcode-block" id="initialize_database">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.initialize_database">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">initialize_database</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates the necessary tables in the PostgreSQL database if they don&#39;t already exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+
+        <span class="c1"># Existing Chimera Intel Tables</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS users (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                username TEXT UNIQUE NOT NULL,</span>
+<span class="sd">                email TEXT UNIQUE NOT NULL,</span>
+<span class="sd">                hashed_password TEXT NOT NULL</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS projects (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                name TEXT UNIQUE NOT NULL,</span>
+<span class="sd">                config JSONB NOT NULL</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS project_users (</span>
+<span class="sd">                project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,</span>
+<span class="sd">                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,</span>
+<span class="sd">                role TEXT NOT NULL CHECK (role IN (&#39;admin&#39;, &#39;analyst&#39;, &#39;read-only&#39;)),</span>
+<span class="sd">                PRIMARY KEY (project_id, user_id)</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS scans (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                target TEXT NOT NULL,</span>
+<span class="sd">                module TEXT NOT NULL,</span>
+<span class="sd">                scan_data JSONB NOT NULL,</span>
+<span class="sd">                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),</span>
+<span class="sd">                user_id INTEGER REFERENCES users(id),</span>
+<span class="sd">                project_id INTEGER REFERENCES projects(id)</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS forecasts (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                scenario TEXT NOT NULL,</span>
+<span class="sd">                likelihood TEXT,</span>
+<span class="sd">                impact TEXT,</span>
+<span class="sd">                indicators JSONB,</span>
+<span class="sd">                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),</span>
+<span class="sd">                user_id INTEGER REFERENCES users(id)</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS page_snapshots (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                url TEXT NOT NULL,</span>
+<span class="sd">                content_hash TEXT NOT NULL,</span>
+<span class="sd">                content BYTEA NOT NULL,</span>
+<span class="sd">                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># New Tables for the Negotiation Engine</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS negotiation_sessions (</span>
+<span class="sd">                id TEXT PRIMARY KEY,</span>
+<span class="sd">                subject TEXT,</span>
+<span class="sd">                start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),</span>
+<span class="sd">                status TEXT NOT NULL DEFAULT &#39;ongoing&#39;</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS messages (</span>
+<span class="sd">                id TEXT PRIMARY KEY,</span>
+<span class="sd">                negotiation_id TEXT REFERENCES negotiation_sessions(id),</span>
+<span class="sd">                sender_id TEXT,</span>
+<span class="sd">                content TEXT,</span>
+<span class="sd">                analysis JSONB,</span>
+<span class="sd">                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS counterparties (</span>
+<span class="sd">                id TEXT PRIMARY KEY,</span>
+<span class="sd">                name TEXT NOT NULL,</span>
+<span class="sd">                industry TEXT,</span>
+<span class="sd">                country TEXT,</span>
+<span class="sd">                notes TEXT</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS negotiation_counterparties (</span>
+<span class="sd">                negotiation_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,</span>
+<span class="sd">                counterparty_id TEXT REFERENCES counterparties(id) ON DELETE CASCADE,</span>
+<span class="sd">                PRIMARY KEY (negotiation_id, counterparty_id)</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS behavioral_profiles (</span>
+<span class="sd">                id TEXT PRIMARY KEY,</span>
+<span class="sd">                counterparty_id TEXT UNIQUE REFERENCES counterparties(id) ON DELETE CASCADE,</span>
+<span class="sd">                communication_style TEXT,</span>
+<span class="sd">                risk_appetite TEXT,</span>
+<span class="sd">                key_motivators JSONB</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS market_indicators (</span>
+<span class="sd">                id TEXT PRIMARY KEY,</span>
+<span class="sd">                name TEXT NOT NULL,</span>
+<span class="sd">                value REAL,</span>
+<span class="sd">                source TEXT,</span>
+<span class="sd">                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS cultural_profiles (</span>
+<span class="sd">                country_code TEXT PRIMARY KEY,</span>
+<span class="sd">                country_name TEXT NOT NULL,</span>
+<span class="sd">                directness INTEGER, -- Scale of 1-10 (Indirect to Direct)</span>
+<span class="sd">                formality INTEGER, -- Scale of 1-10 (Informal to Formal)</span>
+<span class="sd">                power_distance INTEGER, -- Hofstede&#39;s Power Distance</span>
+<span class="sd">                individualism INTEGER, -- Hofstede&#39;s Individualism vs. Collectivism</span>
+<span class="sd">                uncertainty_avoidance INTEGER -- Hofstede&#39;s Uncertainty Avoidance</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS negotiation_participants (</span>
+<span class="sd">                session_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,</span>
+<span class="sd">                participant_id TEXT NOT NULL,</span>
+<span class="sd">                participant_name TEXT NOT NULL,</span>
+<span class="sd">                PRIMARY KEY (session_id, participant_id)</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS llm_logs (</span>
+<span class="sd">                id SERIAL PRIMARY KEY,</span>
+<span class="sd">                timestamp TIMESTAMP DEFAULT NOW(),</span>
+<span class="sd">                model_name TEXT,</span>
+<span class="sd">                prompt TEXT,</span>
+<span class="sd">                response TEXT,</span>
+<span class="sd">                ethical_flags TEXT,</span>
+<span class="sd">                cultural_context JSONB</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            CREATE TABLE IF NOT EXISTS rl_logs (</span>
+<span class="sd">                log_id SERIAL PRIMARY KEY,</span>
+<span class="sd">                state JSONB,</span>
+<span class="sd">                action INTEGER,</span>
+<span class="sd">                reward REAL,</span>
+<span class="sd">                timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP</span>
+<span class="sd">            );</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">Exception</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not initialize database: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_user_in_db">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.create_user_in_db">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_user_in_db</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hashed_password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Creates a new user in the database.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;INSERT INTO users (username, email, hashed_password) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">hashed_password</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not create user: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_user_from_db">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_user_from_db">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user_from_db</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">User</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves a user from the database by their username.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT id, username, email, hashed_password FROM users WHERE username = </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">username</span><span class="p">,),</span>
+        <span class="p">)</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">record</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">User</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">username</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">email</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                <span class="n">hashed_password</span><span class="o">=</span><span class="n">record</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not fetch user: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="save_scan_to_db">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.save_scan_to_db">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_scan_to_db</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">project_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Saves a completed scan&#39;s JSON data to the PostgreSQL database.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">scan_data_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;INSERT INTO scans (target, module, scan_data, user_id, project_id) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">module</span><span class="p">,</span> <span class="n">scan_data_json</span><span class="p">,</span> <span class="n">user_id</span><span class="p">,</span> <span class="n">project_id</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot; [dim cyan]&gt;[/dim cyan] [dim]Scan results for &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39; saved to historical database.[/dim]&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not save scan to database: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]An unexpected error occurred while saving to the database:[/] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_forecast_to_db">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.save_forecast_to_db">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_forecast_to_db</span><span class="p">(</span>
+    <span class="n">scenario</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">likelihood</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">impact</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">indicators</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves a strategic forecast to the database.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">indicators_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">indicators</span><span class="p">)</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;INSERT INTO forecasts (scenario, likelihood, impact, indicators, user_id) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="n">likelihood</span><span class="p">,</span> <span class="n">impact</span><span class="p">,</span> <span class="n">indicators_json</span><span class="p">,</span> <span class="n">user_id</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot; [dim cyan]&gt;[/dim cyan] [dim]Forecast for &#39;</span><span class="si">{</span><span class="n">scenario</span><span class="si">}</span><span class="s2">&#39; saved to database.[/dim]&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not save forecast to database: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_aggregated_data_for_target">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_aggregated_data_for_target">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_aggregated_data_for_target</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves and aggregates the most recent scan data from relevant modules for a target.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">aggregated_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">target</span><span class="p">,</span> <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+    <span class="n">modules_to_fetch</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;footprint&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;web_analyzer&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;business_intel&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;social_analyzer&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;physical_osint_locations&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;corporate_hr_intel&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ecosystem_analysis&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;code_intel_repo&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;defensive_breaches&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;vulnerability_scanner&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;cloud_osint&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;recon_credentials&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">modules_to_fetch</span><span class="p">:</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                SELECT scan_data FROM scans</span>
+<span class="sd">                WHERE target = %s AND module = %s</span>
+<span class="sd">                ORDER BY timestamp DESC</span>
+<span class="sd">                LIMIT 1</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">module</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">record</span><span class="p">:</span>
+                <span class="n">aggregated_data</span><span class="p">[</span><span class="s2">&quot;modules&quot;</span><span class="p">][</span><span class="n">module</span><span class="p">]</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">aggregated_data</span><span class="p">[</span><span class="s2">&quot;modules&quot;</span><span class="p">]:</span>
+            <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[bold yellow]Warning:[/] No historical data found for target &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39;. Run scans first.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">aggregated_data</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not aggregate data for target: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="get_scan_history">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_scan_history">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_scan_history</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves all scan records from the database, ordered by the most recent first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT id, target, module, timestamp, scan_data FROM scans ORDER BY timestamp DESC&quot;</span>
+        <span class="p">)</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
+                <span class="s2">&quot;scan_data&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span>
+        <span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not fetch scan history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_scan_history_for_target">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_scan_history_for_target">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_scan_history_for_target</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves all scan records for a specific target, ordered by the most recent first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT id, target, module, timestamp FROM scans WHERE target = </span><span class="si">%s</span><span class="s2"> ORDER BY timestamp DESC&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">target</span><span class="p">,),</span>
+        <span class="p">)</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()}</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span>
+        <span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not fetch scan history for target &#39;</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_all_scans_for_target">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.get_all_scans_for_target">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_all_scans_for_target</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves all historical scans for a specific target, optionally filtered by module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">module</span><span class="p">:</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT scan_data, timestamp FROM scans WHERE target = </span><span class="si">%s</span><span class="s2"> AND module = </span><span class="si">%s</span><span class="s2"> ORDER BY timestamp ASC&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">module</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;SELECT scan_data, timestamp FROM scans WHERE target = </span><span class="si">%s</span><span class="s2"> ORDER BY timestamp ASC&quot;</span><span class="p">,</span>
+                <span class="p">(</span><span class="n">target</span><span class="p">,),</span>
+            <span class="p">)</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">[{</span><span class="s2">&quot;scan_data&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">]}</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">psycopg2</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="ne">ConnectionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[bold red]Database Error:[/bold red] Could not fetch scans for target: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="save_page_snapshot">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.database.save_page_snapshot">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_page_snapshot</span><span class="p">(</span>
+    <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">current_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Saves a snapshot of a web page&#39;s content if it has changed.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        url (str): The URL of the page.</span>
+<span class="sd">        current_hash (str): The SHA256 hash of the page&#39;s current content.</span>
+<span class="sd">        content (str): The full HTML content of the page.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple containing a boolean indicating if a change was detected</span>
+<span class="sd">        and the hash of the previous version if it exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+
+    <span class="c1"># Check for the most recent hash for this URL</span>
+
+    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;SELECT content_hash FROM page_snapshots WHERE url = </span><span class="si">%s</span><span class="s2"> ORDER BY timestamp DESC LIMIT 1&quot;</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">url</span><span class="p">,),</span>
+    <span class="p">)</span>
+    <span class="n">last_record</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+    <span class="n">last_hash</span> <span class="o">=</span> <span class="n">last_record</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">last_record</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="n">change_detected</span> <span class="o">=</span> <span class="n">last_hash</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">last_hash</span> <span class="o">!=</span> <span class="n">current_hash</span>
+
+    <span class="c1"># Insert the new snapshot</span>
+
+    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;INSERT INTO page_snapshots (url, content_hash, content) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">current_hash</span><span class="p">,</span> <span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)),</span>
+    <span class="p">)</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">change_detected</span><span class="p">,</span> <span class="n">last_hash</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,641 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.automation &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.automation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.automation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module for high-level analysis, automation, and integration.</span>
+
+<span class="sd">This module provides tools for data enrichment, threat modeling,</span>
+<span class="sd">behavioral analysis (UEBA), and workflow automation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Set</span><span class="p">,</span> <span class="n">DefaultDict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CVEEnrichmentResult</span><span class="p">,</span>
+    <span class="n">EnrichedCVE</span><span class="p">,</span>
+    <span class="n">VTSubmissionResult</span><span class="p">,</span>
+    <span class="n">EnrichmentResult</span><span class="p">,</span>
+    <span class="n">EnrichedIOC</span><span class="p">,</span>
+    <span class="n">ThreatModelResult</span><span class="p">,</span>
+    <span class="n">AttackPath</span><span class="p">,</span>
+    <span class="n">UEBAResult</span><span class="p">,</span>
+    <span class="n">BehavioralAnomaly</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_or_print_results</span><span class="p">,</span> <span class="n">console</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">API_KEYS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">sync_client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.threat_intel</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_threat_intel_otx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_aggregated_data_for_target</span>
+
+<span class="n">UserIPs</span> <span class="o">=</span> <span class="n">DefaultDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
+<span class="n">UserHours</span> <span class="o">=</span> <span class="n">DefaultDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># --- Data Enrichment ---</span>
+
+
+<div class="viewcode-block" id="enrich_iocs">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.enrich_iocs">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enrich_iocs</span><span class="p">(</span><span class="n">iocs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">EnrichmentResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enriches Indicators of Compromise (IOCs) with threat intelligence from OTX.</span>
+
+<span class="sd">    This function takes a list of IOCs (IP addresses, domains, etc.) and queries</span>
+<span class="sd">    the AlienVault OTX API to determine if they are associated with known malicious</span>
+<span class="sd">    activity.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        iocs (List[str]): A list of indicators to enrich.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        EnrichmentResult: A Pydantic model containing the enriched IOC data or an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enriching </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">iocs</span><span class="p">)</span><span class="si">}</span><span class="s2"> IOCs.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">otx_api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">EnrichmentResult</span><span class="p">(</span>
+            <span class="n">total_enriched</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;OTX API key not found in .env file.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_threat_intel_otx</span><span class="p">(</span><span class="n">ioc</span><span class="p">)</span> <span class="k">for</span> <span class="n">ioc</span> <span class="ow">in</span> <span class="n">iocs</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+    <span class="n">enriched_iocs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">res</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+            <span class="n">enriched_iocs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">EnrichedIOC</span><span class="p">(</span>
+                    <span class="n">indicator</span><span class="o">=</span><span class="n">res</span><span class="o">.</span><span class="n">indicator</span><span class="p">,</span>
+                    <span class="n">is_malicious</span><span class="o">=</span><span class="n">res</span><span class="o">.</span><span class="n">is_malicious</span><span class="p">,</span>
+                    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;AlienVault OTX&quot;</span><span class="p">,</span>
+                    <span class="n">details</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Found in </span><span class="si">{</span><span class="n">res</span><span class="o">.</span><span class="n">pulse_count</span><span class="si">}</span><span class="s2"> threat pulse(s).&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">EnrichmentResult</span><span class="p">(</span>
+        <span class="n">total_enriched</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">enriched_iocs</span><span class="p">),</span> <span class="n">enriched_iocs</span><span class="o">=</span><span class="n">enriched_iocs</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="enrich_cves">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.enrich_cves">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">enrich_cves</span><span class="p">(</span><span class="n">cve_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">CVEEnrichmentResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enriches a list of CVE IDs with details from the Vulners API.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cve_ids (List[str]): A list of CVE identifiers (e.g., &quot;CVE-2021-44228&quot;).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        CVEEnrichmentResult: A Pydantic model containing detailed information for</span>
+<span class="sd">                             each found CVE or an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">vulners_api_key</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CVEEnrichmentResult</span><span class="p">(</span>
+            <span class="n">total_enriched</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Vulners API key not found in .env file.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enriching </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cve_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> CVEs from Vulners.&quot;</span><span class="p">)</span>
+    <span class="n">enriched_cves</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">EnrichedCVE</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://vulners.com/api/v3/search/id/&quot;</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;apiKey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">cve_ids</span><span class="p">}</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="n">documents</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;documents&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">for</span> <span class="n">cve_id</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">documents</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">enriched_cves</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">EnrichedCVE</span><span class="p">(</span>
+                    <span class="n">cve_id</span><span class="o">=</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">cve_id</span><span class="p">),</span>
+                    <span class="n">cvss_score</span><span class="o">=</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cvss&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="n">summary</span><span class="o">=</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;No summary available.&quot;</span><span class="p">),</span>
+                    <span class="n">references</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;href&quot;</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;references&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                        <span class="k">if</span> <span class="n">ref</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;href&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to enrich CVEs from Vulners: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CVEEnrichmentResult</span><span class="p">(</span>
+            <span class="n">total_enriched</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred with the Vulners API: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">CVEEnrichmentResult</span><span class="p">(</span>
+        <span class="n">total_enriched</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">enriched_cves</span><span class="p">),</span> <span class="n">enriched_cves</span><span class="o">=</span><span class="n">enriched_cves</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Threat Modeling &amp; UEBA ---</span>
+
+
+<div class="viewcode-block" id="generate_threat_model">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.generate_threat_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_threat_model</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ThreatModelResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes aggregated scan data to generate potential attack paths.</span>
+
+<span class="sd">    This function fetches historical scan data for a target and applies a set</span>
+<span class="sd">    of rules to identify potential weaknesses that could be chained together</span>
+<span class="sd">    in an attack.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The target domain to model threats for.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ThreatModelResult: A Pydantic model containing potential attack paths.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generating rule-based threat model for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">aggregated_data</span> <span class="o">=</span> <span class="n">get_aggregated_data_for_target</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">aggregated_data</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">aggregated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;modules&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ThreatModelResult</span><span class="p">(</span>
+            <span class="n">target_domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;No historical data found to build a threat model.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">potential_paths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AttackPath</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">modules</span> <span class="o">=</span> <span class="n">aggregated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;modules&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="c1"># Rule 1: Vulnerable public services</span>
+
+    <span class="n">vuln_scan</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vulnerability_scanner&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scanned_hosts&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">vuln_scan</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">host</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;open_ports&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">if</span> <span class="n">port</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;vulnerabilities&quot;</span><span class="p">):</span>
+                <span class="n">cve</span> <span class="o">=</span> <span class="n">port</span><span class="p">[</span><span class="s2">&quot;vulnerabilities&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">cve</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cvss_score&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mf">7.0</span><span class="p">:</span>
+                    <span class="n">potential_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">AttackPath</span><span class="p">(</span>
+                            <span class="n">entry_point</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Public Host: </span><span class="si">{</span><span class="n">host</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;host&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="n">path</span><span class="o">=</span><span class="p">[</span>
+                                <span class="sa">f</span><span class="s2">&quot;Exploit </span><span class="si">{</span><span class="n">cve</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> (CVSS: </span><span class="si">{</span><span class="n">cve</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cvss_score&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">) on service </span><span class="si">{</span><span class="n">port</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;product&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> on port </span><span class="si">{</span><span class="n">port</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;Gain initial access to the server.&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;Perform reconnaissance on the internal network.&quot;</span><span class="p">,</span>
+                            <span class="p">],</span>
+                            <span class="n">target</span><span class="o">=</span><span class="s2">&quot;Internal Network Access&quot;</span><span class="p">,</span>
+                            <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;High&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+    <span class="c1"># Rule 2: Publicly exposed cloud storage</span>
+
+    <span class="n">cloud_scan</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cloud_osint_s3&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;found_buckets&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">for</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="n">cloud_scan</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">bucket</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_public&quot;</span><span class="p">):</span>
+            <span class="n">potential_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">AttackPath</span><span class="p">(</span>
+                    <span class="n">entry_point</span><span class="o">=</span><span class="s2">&quot;Public Internet&quot;</span><span class="p">,</span>
+                    <span class="n">path</span><span class="o">=</span><span class="p">[</span>
+                        <span class="sa">f</span><span class="s2">&quot;Discover publicly accessible S3 bucket: </span><span class="si">{</span><span class="n">bucket</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;Access and exfiltrate sensitive data stored in the bucket.&quot;</span><span class="p">,</span>
+                    <span class="p">],</span>
+                    <span class="n">target</span><span class="o">=</span><span class="s2">&quot;Sensitive Data Exfiltration&quot;</span><span class="p">,</span>
+                    <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;High&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="c1"># Rule 3: Leaked credentials</span>
+
+    <span class="n">leaks</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recon_credentials&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compromised_credentials&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">if</span> <span class="n">leaks</span><span class="p">:</span>
+        <span class="n">leak</span> <span class="o">=</span> <span class="n">leaks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">potential_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">AttackPath</span><span class="p">(</span>
+                <span class="n">entry_point</span><span class="o">=</span><span class="s2">&quot;Dark Web / Credential Dumps&quot;</span><span class="p">,</span>
+                <span class="n">path</span><span class="o">=</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">&quot;Obtain leaked credential for user &#39;</span><span class="si">{</span><span class="n">leak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; from breach &#39;</span><span class="si">{</span><span class="n">leak</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_breach&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;Attempt credential stuffing or password reuse attacks on corporate login portals.&quot;</span><span class="p">,</span>
+                <span class="p">],</span>
+                <span class="n">target</span><span class="o">=</span><span class="s2">&quot;User Account Compromise&quot;</span><span class="p">,</span>
+                <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;Medium&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ThreatModelResult</span><span class="p">(</span><span class="n">target_domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">potential_paths</span><span class="o">=</span><span class="n">potential_paths</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_behavioral_logs">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.analyze_behavioral_logs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_behavioral_logs</span><span class="p">(</span><span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UEBAResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes user activity logs to find statistical anomalies.</span>
+
+<span class="sd">    This function establishes a baseline of normal activity (login hours, source IPs)</span>
+<span class="sd">    for each user from a log file and then flags events that deviate from this baseline.</span>
+<span class="sd">    It expects a CSV log with at least the following headers: &#39;timestamp&#39;, &#39;user&#39;, &#39;source_ip&#39;.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        log_file (str): Path to the user activity log file in CSV format.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        UEBAResult: A Pydantic model with a list of detected behavioral anomalies.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performing statistical UEBA on log file: </span><span class="si">{</span><span class="n">log_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">log_file</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">UEBAResult</span><span class="p">(</span>
+            <span class="n">total_anomalies_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Log file not found: </span><span class="si">{</span><span class="n">log_file</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">user_ips</span><span class="p">:</span> <span class="n">UserIPs</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+    <span class="n">user_hours</span><span class="p">:</span> <span class="n">UserHours</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># --- Stage 1: Build Baselines ---</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">logs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">reader</span><span class="p">)</span>
+
+            <span class="n">required_headers</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;source_ip&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">reader</span><span class="o">.</span><span class="n">fieldnames</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="n">h</span> <span class="ow">in</span> <span class="n">reader</span><span class="o">.</span><span class="n">fieldnames</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">required_headers</span>
+            <span class="p">):</span>
+                <span class="k">return</span> <span class="n">UEBAResult</span><span class="p">(</span>
+                    <span class="n">total_anomalies_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Log file must contain headers: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">required_headers</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Establish baseline from the first half of the logs</span>
+
+            <span class="n">baseline_logs</span> <span class="o">=</span> <span class="n">logs</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">logs</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">baseline_logs</span><span class="p">:</span>
+                <span class="n">user</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span>
+                <span class="n">user_ips</span><span class="p">[</span><span class="n">user</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;source_ip&quot;</span><span class="p">])</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">hour</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">user_hours</span><span class="p">[</span><span class="n">user</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">hour</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Could not parse hour from timestamp: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">. Skipping for baseline.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="k">continue</span>
+        <span class="c1"># --- Stage 2: Detect Anomalies in the second half ---</span>
+
+        <span class="n">anomalies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">BehavioralAnomaly</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">detection_logs</span> <span class="o">=</span> <span class="n">logs</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">logs</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span> <span class="p">:]</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">detection_logs</span><span class="p">:</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span>
+            <span class="n">source_ip</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;source_ip&quot;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">source_ip</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">user_ips</span><span class="p">[</span><span class="n">user</span><span class="p">]:</span>
+                <span class="n">anomalies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">BehavioralAnomaly</span><span class="p">(</span>
+                        <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                        <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span>
+                        <span class="n">anomaly_description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Login from a new source IP address: </span><span class="si">{</span><span class="n">source_ip</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                        <span class="n">severity</span><span class="o">=</span><span class="s2">&quot;Medium&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hour</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">timestamp</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">hour</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">user_hours</span><span class="p">[</span><span class="n">user</span><span class="p">]:</span>
+                    <span class="n">anomalies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="n">BehavioralAnomaly</span><span class="p">(</span>
+                            <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                            <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span>
+                            <span class="n">anomaly_description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Login at an unusual time of day: </span><span class="si">{</span><span class="n">hour</span><span class="si">}</span><span class="s2">:00.&quot;</span><span class="p">,</span>
+                            <span class="n">severity</span><span class="o">=</span><span class="s2">&quot;Low&quot;</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                <span class="k">continue</span>
+        <span class="k">return</span> <span class="n">UEBAResult</span><span class="p">(</span><span class="n">total_anomalies_found</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">anomalies</span><span class="p">),</span> <span class="n">anomalies</span><span class="o">=</span><span class="n">anomalies</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to process log file for UEBA: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">UEBAResult</span><span class="p">(</span>
+            <span class="n">total_anomalies_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Failed to parse or analyze log file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Integrations &amp; Workflow ---</span>
+
+
+<div class="viewcode-block" id="submit_to_virustotal">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.submit_to_virustotal">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">submit_to_virustotal</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VTSubmissionResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Submits a file to VirusTotal for analysis.</span>
+
+<span class="sd">    This function uploads a file to the VirusTotal API v3. It first gets a URL</span>
+<span class="sd">    for the upload and then POSTs the file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        file_path (str): The local path to the file to submit.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        VTSubmissionResult: A Pydantic model containing the submission result,</span>
+<span class="sd">                            including a permalink to the analysis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">virustotal_api_key</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">VTSubmissionResult</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">permalink</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">response_code</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">verbose_msg</span><span class="o">=</span><span class="s2">&quot;Missing API Key.&quot;</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;VirusTotal API key not found.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">VTSubmissionResult</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">permalink</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">response_code</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">verbose_msg</span><span class="o">=</span><span class="s2">&quot;File not found.&quot;</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;File not found at specified path.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Submitting </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2"> to VirusTotal.&quot;</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x-apikey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">}</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># 1. Get an upload URL</span>
+
+        <span class="n">upload_url_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;https://www.virustotal.com/api/v3/files/upload_url&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
+        <span class="p">)</span>
+        <span class="n">upload_url_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">upload_url</span> <span class="o">=</span> <span class="n">upload_url_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 2. Upload the file</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file_path</span><span class="p">),</span> <span class="n">f</span><span class="p">)}</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">upload_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="n">files</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">analysis_id</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">analysis_id</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not get analysis ID from VirusTotal response.&quot;</span><span class="p">)</span>
+        <span class="c1"># Extract the resource ID (SHA256) from the analysis ID</span>
+
+        <span class="n">resource_id</span> <span class="o">=</span> <span class="n">analysis_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">VTSubmissionResult</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="n">resource_id</span><span class="p">,</span>
+            <span class="n">permalink</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;https://www.virustotal.com/gui/file/</span><span class="si">{</span><span class="n">resource_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">response_code</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">verbose_msg</span><span class="o">=</span><span class="s2">&quot;Scan request successfully queued. View permalink for results.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to submit file to VirusTotal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">VTSubmissionResult</span><span class="p">(</span>
+            <span class="n">resource_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">permalink</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">response_code</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">verbose_msg</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+            <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An API error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_workflow">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_workflow">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_workflow</span><span class="p">(</span><span class="n">workflow_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Runs a series of Chimera Intel commands defined in a YAML file.</span>
+
+<span class="sd">    This function parses a simple YAML workflow file and executes each defined</span>
+<span class="sd">    step as a subprocess, calling the main &#39;chimera&#39; CLI.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        workflow_file (str): Path to the YAML workflow file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing workflow from: </span><span class="si">{</span><span class="n">workflow_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">workflow_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">workflow</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to read or parse workflow file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">target</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Workflow file must define a &#39;target&#39;.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workflow target: </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="n">workflow</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;steps&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+        <span class="n">command_template</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">command_template</span><span class="p">:</span>
+            <span class="c1"># Substitute {target} placeholder</span>
+
+            <span class="n">full_command</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;chimera </span><span class="si">{</span><span class="n">command_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- [bold cyan]Running Step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">:[/bold cyan] [yellow]</span><span class="si">{</span><span class="n">full_command</span><span class="si">}</span><span class="s2">[/yellow] ---&quot;</span>
+            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Execute the command as a subprocess</span>
+
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">full_command</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> failed with exit code </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">returncode</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;[bold red]Error during step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">. Aborting workflow.[/bold red]&quot;</span>
+                <span class="p">)</span>
+                <span class="k">break</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Workflow execution finished.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">automation_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+<span class="n">connect_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_ioc_enrichment">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_ioc_enrichment">[docs]</a>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;enrich-ioc&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_ioc_enrichment</span><span class="p">(</span>
+    <span class="n">iocs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;A list of IOCs (IPs, domains, hashes) to enrich.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enriches Indicators of Compromise with threat intelligence.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">enrich_iocs</span><span class="p">(</span><span class="n">iocs</span><span class="p">))</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_threat_model_generation">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_threat_model_generation">[docs]</a>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;threat-model&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_threat_model_generation</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain to model threats for.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates potential attack paths based on historical scan data.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">generate_threat_model</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_ueba_analysis">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_ueba_analysis">[docs]</a>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;ueba&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_ueba_analysis</span><span class="p">(</span>
+    <span class="n">log_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the user activity log file.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes user activity logs for behavioral anomalies.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">analyze_behavioral_logs</span><span class="p">(</span><span class="n">log_file</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_cve_enrichment">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_cve_enrichment">[docs]</a>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;enrich-cve&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_cve_enrichment</span><span class="p">(</span>
+    <span class="n">cve_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;A list of CVE IDs to enrich (e.g., CVE-2021-44228).&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enriches CVE IDs with detailed information like CVSS scores and summaries.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">enrich_cves</span><span class="p">(</span><span class="n">cve_ids</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_automation_workflow">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_automation_workflow">[docs]</a>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;workflow&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_automation_workflow</span><span class="p">(</span>
+    <span class="n">workflow_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the YAML workflow file.&quot;</span><span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Executes a predefined workflow of Chimera Intel commands.&quot;&quot;&quot;</span>
+    <span class="n">run_workflow</span><span class="p">(</span><span class="n">workflow_file</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_vt_submission">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_vt_submission">[docs]</a>
+<span class="nd">@connect_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;virustotal&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_vt_submission</span><span class="p">(</span>
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the file to submit to VirusTotal.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Submits a file to VirusTotal for analysis.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">submit_to_virustotal</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

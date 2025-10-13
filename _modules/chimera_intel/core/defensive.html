@@ -1,0 +1,997 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.defensive &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.defensive</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.defensive</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Defensive counter-intelligence and security scanning module.</span>
+
+<span class="sd">This module contains functions for an organization to assess its own digital</span>
+<span class="sd">footprint from an attacker&#39;s perspective. It includes checks for data breaches</span>
+<span class="sd">(Have I Been Pwned), code leaks (GitHub), typosquatting domains (dnstwist),</span>
+<span class="sd">exposed assets (Shodan), and more.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">shodan</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">API_KEYS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_scan_to_db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">sync_client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Certificate</span><span class="p">,</span>
+    <span class="n">CTMentorResult</span><span class="p">,</span>
+    <span class="n">FoundSecret</span><span class="p">,</span>
+    <span class="n">GitHubLeaksResult</span><span class="p">,</span>
+    <span class="n">HIBPResult</span><span class="p">,</span>
+    <span class="n">IaCScanResult</span><span class="p">,</span>
+    <span class="n">IaCSecurityIssue</span><span class="p">,</span>
+    <span class="n">MobSFResult</span><span class="p">,</span>
+    <span class="n">MozillaObservatoryResult</span><span class="p">,</span>
+    <span class="n">Paste</span><span class="p">,</span>
+    <span class="n">PasteResult</span><span class="p">,</span>
+    <span class="n">SecretsScanResult</span><span class="p">,</span>
+    <span class="n">ShodanHost</span><span class="p">,</span>
+    <span class="n">ShodanResult</span><span class="p">,</span>
+    <span class="n">SSLLabsResult</span><span class="p">,</span>
+    <span class="n">TyposquatResult</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span><span class="p">,</span> <span class="n">is_valid_domain</span><span class="p">,</span> <span class="n">save_or_print_results</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.panel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Panel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">Progress</span>
+
+<span class="c1"># Get a logger instance for this specific file</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># --- Data Gathering Functions for Defensive Intelligence ---</span>
+
+
+<div class="viewcode-block" id="check_hibp_breaches">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.check_hibp_breaches">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_hibp_breaches</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HIBPResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Checks a domain against the Have I Been Pwned (HIBP) database for data breaches.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The company&#39;s domain to check.</span>
+<span class="sd">        api_key (str): The HIBP API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        HIBPResult: A Pydantic model containing a list of breaches, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;HIBP API key not found. Check your .env file.&quot;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://haveibeenpwned.com/api/v3/breacheddomain/</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;hibp-api-key&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">,</span> <span class="s2">&quot;user-agent&quot;</span><span class="p">:</span> <span class="s2">&quot;Chimera-Intel-Tool&quot;</span><span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">breaches</span><span class="o">=</span><span class="p">[],</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;No breaches found for this domain.&quot;</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">breaches</span><span class="o">=</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+    <span class="k">except</span> <span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;HTTP error checking HIBP for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;HTTP error occurred: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">RequestError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Network error checking HIBP for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;A network error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;An unexpected error occurred checking HIBP for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">e</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">HIBPResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="search_github_leaks">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.search_github_leaks">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_github_leaks</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GitHubLeaksResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Searches GitHub for potential secret leaks related to a query.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        query (str): The search term (e.g., &#39;yourcompany.com &quot;api key&quot;&#39;).</span>
+<span class="sd">        api_key (str): The GitHub Personal Access Token (PAT).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        GitHubLeaksResult: A Pydantic model containing the search results, or an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">GitHubLeaksResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;GitHub Personal Access Token not found.&quot;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://api.github.com/search/code?q=</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;token </span><span class="si">{</span><span class="n">api_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">GitHubLeaksResult</span><span class="p">(</span>
+            <span class="n">total_count</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_count&quot;</span><span class="p">),</span> <span class="n">items</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;items&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;HTTP error searching GitHub for query &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">GitHubLeaksResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;HTTP error occurred: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">RequestError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Network error searching GitHub for query &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">GitHubLeaksResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;A network error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="find_typosquatting_dnstwist">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.find_typosquatting_dnstwist">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">find_typosquatting_dnstwist</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TyposquatResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Securely uses the dnstwist command-line tool to find potential typosquatting domains.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to check for typosquatting variations.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        TyposquatResult: A Pydantic model of the dnstwist JSON output, or an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">domain</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Invalid domain format for dnstwist scan: &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TyposquatResult</span><span class="p">(</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Invalid domain format. Cannot start with a hyphen.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;dnstwist&quot;</span><span class="p">,</span> <span class="s2">&quot;--json&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">]</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">120</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">TyposquatResult</span><span class="p">(</span><span class="n">results</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;The &#39;dnstwist&#39; command was not found. It may not be installed.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TyposquatResult</span><span class="p">(</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;dnstwist command not found. Please ensure it is installed.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;dnstwist returned an error for domain &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TyposquatResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;dnstwist returned an error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;An unexpected error occurred while running dnstwist: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TyposquatResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_attack_surface_shodan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.analyze_attack_surface_shodan">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_attack_surface_shodan</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ShodanResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uses Shodan to find devices and services exposed on the internet.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        query (str): The Shodan search query (e.g., &#39;org:&quot;My Company&quot;&#39;).</span>
+<span class="sd">        api_key (str): The Shodan API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ShodanResult: A Pydantic model of discovered hosts, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ShodanResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;Shodan API key not found. Check your .env file.&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">api</span> <span class="o">=</span> <span class="n">shodan</span><span class="o">.</span><span class="n">Shodan</span><span class="p">(</span><span class="n">api_key</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ShodanHost</span><span class="p">(</span>
+                <span class="n">ip</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ip_str&quot;</span><span class="p">),</span>
+                <span class="n">port</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port&quot;</span><span class="p">),</span>
+                <span class="n">org</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;org&quot;</span><span class="p">),</span>
+                <span class="n">hostnames</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostnames&quot;</span><span class="p">),</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;matches&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">ShodanResult</span><span class="p">(</span><span class="n">total_results</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">hosts</span><span class="o">=</span><span class="n">hosts</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;An error occurred with Shodan for query &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ShodanResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred with Shodan: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="search_pastes_api">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.search_pastes_api">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_pastes_api</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PasteResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Searches for pastes containing a specific query using the paste.ee API.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        query (str): The keyword or domain to search for.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PasteResult: A Pydantic model of found pastes, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://api.paste.ee/v1/pastes&quot;</span>
+    <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">query</span><span class="p">,</span> <span class="s2">&quot;per_page&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="n">pastes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Paste</span><span class="p">(</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span>
+                <span class="n">link</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;link&quot;</span><span class="p">),</span>
+                <span class="n">description</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pastes&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">PasteResult</span><span class="p">(</span><span class="n">pastes</span><span class="o">=</span><span class="n">pastes</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">pastes</span><span class="p">))</span>
+    <span class="k">except</span> <span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;HTTP error searching pastes for query &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PasteResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;HTTP error occurred: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">RequestError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Network error searching pastes for query &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PasteResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;A network error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_ssl_ssllabs">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.analyze_ssl_ssllabs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_ssl_ssllabs</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SSLLabsResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs an in-depth SSL/TLS analysis using the SSL Labs API.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        host (str): The hostname to scan (e.g., &#39;google.com&#39;).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SSLLabsResult: A Pydantic model containing the full SSL Labs report, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">api_url</span> <span class="o">=</span> <span class="s2">&quot;https://api.ssllabs.com/api/v3/&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_scan</span><span class="p">(</span><span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initiates a new scan.&quot;&quot;&quot;</span>
+        <span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;host&quot;</span><span class="p">:</span> <span class="n">hostname</span><span class="p">,</span> <span class="s2">&quot;startNew&quot;</span><span class="p">:</span> <span class="s2">&quot;on&quot;</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span> <span class="s2">&quot;done&quot;</span><span class="p">}</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api_url</span> <span class="o">+</span> <span class="s2">&quot;analyze&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">poll_scan</span><span class="p">(</span><span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Polls for the scan results.&quot;&quot;&quot;</span>
+        <span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;host&quot;</span><span class="p">:</span> <span class="n">hostname</span><span class="p">,</span> <span class="s2">&quot;all&quot;</span><span class="p">:</span> <span class="s2">&quot;done&quot;</span><span class="p">}</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">api_url</span> <span class="o">+</span> <span class="s2">&quot;analyze&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;READY&quot;</span><span class="p">,</span> <span class="s2">&quot;ERROR&quot;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">data</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">Progress</span><span class="p">()</span> <span class="k">as</span> <span class="n">progress</span><span class="p">:</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="s2">&quot;[cyan]Starting SSL Labs scan...&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">initial_data</span> <span class="o">=</span> <span class="n">start_scan</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">initial_data</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ERROR&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">SSLLabsResult</span><span class="p">(</span>
+                    <span class="n">error</span><span class="o">=</span><span class="n">initial_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="s2">&quot;statusMessage&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown error starting scan.&quot;</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="n">task</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;[cyan]Scan in progress... (this can take a few minutes)&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">final_data</span> <span class="o">=</span> <span class="n">poll_scan</span><span class="p">(</span><span class="n">host</span><span class="p">)</span>
+            <span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">completed</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;[green]Scan complete!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SSLLabsResult</span><span class="p">(</span><span class="n">report</span><span class="o">=</span><span class="n">final_data</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;An error occurred with SSL Labs API for host &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SSLLabsResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred with SSL Labs API: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_apk_mobsf">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.analyze_apk_mobsf">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_apk_mobsf</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mobsf_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MobSFResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Uploads an Android APK to a running MobSF instance and retrieves the scan results.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        file_path (str): The local path to the .apk file.</span>
+<span class="sd">        mobsf_url (str): The URL of the running MobSF instance.</span>
+<span class="sd">        api_key (str): The MobSF REST API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        MobSFResult: The full JSON report from MobSF, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;APK file not found at path: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file_path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MobSFResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;File not found at path: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">mobsf_url</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MobSFResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="s2">&quot;MobSF URL and API Key are required.&quot;</span><span class="p">)</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Authorization&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file_path</span><span class="p">),</span> <span class="n">f</span><span class="p">)}</span>
+            <span class="n">upload_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mobsf_url</span><span class="si">}</span><span class="s2">/api/v1/upload&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">files</span><span class="o">=</span><span class="n">files</span>
+            <span class="p">)</span>
+            <span class="n">upload_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">upload_data</span> <span class="o">=</span> <span class="n">upload_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="n">scan_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mobsf_url</span><span class="si">}</span><span class="s2">/api/v1/scan&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">upload_data</span>
+        <span class="p">)</span>
+        <span class="n">scan_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">report_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mobsf_url</span><span class="si">}</span><span class="s2">/api/v1/report_json&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">upload_data</span>
+        <span class="p">)</span>
+        <span class="n">report_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">MobSFResult</span><span class="p">(</span><span class="n">report</span><span class="o">=</span><span class="n">report_response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;An error occurred with MobSF API: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">MobSFResult</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred with MobSF API: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- : Certificate Transparency Monitoring ---</span>
+
+
+<div class="viewcode-block" id="monitor_ct_logs">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.monitor_ct_logs">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">monitor_ct_logs</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTMentorResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Monitors Certificate Transparency logs for new SSL/TLS certificates via crt.sh.</span>
+
+<span class="sd">    This function queries the public crt.sh service, which aggregates certificate</span>
+<span class="sd">    transparency logs from multiple sources. It searches for any certificates</span>
+<span class="sd">    that have been issued for the specified domain and its subdomains.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for newly issued certificates (e.g., &quot;example.com&quot;).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        CTMentorResult: A Pydantic model containing the list of found certificates</span>
+<span class="sd">                        or an error message if the request fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Monitoring CT logs for new certificates for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://crt.sh/?q=%.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&amp;output=json&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">certs_data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="n">certs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Certificate</span><span class="p">(</span>
+                <span class="n">issuer_name</span><span class="o">=</span><span class="n">cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;issuer_name&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">not_before</span><span class="o">=</span><span class="n">cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;not_before&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">not_after</span><span class="o">=</span><span class="n">cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;not_after&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">subject_name</span><span class="o">=</span><span class="n">cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name_value&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">cert</span> <span class="ow">in</span> <span class="n">certs_data</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">CTMentorResult</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">total_found</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">certs</span><span class="p">),</span> <span class="n">certificates</span><span class="o">=</span><span class="n">certs</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to fetch CT logs for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CTMentorResult</span><span class="p">(</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+            <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An error occurred while fetching CT logs: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- : IaC Scanning ---</span>
+
+
+<div class="viewcode-block" id="scan_iac_files">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.scan_iac_files">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">scan_iac_files</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IaCScanResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scans Infrastructure as Code (IaC) files for security issues using tfsec.</span>
+
+<span class="sd">    This function executes the &#39;tfsec&#39; command-line tool, which must be installed</span>
+<span class="sd">    on the system and available in the system&#39;s PATH. It scans the specified directory</span>
+<span class="sd">    for common misconfigurations in infrastructure files (like Terraform) and</span>
+<span class="sd">    parses the JSON output.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory (str): The local file path to the directory containing IaC files.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        IaCScanResult: A Pydantic model containing a list of security issues found,</span>
+<span class="sd">                       or an error if tfsec is not found or fails to execute.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scanning IaC files in directory: </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">IaCScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_issues</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Provided path is not a valid directory.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;tfsec&quot;</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="s2">&quot;--format&quot;</span><span class="p">,</span> <span class="s2">&quot;json&quot;</span><span class="p">]</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span>
+        <span class="p">)</span>
+
+        <span class="c1"># tfsec exits with code 1 if issues are found, so we don&#39;t use check=True</span>
+
+        <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">process</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+            <span class="c1"># Check for &quot;tfsec command not found&quot; or similar</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="s2">&quot;command not found&quot;</span> <span class="ow">in</span> <span class="n">process</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="ow">or</span> <span class="s2">&quot;no such file&quot;</span> <span class="ow">in</span> <span class="n">process</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s2">&quot;tfsec command not found.&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+
+        <span class="n">issues</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">IaCSecurityIssue</span><span class="p">(</span>
+                <span class="n">file_path</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;filename&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">line_number</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_line&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">issue_id</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rule_id&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">description</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">IaCScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span> <span class="n">total_issues</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">issues</span><span class="p">),</span> <span class="n">issues</span><span class="o">=</span><span class="n">issues</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;The &#39;tfsec&#39; command was not found. Please ensure it is installed and in your PATH.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">IaCScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_issues</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;tfsec command not found. Please ensure it is installed.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to parse tfsec JSON output. Error: </span><span class="si">{</span><span class="n">process</span><span class="o">.</span><span class="n">stderr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">IaCScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_issues</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Failed to parse tfsec JSON output.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred while running tfsec: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">IaCScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_issues</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="c1"># --- : Secrets Scanning ---</span>
+
+
+<div class="viewcode-block" id="scan_for_secrets">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.scan_for_secrets">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">scan_for_secrets</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SecretsScanResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scans a directory for hardcoded secrets using gitleaks.</span>
+
+<span class="sd">    This function executes the &#39;gitleaks&#39; command-line tool, which must be</span>
+<span class="sd">    installed on the system and available in the system&#39;s PATH. It scans the specified</span>
+<span class="sd">    directory for secrets like API keys, passwords, and other sensitive credentials</span>
+<span class="sd">    and parses the JSON report that gitleaks generates.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory (str): The local file path to the directory to scan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SecretsScanResult: A Pydantic model containing a list of found secrets,</span>
+<span class="sd">                           or an error if gitleaks is not found or fails to execute.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scanning for hardcoded secrets in directory: </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">SecretsScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Provided path is not a valid directory.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">report_path</span> <span class="o">=</span> <span class="s2">&quot;gitleaks-report.json&quot;</span>
+        <span class="n">command</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;gitleaks&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;detect&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--source&quot;</span><span class="p">,</span>
+            <span class="n">directory</span><span class="p">,</span>
+            <span class="s2">&quot;--report-path&quot;</span><span class="p">,</span>
+            <span class="n">report_path</span><span class="p">,</span>
+            <span class="s2">&quot;--report-format&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--no-git&quot;</span><span class="p">,</span>  <span class="c1"># Scan the directory as-is, not as a git repo</span>
+        <span class="p">]</span>
+        <span class="c1"># Use check=False as gitleaks exits with a non-zero code if secrets are found</span>
+
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">report_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">SecretsScanResult</span><span class="p">(</span><span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span> <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">secrets</span><span class="o">=</span><span class="p">[])</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">report_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">secrets</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">FoundSecret</span><span class="p">(</span>
+                <span class="n">file_path</span><span class="o">=</span><span class="n">finding</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;File&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">line_number</span><span class="o">=</span><span class="n">finding</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;StartLine&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">rule_id</span><span class="o">=</span><span class="n">finding</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;RuleID&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+                <span class="n">secret_type</span><span class="o">=</span><span class="n">finding</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Description&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">finding</span> <span class="ow">in</span> <span class="n">data</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Clean up the report file</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">report_path</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">SecretsScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span> <span class="n">total_found</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">secrets</span><span class="p">),</span> <span class="n">secrets</span><span class="o">=</span><span class="n">secrets</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;The &#39;gitleaks&#39; command was not found. Please ensure it is installed and in your PATH.&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">SecretsScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="s2">&quot;gitleaks command not found. Please ensure it is installed.&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred while running gitleaks: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SecretsScanResult</span><span class="p">(</span>
+            <span class="n">target_path</span><span class="o">=</span><span class="n">directory</span><span class="p">,</span>
+            <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An unexpected error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_mozilla_observatory">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.analyze_mozilla_observatory">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_mozilla_observatory</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MozillaObservatoryResult</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Analyzes a domain&#39;s security headers using the public Mozilla Observatory API.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to analyze.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Optional[MozillaObservatoryResult]: A Pydantic model with the scan summary, or None on error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://http-observatory.security.mozilla.org/api/v1&quot;</span>
+    <span class="n">analyze_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}</span><span class="s2">/analyze&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initiating Mozilla Observatory scan for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Step 1: Initiate the scan</span>
+
+        <span class="n">initial_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="n">analyze_url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;host&quot;</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;hidden&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">initial_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">scan_data</span> <span class="o">=</span> <span class="n">initial_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="n">scan_id</span> <span class="o">=</span> <span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scan_id&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">scan_id</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not get scan_id from Observatory for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># Step 2: Poll for results</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span> <span class="o">&lt;</span> <span class="mi">180</span><span class="p">:</span>  <span class="c1"># 3-minute timeout</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+            <span class="n">scan_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">analyze_url</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scan&quot;</span><span class="p">:</span> <span class="n">scan_id</span><span class="p">})</span>
+            <span class="n">scan_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">scan_data</span> <span class="o">=</span> <span class="n">scan_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+            <span class="n">state</span> <span class="o">=</span> <span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;FINISHED&quot;</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observatory scan for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> finished.&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">MozillaObservatoryResult</span><span class="p">(</span>
+                    <span class="n">scan_id</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scan_id&quot;</span><span class="p">),</span>
+                    <span class="n">score</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;score&quot;</span><span class="p">),</span>
+                    <span class="n">grade</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;grade&quot;</span><span class="p">),</span>
+                    <span class="n">state</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">),</span>
+                    <span class="n">tests_passed</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tests_passed&quot;</span><span class="p">),</span>
+                    <span class="n">tests_failed</span><span class="o">=</span><span class="n">scan_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tests_failed&quot;</span><span class="p">),</span>
+                    <span class="n">report_url</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;https://observatory.mozilla.org/analyze/</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">state</span> <span class="o">==</span> <span class="s2">&quot;FAILED&quot;</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observatory scan for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> failed.&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">MozillaObservatoryResult</span><span class="p">(</span>
+                    <span class="n">scan_id</span><span class="o">=</span><span class="n">scan_id</span><span class="p">,</span>
+                    <span class="n">score</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">grade</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">,</span>
+                    <span class="n">state</span><span class="o">=</span><span class="s2">&quot;FAILED&quot;</span><span class="p">,</span>
+                    <span class="n">tests_passed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                    <span class="n">tests_failed</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+                    <span class="n">report_url</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;https://observatory.mozilla.org/analyze/</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">error</span><span class="o">=</span><span class="s2">&quot;Scan failed on the server side.&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observatory scan for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> is in state: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observatory scan for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> timed out after 3 minutes.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;An API error occurred with Mozilla Observatory for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">defensive_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_breach_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_breach_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;breaches&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_breach_check</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The domain to check against HIBP.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Checks your domain against the Have I Been Pwned database.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_domain</span><span class="p">(</span><span class="n">domain</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Invalid domain format provided to &#39;breaches&#39; command: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span>
+        <span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[bold red]Invalid Input:[/] &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39; is not a valid domain format.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Error&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">hibp_api_key</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="s2">&quot;[bold yellow]Skipping HIBP Scan:[/bold yellow] `HIBP_API_KEY` not found in your .env file.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;[yellow]Configuration Warning[/yellow]&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting HIBP breach check for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">check_hibp_breaches</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_breaches&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_leaks_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_leaks_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;leaks&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_leaks_check</span><span class="p">(</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The search query for GitHub (e.g., &#39;mycompany.com api_key&#39;).&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Searches GitHub for potential code and secret leaks.&quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">github_pat</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="s2">&quot;[bold yellow]Skipping GitHub Leaks Scan:[/bold yellow] `GITHUB_PAT` not found in your .env file.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;[yellow]Configuration Warning[/yellow]&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting GitHub leaks search for query: &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">search_github_leaks</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_leaks&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="run_typosquat_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_typosquat_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;typosquat&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_typosquat_check</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The domain to check for similar-looking domains.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Finds potential phishing domains similar to yours using dnstwist.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_domain</span><span class="p">(</span><span class="n">domain</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Invalid domain format provided to &#39;typosquat&#39; command: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span>
+        <span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[bold red]Invalid Input:[/] &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39; is not a valid domain format.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Error&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting typosquatting check for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">find_typosquatting_dnstwist</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_typosquat&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_surface_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_surface_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_surface_check</span><span class="p">(</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The Shodan search query (e.g., &#39;org:</span><span class="se">\&quot;</span><span class="s2">My Company</span><span class="se">\&quot;</span><span class="s2">&#39;).&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes your public attack surface using Shodan.&quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">shodan_api_key</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="s2">&quot;[bold yellow]Skipping Shodan Scan:[/bold yellow] `SHODAN_API_KEY` not found in your .env file.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;[yellow]Configuration Warning[/yellow]&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting Shodan surface scan for query: &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">analyze_attack_surface_shodan</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_surface&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="run_pastebin_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_pastebin_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;pastebin&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_pastebin_check</span><span class="p">(</span>
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The keyword or domain to search for in public pastes.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Searches public pastes for a query using the paste.ee API.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting public paste search for query: &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">search_pastes_api</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_pastebin&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_ssllabs_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_ssllabs_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;ssllabs&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_ssllabs_check</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The domain to perform an SSL/TLS analysis on.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs an in-depth SSL/TLS analysis via SSL Labs.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_domain</span><span class="p">(</span><span class="n">domain</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Invalid domain format provided to &#39;ssllabs&#39; command: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span>
+        <span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[bold red]Invalid Input:[/] &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39; is not a valid domain format.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Error&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting SSL Labs scan for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">analyze_ssl_ssllabs</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_ssllabs&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_mobsf_scan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_mobsf_scan">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;mobsf&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_mobsf_scan</span><span class="p">(</span>
+    <span class="n">apk_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="s2">&quot;--apk-file&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the .apk file to be analyzed.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">mobsf_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="s2">&quot;http://127.0.0.1:8000&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;URL of your running MobSF instance.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes an Android .apk file using a local MobSF instance.&quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">mobsf_api_key</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="s2">&quot;[bold yellow]Skipping MobSF Scan:[/bold yellow] `MOBSF_API_KEY` not found in your .env file.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;[yellow]Configuration Warning[/yellow]&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting MobSF scan for APK file: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">apk_file</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">analyze_apk_mobsf</span><span class="p">(</span><span class="n">apk_file</span><span class="p">,</span> <span class="n">mobsf_url</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">apk_file</span><span class="p">),</span>
+        <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_mobsf&quot;</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_ct_log_check">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_ct_log_check">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;certs&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_ct_log_check</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The domain to check for new certificates.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Monitors Certificate Transparency logs for newly issued SSL certificates.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">monitor_ct_logs</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_certs&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_iac_scan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_iac_scan">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;scan-iac&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_iac_scan</span><span class="p">(</span>
+    <span class="n">directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the directory with IaC files.&quot;</span><span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scans Infrastructure as Code (Terraform, etc.) for security issues.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">scan_iac_files</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">directory</span><span class="p">),</span>
+        <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_scan_iac&quot;</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_secrets_scan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.defensive.run_secrets_scan">[docs]</a>
+<span class="nd">@defensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;scan-secrets&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_secrets_scan</span><span class="p">(</span>
+    <span class="n">directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the source code directory to scan.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scans a local directory for hardcoded secrets.&quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">scan_for_secrets</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">directory</span><span class="p">),</span>
+        <span class="n">module</span><span class="o">=</span><span class="s2">&quot;defensive_scan_secrets&quot;</span><span class="p">,</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

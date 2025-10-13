@@ -1,0 +1,254 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.geoint &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.geoint</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.geoint</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module for Geopolitical Intelligence (GEOINT).</span>
+
+<span class="sd">Analyzes a target&#39;s physical and digital footprint to assess risks related to its</span>
+<span class="sd">geographic distribution, such as political instability or infrastructure dependencies.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeointReport</span><span class="p">,</span> <span class="n">CountryRiskProfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_or_print_results</span><span class="p">,</span> <span class="n">console</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_aggregated_data_for_target</span><span class="p">,</span> <span class="n">save_scan_to_db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">sync_client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_target</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.geo_osint</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_geolocation_data</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_country_risk_data">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.geoint.get_country_risk_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_country_risk_data</span><span class="p">(</span><span class="n">country_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CountryRiskProfile</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fetches a risk profile for a given country using the restcountries.com and World Bank APIs.</span>
+<span class="sd">    NOTE: A dedicated risk intelligence API would be required for production environments</span>
+<span class="sd">    to get a wider range of metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># --- Get general country data ---</span>
+
+        <span class="n">country_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;https://restcountries.com/v3.1/name/</span><span class="si">{</span><span class="n">country_name</span><span class="si">}</span><span class="s2">?fullText=true&quot;</span>
+        <span class="p">)</span>
+        <span class="n">country_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">country_data</span> <span class="o">=</span> <span class="n">country_response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">country_code</span> <span class="o">=</span> <span class="n">country_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;cca2&quot;</span>
+        <span class="p">)</span>  <span class="c1"># Get ISO 3166-1 alpha-2 country code for World Bank API</span>
+
+        <span class="c1"># --- Get Political Stability Index from World Bank API ---</span>
+
+        <span class="n">political_stability</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">country_code</span><span class="p">:</span>
+            <span class="n">current_year</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">year</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">wb_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;http://api.worldbank.org/v2/country/</span><span class="si">{</span><span class="n">country_code</span><span class="si">}</span><span class="s2">/indicator/PV.EST?date=</span><span class="si">{</span><span class="n">current_year</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">current_year</span><span class="si">}</span><span class="s2">&amp;format=json&quot;</span>
+            <span class="n">wb_response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">wb_url</span><span class="p">)</span>
+            <span class="n">wb_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">wb_data</span> <span class="o">=</span> <span class="n">wb_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">wb_data</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">wb_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">wb_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">political_stability</span> <span class="o">=</span> <span class="n">wb_data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">CountryRiskProfile</span><span class="p">(</span>
+            <span class="n">country_name</span><span class="o">=</span><span class="n">country_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;common&quot;</span><span class="p">),</span>
+            <span class="n">region</span><span class="o">=</span><span class="n">country_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;region&quot;</span><span class="p">),</span>
+            <span class="n">subregion</span><span class="o">=</span><span class="n">country_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;subregion&quot;</span><span class="p">),</span>
+            <span class="n">population</span><span class="o">=</span><span class="n">country_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;population&quot;</span><span class="p">),</span>
+            <span class="n">political_stability_index</span><span class="o">=</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">political_stability</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">political_stability</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not retrieve full risk data for </span><span class="si">{</span><span class="n">country_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get_countries_from_ips</span><span class="p">(</span><span class="n">ips</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Asynchronously gets country names from a list of IP addresses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_geolocation_data</span><span class="p">(</span><span class="n">ip</span><span class="p">)</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">ips</span><span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+    <span class="n">countries</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">and</span> <span class="n">res</span><span class="o">.</span><span class="n">country</span><span class="p">:</span>
+            <span class="n">countries</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">country</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">countries</span>
+
+
+<div class="viewcode-block" id="generate_geoint_report">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.geoint.generate_geoint_report">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_geoint_report</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeointReport</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a GEOINT report by analyzing the geographic distribution of assets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generating GEOINT report for </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">aggregated_data</span> <span class="o">=</span> <span class="n">get_aggregated_data_for_target</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">aggregated_data</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">GeointReport</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s2">&quot;No historical data found for target.&quot;</span><span class="p">)</span>
+    <span class="n">countries</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">modules</span> <span class="o">=</span> <span class="n">aggregated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;modules&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="c1"># Extract countries from physical locations</span>
+
+    <span class="n">physical_locs</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;physical_osint_locations&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;locations_found&quot;</span><span class="p">,</span> <span class="p">[]</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">physical_locs</span><span class="p">:</span>
+        <span class="c1"># A simple way to extract the country from the address</span>
+
+        <span class="n">country</span> <span class="o">=</span> <span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;address&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">country</span><span class="p">:</span>
+            <span class="n">countries</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">country</span><span class="p">)</span>
+    <span class="c1"># Extract countries from IP address geolocation from footprint data</span>
+
+    <span class="n">footprint_data</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;footprint&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">if</span> <span class="n">footprint_data</span><span class="p">:</span>
+        <span class="n">dns_records</span> <span class="o">=</span> <span class="n">footprint_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dns_records&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">dns_records</span><span class="p">:</span>
+            <span class="n">ip_addresses</span> <span class="o">=</span> <span class="n">dns_records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">ip_addresses</span><span class="p">:</span>
+                <span class="n">ip_countries</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_get_countries_from_ips</span><span class="p">(</span><span class="n">ip_addresses</span><span class="p">))</span>
+                <span class="n">countries</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ip_countries</span><span class="p">)</span>
+    <span class="c1"># Fetch risk profiles for each unique country</span>
+
+    <span class="n">risk_profiles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CountryRiskProfile</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">&quot;[cyan]Fetching country risk profiles...[/cyan]&quot;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">country</span> <span class="ow">in</span> <span class="n">countries</span><span class="p">:</span>
+            <span class="n">profile</span> <span class="o">=</span> <span class="n">get_country_risk_data</span><span class="p">(</span><span class="n">country</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">profile</span><span class="p">:</span>
+                <span class="n">risk_profiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">GeointReport</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span> <span class="n">country_risk_profiles</span><span class="o">=</span><span class="n">risk_profiles</span><span class="p">)</span></div>
+
+
+
+<span class="n">geoint_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_geoint_analysis">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.geoint.run_geoint_analysis">[docs]</a>
+<span class="nd">@geoint_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_geoint_analysis</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target to analyze. Uses active project.&quot;</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Analyzes a target&#39;s geographic footprint for geopolitical risks.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">generate_geoint_report</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target_name</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;geoint_report&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

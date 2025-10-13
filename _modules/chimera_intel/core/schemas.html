@@ -155,17 +155,109 @@
     <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ScoredResult</span><span class="p">]</span></div>
 
 
+<div class="viewcode-block" id="DnssecInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.DnssecInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DnssecInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">dnssec_enabled</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">spf_record</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">dmarc_record</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+<div class="viewcode-block" id="TlsCertInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TlsCertInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TlsCertInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">issuer</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">sans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">not_before</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">not_after</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+<div class="viewcode-block" id="AsnInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.AsnInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AsnInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">asn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">country</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="HistoricalDns">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.HistoricalDns">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HistoricalDns</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">a_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">aaaa_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">mx_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="IpGeolocation">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IpGeolocation">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IpGeolocation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">city</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">country</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">provider</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="BreachInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.BreachInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BreachInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">breaches</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="PortScanResult">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PortScanResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PortScanResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">open_ports</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="WebTechInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.WebTechInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WebTechInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">cms</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">framework</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">web_server</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">js_library</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="PersonnelInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PersonnelInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PersonnelInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">employees</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span></div>
+
+
+<div class="viewcode-block" id="SocialMediaPresence">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SocialMediaPresence">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SocialMediaPresence</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">twitter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">linkedin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">github</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">KnowledgeGraph</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="FootprintData">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.FootprintData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FootprintData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model for the nested data within the footprint module.&quot;&quot;&quot;</span>
-
     <span class="n">whois_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="n">dns_records</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="n">subdomains</span><span class="p">:</span> <span class="n">SubdomainReport</span>
-    <span class="n">ip_threat_intelligence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ThreatIntelResult</span><span class="p">]</span></div>
-
+    <span class="n">ip_threat_intelligence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+    <span class="n">historical_dns</span><span class="p">:</span> <span class="n">HistoricalDns</span>
+    <span class="n">reverse_ip</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span>
+    <span class="n">asn_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AsnInfo</span><span class="p">]</span>
+    <span class="n">tls_cert_info</span><span class="p">:</span> <span class="n">TlsCertInfo</span>
+    <span class="n">dnssec_info</span><span class="p">:</span> <span class="n">DnssecInfo</span>
+    <span class="n">ip_geolocation</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">IpGeolocation</span><span class="p">]</span>
+    <span class="n">cdn_provider</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">breach_info</span><span class="p">:</span> <span class="n">BreachInfo</span>
+    <span class="n">port_scan_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PortScanResult</span><span class="p">]</span>
+    <span class="n">web_technologies</span><span class="p">:</span> <span class="n">WebTechInfo</span>
+    <span class="n">personnel_info</span><span class="p">:</span> <span class="n">PersonnelInfo</span>
+    <span class="n">knowledge_graph</span><span class="p">:</span> <span class="n">KnowledgeGraph</span></div>
 
 
 <div class="viewcode-block" id="FootprintResult">
@@ -175,6 +267,9 @@
 
     <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">footprint</span><span class="p">:</span> <span class="n">FootprintData</span></div>
+
+
+
 
 
 

@@ -1,0 +1,366 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.differ &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.differ</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.differ</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.pretty</span><span class="w"> </span><span class="kn">import</span> <span class="n">pprint</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jsondiff</span><span class="w"> </span><span class="kn">import</span> <span class="n">diff</span><span class="p">,</span> <span class="n">insert</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_db_connection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">FormattedDiff</span><span class="p">,</span> <span class="n">DiffResult</span><span class="p">,</span> <span class="n">MicroSignal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">send_slack_notification</span><span class="p">,</span>
+    <span class="n">send_teams_notification</span><span class="p">,</span>
+    <span class="n">console</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">API_KEYS</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_target</span>
+
+
+<span class="c1"># Get a logger instance for this specific file</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_last_two_scans">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.differ.get_last_two_scans">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_last_two_scans</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">module</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves the two most recent scans for a specific target and module.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        target (str): The primary target of the scan (e.g., a domain name).</span>
+<span class="sd">        module (str): The name of the module to retrieve scans for.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple containing (latest_scan, previous_scan).</span>
+<span class="sd">        Returns (None, None) if fewer than two scans are found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">conn</span> <span class="o">=</span> <span class="n">get_db_connection</span><span class="p">()</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">&quot;SELECT scan_data FROM scans WHERE target = </span><span class="si">%s</span><span class="s2"> AND module = </span><span class="si">%s</span><span class="s2"> ORDER BY timestamp DESC LIMIT 2&quot;</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">module</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="c1"># The records are ordered from newest to oldest.</span>
+
+        <span class="k">return</span> <span class="n">records</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">records</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Database error fetching last two scans for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_flatten_dict</span><span class="p">(</span>
+    <span class="n">d</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">],</span> <span class="n">parent_key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sep</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;.&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flattens a nested dictionary or list into a single-level dictionary.</span>
+
+<span class="sd">    For example, `{&#39;a&#39;: {&#39;b&#39;: 1}}` becomes `{&#39;a.b&#39;: 1}`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        d (Union[Dict, List]): The dictionary or list to flatten.</span>
+<span class="sd">        parent_key (str): The base key to prepend to flattened keys.</span>
+<span class="sd">        sep (str): The separator to use between keys.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict[str, Any]: The flattened dictionary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">items</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">new_key</span> <span class="o">=</span> <span class="n">parent_key</span> <span class="o">+</span> <span class="n">sep</span> <span class="o">+</span> <span class="n">k</span> <span class="k">if</span> <span class="n">parent_key</span> <span class="k">else</span> <span class="n">k</span>
+            <span class="n">items</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_flatten_dict</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">new_key</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">sep</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
+            <span class="c1"># Heuristic to find a good unique key for list items for a cleaner path</span>
+
+            <span class="n">id_key</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;domain&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;technology&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+                <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">new_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">parent_key</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">id_key</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">items</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_flatten_dict</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">new_key</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="n">sep</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">parent_key</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="format_diff_simple">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.differ.format_diff_simple">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">format_diff_simple</span><span class="p">(</span>
+    <span class="n">previous_scan</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">latest_scan</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FormattedDiff</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compares two dictionaries and produces a simple, human-readable diff.</span>
+
+<span class="sd">    This method flattens both input dictionaries and then compares their keys</span>
+<span class="sd">    and values to identify additions, removals, and changes.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        previous_scan (Dict[str, Any]): The older scan data.</span>
+<span class="sd">        latest_scan (Dict[str, Any]): The newer scan data.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        FormattedDiff: A Pantic model containing lists of added, removed,</span>
+<span class="sd">                       and changed items.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">flat_previous</span> <span class="o">=</span> <span class="n">_flatten_dict</span><span class="p">(</span><span class="n">previous_scan</span><span class="p">)</span>
+    <span class="n">flat_latest</span> <span class="o">=</span> <span class="n">_flatten_dict</span><span class="p">(</span><span class="n">latest_scan</span><span class="p">)</span>
+
+    <span class="n">previous_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">flat_previous</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">latest_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">flat_latest</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="n">added_keys</span> <span class="o">=</span> <span class="n">latest_keys</span> <span class="o">-</span> <span class="n">previous_keys</span>
+    <span class="n">removed_keys</span> <span class="o">=</span> <span class="n">previous_keys</span> <span class="o">-</span> <span class="n">latest_keys</span>
+    <span class="n">common_keys</span> <span class="o">=</span> <span class="n">latest_keys</span> <span class="o">&amp;</span> <span class="n">previous_keys</span>
+
+    <span class="n">changes</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;added&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">added_keys</span><span class="p">),</span> <span class="s2">&quot;removed&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">removed_keys</span><span class="p">),</span> <span class="s2">&quot;changed&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">common_keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">flat_previous</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="n">flat_latest</span><span class="p">[</span><span class="n">key</span><span class="p">]:</span>
+            <span class="n">changes</span><span class="p">[</span><span class="s2">&quot;removed&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">flat_previous</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">changes</span><span class="p">[</span><span class="s2">&quot;added&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">flat_latest</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">FormattedDiff</span><span class="p">(</span><span class="o">**</span><span class="n">changes</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_diff_for_signals">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.differ.analyze_diff_for_signals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_diff_for_signals</span><span class="p">(</span><span class="n">diff_result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">MicroSignal</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Analyzes a raw jsondiff result to identify and interpret significant changes.</span>
+
+<span class="sd">    This function applies a set of rules to the diff to find patterns that</span>
+<span class="sd">    may indicate a strategic change (e.g., a new IP address).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        diff_result (dict): The raw diff output from the jsondiff library.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[MicroSignal]: A list of interpreted signals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">signals</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">MicroSignal</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Rule: New &#39;A&#39; record detected in DNS</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="s2">&quot;footprint&quot;</span> <span class="ow">in</span> <span class="n">diff_result</span>
+        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">diff_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;footprint&quot;</span><span class="p">),</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="s2">&quot;dns_records&quot;</span> <span class="ow">in</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">]</span>
+        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dns_records&quot;</span><span class="p">),</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="ow">and</span> <span class="s2">&quot;A&quot;</span> <span class="ow">in</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">]</span>
+        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">),</span> <span class="nb">dict</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="n">insert</span> <span class="ow">in</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">][</span><span class="s2">&quot;A&quot;</span><span class="p">]:</span>
+            <span class="n">new_ips</span> <span class="o">=</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">][</span><span class="s2">&quot;A&quot;</span><span class="p">][</span><span class="n">insert</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_ips</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">MicroSignal</span><span class="p">(</span>
+                        <span class="n">signal_type</span><span class="o">=</span><span class="s2">&quot;Infrastructure Change&quot;</span><span class="p">,</span>
+                        <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;New IP address(es) detected: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_ips</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;High&quot;</span><span class="p">,</span>
+                        <span class="n">source_field</span><span class="o">=</span><span class="s2">&quot;footprint.dns_records.A&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+    <span class="k">return</span> <span class="n">signals</span></div>
+
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">diff_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_diff_analysis">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.differ.run_diff_analysis">[docs]</a>
+<span class="nd">@diff_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_diff_analysis</span><span class="p">(</span>
+    <span class="n">module</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The specific scan module to compare (e.g., &#39;footprint&#39;).&quot;</span>
+    <span class="p">),</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;--target&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-t&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target to compare. Uses active project if not provided.&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compares the last two scans of a target to detect changes.</span>
+
+<span class="sd">    This command fetches the two most recent scans for a given target and module,</span>
+<span class="sd">    computes the difference, and prints a summary. If changes are found and</span>
+<span class="sd">    notification webhooks (Slack, Teams) are configured, it will send an alert.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">])</span>
+    <span class="k">except</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">exit_code</span><span class="p">)</span>
+    <span class="n">latest</span><span class="p">,</span> <span class="n">previous</span> <span class="o">=</span> <span class="n">get_last_two_scans</span><span class="p">(</span><span class="n">target_name</span><span class="p">,</span> <span class="n">module</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">previous</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">latest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="s2">&quot;[bold yellow]Not enough historical data to perform a comparison.[/bold yellow]&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+    <span class="c1"># Generate both the raw diff for signal analysis and the simple diff for display</span>
+
+    <span class="n">raw_difference</span> <span class="o">=</span> <span class="n">diff</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">latest</span><span class="p">,</span> <span class="n">syntax</span><span class="o">=</span><span class="s2">&quot;symmetric&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_difference</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;[bold green]No changes detected.[/bold green]&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="n">formatted_changes</span> <span class="o">=</span> <span class="n">format_diff_simple</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">latest</span><span class="p">)</span>
+    <span class="n">detected_signals</span> <span class="o">=</span> <span class="n">analyze_diff_for_signals</span><span class="p">(</span><span class="n">raw_difference</span><span class="p">)</span>
+    <span class="n">full_result</span> <span class="o">=</span> <span class="n">DiffResult</span><span class="p">(</span>
+        <span class="n">comparison_summary</span><span class="o">=</span><span class="n">formatted_changes</span><span class="p">,</span>
+        <span class="n">detected_signals</span><span class="o">=</span><span class="n">detected_signals</span><span class="p">,</span>
+        <span class="n">raw_diff</span><span class="o">=</span><span class="n">raw_difference</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[bold]Comparison Results:[/bold]&quot;</span><span class="p">)</span>
+    <span class="n">pprint</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">full_result</span><span class="o">.</span><span class="n">detected_signals</span><span class="p">:</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[bold yellow]💡 Interpreted Micro-Signals[/bold yellow]&quot;</span><span class="p">)</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span><span class="n">show_header</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">header_style</span><span class="o">=</span><span class="s2">&quot;bold magenta&quot;</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;Signal Type&quot;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s2">&quot;cyan&quot;</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;Description&quot;</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">&quot;Confidence&quot;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">signal</span> <span class="ow">in</span> <span class="n">full_result</span><span class="o">.</span><span class="n">detected_signals</span><span class="p">:</span>
+            <span class="n">table</span><span class="o">.</span><span class="n">add_row</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">signal_type</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">confidence</span><span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+    <span class="c1"># Notifications</span>
+
+    <span class="n">slack_url</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">slack_webhook_url</span>
+    <span class="k">if</span> <span class="n">slack_url</span><span class="p">:</span>
+        <span class="n">added_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">added</span><span class="p">)</span>
+        <span class="n">removed_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">removed</span><span class="p">)</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;🔔 *Chimera Intel Change Alert* 🔔</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Detected changes for target *</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">* in module *</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">*:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  - `Added`: </span><span class="si">{</span><span class="n">added_count</span><span class="si">}</span><span class="s2"> items</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;  - `Removed`: </span><span class="si">{</span><span class="n">removed_count</span><span class="si">}</span><span class="s2"> items</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Please review the latest scan for details.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">send_slack_notification</span><span class="p">(</span><span class="n">slack_url</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+    <span class="n">teams_url</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">teams_webhook_url</span>
+    <span class="k">if</span> <span class="n">teams_url</span><span class="p">:</span>
+        <span class="n">added_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">added</span><span class="p">)</span>
+        <span class="n">removed_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">removed</span><span class="p">)</span>
+        <span class="n">teams_message</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Detected changes for target **</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">** in module **</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">**:</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;- **Added**: </span><span class="si">{</span><span class="n">added_count</span><span class="si">}</span><span class="s2"> items</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;- **Removed**: </span><span class="si">{</span><span class="n">removed_count</span><span class="si">}</span><span class="s2"> items</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Please review the latest scan for details.&quot;</span>
+        <span class="p">)</span>
+        <span class="n">send_teams_notification</span><span class="p">(</span><span class="n">teams_url</span><span class="p">,</span> <span class="s2">&quot;Chimera Intel Change Alert&quot;</span><span class="p">,</span> <span class="n">teams_message</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
