@@ -8,7 +8,7 @@ import nmap  # type: ignore
 import hibpapi
 from rich.panel import Panel
 from dotenv import load_dotenv
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Coroutine
 import logging
 import time
 from httpx import RequestError, HTTPStatusError
@@ -672,7 +672,7 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         get_web_technologies(f"https://{domain}"),
         discover_personnel(domain, hunter_api_key) if hunter_api_key else asyncio.sleep(0, result=PersonnelInfo(employees=[])),
     ]
-    results = await asyncio.gather(*initial_tasks)
+    results = await asyncio.gather(*initial_tasks, return_exceptions=True)
     (
         vt,
         dd,
@@ -681,13 +681,22 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         sh,
         whois_data,
         dns_data,
-        passive_dns_data,
-        tls_cert_data,
-        dnssec_data,
-        breach_data,
-        web_tech_data,
-        personnel_data,
+        passive_dns_data_res,
+        tls_cert_data_res,
+        dnssec_data_res,
+        breach_data_res,
+        web_tech_data_res,
+        personnel_data_res,
     ) = results
+
+    # --- Stage 1.5: Data Validation and Defaulting ---
+    passive_dns_data = passive_dns_data_res if isinstance(passive_dns_data_res, HistoricalDns) else HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
+    tls_cert_data = tls_cert_data_res if isinstance(tls_cert_data_res, TlsCertInfo) else TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
+    dnssec_data = dnssec_data_res if isinstance(dnssec_data_res, DnssecInfo) else DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record="")
+    breach_data = breach_data_res if isinstance(breach_data_res, BreachInfo) else BreachInfo(source="HaveIBeenPwned", breaches=[])
+    web_tech_data = web_tech_data_res if isinstance(web_tech_data_res, WebTechInfo) else WebTechInfo()
+    personnel_data = personnel_data_res if isinstance(personnel_data_res, PersonnelInfo) else PersonnelInfo(employees=[])
+
 
     # --- Stage 2: Consolidate and Prepare for Enrichment ---
 
@@ -716,21 +725,22 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
     # --- Stage 3: IP-based Enrichment ---
 
-    ip_enrichment_tasks = []
+    ip_enrichment_tasks: List[tuple[str, Coroutine[Any, Any, Any]]] = []
     for ip in main_domain_ips:
         ip_enrichment_tasks.append((ip, get_ip_info(ip)))
         ip_enrichment_tasks.append((ip, get_reverse_ip_lookup(ip)))
         ip_enrichment_tasks.append((ip, perform_port_scan(ip)))
 
     ip_enrichment_results: Dict[str, Dict[str, Any]] = {ip: {} for ip in main_domain_ips}
-    for ip, task in ip_enrichment_tasks:
-        result = await task
-        if isinstance(result, IpInfo):
-            ip_enrichment_results[ip]["ip_info"] = result
-        elif isinstance(result, list):
-            ip_enrichment_results[ip]["reverse_ip"] = result
-        elif isinstance(result, PortScanResult):
-            ip_enrichment_results[ip]["port_scan"] = result
+    if ip_enrichment_tasks:
+        ip_results = await asyncio.gather(*[task for _, task in ip_enrichment_tasks], return_exceptions=True)
+        for (ip, _), result in zip(ip_enrichment_tasks, ip_results):
+            if isinstance(result, IpInfo):
+                ip_enrichment_results[ip]["ip_info"] = result
+            elif isinstance(result, list):
+                ip_enrichment_results[ip]["reverse_ip"] = result
+            elif isinstance(result, PortScanResult):
+                ip_enrichment_results[ip]["port_scan"] = result
 
     # --- Stage 4: Threat Intelligence Enrichment ---
 
@@ -767,18 +777,16 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     )
 
     # Safely construct dictionaries, providing default values for missing data
-    asn_info_dict = {
-        ip: ip_enrichment_results[ip].get("ip_info").asn
-        for ip in main_domain_ips
-        if ip_enrichment_results.get(ip) and ip_enrichment_results[ip].get("ip_info")
-    }
-    ip_geolocation_dict = {
-        ip: ip_enrichment_results[ip].get("ip_info").geolocation
-        for ip in main_domain_ips
-        if ip_enrichment_results.get(ip) and ip_enrichment_results[ip].get("ip_info")
-    }
+    asn_info_dict = {}
+    ip_geolocation_dict = {}
+    for ip in main_domain_ips:
+        ip_info = ip_enrichment_results.get(ip, {}).get("ip_info")
+        if ip_info:
+            asn_info_dict[ip] = ip_info.asn
+            ip_geolocation_dict[ip] = ip_info.geolocation
+
     port_scan_results_dict = {
-        ip: ip_enrichment_results[ip].get("port_scan", PortScanResult(open_ports={}))
+        ip: ip_enrichment_results.get(ip, {}).get("port_scan", PortScanResult(open_ports={}))
         for ip in main_domain_ips
     }
 
