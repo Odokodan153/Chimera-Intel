@@ -658,19 +658,11 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     hunter_api_key = API_KEYS.hunter_api_key
 
     initial_tasks = [
-        (
-            get_subdomains_virustotal(domain, vt_api_key)
-            if vt_api_key
-            else asyncio.sleep(0, result=[])
-        ),
+        get_subdomains_virustotal(domain, vt_api_key) if vt_api_key else asyncio.sleep(0, result=[]),
         get_subdomains_dnsdumpster(domain),
         get_subdomains_threatminer(domain),
         get_subdomains_urlscan(domain),
-        (
-            get_subdomains_shodan(domain, shodan_api_key)
-            if shodan_api_key
-            else asyncio.sleep(0, result=[])
-        ),
+        get_subdomains_shodan(domain, shodan_api_key) if shodan_api_key else asyncio.sleep(0, result=[]),
         asyncio.to_thread(get_whois_info, domain),
         asyncio.to_thread(get_dns_records, domain),
         get_passive_dns(domain, vt_api_key) if vt_api_key else asyncio.sleep(0, result=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])),
@@ -724,20 +716,11 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
 
     # --- Stage 3: IP-based Enrichment ---
 
-    ip_enrichment_tasks = [
-        (ip, get_ip_info(ip)) for ip in main_domain_ips
-    ]
-    ip_enrichment_tasks.extend(
-        [
-            (ip, get_reverse_ip_lookup(ip)) for ip in main_domain_ips
-        ]
-    )
-    ip_enrichment_tasks.extend(
-        [
-            (ip, perform_port_scan(ip)) for ip in main_domain_ips
-        ]
-    )
-
+    ip_enrichment_tasks = []
+    for ip in main_domain_ips:
+        ip_enrichment_tasks.append((ip, get_ip_info(ip)))
+        ip_enrichment_tasks.append((ip, get_reverse_ip_lookup(ip)))
+        ip_enrichment_tasks.append((ip, perform_port_scan(ip)))
 
     ip_enrichment_results: Dict[str, Dict[str, Any]] = {ip: {} for ip in main_domain_ips}
     for ip, task in ip_enrichment_tasks:
@@ -748,7 +731,6 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
             ip_enrichment_results[ip]["reverse_ip"] = result
         elif isinstance(result, PortScanResult):
             ip_enrichment_results[ip]["port_scan"] = result
-
 
     # --- Stage 4: Threat Intelligence Enrichment ---
 
@@ -783,20 +765,38 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     subdomain_report = SubdomainReport(
         total_unique=len(scored_results), results=scored_results
     )
+
+    # Safely construct dictionaries, providing default values for missing data
+    asn_info_dict = {
+        ip: ip_enrichment_results[ip].get("ip_info").asn
+        for ip in main_domain_ips
+        if ip_enrichment_results.get(ip) and ip_enrichment_results[ip].get("ip_info")
+    }
+    ip_geolocation_dict = {
+        ip: ip_enrichment_results[ip].get("ip_info").geolocation
+        for ip in main_domain_ips
+        if ip_enrichment_results.get(ip) and ip_enrichment_results[ip].get("ip_info")
+    }
+    port_scan_results_dict = {
+        ip: ip_enrichment_results[ip].get("port_scan", PortScanResult(open_ports={}))
+        for ip in main_domain_ips
+    }
+
+
     footprint_data = FootprintData(
         whois_info=whois_data if isinstance(whois_data, dict) else {},
         dns_records=dns_data if isinstance(dns_data, dict) else {},
         subdomains=subdomain_report,
         ip_threat_intelligence=ip_threat_intelligence,
         historical_dns=passive_dns_data,
-        reverse_ip={ip: ip_enrichment_results[ip].get("reverse_ip", []) for ip in main_domain_ips},
-        asn_info={ip: ip_enrichment_results[ip].get("ip_info", {}).get("asn") for ip in main_domain_ips},
+        reverse_ip={ip: ip_enrichment_results.get(ip, {}).get("reverse_ip", []) for ip in main_domain_ips},
+        asn_info=asn_info_dict,
         tls_cert_info=tls_cert_data,
         dnssec_info=dnssec_data,
-        ip_geolocation={ip: ip_enrichment_results[ip].get("ip_info", {}).get("geolocation") for ip in main_domain_ips},
+        ip_geolocation=ip_geolocation_dict,
         cdn_provider=await detect_cdn(domain),
         breach_info=breach_data,
-        port_scan_results={ip: ip_enrichment_results[ip].get("port_scan") for ip in main_domain_ips},
+        port_scan_results=port_scan_results_dict,
         web_technologies=web_tech_data,
         personnel_info=personnel_data,
         knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),

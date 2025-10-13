@@ -147,7 +147,9 @@ class FootprintResult(BaseModel):
     domain: str
     footprint: FootprintData
 
-
+class IpInfo(BaseModel):
+    asn: AsnInfo
+    geolocation: IpGeolocation
 
 
 
@@ -2152,11 +2154,6 @@ class IntelFinding(BaseModel):
     reference: str = Field(..., description="A URL or source reference for verification.")
     risk_level: str = Field(..., description="Assessed risk: Low, Medium, High, or Critical.")
     confidence: str = Field(..., description="Confidence level of the finding: Low, Medium, High.")
-
-class KnowledgeGraph(BaseModel):
-    """Represents the constructed knowledge graph of interconnected entities."""
-    nodes: List[Dict[str, Any]] = Field(..., description="List of nodes (entities) in the graph.")
-    edges: List[Dict[str, Any]] = Field(..., description="List of edges (relationships) connecting the nodes.")
 
 class PESTAnalysis(BaseModel):
     """Represents a Political, Economic, Social, and Technological analysis."""
