@@ -75,7 +75,7 @@ dependencies = [
     "alembic",
     "hvac",
     "dnspython>=2.6.1,<3.0.0",
-    "hibpapi",
+    "hibpwned",
     "shodan",
     "python-dotenv",
 ]
