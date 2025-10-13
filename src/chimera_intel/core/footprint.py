@@ -8,7 +8,7 @@ import nmap  # type: ignore
 import hibpapi
 from rich.panel import Panel
 from dotenv import load_dotenv
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 import logging
 import time
 from httpx import RequestError, HTTPStatusError
@@ -30,7 +30,6 @@ from chimera_intel.core.schemas import (
     PortScanResult,
     WebTechInfo,
     PersonnelInfo,
-    SocialMediaPresence,
     KnowledgeGraph,
     IpInfo,
 )
