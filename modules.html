@@ -164,6 +164,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.recon.run_asset_intel"><code class="docutils literal notranslate"><span class="pre">run_asset_intel()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.recon.run_credential_recon"><code class="docutils literal notranslate"><span class="pre">run_credential_recon()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.recon.run_threat_infra_recon"><code class="docutils literal notranslate"><span class="pre">run_threat_infra_recon()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.social_osint.find_social_profiles"><code class="docutils literal notranslate"><span class="pre">find_social_profiles()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.social_osint.run_social_osint_scan"><code class="docutils literal notranslate"><span class="pre">run_social_osint_scan()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_actor_intel.get_threat_actor_profile"><code class="docutils literal notranslate"><span class="pre">get_threat_actor_profile()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_actor_intel.run_threat_actor_profile"><code class="docutils literal notranslate"><span class="pre">run_threat_actor_profile()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_actor_intel.search_threat_actors"><code class="docutils literal notranslate"><span class="pre">search_threat_actors()</span></code></a></li>
@@ -2782,6 +2784,37 @@ looks for public datasets associated with the company name on Kaggle.</p>
 <dt class="sig sig-object py" id="chimera_intel.core.recon.run_threat_infra_recon">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.recon.</span></span><span class="sig-name descname"><span class="pre">run_threat_infra_recon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicator:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/recon.html#run_threat_infra_recon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.recon.run_threat_infra_recon" title="Link to this definition"></a></dt>
 <dd><p>Analyzes and pivots on adversary threat infrastructure.</p>
+</dd></dl>
+
+<dl class="py function" id="module-chimera_intel.core.social_osint">
+<dt class="sig sig-object py" id="chimera_intel.core.social_osint.find_social_profiles">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.social_osint.</span></span><span class="sig-name descname"><span class="pre">find_social_profiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.SocialOSINTResult" title="chimera_intel.core.schemas.SocialOSINTResult"><span class="pre">SocialOSINTResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/social_osint.html#find_social_profiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.social_osint.find_social_profiles" title="Link to this definition"></a></dt>
+<dd><p>Finds social media profiles for a given username using the Sherlock library.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>username</strong> (<em>str</em>) – The username to search for across social networks.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing the list of found profiles.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.SocialOSINTResult" title="chimera_intel.core.schemas.SocialOSINTResult">SocialOSINTResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.social_osint.run_social_osint_scan">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.social_osint.</span></span><span class="sig-name descname"><span class="pre">run_social_osint_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/social_osint.html#run_social_osint_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.social_osint.run_social_osint_scan" title="Link to this definition"></a></dt>
+<dd><p>Searches for a username across hundreds of social networks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>username</strong> (<em>str</em>) – The username to search for.</p></li>
+<li><p><strong>output_file</strong> (<em>str</em>) – Optional path to save the results to a JSON file.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <p id="module-chimera_intel.core.threat_actor_intel">Module for Threat Actor Intelligence.</p>
