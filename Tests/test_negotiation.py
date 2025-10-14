@@ -1,7 +1,7 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
 from fastapi.testclient import TestClient
-from chimera_intel.webapp.main import app
+from webapp.main import app
 
 @pytest.fixture
 def engine():
