@@ -1,5 +1,6 @@
 import logging
 import asyncio
+from typing import Optional
 from .schemas import MacroIndicators, MicroIndicators
 import httpx
 import wbdata
@@ -12,7 +13,10 @@ from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
-def get_economic_indicators(country_code: str, indicators: dict = None) -> pd.DataFrame:
+
+def get_economic_indicators(
+    country_code: str, indicators: Optional[dict] = None
+) -> pd.DataFrame:
     """
     Fetches key economic indicators for a given country using the World Bank API.
 
@@ -27,8 +31,8 @@ def get_economic_indicators(country_code: str, indicators: dict = None) -> pd.Da
     """
     if indicators is None:
         indicators = {
-            'NY.GDP.MKTP.CD': 'GDP (Current US$)',
-            'FP.CPI.TOTL.ZG': 'Inflation, consumer prices (annual %)'
+            "NY.GDP.MKTP.CD": "GDP (Current US$)",
+            "FP.CPI.TOTL.ZG": "Inflation, consumer prices (annual %)",
         }
 
     # Set the data range to the last 20 years for relevance
@@ -37,18 +41,19 @@ def get_economic_indicators(country_code: str, indicators: dict = None) -> pd.Da
     try:
         # Fetch the data from the World Bank
         df = wbdata.get_dataframe(indicators, country=country_code, data_date=data_date)
-        
+
         # Clean and format the DataFrame
-        df = df.reset_index().rename(columns={'date': 'Year'})
-        df['Year'] = pd.to_numeric(df['Year'])
-        df = df.sort_values(by='Year', ascending=False)
-        df = df.set_index('Year')
-        
+        df = df.reset_index().rename(columns={"date": "Year"})
+        df["Year"] = pd.to_numeric(df["Year"])
+        df = df.sort_values(by="Year", ascending=False)
+        df = df.set_index("Year")
+
         return df
 
     except Exception as e:
         print(f"Could not fetch economic data for {country_code}. Error: {e}")
         return pd.DataFrame()
+
 
 def get_macro_indicators(country_code: str) -> MacroIndicators:
     """
