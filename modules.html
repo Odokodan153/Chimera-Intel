@@ -127,6 +127,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.defensive.scan_iac_files"><code class="docutils literal notranslate"><span class="pre">scan_iac_files()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.defensive.search_github_leaks"><code class="docutils literal notranslate"><span class="pre">search_github_leaks()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.defensive.search_pastes_api"><code class="docutils literal notranslate"><span class="pre">search_pastes_api()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.finint.get_insider_transactions"><code class="docutils literal notranslate"><span class="pre">get_insider_transactions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.finint.run_insider_tracking"><code class="docutils literal notranslate"><span class="pre">run_insider_tracking()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.check_dnssec"><code class="docutils literal notranslate"><span class="pre">check_dnssec()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.detect_cdn"><code class="docutils literal notranslate"><span class="pre">detect_cdn()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.discover_personnel"><code class="docutils literal notranslate"><span class="pre">discover_personnel()</span></code></a></li>
@@ -2438,6 +2440,26 @@ parses the JSON output.</p>
 <dd class="field-even"><p><a class="reference internal" href="#chimera_intel.core.schemas.PasteResult" title="chimera_intel.core.schemas.PasteResult">PasteResult</a></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function" id="module-chimera_intel.core.finint">
+<dt class="sig sig-object py" id="chimera_intel.core.finint.get_insider_transactions">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.finint.</span></span><span class="sig-name descname"><span class="pre">get_insider_transactions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ticker</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.schemas.InsiderTransaction" title="chimera_intel.core.schemas.InsiderTransaction"><span class="pre">InsiderTransaction</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/finint.html#get_insider_transactions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.finint.get_insider_transactions" title="Link to this definition"></a></dt>
+<dd><p>Fetches the latest insider transactions for a given stock ticker from the Finnhub API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ticker</strong> – The stock ticker symbol (e.g., ‘AAPL’).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of InsiderTransaction objects, or an empty list if an error occurs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.finint.run_insider_tracking">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.finint.</span></span><span class="sig-name descname"><span class="pre">run_insider_tracking</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/finint.html#run_insider_tracking"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.finint.run_insider_tracking" title="Link to this definition"></a></dt>
+<dd><p>Tracks the latest insider trading activities for a given company.</p>
 </dd></dl>
 
 <dl class="py function" id="module-chimera_intel.core.footprint">
