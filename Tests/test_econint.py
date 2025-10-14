@@ -1,13 +1,13 @@
 import unittest
 from unittest.mock import patch, AsyncMock, MagicMock
 from typer.testing import CliRunner
-from chimera_intel.core.econint import app as econint_app
+from chimera_intel.core.econint import app 
 from chimera_intel.core.econint import (
     get_economic_indicators,
-    EconomicIndicators,
     get_macro_indicators, 
     get_micro_indicators
 )
+from chimera_intel.core.schemas import EconomicIndicators
 import pandas as pd
 import json
 
@@ -89,7 +89,7 @@ class TestEconint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(econint_app, ["indicators", "US"])
+        result = runner.invoke(app, ["indicators", "US"])
 
         # Assert
 

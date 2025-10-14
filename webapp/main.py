@@ -6,6 +6,7 @@ from fastapi import (
     Query,
     WebSocket,
     WebSocketDisconnect,
+    FastAPI,
 )
 from sqlalchemy.orm import Session
 from typing import Dict
@@ -279,3 +280,6 @@ async def websocket_endpoint(
     finally:
         db.close()
         logger.info(f"Closed DB session for WebSocket negotiation {negotiation_id}")
+
+app = FastAPI()
+app.include_router(router)
