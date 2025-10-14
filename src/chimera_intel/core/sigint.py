@@ -5,7 +5,7 @@ Radio Frequency (RF) Analysis (SIGINT) Module for Chimera Intel.
 import typer
 from typing_extensions import Annotated
 import numpy as np
-import pymodes as pm
+import pyModeS as pm
 import os
 import subprocess
 import json
