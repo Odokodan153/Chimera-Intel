@@ -143,9 +143,9 @@
 <span class="c1"># --- Content Enumeration ---</span>
 
 
-<div class="viewcode-block" id="enumerate_directories">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.enumerate_directories">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enumerate_directories</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContentEnumerationResult</span><span class="p">:</span>
+<div class="viewcode-block" id="enumerate_content">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.enumerate_content">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">enumerate_content</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContentEnumerationResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Performs directory and file enumeration using a small, common wordlist.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -201,9 +201,9 @@
 <span class="c1"># --- Advanced Cloud Recon ---</span>
 
 
-<div class="viewcode-block" id="check_subdomain_takeover">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.check_subdomain_takeover">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdvancedCloudResult</span><span class="p">:</span>
+<div class="viewcode-block" id="check_for_subdomain_takeover">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.check_for_subdomain_takeover">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_for_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdvancedCloudResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Checks for dangling DNS records pointing to de-provisioned cloud services.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -314,7 +314,7 @@
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumerates common directories and files on a web server.&quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold cyan]Enumerating content on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span><span class="p">):</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enumerate_directories</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enumerate_content</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_enum_content&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
@@ -334,7 +334,7 @@
     <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;[bold cyan]Checking for subdomain takeovers on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span>
     <span class="p">):</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_for_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_cloud_takeover&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
