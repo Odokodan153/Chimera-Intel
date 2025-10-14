@@ -1,5 +1,3 @@
-# src/chimera_intel/core/sigint.py
-
 import time
 import typer
 import logging
@@ -81,7 +79,8 @@ class SignalIntercept:
                 self.update_aircraft_velocity(icao, spd, hdg, None, t)
             elif 9 <= tc <= 18:
                 alt = adsb.altitude(msg)
-                self.update_aircraft_altitude(icao, alt, t)
+                if alt is not None:
+                    self.update_aircraft_altitude(icao, int(alt), t)
                 pos = adsb.position_with_ref(msg, self.ref_lat, self.ref_lon)
                 if pos and pos[0] is not None and pos[1] is not None:
                     self.update_aircraft_position(icao, pos[0], pos[1], t)
@@ -92,11 +91,10 @@ class SignalIntercept:
 
         elif df in [20, 21]:
             try:
-                bds = commb.bds_info(msg)
-                if bds and bds[0] == "BDS20":
-                    callsign = commb.cs20(msg)
-                    if callsign:
-                        self.aircraft[icao]["callsign"] = callsign.strip('_')
+                # Attempt to decode as a Comm-B message for aircraft identification (BDS 2,0)
+                callsign = commb.cs20(msg)
+                if callsign:
+                    self.aircraft[icao]["callsign"] = callsign.strip('_')
             except Exception as e:
                 logger.debug(f"Could not decode Comm-B message for {icao}: {e}")
 
