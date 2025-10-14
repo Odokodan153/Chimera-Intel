@@ -93,7 +93,6 @@ test = [
     "pip-audit",
     # Missing dependencies identified from logs
     "python-json-logger",
-    "hibpapi",
     "matplotlib",
     # Type Stubs
     "pandas-stubs",
