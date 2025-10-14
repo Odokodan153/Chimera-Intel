@@ -81,7 +81,7 @@ dependencies = [
     "sherlock-project>=0.14.3,<0.15.0",
     "pyais>=2.0.0",
     "wbgapi",
-    pubchempy = "^1.0.4"
+    "pubchempy>=1.0.4"
 ]
 
 [project.optional-dependencies]
