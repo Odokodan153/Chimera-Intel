@@ -1,6 +1,6 @@
 import unittest
 import logging
-from chimera_intel.core.ethint import audit_operation, Operation, Target
+from chimera_intel.core.schemas import audit_operation, Operation, Target
 
 
 class TestETHINT(unittest.TestCase):

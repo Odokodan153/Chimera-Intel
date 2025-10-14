@@ -3,10 +3,9 @@ import os
 from chimera_intel.core.dissemination_suite import (
     generate_executive_briefing,
     generate_technical_report,
-    generate_tactical_alert,
-    IntelligenceReport,
-    IntelligenceFinding,
+    generate_tactical_alert
 )
+from chimera_intel.core.schemas import IntelligenceReport, IntelligenceFinding
 
 class TestDisseminationSuite(unittest.TestCase):
     """Test cases for the Automated Dissemination & Briefing Suite."""

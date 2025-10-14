@@ -4,17 +4,17 @@ from unittest.mock import patch, MagicMock
 
 # The application instance to be tested
 from chimera_intel.core.cultint import cultint_app
-from chimera_intel.core.database import Scans
+from chimera_intel.core.schemas import ScanData
 
 runner = CliRunner()
 
 @pytest.fixture
 def mock_db_session(mocker):
     """Mocks the database session with sample scan data."""
-    mock_scan_social = Scans(
+    mock_scan_social = ScanData(
         id=1, project_name="test-group", module="social_osint", data={"post": "We must protect our digital sovereignty."}
     )
-    mock_scan_darkweb = Scans(
+    mock_scan_darkweb = ScanData(
         id=2, project_name="test-group", module="dark_web_osint", data={"forum_post": "Centralized control is the enemy."}
     )
     

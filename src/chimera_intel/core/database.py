@@ -1,11 +1,23 @@
 import psycopg2
 import json
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, field
+import datetime
 
 from .schemas import User
 from .config_loader import API_KEYS
 from .utils import console
 
+@dataclass
+class Scans:
+    """Represents a scan record in the database."""
+    id: int
+    target: str
+    module: str
+    scan_data: Dict[str, Any]
+    timestamp: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    user_id: Optional[int] = None
+    project_id: Optional[int] = None
 
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database using credentials from the environment."""
