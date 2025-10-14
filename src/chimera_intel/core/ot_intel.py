@@ -5,6 +5,7 @@ Operational Technology (OT) & ICS/SCADA Intelligence Module for Chimera Intel.
 import typer
 from typing_extensions import Annotated
 import shodan
+from typing import Optional, List 
 
 from chimera_intel.core.config_loader import API_KEYS
 
@@ -17,7 +18,7 @@ ot_intel_app = typer.Typer(
 class OTAsset:
     """Represents an Operational Technology (OT) asset."""
 
-    def __init__(self, ip_address: str, device_id: str = None, device_type: str = None, location: str = None, vulnerabilities: list = None):
+    def __init__(self, ip_address: str, device_id: Optional[str] = None, device_type: Optional[str] = None, location: Optional[str] = None, vulnerabilities: Optional[List] = None):
         """
         Initializes the OTAsset with an IP address.
 
