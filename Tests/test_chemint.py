@@ -153,8 +153,6 @@ class TestPatentSearch:
         }
         mock_search_pubs.return_value = [mock_pub]
 
-        output_file = tmp_path / "patent_results.json"
-
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )

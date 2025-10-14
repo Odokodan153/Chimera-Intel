@@ -1,6 +1,6 @@
 import logging
 import httpx
-from .schemas import FinancialInstrument, InsiderTransaction
+from .schemas import InsiderTransaction
 from typing import List, Optional
 from .config_loader import API_KEYS
 import typer
