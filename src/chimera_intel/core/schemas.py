@@ -1439,14 +1439,17 @@ class InsiderTransaction(BaseModel):
     insiderName: str
     transactionType: str
     transactionDate: str
-    shares: int
+    transactionShares: int
+    transactionCode: str
+    price: float
+    change: int
     value: Optional[int] = None
 
 
 class InsiderTradingResult(BaseModel):
     """The main, top-level result model for an insider trading scan."""
 
-    ticker: str
+    stock_symbol: str
     total_transactions: int = 0
     transactions: List[InsiderTransaction] = []
     error: Optional[str] = None
