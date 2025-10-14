@@ -115,6 +115,7 @@ class ApiKeys(BaseSettings):
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
     alpha_vantage_api_key: Optional[str] = Field(None, alias="ALPHA_VANTAGE_API_KEY")
     easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEY")
+    finnhub_api_key: Optional[str] = os.getenv("FINNHUB_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
 

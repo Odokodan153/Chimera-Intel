@@ -9,7 +9,7 @@ import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.ensemble import IsolationForest
 from .database import save_forecast_to_db
-from .finint import track_insider_trading
+from .finint import get_insider_transactions
 from .narrative_analyzer import track_narrative
 from .social_media_monitor import monitor_twitter_stream
 from typing import Optional
@@ -42,7 +42,7 @@ class StrategicForecaster:
 
         # FININT Data
         if self.ticker:
-            insider_result = track_insider_trading(self.ticker)
+            insider_result = get_insider_transactions(self.ticker)
             if not insider_result.error and insider_result.transactions:
                 df_insider = pd.DataFrame(
                     [tx.model_dump() for tx in insider_result.transactions]
