@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch, AsyncMock, MagicMock
 from typer.testing import CliRunner
+from chimera_intel.core.econint import app as econint_app
 from chimera_intel.core.econint import (
-    econint_app,
     get_economic_indicators,
     EconomicIndicators,
     get_macro_indicators, 
