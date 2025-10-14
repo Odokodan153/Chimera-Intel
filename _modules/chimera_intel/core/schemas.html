@@ -3108,29 +3108,31 @@
 <div class="viewcode-block" id="Target">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Target">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Target</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a structured target for an operation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a target in an operation.&quot;&quot;&quot;</span>
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g., &#39;network&#39;, &#39;individual&#39;, &#39;infrastructure&#39;</span>
-    <span class="n">jurisdiction</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
 <div class="viewcode-block" id="Operation">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Operation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Operation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a proposed operation with structured targets.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Defines the structure for an intelligence operation to be audited.&quot;&quot;&quot;</span>
     <span class="n">operation_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">operation_type</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">is_offensive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">targets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Target</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
-    <span class="n">targets_eu_citizen</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># Kept for specific GDPR check</span>
+    <span class="n">justification</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">is_offensive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">targets_eu_citizen</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">has_legal_basis</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="n">justification</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+    <span class="c1"># Allows for extra fields that are not explicitly defined</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="s2">&quot;allow&quot;</span></div>
 
 
 <div class="viewcode-block" id="ComplianceViolation">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ComplianceViolation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ComplianceViolation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single rule violation with severity.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single rule violation.&quot;&quot;&quot;</span>
     <span class="n">rule_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">framework</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span>
@@ -3140,7 +3142,7 @@
 <div class="viewcode-block" id="ComplianceResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ComplianceResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ComplianceResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Holds the result of a compliance audit.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Contains the full result of a compliance audit.&quot;&quot;&quot;</span>
     <span class="n">operation_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">is_compliant</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">violations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ComplianceViolation</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
