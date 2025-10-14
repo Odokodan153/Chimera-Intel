@@ -15,7 +15,7 @@ from functools import lru_cache
 
 # Core Chimera Intel imports
 
-from chimera_intel.core.database import get_db
+from chimera_intel.core.database import get_db_connection as get_db
 from chimera_intel.core import schemas, models
 from chimera_intel.core.negotiation import NegotiationEngine
 from .auth import get_current_user

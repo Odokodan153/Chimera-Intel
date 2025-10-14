@@ -26,7 +26,7 @@ from chimera_intel.core.web_analyzer import (
     CACHE_TTL_SECONDS,
 )
 
-from .schemas import (
+from chimera_intel.core.schemas import (
     WebAnalysisResult,
     TechStackRisk,
 )
