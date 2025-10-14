@@ -1,7 +1,6 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
 from fastapi.testclient import TestClient
-from webapp.main import app
 
 @pytest.fixture
 def engine():
@@ -29,7 +28,7 @@ def test_recommend_tactic_with_history(engine):
     assert "Concession" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
 
-client = TestClient(app)
+client = TestClient()
 
 def test_create_negotiation():
     """Tests the creation of a new negotiation session."""
