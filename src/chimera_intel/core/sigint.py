@@ -1,178 +1,224 @@
-"""
-Radio Frequency (RF) Analysis (SIGINT) Module for Chimera Intel.
-"""
+# src/chimera_intel/core/sigint.py
 
+import time
 import typer
-from typing_extensions import Annotated
-import numpy as np
-import pyModeS as pm
-import os
-import subprocess
-import json
-from rich.console import Console
-from rich.table import Table
+import logging
+import socket
+import csv
+from typing import Dict, Any, Optional
 
-console = Console()
+# ADS-B and Mode-S decoding
+import pyModeS as pms
+from pyModeS.decoder import adsb, commb
 
-# Create a new Typer application for SIGINT commands
+# AIS decoding
+import pyais
 
+from chimera_intel.core.utils import console, save_or_print_results
+from chimera_intel.core.database import save_scan_to_db
 
-sigint_app = typer.Typer(
-    name="sigint",
-    help="Radio Frequency (RF) Analysis (SIGINT)",
-)
+logger = logging.getLogger(__name__)
 
+class SignalIntercept:
+    """A class to handle Mode-S signal interception and decoding."""
 
-def decode_adsb_from_capture(capture_path: str):
-    """
-    Decodes ADS-B messages from a raw I/Q signal capture file.
-    """
-    console.print(f"[cyan]Decoding ADS-B signals from {capture_path}...[/cyan]")
-    # Read the raw I/Q data from the file
+    def __init__(self, ref_lat: float, ref_lon: float):
+        self.aircraft: Dict[str, Dict[str, Any]] = {}
+        self.ref_lat = ref_lat
+        self.ref_lon = ref_lon
 
-    try:
-        iq_samples = np.fromfile(capture_path, dtype=np.complex64)
-        magnitude = np.abs(iq_samples)
-        messages = pm.demod.decode(magnitude, "long")
+    def update_aircraft_position(self, icao: str, lat: float, lon: float, t: float):
+        """Updates the position of a known aircraft."""
+        if icao not in self.aircraft:
+            self.aircraft[icao] = {}
+        self.aircraft[icao]["lat"] = lat
+        self.aircraft[icao]["lon"] = lon
+        self.aircraft[icao]["last_pos_update"] = t
 
-        if not messages:
-            console.print(
-                "[yellow]No ADS-B messages could be decoded from the capture.[/yellow]"
-            )
+    def update_aircraft_altitude(self, icao: str, alt: Optional[int], t: float):
+        """Updates the altitude of a known aircraft."""
+        if icao not in self.aircraft:
+            self.aircraft[icao] = {}
+        self.aircraft[icao]["altitude"] = alt
+        self.aircraft[icao]["last_alt_update"] = t
+        
+    def update_aircraft_velocity(self, icao: str, spd: Optional[float], hdg: Optional[float], vr: Optional[int], t: float):
+        """Updates the velocity of a known aircraft."""
+        if icao not in self.aircraft:
+            self.aircraft[icao] = {}
+        self.aircraft[icao]["speed"] = spd
+        self.aircraft[icao]["heading"] = hdg
+        self.aircraft[icao]["vert_rate"] = vr
+        self.aircraft[icao]["last_vel_update"] = t
+
+    def process_message(self, msg: str, t: float):
+        """Processes a single Mode-S message using the updated pyModeS API."""
+        if len(msg) < 14:
             return
-        table = Table(title="Decoded ADS-B Messages")
-        table.add_column("ICAO ID", style="cyan")
-        table.add_column("Type", style="magenta")
-        table.add_column("Information", style="green")
 
-        for msg, ts in messages:
-            df = pm.df(msg)
-            icao = pm.icao(msg)
-            msg_type = f"DF{df} - {pm.decoder.df_str.get(df, 'Unknown')}"
-            info = ""
+        df = pms.df(msg)
+        icao = pms.icao(msg)
 
-            if df == 17:  # Extended Squitter
-                tc = pm.adsb.typecode(msg)
-                if 1 <= tc <= 4:
-                    info = f"Callsign: {pm.adsb.callsign(msg).strip('_')}"
-                elif 9 <= tc <= 18:
-                    alt = pm.adsb.alt(msg)
-                    lat, lon = pm.adsb.latlon(msg)
-                    info = f"Position: Lat={lat:.4f}, Lon={lon:.4f}, Alt={alt} ft"
-                elif tc == 19:
-                    velocity = pm.adsb.velocity(msg)
-                    info = (
-                        f"Velocity: {velocity[0]:.2f} kts, Heading: {velocity[1]:.2f}°"
-                    )
-            elif df == 20 or df == 21:  # Comm-B
-                bds = pm.bds.bds_commb(msg)
-                if bds:
-                    info = f"BDS Data: {bds}"
-            if info:
-                table.add_row(icao, msg_type, info)
-        console.print(table)
-    except Exception as e:
-        console.print(
-            f"[bold red]An error occurred during ADS-B decoding: {e}[/bold red]"
-        )
-
-
-def decode_ais_from_capture(capture_path: str):
-    """
-    Decodes AIS messages from a raw signal capture using the rtl_ais tool.
-    This function requires rtl_ais to be installed and in the system's PATH.
-    """
-    console.print(
-        f"[cyan]Decoding AIS signals from {capture_path} using rtl_ais...[/cyan]"
-    )
-    try:
-        # The command pipes the raw capture file into rtl_ais
-
-        command = "rtl_sdr -f 162.025M -s 24000 - | rtl_ais -n"
-        process = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=120,  # Add a timeout as it might run indefinitely
-        )
-
-        if process.returncode != 0 and process.stderr:
-            if "not found" in process.stderr.lower():
-                raise FileNotFoundError(
-                    "rtl_ais command not found. Please ensure it is installed and in your PATH."
-                )
-            raise Exception(f"rtl_ais error: {process.stderr}")
-        messages = process.stdout.strip().splitlines()
-        if not messages:
-            console.print(
-                "[yellow]No AIS messages could be decoded from the capture.[/yellow]"
-            )
+        if not icao:
             return
-        table = Table(title="Decoded AIS Messages")
-        table.add_column("MMSI", style="cyan")
-        table.add_column("Message Type", style="magenta")
-        table.add_column("Details", style="green")
 
-        for msg_json in messages:
+        if icao not in self.aircraft:
+            self.aircraft[icao] = {}
+
+        if df == 17:  # ADS-B Message
+            tc = adsb.typecode(msg)
+            if tc is None:
+                return
+
+            if 1 <= tc <= 4:
+                callsign = adsb.callsign(msg)
+                self.aircraft[icao]["callsign"] = callsign.strip('_')
+            elif 5 <= tc <= 8:
+                pos = adsb.surface_position_with_ref(msg, self.ref_lat, self.ref_lon)
+                if pos:
+                    self.update_aircraft_position(icao, pos[0], pos[1], t)
+                spd, hdg, _, _ = adsb.surface_velocity(msg)
+                self.update_aircraft_velocity(icao, spd, hdg, None, t)
+            elif 9 <= tc <= 18:
+                alt = adsb.altitude(msg)
+                self.update_aircraft_altitude(icao, alt, t)
+                pos = adsb.position_with_ref(msg, self.ref_lat, self.ref_lon)
+                if pos and pos[0] is not None and pos[1] is not None:
+                    self.update_aircraft_position(icao, pos[0], pos[1], t)
+            elif tc == 19:
+                vel = adsb.velocity(msg)
+                if vel:
+                    self.update_aircraft_velocity(icao, vel[0], vel[1], vel[2], t)
+
+        elif df in [20, 21]:
             try:
-                msg = json.loads(msg_json)
-                msg_type = msg.get("class")
-                mmsi = msg.get("mmsi")
-                details = ""
-                if msg_type == "AIS:PositionReport":
-                    details = f"Lat: {msg.get('lat', 'N/A')}, Lon: {msg.get('lon', 'N/A')}, SOG: {msg.get('speed_over_ground', 'N/A')} kts"
-                elif msg_type == "AIS:StaticDataReport":
-                    details = f"Name: {msg.get('shipname', 'N/A')}, Type: {msg.get('shiptype_text', 'N/A')}"
-                if mmsi and details:
-                    table.add_row(str(mmsi), msg_type, details)
-            except json.JSONDecodeError:
-                continue  # Ignore lines that are not valid JSON
-        console.print(table)
-    except FileNotFoundError as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+                bds = commb.bds_info(msg)
+                if bds and bds[0] == "BDS20":
+                    callsign = commb.cs20(msg)
+                    if callsign:
+                        self.aircraft[icao]["callsign"] = callsign.strip('_')
+            except Exception as e:
+                logger.debug(f"Could not decode Comm-B message for {icao}: {e}")
+
+def run_sigint_analysis(ref_lat: float, ref_lon: float, host: str, port: int, duration_seconds: int = 60) -> Dict[str, Any]:
+    """Monitors and decodes a live Mode-S TCP stream (e.g., from dump1090)."""
+    console.print(f"[bold cyan]Starting live SIGINT analysis for {duration_seconds} seconds from {host}:{port}...[/bold cyan]")
+    interceptor = SignalIntercept(ref_lat=ref_lat, ref_lon=ref_lon)
+    
+    start_time = time.time()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            s.settimeout(1.0)  # Don't block forever
+            while time.time() - start_time < duration_seconds:
+                try:
+                    data = s.recv(1024).decode('utf-8', errors='ignore')
+                    # Beast format messages start with '*' and end with ';'
+                    messages = data.strip().split(';')
+                    for msg in messages:
+                        if msg.startswith('*'):
+                            interceptor.process_message(msg[1:], time.time())
+                except socket.timeout:
+                    continue # No data received, just continue the loop
+                except Exception as e:
+                    logger.error(f"Error processing stream data: {e}")
+
+    except (socket.error, ConnectionRefusedError) as e:
+        console.print(f"[bold red]Error connecting to stream at {host}:{port}: {e}[/bold red]")
+        return {}
+
+    console.print("[bold green]Live SIGINT analysis complete.[/bold green]")
+    return interceptor.aircraft
+
+def decode_adsb_from_capture(file_path: str, ref_lat: float, ref_lon: float) -> Dict[str, Any]:
+    """Decodes ADS-B messages from a CSV capture file."""
+    console.print(f"[bold cyan]Decoding ADS-B data from {file_path}...[/bold cyan]")
+    interceptor = SignalIntercept(ref_lat=ref_lat, ref_lon=ref_lon)
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader) # Skip header
+            for row in reader:
+                timestamp, hex_msg = float(row[0]), row[1]
+                interceptor.process_message(hex_msg, timestamp)
+    except FileNotFoundError:
+        console.print(f"[bold red]Error: File not found at {file_path}[/bold red]")
+        return {}
     except Exception as e:
-        console.print(
-            f"[bold red]An error occurred during AIS decoding: {e}[/bold red]"
-        )
+        console.print(f"[bold red]An error occurred while processing the file: {e}[/bold red]")
+        return {}
+        
+    console.print("[bold green]ADS-B capture file decoding complete.[/bold green]")
+    return interceptor.aircraft
 
+def decode_ais_from_capture(file_path: str) -> Dict[str, Any]:
+    """Decodes AIS NMEA messages from a text or CSV capture file."""
+    console.print(f"[bold cyan]Decoding AIS data from {file_path}...[/bold cyan]")
+    vessels = {}
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                try:
+                    # pyais can decode raw NMEA sentences
+                    msg = pyais.decode(line.strip().encode())
+                    if msg and hasattr(msg, 'mmsi'):
+                        vessels[msg.mmsi] = msg.asdict()
+                except Exception as e:
+                    logger.debug(f"Could not decode AIS message: '{line.strip()}' - {e}")
+    except FileNotFoundError:
+        console.print(f"[bold red]Error: File not found at {file_path}[/bold red]")
+        return {}
+    except Exception as e:
+        console.print(f"[bold red]An error occurred while processing the file: {e}[/bold red]")
+        return {}
+        
+    console.print("[bold green]AIS capture file decoding complete.[/bold green]")
+    return vessels
 
-@sigint_app.command(
-    name="decode-capture", help="Decode signals from a raw SDR capture file."
-)
-def decode_capture(
-    capture_file: Annotated[
-        str,
-        typer.Argument(help="Path to the raw signal capture file (e.g., .cu8)."),
-    ],
-    protocol: Annotated[
-        str,
-        typer.Option(
-            "--protocol",
-            "-p",
-            help="The RF protocol to decode (e.g., adsb, ais).",
-            prompt="Enter the protocol to decode",
-        ),
-    ],
+# --- Typer CLI Application ---
+
+sigint_app = typer.Typer()
+
+@sigint_app.command("live")
+def run_live_scan(
+    ref_lat: float = typer.Option(..., "--lat", help="Reference latitude for position decoding."),
+    ref_lon: float = typer.Option(..., "--lon", help="Reference longitude for position decoding."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Host of the ADS-B TCP stream."),
+    port: int = typer.Option(30005, "--port", help="Port of the ADS-B TCP stream (e.g., 30005 for Beast format)."),
+    duration: int = typer.Option(60, "--duration", "-d", help="Duration of the scan in seconds."),
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Save the results to a JSON file."),
 ):
-    """
-    Analyzes a raw radio signal capture to identify and decode wireless
-    communications and device signals.
-    """
-    console.print(f"Decoding '{protocol.upper()}' signals from: {capture_file}")
+    """Monitors and decodes a live stream of aircraft signals (Mode-S/ADS-B)."""
+    results = run_sigint_analysis(ref_lat, ref_lon, host, port, duration)
+    final_results = {icao: data for icao, data in results.items() if data}
+    save_or_print_results(final_results, output_file)
+    if final_results:
+        save_scan_to_db(target="live_aircraft_signals", module="sigint", data=final_results)
 
-    if not os.path.exists(capture_file):
-        console.print(f"Error: Capture file not found at '{capture_file}'")
-        raise typer.Exit(code=1)
-    if protocol.lower() == "adsb":
-        decode_adsb_from_capture(capture_file)
-    elif protocol.lower() == "ais":
-        decode_ais_from_capture(capture_file)
-    else:
-        console.print(f"Error: Protocol '{protocol}' is not currently supported.")
-        raise typer.Exit(code=1)
-    console.print("\nSignal analysis complete.")
+@sigint_app.command("decode-adsb")
+def decode_adsb_file(
+    capture_file: str = typer.Argument(..., help="Path to the ADS-B CSV capture file (timestamp,hex_message)."),
+    ref_lat: float = typer.Option(..., "--lat", help="Reference latitude for position decoding."),
+    ref_lon: float = typer.Option(..., "--lon", help="Reference longitude for position decoding."),
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Save the results to a JSON file."),
+):
+    """Decodes aircraft signals from a capture file."""
+    results = decode_adsb_from_capture(capture_file, ref_lat, ref_lon)
+    final_results = {icao: data for icao, data in results.items() if data}
+    save_or_print_results(final_results, output_file)
+    if final_results:
+        save_scan_to_db(target=capture_file, module="sigint_adsb_capture", data=final_results)
 
+@sigint_app.command("decode-ais")
+def decode_ais_file(
+    capture_file: str = typer.Argument(..., help="Path to the AIS NMEA capture file (one message per line)."),
+    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Save the results to a JSON file."),
+):
+    """Decodes maritime AIS signals from a capture file."""
+    results = decode_ais_from_capture(capture_file)
+    save_or_print_results(results, output_file)
+    if results:
+        save_scan_to_db(target=capture_file, module="sigint_ais_capture", data=results)
 
 if __name__ == "__main__":
     sigint_app()
