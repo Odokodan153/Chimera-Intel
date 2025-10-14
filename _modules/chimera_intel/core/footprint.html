@@ -1,0 +1,1020 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>chimera_intel.core.footprint &mdash; Chimera Intel 6.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=12958129"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Chimera Intel
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">Project Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Chimera Intel</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">chimera_intel.core.footprint</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for chimera_intel.core.footprint</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">whois</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">dns.resolver</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shodan</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nmap</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hibpwned</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rich.panel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Panel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Coroutine</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestError</span><span class="p">,</span> <span class="n">HTTPStatusError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">Wappalyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Wappalyzer</span><span class="p">,</span> <span class="n">WebPage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">console</span><span class="p">,</span> <span class="n">save_or_print_results</span><span class="p">,</span> <span class="n">is_valid_domain</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_scan_to_db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONFIG</span><span class="p">,</span> <span class="n">API_KEYS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FootprintResult</span><span class="p">,</span>
+    <span class="n">FootprintData</span><span class="p">,</span>
+    <span class="n">SubdomainReport</span><span class="p">,</span>
+    <span class="n">ScoredResult</span><span class="p">,</span>
+    <span class="n">DnssecInfo</span><span class="p">,</span>
+    <span class="n">TlsCertInfo</span><span class="p">,</span>
+    <span class="n">AsnInfo</span><span class="p">,</span>
+    <span class="n">HistoricalDns</span><span class="p">,</span>
+    <span class="n">IpGeolocation</span><span class="p">,</span>
+    <span class="n">BreachInfo</span><span class="p">,</span>
+    <span class="n">PortScanResult</span><span class="p">,</span>
+    <span class="n">WebTechInfo</span><span class="p">,</span>
+    <span class="n">PersonnelInfo</span><span class="p">,</span>
+    <span class="n">KnowledgeGraph</span><span class="p">,</span>
+    <span class="n">IpInfo</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">chimera_intel.core.http_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.threat_intel</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_threat_intel_otx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.project_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_target</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="c1"># --- Simple In-Memory Cache ---</span>
+
+
+<span class="n">API_CACHE</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">CACHE_TTL_SECONDS</span> <span class="o">=</span> <span class="mi">600</span>  <span class="c1"># Cache results for 10 minutes</span>
+
+
+<span class="c1"># --- Synchronous Helper Functions ---</span>
+
+
+<div class="viewcode-block" id="get_whois_info">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_whois_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_whois_info</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves WHOIS information for a given domain.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to perform the WHOIS lookup on.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict[str, Any]: A dictionary of the WHOIS record, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">domain_info</span> <span class="o">=</span> <span class="n">whois</span><span class="o">.</span><span class="n">whois</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">domain_info</span> <span class="ow">and</span> <span class="n">domain_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;domain_name&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">domain_info</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;No WHOIS record found.&quot;</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An exception occurred during WHOIS lookup for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;An exception occurred during WHOIS lookup: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_dns_records">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_dns_records">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_dns_records</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves common DNS records for a given domain from config.yaml.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for DNS records.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict[str, Any]: A dictionary where keys are record types (e.g., &#39;A&#39;, &#39;MX&#39;)</span>
+<span class="sd">                        and values are lists of records, or an error message.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dns_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">record_types</span> <span class="o">=</span> <span class="n">CONFIG</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">footprint</span><span class="o">.</span><span class="n">dns_records_to_query</span>
+    <span class="k">for</span> <span class="n">record_type</span> <span class="ow">in</span> <span class="n">record_types</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">answers</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">record_type</span><span class="p">)</span>
+            <span class="n">dns_results</span><span class="p">[</span><span class="n">record_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">to_text</span><span class="p">())</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">answers</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">:</span>
+            <span class="n">dns_results</span><span class="p">[</span><span class="n">record_type</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">except</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DNS query failed for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39; (NXDOMAIN).&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Domain does not exist (NXDOMAIN): </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Could not resolve DNS record type &#39;</span><span class="si">{</span><span class="n">record_type</span><span class="si">}</span><span class="s2">&#39; for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">dns_results</span><span class="p">[</span><span class="n">record_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Could not resolve </span><span class="si">{</span><span class="n">record_type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">dns_results</span></div>
+
+
+
+<span class="c1"># --- Asynchronous Data Gathering Functions ---</span>
+
+
+<div class="viewcode-block" id="get_subdomains_virustotal">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_subdomains_virustotal">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_subdomains_virustotal</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronously retrieves subdomains from the VirusTotal API.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for subdomains.</span>
+<span class="sd">        api_key (str): The VirusTotal API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of subdomain strings found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x-apikey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">}</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://www.virustotal.com/api/v3/domains/</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/subdomains?limit=100&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">url</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached VirusTotal data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="n">subdomains</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="p">[])]</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">subdomains</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">subdomains</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching subdomains from VirusTotal for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_subdomains_dnsdumpster">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_subdomains_dnsdumpster">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_subdomains_dnsdumpster</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for subdomains.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of subdomain strings found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://dnsdumpster.com/&quot;</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached DNSDumpster data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">home_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">home_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">csrf_token</span> <span class="o">=</span> <span class="n">home_response</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;csrftoken&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">csrf_token</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not retrieve CSRF token from DNSDumpster.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="n">post_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;csrfmiddlewaretoken&quot;</span><span class="p">:</span> <span class="n">csrf_token</span><span class="p">,</span>
+            <span class="s2">&quot;targetip&quot;</span><span class="p">:</span> <span class="n">domain</span><span class="p">,</span>
+            <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="s2">&quot;free&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Referer&quot;</span><span class="p">:</span> <span class="s2">&quot;https://dnsdumpster.com/&quot;</span><span class="p">}</span>
+        <span class="n">results_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">post_data</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="n">results_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">subdomains_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
+            <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span>
+                <span class="sa">r</span><span class="s1">&#39;&lt;td class=&quot;col-md-4&quot;&gt;([\w\d\.\-]+\.&#39;</span> <span class="o">+</span> <span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span> <span class="o">+</span> <span class="sa">r</span><span class="s2">&quot;)&lt;br&gt;&quot;</span><span class="p">,</span>
+                <span class="n">results_response</span><span class="o">.</span><span class="n">text</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">subdomains</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">subdomains_set</span><span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">subdomains</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">subdomains</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error scraping DNSDumpster for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_subdomains_threatminer">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_subdomains_threatminer">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_subdomains_threatminer</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronously retrieves subdomains from the ThreatMiner API.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for subdomains.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of subdomain strings found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://api.threatminer.org/v2/domain.php?q=</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&amp;rt=5&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">url</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached ThreatMiner data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status_code&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;200&quot;</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">results</span><span class="p">}</span>
+            <span class="k">return</span> <span class="n">results</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">RequestError</span><span class="p">,</span> <span class="n">HTTPStatusError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching subdomains from ThreatMiner for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_subdomains_urlscan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_subdomains_urlscan">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_subdomains_urlscan</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronously retrieves subdomains from the URLScan.io API.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for subdomains.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of subdomain strings found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://urlscan.io/api/v1/search/?q=domain:</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">url</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached URLScan.io data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="n">subdomains</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;page&quot;</span><span class="p">][</span><span class="s2">&quot;domain&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="s2">&quot;page&quot;</span> <span class="ow">in</span> <span class="n">result</span> <span class="ow">and</span> <span class="s2">&quot;domain&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;page&quot;</span><span class="p">]</span>
+        <span class="p">}</span>
+        <span class="n">subdomain_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">subdomains</span><span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">subdomain_list</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">subdomain_list</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">RequestError</span><span class="p">,</span> <span class="n">HTTPStatusError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching subdomains from URLScan.io for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_subdomains_shodan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_subdomains_shodan">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_subdomains_shodan</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronously retrieves subdomains from the Shodan API.</span>
+
+<span class="sd">    This function runs the synchronous Shodan library in a separate thread</span>
+<span class="sd">    to avoid blocking the asyncio event loop.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for subdomains.</span>
+<span class="sd">        api_key (str): The Shodan API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of subdomain strings found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;hostname:.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">query</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">query</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached Shodan data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">query</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">api</span> <span class="o">=</span> <span class="n">shodan</span><span class="o">.</span><span class="n">Shodan</span><span class="p">(</span><span class="n">api_key</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+            <span class="n">hostnames</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">host</span><span class="p">[</span><span class="s2">&quot;hostnames&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;matches&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">host</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hostnames&quot;</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">hostname_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">hostnames</span><span class="p">)</span>
+            <span class="n">API_CACHE</span><span class="p">[</span><span class="n">query</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">hostname_list</span><span class="p">}</span>
+            <span class="k">return</span> <span class="n">hostname_list</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching subdomains from Shodan for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">search</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Extended Intelligence Functions ---</span>
+
+
+<div class="viewcode-block" id="get_ip_info">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_ip_info">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_ip_info</span><span class="p">(</span><span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IpInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves combined ASN and geolocation info for an IP address using ipinfo.io.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip_address (str): The IP address to query.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        IpInfo: A Pydantic model containing combined IP information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://ipinfo.io/</span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">/json&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">url</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached IP info for </span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="n">ip_info</span> <span class="o">=</span> <span class="n">IpInfo</span><span class="p">(</span>
+            <span class="n">asn</span><span class="o">=</span><span class="n">AsnInfo</span><span class="p">(</span>
+                <span class="n">asn</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;org&quot;</span><span class="p">),</span>
+                <span class="n">owner</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;org&quot;</span><span class="p">),</span>
+                <span class="n">country</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country&quot;</span><span class="p">),</span>
+                <span class="n">prefix</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;org&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">geolocation</span><span class="o">=</span><span class="n">IpGeolocation</span><span class="p">(</span>
+                <span class="n">ip</span><span class="o">=</span><span class="n">ip_address</span><span class="p">,</span>
+                <span class="n">city</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;city&quot;</span><span class="p">),</span>
+                <span class="n">country</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;country&quot;</span><span class="p">),</span>
+                <span class="n">provider</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;org&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">url</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">ip_info</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">ip_info</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching IP info from ipinfo.io for &#39;</span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">IpInfo</span><span class="p">(</span>
+            <span class="n">asn</span><span class="o">=</span><span class="n">AsnInfo</span><span class="p">(</span><span class="n">asn</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">country</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">geolocation</span><span class="o">=</span><span class="n">IpGeolocation</span><span class="p">(</span><span class="n">ip</span><span class="o">=</span><span class="n">ip_address</span><span class="p">,</span> <span class="n">city</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">country</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_passive_dns">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_passive_dns">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_passive_dns</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HistoricalDns</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieves passive DNS information from VirusTotal.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query.</span>
+<span class="sd">        api_key (str): The VirusTotal API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        HistoricalDns: A Pydantic model containing historical DNS records.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://www.virustotal.com/api/v3/domains/</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">/resolutions&quot;</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x-apikey&quot;</span><span class="p">:</span> <span class="n">api_key</span><span class="p">}</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached passive DNS data for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">a_records</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="s1">&#39;ip_address&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;attributes&#39;</span><span class="p">][</span><span class="s1">&#39;date&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data</span>
+            <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">][</span><span class="s2">&quot;ip_address&quot;</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="n">a_records</span><span class="p">,</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[]),</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching passive DNS from VirusTotal for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span></div>
+
+
+
+<div class="viewcode-block" id="get_reverse_ip_lookup">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_reverse_ip_lookup">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_reverse_ip_lookup</span><span class="p">(</span><span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs a reverse IP lookup to find other domains on the same IP.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip_address (str): The IP address to perform the reverse lookup on.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List[str]: A list of domain names hosted on the IP address.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">reversed_ip</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">reversename</span><span class="o">.</span><span class="n">from_address</span><span class="p">(</span><span class="n">ip_address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span> <span class="k">for</span> <span class="n">ptr</span> <span class="ow">in</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">reversed_ip</span><span class="p">,</span> <span class="s2">&quot;PTR&quot;</span><span class="p">)]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error performing reverse IP lookup for &#39;</span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+
+<div class="viewcode-block" id="get_tls_cert_info">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_tls_cert_info">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_tls_cert_info</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TlsCertInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Analyzes TLS/SSL certificate information from crt.sh.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query for certificates.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        TlsCertInfo: A Pydantic model containing certificate information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://crt.sh/?q=%25.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&amp;output=json&quot;</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached TLS certificate info for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">latest_cert</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cert_info</span> <span class="o">=</span> <span class="n">TlsCertInfo</span><span class="p">(</span>
+            <span class="n">issuer</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;issuer_name&quot;</span><span class="p">),</span>
+            <span class="n">subject</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;common_name&quot;</span><span class="p">),</span>
+            <span class="n">sans</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name_value&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">),</span>
+            <span class="n">not_before</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;not_before&quot;</span><span class="p">),</span>
+            <span class="n">not_after</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;not_after&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">cert_info</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">cert_info</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching TLS certificate info from crt.sh for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="check_dnssec">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.check_dnssec">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_dnssec</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DnssecInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validates DNSSEC, SPF, DKIM, and DMARC records.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to check.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DnssecInfo: A Pydantic model containing DNS security information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dnssec_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">spf_record</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">dmarc_record</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">dnskey_response</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">rdatatype</span><span class="o">.</span><span class="n">DNSKEY</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dnskey_response</span><span class="p">:</span>
+            <span class="n">dnssec_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
+        <span class="k">pass</span>  <span class="c1"># DNSSEC not enabled</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking DNSSEC for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">spf_response</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;TXT&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">spf_response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;v=spf1&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+                <span class="n">spf_record</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+                <span class="k">break</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking SPF for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">dmarc_response</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;_dmarc.</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;TXT&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">dmarc_response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;v=DMARC1&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+                <span class="n">dmarc_record</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+                <span class="k">break</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking DMARC for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+    <span class="k">return</span> <span class="n">DnssecInfo</span><span class="p">(</span>
+        <span class="n">dnssec_enabled</span><span class="o">=</span><span class="n">dnssec_enabled</span><span class="p">,</span>
+        <span class="n">spf_record</span><span class="o">=</span><span class="n">spf_record</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">),</span>
+        <span class="n">dmarc_record</span><span class="o">=</span><span class="n">dmarc_record</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="detect_cdn">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.detect_cdn">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">detect_cdn</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detects if a domain is using a CDN.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to check.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Optional[str]: The name of the CDN provider if detected, otherwise None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">answers</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;CNAME&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">rdata</span> <span class="ow">in</span> <span class="n">answers</span><span class="p">:</span>
+            <span class="n">cname</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">rdata</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;cloudflare&quot;</span> <span class="ow">in</span> <span class="n">cname</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;Cloudflare&quot;</span>
+            <span class="k">elif</span> <span class="s2">&quot;akamai&quot;</span> <span class="ow">in</span> <span class="n">cname</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;Akamai&quot;</span>
+            <span class="k">elif</span> <span class="s2">&quot;fastly&quot;</span> <span class="ow">in</span> <span class="n">cname</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;Fastly&quot;</span>
+            <span class="k">elif</span> <span class="s2">&quot;aws&quot;</span> <span class="ow">in</span> <span class="n">cname</span><span class="p">:</span>
+                <span class="k">return</span> <span class="s2">&quot;Amazon CloudFront&quot;</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error detecting CDN for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="get_breach_info">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_breach_info">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_breach_info</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BreachInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Checks for data breaches and leaks associated with a domain using HaveIBeenPwned.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to check for breaches.</span>
+<span class="sd">        api_key (str): The HIBP API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        BreachInfo: A Pydantic model containing breach information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;hibp_</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached breach info for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">hibpwned</span><span class="o">.</span><span class="n">HIBP</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">)</span> <span class="k">as</span> <span class="n">hibp</span><span class="p">:</span>
+            <span class="n">breaches</span> <span class="o">=</span> <span class="n">hibp</span><span class="o">.</span><span class="n">get_breaches_for_account</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;test@</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">breach_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">breach</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">breach</span> <span class="ow">in</span> <span class="n">breaches</span><span class="p">]</span>
+        <span class="n">breach_info</span> <span class="o">=</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="n">breach_names</span><span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">breach_info</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">breach_info</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching breach info from HIBP for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span></div>
+
+
+
+<div class="viewcode-block" id="perform_port_scan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.perform_port_scan">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perform_port_scan</span><span class="p">(</span><span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PortScanResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performs a light port scan to identify open ports and services using python-nmap.</span>
+
+<span class="sd">    WARNING: Port scanning can have legal implications. Use responsibly.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip_address (str): The IP address to scan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PortScanResult: A Pydantic model containing open ports and services.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nm</span> <span class="o">=</span> <span class="n">nmap</span><span class="o">.</span><span class="n">PortScanner</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Scanning top 1000 ports</span>
+        <span class="n">nm</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">ip_address</span><span class="p">,</span> <span class="s2">&quot;1-1000&quot;</span><span class="p">)</span>
+        <span class="n">open_ports</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">ip_address</span> <span class="ow">in</span> <span class="n">nm</span><span class="o">.</span><span class="n">all_hosts</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">proto</span> <span class="ow">in</span> <span class="n">nm</span><span class="p">[</span><span class="n">ip_address</span><span class="p">]</span><span class="o">.</span><span class="n">all_protocols</span><span class="p">():</span>
+                <span class="n">lport</span> <span class="o">=</span> <span class="n">nm</span><span class="p">[</span><span class="n">ip_address</span><span class="p">][</span><span class="n">proto</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">port</span> <span class="ow">in</span> <span class="n">lport</span><span class="p">:</span>
+                    <span class="n">open_ports</span><span class="p">[</span><span class="n">port</span><span class="p">]</span> <span class="o">=</span> <span class="n">nm</span><span class="p">[</span><span class="n">ip_address</span><span class="p">][</span><span class="n">proto</span><span class="p">][</span><span class="n">port</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">PortScanResult</span><span class="p">(</span><span class="n">open_ports</span><span class="o">=</span><span class="n">open_ports</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error performing port scan on &#39;</span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PortScanResult</span><span class="p">(</span><span class="n">open_ports</span><span class="o">=</span><span class="p">{})</span></div>
+
+
+
+<div class="viewcode-block" id="get_web_technologies">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.get_web_technologies">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_web_technologies</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WebTechInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Profiles web technologies used by a website using Wappalyzer.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        url (str): The URL of the website to profile.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        WebTechInfo: A Pydantic model containing web technology information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">wappalyzer</span> <span class="o">=</span> <span class="n">Wappalyzer</span><span class="o">.</span><span class="n">latest</span><span class="p">()</span>
+        <span class="n">webpage</span> <span class="o">=</span> <span class="n">WebPage</span><span class="o">.</span><span class="n">new_from_url</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">technologies</span> <span class="o">=</span> <span class="n">wappalyzer</span><span class="o">.</span><span class="n">analyze_with_versions</span><span class="p">(</span><span class="n">webpage</span><span class="p">)</span>
+        <span class="n">web_tech_info</span> <span class="o">=</span> <span class="n">WebTechInfo</span><span class="p">(</span>
+            <span class="n">cms</span><span class="o">=</span><span class="n">technologies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cms&quot;</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">framework</span><span class="o">=</span><span class="n">technologies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;javascript-frameworks&quot;</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">web_server</span><span class="o">=</span><span class="n">technologies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;web-servers&quot;</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">js_library</span><span class="o">=</span><span class="n">technologies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;javascript-libraries&quot;</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">web_tech_info</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error profiling web technologies for &#39;</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">WebTechInfo</span><span class="p">(</span><span class="n">cms</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">framework</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">web_server</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">js_library</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="discover_personnel">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.discover_personnel">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">discover_personnel</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PersonnelInfo</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discovers employee and contact information related to a domain using Hunter.io.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The domain to query.</span>
+<span class="sd">        api_key (str): The Hunter.io API key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PersonnelInfo: A Pydantic model containing personnel information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">api_key</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://api.hunter.io/v2/domain-search?domain=</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&amp;api_key=</span><span class="si">{</span><span class="n">api_key</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;hunter_</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">cache_key</span> <span class="ow">in</span> <span class="n">API_CACHE</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">CACHE_TTL_SECONDS</span>
+    <span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning cached personnel info for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;emails&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">employees</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">email</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;first_name&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">email</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last_name&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="n">email</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">email</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;position&quot;</span><span class="p">),</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">email</span> <span class="ow">in</span> <span class="n">data</span>
+        <span class="p">]</span>
+        <span class="n">personnel_info</span> <span class="o">=</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="n">employees</span><span class="p">)</span>
+        <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">personnel_info</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">personnel_info</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching personnel info from Hunter.io for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span></div>
+
+
+
+<span class="c1"># --- Core Logic Function ---</span>
+
+
+<div class="viewcode-block" id="gather_footprint_data">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.gather_footprint_data">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">gather_footprint_data</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FootprintResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Orchestrates the gathering of all footprint data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        domain (str): The target domain for the footprint scan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        FootprintResult: A Pydantic model containing all the gathered</span>
+<span class="sd">                         and processed data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># --- Stage 1: Initial Data Gathering ---</span>
+
+    <span class="n">vt_api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">virustotal_api_key</span>
+    <span class="n">shodan_api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">shodan_api_key</span>
+    <span class="n">hibp_api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">hibp_api_key</span>
+    <span class="n">hunter_api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">hunter_api_key</span>
+
+    <span class="n">initial_tasks</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">get_subdomains_virustotal</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">vt_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[]),</span>
+        <span class="n">get_subdomains_dnsdumpster</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">get_subdomains_threatminer</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">get_subdomains_urlscan</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">get_subdomains_shodan</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">shodan_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">shodan_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[]),</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">get_whois_info</span><span class="p">,</span> <span class="n">domain</span><span class="p">),</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">get_dns_records</span><span class="p">,</span> <span class="n">domain</span><span class="p">),</span>
+        <span class="n">get_passive_dns</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">vt_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])),</span>
+        <span class="n">get_tls_cert_info</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">check_dnssec</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">get_breach_info</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hibp_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">hibp_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])),</span>
+        <span class="n">get_web_technologies</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="n">discover_personnel</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hunter_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">hunter_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])),</span>
+    <span class="p">]</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">initial_tasks</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">(</span>
+        <span class="n">vt</span><span class="p">,</span>
+        <span class="n">dd</span><span class="p">,</span>
+        <span class="n">tm</span><span class="p">,</span>
+        <span class="n">us</span><span class="p">,</span>
+        <span class="n">sh</span><span class="p">,</span>
+        <span class="n">whois_data</span><span class="p">,</span>
+        <span class="n">dns_data</span><span class="p">,</span>
+        <span class="n">passive_dns_data_res</span><span class="p">,</span>
+        <span class="n">tls_cert_data_res</span><span class="p">,</span>
+        <span class="n">dnssec_data_res</span><span class="p">,</span>
+        <span class="n">breach_data_res</span><span class="p">,</span>
+        <span class="n">web_tech_data_res</span><span class="p">,</span>
+        <span class="n">personnel_data_res</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">=</span> <span class="n">results</span>
+
+    <span class="c1"># --- Stage 1.5: Data Validation and Defaulting ---</span>
+    <span class="n">passive_dns_data</span> <span class="o">=</span> <span class="n">passive_dns_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">passive_dns_data_res</span><span class="p">,</span> <span class="n">HistoricalDns</span><span class="p">)</span> <span class="k">else</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">tls_cert_data</span> <span class="o">=</span> <span class="n">tls_cert_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tls_cert_data_res</span><span class="p">,</span> <span class="n">TlsCertInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">dnssec_data</span> <span class="o">=</span> <span class="n">dnssec_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dnssec_data_res</span><span class="p">,</span> <span class="n">DnssecInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">DnssecInfo</span><span class="p">(</span><span class="n">dnssec_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spf_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">dmarc_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="n">breach_data</span> <span class="o">=</span> <span class="n">breach_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">breach_data_res</span><span class="p">,</span> <span class="n">BreachInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span>
+    <span class="n">web_tech_data</span> <span class="o">=</span> <span class="n">web_tech_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">web_tech_data_res</span><span class="p">,</span> <span class="n">WebTechInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">WebTechInfo</span><span class="p">()</span>
+    <span class="n">personnel_data</span> <span class="o">=</span> <span class="n">personnel_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">personnel_data_res</span><span class="p">,</span> <span class="n">PersonnelInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span>
+
+
+    <span class="c1"># --- Stage 2: Consolidate and Prepare for Enrichment ---</span>
+
+    <span class="n">all_subdomains</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vt</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">vt</span><span class="p">:</span>
+            <span class="n">all_subdomains</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;VirusTotal&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dd</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">dd</span><span class="p">:</span>
+            <span class="n">all_subdomains</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;DNSDumpster&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tm</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">tm</span><span class="p">:</span>
+            <span class="n">all_subdomains</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;ThreatMiner&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">us</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">us</span><span class="p">:</span>
+            <span class="n">all_subdomains</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;URLScan.io&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sh</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">sh</span><span class="p">:</span>
+            <span class="n">all_subdomains</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Shodan&quot;</span><span class="p">)</span>
+    <span class="n">indicators_to_check</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">all_subdomains</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">main_domain_ips</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">dns_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dns_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">dns_data</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">:</span>
+        <span class="n">indicators_to_check</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ip</span><span class="p">)</span>
+
+    <span class="c1"># --- Stage 3: IP-based Enrichment ---</span>
+
+    <span class="n">ip_enrichment_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Coroutine</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">:</span>
+        <span class="n">ip_enrichment_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">get_ip_info</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
+        <span class="n">ip_enrichment_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">get_reverse_ip_lookup</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
+        <span class="n">ip_enrichment_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">perform_port_scan</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
+
+    <span class="n">ip_enrichment_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">ip</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">ip_enrichment_tasks</span><span class="p">:</span>
+        <span class="n">ip_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">task</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">ip_enrichment_tasks</span><span class="p">],</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">_</span><span class="p">),</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ip_enrichment_tasks</span><span class="p">,</span> <span class="n">ip_results</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">IpInfo</span><span class="p">):</span>
+                <span class="n">ip_enrichment_results</span><span class="p">[</span><span class="n">ip</span><span class="p">][</span><span class="s2">&quot;ip_info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">ip_enrichment_results</span><span class="p">[</span><span class="n">ip</span><span class="p">][</span><span class="s2">&quot;reverse_ip&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">PortScanResult</span><span class="p">):</span>
+                <span class="n">ip_enrichment_results</span><span class="p">[</span><span class="n">ip</span><span class="p">][</span><span class="s2">&quot;port_scan&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+
+    <span class="c1"># --- Stage 4: Threat Intelligence Enrichment ---</span>
+
+    <span class="n">threat_intel_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">otx_api_key</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
+            <span class="s2">&quot;[bold cyan]Correlating findings with threat intelligence...[/bold cyan]&quot;</span>
+        <span class="p">):</span>
+            <span class="n">threat_intel_tasks</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">get_threat_intel_otx</span><span class="p">(</span><span class="n">indicator</span><span class="p">)</span> <span class="k">for</span> <span class="n">indicator</span> <span class="ow">in</span> <span class="n">indicators_to_check</span>
+            <span class="p">]</span>
+            <span class="n">ti_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">threat_intel_tasks</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">ti_results</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">res</span><span class="p">:</span>
+                    <span class="n">threat_intel_results</span><span class="p">[</span><span class="n">res</span><span class="o">.</span><span class="n">indicator</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span>
+
+    <span class="c1"># --- Stage 5: Final Assembly ---</span>
+
+    <span class="n">available_sources</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="n">vt_api_key</span><span class="p">,</span> <span class="n">shodan_api_key</span><span class="p">]</span> <span class="k">if</span> <span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3</span>
+    <span class="n">scored_results</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ScoredResult</span><span class="p">(</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">sub</span><span class="p">,</span>
+            <span class="n">sources</span><span class="o">=</span><span class="n">sources</span><span class="p">,</span>
+            <span class="n">confidence</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;HIGH&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;LOW&#39;</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sources</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">available_sources</span><span class="si">}</span><span class="s2"> sources)&quot;</span><span class="p">,</span>
+            <span class="n">threat_intel</span><span class="o">=</span><span class="n">threat_intel_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sub</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">sub</span><span class="p">,</span> <span class="n">sources</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">all_subdomains</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="p">]</span>
+    <span class="n">ip_threat_intelligence</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">threat_intel_results</span><span class="p">[</span><span class="n">ip</span><span class="p">]</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span> <span class="k">if</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">threat_intel_results</span>
+    <span class="p">]</span>
+    <span class="n">subdomain_report</span> <span class="o">=</span> <span class="n">SubdomainReport</span><span class="p">(</span>
+        <span class="n">total_unique</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">scored_results</span><span class="p">),</span> <span class="n">results</span><span class="o">=</span><span class="n">scored_results</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Safely construct dictionaries, providing default values for missing data</span>
+    <span class="n">asn_info_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">ip_geolocation_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">:</span>
+        <span class="n">ip_info</span> <span class="o">=</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ip_info&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ip_info</span><span class="p">:</span>
+            <span class="n">asn_info_dict</span><span class="p">[</span><span class="n">ip</span><span class="p">]</span> <span class="o">=</span> <span class="n">ip_info</span><span class="o">.</span><span class="n">asn</span>
+            <span class="n">ip_geolocation_dict</span><span class="p">[</span><span class="n">ip</span><span class="p">]</span> <span class="o">=</span> <span class="n">ip_info</span><span class="o">.</span><span class="n">geolocation</span>
+
+    <span class="n">port_scan_results_dict</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port_scan&quot;</span><span class="p">,</span> <span class="n">PortScanResult</span><span class="p">(</span><span class="n">open_ports</span><span class="o">=</span><span class="p">{}))</span>
+        <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span>
+    <span class="p">}</span>
+
+
+    <span class="n">footprint_data</span> <span class="o">=</span> <span class="n">FootprintData</span><span class="p">(</span>
+        <span class="n">whois_info</span><span class="o">=</span><span class="n">whois_data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">whois_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{},</span>
+        <span class="n">dns_records</span><span class="o">=</span><span class="n">dns_data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dns_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{},</span>
+        <span class="n">subdomains</span><span class="o">=</span><span class="n">subdomain_report</span><span class="p">,</span>
+        <span class="n">ip_threat_intelligence</span><span class="o">=</span><span class="n">ip_threat_intelligence</span><span class="p">,</span>
+        <span class="n">historical_dns</span><span class="o">=</span><span class="n">passive_dns_data</span><span class="p">,</span>
+        <span class="n">reverse_ip</span><span class="o">=</span><span class="p">{</span><span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reverse_ip&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">},</span>
+        <span class="n">asn_info</span><span class="o">=</span><span class="n">asn_info_dict</span><span class="p">,</span>
+        <span class="n">tls_cert_info</span><span class="o">=</span><span class="n">tls_cert_data</span><span class="p">,</span>
+        <span class="n">dnssec_info</span><span class="o">=</span><span class="n">dnssec_data</span><span class="p">,</span>
+        <span class="n">ip_geolocation</span><span class="o">=</span><span class="n">ip_geolocation_dict</span><span class="p">,</span>
+        <span class="n">cdn_provider</span><span class="o">=</span><span class="k">await</span> <span class="n">detect_cdn</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
+        <span class="n">breach_info</span><span class="o">=</span><span class="n">breach_data</span><span class="p">,</span>
+        <span class="n">port_scan_results</span><span class="o">=</span><span class="n">port_scan_results_dict</span><span class="p">,</span>
+        <span class="n">web_technologies</span><span class="o">=</span><span class="n">web_tech_data</span><span class="p">,</span>
+        <span class="n">personnel_info</span><span class="o">=</span><span class="n">personnel_data</span><span class="p">,</span>
+        <span class="n">knowledge_graph</span><span class="o">=</span><span class="n">KnowledgeGraph</span><span class="p">(</span><span class="n">nodes</span><span class="o">=</span><span class="p">[],</span> <span class="n">edges</span><span class="o">=</span><span class="p">[]),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">FootprintResult</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">footprint</span><span class="o">=</span><span class="n">footprint_data</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Alias for compatibility with aia_framework.py</span>
+
+<span class="n">run_footprint_analysis</span> <span class="o">=</span> <span class="n">gather_footprint_data</span>
+
+
+<span class="c1"># --- Typer CLI Application ---</span>
+
+
+<span class="n">footprint_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="run_footprint_scan">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.footprint.run_footprint_scan">[docs]</a>
+<span class="nd">@footprint_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;run&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_footprint_scan</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain. If not provided, uses the active project&#39;s domain.&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save the results to a JSON file.&quot;</span>
+    <span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gathers digital footprint info for a domain.&quot;&quot;&quot;</span>
+    <span class="n">target_domain</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid_domain</span><span class="p">(</span><span class="n">target_domain</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Invalid domain format provided to &#39;footprint&#39; command: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target_domain</span>
+        <span class="p">)</span>
+        <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
+            <span class="n">Panel</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[bold red]Invalid Input:[/] &#39;</span><span class="si">{</span><span class="n">target_domain</span><span class="si">}</span><span class="s2">&#39; is not a valid domain format.&quot;</span><span class="p">,</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Error&quot;</span><span class="p">,</span>
+                <span class="n">border_style</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting asynchronous footprint scan for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target_domain</span><span class="p">)</span>
+
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">gather_footprint_data</span><span class="p">(</span><span class="n">target_domain</span><span class="p">))</span>
+    <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Footprint scan complete for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target_domain</span><span class="p">)</span>
+    <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+    <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target_domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;footprint&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">footprint_app</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Ignacio Iliev.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

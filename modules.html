@@ -46,6 +46,9 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Project Modules</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.correlation_engine">Core Intelligence &amp; Analysis</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.correlation_engine.run_correlations"><code class="docutils literal notranslate"><span class="pre">run_correlations()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.analyze_for_deception"><code class="docutils literal notranslate"><span class="pre">analyze_for_deception()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.reverse_ip_lookup"><code class="docutils literal notranslate"><span class="pre">reverse_ip_lookup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.run_deception_analysis"><code class="docutils literal notranslate"><span class="pre">run_deception_analysis()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.differ.analyze_diff_for_signals"><code class="docutils literal notranslate"><span class="pre">analyze_diff_for_signals()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.differ.format_diff_simple"><code class="docutils literal notranslate"><span class="pre">format_diff_simple()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.differ.get_last_two_scans"><code class="docutils literal notranslate"><span class="pre">get_last_two_scans()</span></code></a></li>
@@ -126,6 +129,26 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.defensive.search_pastes_api"><code class="docutils literal notranslate"><span class="pre">search_pastes_api()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.finint.run_insider_tracking"><code class="docutils literal notranslate"><span class="pre">run_insider_tracking()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.finint.track_insider_trading"><code class="docutils literal notranslate"><span class="pre">track_insider_trading()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.check_dnssec"><code class="docutils literal notranslate"><span class="pre">check_dnssec()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.detect_cdn"><code class="docutils literal notranslate"><span class="pre">detect_cdn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.discover_personnel"><code class="docutils literal notranslate"><span class="pre">discover_personnel()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.gather_footprint_data"><code class="docutils literal notranslate"><span class="pre">gather_footprint_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_breach_info"><code class="docutils literal notranslate"><span class="pre">get_breach_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_dns_records"><code class="docutils literal notranslate"><span class="pre">get_dns_records()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_ip_info"><code class="docutils literal notranslate"><span class="pre">get_ip_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_passive_dns"><code class="docutils literal notranslate"><span class="pre">get_passive_dns()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_reverse_ip_lookup"><code class="docutils literal notranslate"><span class="pre">get_reverse_ip_lookup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_subdomains_dnsdumpster"><code class="docutils literal notranslate"><span class="pre">get_subdomains_dnsdumpster()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_subdomains_shodan"><code class="docutils literal notranslate"><span class="pre">get_subdomains_shodan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_subdomains_threatminer"><code class="docutils literal notranslate"><span class="pre">get_subdomains_threatminer()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_subdomains_urlscan"><code class="docutils literal notranslate"><span class="pre">get_subdomains_urlscan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_subdomains_virustotal"><code class="docutils literal notranslate"><span class="pre">get_subdomains_virustotal()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_tls_cert_info"><code class="docutils literal notranslate"><span class="pre">get_tls_cert_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_web_technologies"><code class="docutils literal notranslate"><span class="pre">get_web_technologies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.get_whois_info"><code class="docutils literal notranslate"><span class="pre">get_whois_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.perform_port_scan"><code class="docutils literal notranslate"><span class="pre">perform_port_scan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.run_footprint_analysis"><code class="docutils literal notranslate"><span class="pre">run_footprint_analysis()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.footprint.run_footprint_scan"><code class="docutils literal notranslate"><span class="pre">run_footprint_scan()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.geoint.generate_geoint_report"><code class="docutils literal notranslate"><span class="pre">generate_geoint_report()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.geoint.get_country_risk_data"><code class="docutils literal notranslate"><span class="pre">get_country_risk_data()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.geoint.run_geoint_analysis"><code class="docutils literal notranslate"><span class="pre">run_geoint_analysis()</span></code></a></li>
@@ -174,6 +197,12 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_intel.get_threat_intel_otx"><code class="docutils literal notranslate"><span class="pre">get_threat_intel_otx()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.ttp_mapper.map_cves_to_ttp"><code class="docutils literal notranslate"><span class="pre">map_cves_to_ttp()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.ttp_mapper.run_cve_mapping"><code class="docutils literal notranslate"><span class="pre">run_cve_mapping()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.get_vulnerabilities_vulners"><code class="docutils literal notranslate"><span class="pre">get_vulnerabilities_vulners()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.run_port_scan"><code class="docutils literal notranslate"><span class="pre">run_port_scan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.run_vulnerability_scan"><code class="docutils literal notranslate"><span class="pre">run_vulnerability_scan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.run_vulnerability_scan_command"><code class="docutils literal notranslate"><span class="pre">run_vulnerability_scan_command()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.search_vulnerabilities"><code class="docutils literal notranslate"><span class="pre">search_vulnerabilities()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.search_vulnerabilities_by_ip"><code class="docutils literal notranslate"><span class="pre">search_vulnerabilities_by_ip()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.automation">Framework &amp; Utility Modules</a><ul>
@@ -1477,6 +1506,38 @@ scans based on the results of a completed scan.</p>
 </dl>
 </dd></dl>
 
+<p id="module-chimera_intel.core.deception_detector">Module for Corporate Deception &amp; Mimicry Analysis.</p>
+<p>Identifies hidden relationships between companies by finding shared digital
+assets like IP addresses, SSL certificates, and WHOIS registration details.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.deception_detector.analyze_for_deception">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.deception_detector.</span></span><span class="sig-name descname"><span class="pre">analyze_for_deception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.DeceptionAnalysisResult" title="chimera_intel.core.schemas.DeceptionAnalysisResult"><span class="pre">DeceptionAnalysisResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/deception_detector.html#analyze_for_deception"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.deception_detector.analyze_for_deception" title="Link to this definition"></a></dt>
+<dd><p>Analyzes a target’s footprint to find other entities sharing the same infrastructure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The primary domain to investigate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing detected links.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.DeceptionAnalysisResult" title="chimera_intel.core.schemas.DeceptionAnalysisResult">DeceptionAnalysisResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.deception_detector.reverse_ip_lookup">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.deception_detector.</span></span><span class="sig-name descname"><span class="pre">reverse_ip_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/deception_detector.html#reverse_ip_lookup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.deception_detector.reverse_ip_lookup" title="Link to this definition"></a></dt>
+<dd><p>Finds other domains hosted on the same IP address using an online API.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.deception_detector.run_deception_analysis">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.deception_detector.</span></span><span class="sig-name descname"><span class="pre">run_deception_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/deception_detector.html#run_deception_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.deception_detector.run_deception_analysis" title="Link to this definition"></a></dt>
+<dd><p>Detects corporate mimicry and hidden networks via asset correlation.</p>
+</dd></dl>
+
 <dl class="py function" id="module-chimera_intel.core.differ">
 <dt class="sig sig-object py" id="chimera_intel.core.differ.analyze_diff_for_signals">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.differ.</span></span><span class="sig-name descname"><span class="pre">analyze_diff_for_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diff_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.schemas.MicroSignal" title="chimera_intel.core.schemas.MicroSignal"><span class="pre">MicroSignal</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/differ.html#analyze_diff_for_signals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.differ.analyze_diff_for_signals" title="Link to this definition"></a></dt>
@@ -2407,6 +2468,365 @@ insights, such as insider trading activity.</p>
 </dl>
 </dd></dl>
 
+<dl class="py function" id="module-chimera_intel.core.footprint">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.check_dnssec">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">check_dnssec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.DnssecInfo" title="chimera_intel.core.schemas.DnssecInfo"><span class="pre">DnssecInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#check_dnssec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.check_dnssec" title="Link to this definition"></a></dt>
+<dd><p>Validates DNSSEC, SPF, DKIM, and DMARC records.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing DNS security information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.DnssecInfo" title="chimera_intel.core.schemas.DnssecInfo">DnssecInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.detect_cdn">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">detect_cdn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#detect_cdn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.detect_cdn" title="Link to this definition"></a></dt>
+<dd><p>Detects if a domain is using a CDN.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The name of the CDN provider if detected, otherwise None.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.discover_personnel">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">discover_personnel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.PersonnelInfo" title="chimera_intel.core.schemas.PersonnelInfo"><span class="pre">PersonnelInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#discover_personnel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.discover_personnel" title="Link to this definition"></a></dt>
+<dd><p>Discovers employee and contact information related to a domain using Hunter.io.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<em>str</em>) – The domain to query.</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The Hunter.io API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing personnel information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.PersonnelInfo" title="chimera_intel.core.schemas.PersonnelInfo">PersonnelInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.gather_footprint_data">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">gather_footprint_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.FootprintResult" title="chimera_intel.core.schemas.FootprintResult"><span class="pre">FootprintResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#gather_footprint_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.gather_footprint_data" title="Link to this definition"></a></dt>
+<dd><p>Orchestrates the gathering of all footprint data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The target domain for the footprint scan.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A Pydantic model containing all the gathered</dt><dd><p>and processed data.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.FootprintResult" title="chimera_intel.core.schemas.FootprintResult">FootprintResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_breach_info">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_breach_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.BreachInfo" title="chimera_intel.core.schemas.BreachInfo"><span class="pre">BreachInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_breach_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_breach_info" title="Link to this definition"></a></dt>
+<dd><p>Checks for data breaches and leaks associated with a domain using HaveIBeenPwned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<em>str</em>) – The domain to check for breaches.</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The HIBP API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing breach information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.BreachInfo" title="chimera_intel.core.schemas.BreachInfo">BreachInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_dns_records">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_dns_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_dns_records"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_dns_records" title="Link to this definition"></a></dt>
+<dd><p>Retrieves common DNS records for a given domain from config.yaml.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to query for DNS records.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary where keys are record types (e.g., ‘A’, ‘MX’)</dt><dd><p>and values are lists of records, or an error message.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_ip_info">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_ip_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.IpInfo" title="chimera_intel.core.schemas.IpInfo"><span class="pre">IpInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_ip_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_ip_info" title="Link to this definition"></a></dt>
+<dd><p>Retrieves combined ASN and geolocation info for an IP address using ipinfo.io.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ip_address</strong> (<em>str</em>) – The IP address to query.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing combined IP information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.IpInfo" title="chimera_intel.core.schemas.IpInfo">IpInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_passive_dns">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_passive_dns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.HistoricalDns" title="chimera_intel.core.schemas.HistoricalDns"><span class="pre">HistoricalDns</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_passive_dns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_passive_dns" title="Link to this definition"></a></dt>
+<dd><p>Retrieves passive DNS information from VirusTotal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<em>str</em>) – The domain to query.</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The VirusTotal API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing historical DNS records.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.HistoricalDns" title="chimera_intel.core.schemas.HistoricalDns">HistoricalDns</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_reverse_ip_lookup">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_reverse_ip_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_reverse_ip_lookup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_reverse_ip_lookup" title="Link to this definition"></a></dt>
+<dd><p>Performs a reverse IP lookup to find other domains on the same IP.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ip_address</strong> (<em>str</em>) – The IP address to perform the reverse lookup on.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of domain names hosted on the IP address.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_subdomains_dnsdumpster">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_subdomains_dnsdumpster</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_subdomains_dnsdumpster"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_subdomains_dnsdumpster" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously scrapes subdomains from DNSDumpster by handling CSRF tokens.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to query for subdomains.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of subdomain strings found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_subdomains_shodan">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_subdomains_shodan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_subdomains_shodan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_subdomains_shodan" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously retrieves subdomains from the Shodan API.</p>
+<p>This function runs the synchronous Shodan library in a separate thread
+to avoid blocking the asyncio event loop.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<em>str</em>) – The domain to query for subdomains.</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The Shodan API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of subdomain strings found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_subdomains_threatminer">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_subdomains_threatminer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_subdomains_threatminer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_subdomains_threatminer" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously retrieves subdomains from the ThreatMiner API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to query for subdomains.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of subdomain strings found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_subdomains_urlscan">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_subdomains_urlscan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_subdomains_urlscan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_subdomains_urlscan" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously retrieves subdomains from the URLScan.io API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to query for subdomains.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of subdomain strings found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_subdomains_virustotal">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_subdomains_virustotal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_subdomains_virustotal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_subdomains_virustotal" title="Link to this definition"></a></dt>
+<dd><p>Asynchronously retrieves subdomains from the VirusTotal API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domain</strong> (<em>str</em>) – The domain to query for subdomains.</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The VirusTotal API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of subdomain strings found.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_tls_cert_info">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_tls_cert_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.TlsCertInfo" title="chimera_intel.core.schemas.TlsCertInfo"><span class="pre">TlsCertInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_tls_cert_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_tls_cert_info" title="Link to this definition"></a></dt>
+<dd><p>Analyzes TLS/SSL certificate information from crt.sh.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to query for certificates.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing certificate information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.TlsCertInfo" title="chimera_intel.core.schemas.TlsCertInfo">TlsCertInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_web_technologies">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_web_technologies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.WebTechInfo" title="chimera_intel.core.schemas.WebTechInfo"><span class="pre">WebTechInfo</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_web_technologies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_web_technologies" title="Link to this definition"></a></dt>
+<dd><p>Profiles web technologies used by a website using Wappalyzer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>url</strong> (<em>str</em>) – The URL of the website to profile.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing web technology information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.WebTechInfo" title="chimera_intel.core.schemas.WebTechInfo">WebTechInfo</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.get_whois_info">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">get_whois_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#get_whois_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.get_whois_info" title="Link to this definition"></a></dt>
+<dd><p>Retrieves WHOIS information for a given domain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The domain to perform the WHOIS lookup on.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary of the WHOIS record, or an error message.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.perform_port_scan">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">perform_port_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.PortScanResult" title="chimera_intel.core.schemas.PortScanResult"><span class="pre">PortScanResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#perform_port_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.perform_port_scan" title="Link to this definition"></a></dt>
+<dd><p>Performs a light port scan to identify open ports and services using python-nmap.</p>
+<p>WARNING: Port scanning can have legal implications. Use responsibly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ip_address</strong> (<em>str</em>) – The IP address to scan.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing open ports and services.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.PortScanResult" title="chimera_intel.core.schemas.PortScanResult">PortScanResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.run_footprint_analysis">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">run_footprint_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.FootprintResult" title="chimera_intel.core.schemas.FootprintResult"><span class="pre">FootprintResult</span></a></span></span><a class="headerlink" href="#chimera_intel.core.footprint.run_footprint_analysis" title="Link to this definition"></a></dt>
+<dd><p>Orchestrates the gathering of all footprint data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>domain</strong> (<em>str</em>) – The target domain for the footprint scan.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A Pydantic model containing all the gathered</dt><dd><p>and processed data.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.FootprintResult" title="chimera_intel.core.schemas.FootprintResult">FootprintResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.footprint.run_footprint_scan">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.footprint.</span></span><span class="sig-name descname"><span class="pre">run_footprint_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/footprint.html#run_footprint_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.footprint.run_footprint_scan" title="Link to this definition"></a></dt>
+<dd><p>Gathers digital footprint info for a domain.</p>
+</dd></dl>
+
 <p id="module-chimera_intel.core.geoint">Module for Geopolitical Intelligence (GEOINT).</p>
 <p>Analyzes a target’s physical and digital footprint to assess risks related to its
 geographic distribution, such as political instability or infrastructure dependencies.</p>
@@ -2926,6 +3346,73 @@ how they might be exploited by real-world adversaries.</p>
 <dt class="sig sig-object py" id="chimera_intel.core.ttp_mapper.run_cve_mapping">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.ttp_mapper.</span></span><span class="sig-name descname"><span class="pre">run_cve_mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cve_ids:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/ttp_mapper.html#run_cve_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.ttp_mapper.run_cve_mapping" title="Link to this definition"></a></dt>
 <dd><p>Maps CVE vulnerabilities to MITRE ATT&amp;CK techniques.</p>
+</dd></dl>
+
+<dl class="py function" id="module-chimera_intel.core.vulnerability_scanner">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.get_vulnerabilities_vulners">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">get_vulnerabilities_vulners</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">product</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.schemas.CVE" title="chimera_intel.core.schemas.CVE"><span class="pre">CVE</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#get_vulnerabilities_vulners"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.get_vulnerabilities_vulners" title="Link to this definition"></a></dt>
+<dd><p>Queries the Vulners API to find CVEs for a specific product and version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>product</strong> (<em>str</em>) – The name of the software (e.g., ‘nginx’).</p></li>
+<li><p><strong>version</strong> (<em>str</em>) – The version of the software (e.g., ‘1.21’).</p></li>
+<li><p><strong>api_key</strong> (<em>str</em>) – The Vulners API key.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A list of CVEs found for the software.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#chimera_intel.core.schemas.CVE" title="chimera_intel.core.schemas.CVE">CVE</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.run_port_scan">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">run_port_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vulners_api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.HostScanResult" title="chimera_intel.core.schemas.HostScanResult"><span class="pre">HostScanResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#run_port_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.run_port_scan" title="Link to this definition"></a></dt>
+<dd><p>Performs a port scan on a single target and correlates findings with CVEs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> (<em>str</em>) – The IP address or hostname to scan.</p></li>
+<li><p><strong>vulners_api_key</strong> (<em>str</em><em> | </em><em>None</em>) – The Vulners API key, if available.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Pydantic model containing the scan results.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.HostScanResult" title="chimera_intel.core.schemas.HostScanResult">HostScanResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.run_vulnerability_scan">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">run_vulnerability_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.VulnerabilityScanResult" title="chimera_intel.core.schemas.VulnerabilityScanResult"><span class="pre">VulnerabilityScanResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#run_vulnerability_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.run_vulnerability_scan" title="Link to this definition"></a></dt>
+<dd><p>Core logic for discovering assets and scanning them.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.run_vulnerability_scan_command">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">run_vulnerability_scan_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#run_vulnerability_scan_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.run_vulnerability_scan_command" title="Link to this definition"></a></dt>
+<dd><p>Discovers assets via footprint and scans them for open ports and known vulnerabilities.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.search_vulnerabilities">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">search_vulnerabilities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">service</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.schemas.CVE" title="chimera_intel.core.schemas.CVE"><span class="pre">CVE</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#search_vulnerabilities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.search_vulnerabilities" title="Link to this definition"></a></dt>
+<dd><p>Searches for CVEs by service/product name to be used by the risk assessment module.
+It runs the synchronous Vulners query in a separate thread.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.vulnerability_scanner.search_vulnerabilities_by_ip">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.vulnerability_scanner.</span></span><span class="sig-name descname"><span class="pre">search_vulnerabilities_by_ip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.HostScanResult" title="chimera_intel.core.schemas.HostScanResult"><span class="pre">HostScanResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/vulnerability_scanner.html#search_vulnerabilities_by_ip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.vulnerability_scanner.search_vulnerabilities_by_ip" title="Link to this definition"></a></dt>
+<dd><p>Performs a port and vulnerability scan on a single IP address asynchronously.</p>
+<p>It wraps the synchronous run_port_scan function using asyncio.to_thread.</p>
 </dd></dl>
 
 </section>
