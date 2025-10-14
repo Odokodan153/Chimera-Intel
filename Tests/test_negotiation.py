@@ -1,6 +1,6 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
-from fastapi.testclient import TestClient
+import httpx
 from webapp.main import app
 
 @pytest.fixture
@@ -29,7 +29,8 @@ def test_recommend_tactic_with_history(engine):
     assert "Concession" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
 
-client = TestClient(app)
+transport = httpx.ASGITransport(app=app)
+client = httpx.Client(transport=transport, base_url="http://test")
 
 def test_create_negotiation():
     """Tests the creation of a new negotiation session."""
