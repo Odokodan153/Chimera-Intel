@@ -6,7 +6,7 @@ from chimera_intel.core.c_pint import (
 )
 from chimera_intel.core.ot_intel import OTAsset
 from chimera_intel.core.sigint import SignalIntercept
-from chimera_intel.core.vulnerability_scanner import Vulnerability
+from chimera_intel.core.schemas import Vulnerability
 
 
 class TestCPINT(unittest.TestCase):
