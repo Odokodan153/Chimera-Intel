@@ -1962,7 +1962,10 @@
     <span class="n">insiderName</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">transactionType</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">transactionDate</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">shares</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">transactionShares</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">transactionCode</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">change</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
@@ -1972,7 +1975,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">InsiderTradingResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The main, top-level result model for an insider trading scan.&quot;&quot;&quot;</span>
 
-    <span class="n">ticker</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">stock_symbol</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">total_transactions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">transactions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">InsiderTransaction</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
