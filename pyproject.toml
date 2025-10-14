@@ -70,7 +70,6 @@ dependencies = [
     "SpeechRecognition",
     "Wappalyzer",
     "pymodes",
-    "sherlock-project",
     "python-louvain",
     "alembic",
     "hvac",
@@ -78,6 +77,8 @@ dependencies = [
     "hibpwned",
     "shodan",
     "python-dotenv",
+    "googlesearch-python",
+    "sherlock"
 ]
 
 [project.optional-dependencies]

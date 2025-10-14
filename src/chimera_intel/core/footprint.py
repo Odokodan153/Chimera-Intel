@@ -5,7 +5,7 @@ import asyncio
 import re
 import shodan  # type: ignore
 import nmap  # type: ignore
-import hibpapi
+import hibpwned
 from rich.panel import Panel
 from dotenv import load_dotenv
 from typing import Dict, Any, List, Optional, Coroutine
@@ -532,7 +532,7 @@ async def get_breach_info(domain: str, api_key: str) -> BreachInfo:
         return API_CACHE[cache_key]["data"]
 
     try:
-        with hibpapi.HIBP(api_key=api_key) as hibp:
+        with hibpwned.HIBP(api_key=api_key) as hibp:
             breaches = hibp.get_breaches_for_account(email=f"test@{domain}")
         breach_names = [breach.name for breach in breaches]
         breach_info = BreachInfo(source="HaveIBeenPwned", breaches=breach_names)
