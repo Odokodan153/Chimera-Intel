@@ -4,7 +4,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from chimera_intel.core.schemas import Base 
 from chimera_intel.core.response import response_app
-from chimera_intel.core.database import Base
 from chimera_intel.core.schemas import ResponseRule
 
 runner = CliRunner()
