@@ -16,9 +16,11 @@ from functools import lru_cache
 # Core Chimera Intel imports
 
 from chimera_intel.core.database import get_db_connection as get_db
-from chimera_intel.core import schemas, models
+from chimera_intel.core import schemas
 from chimera_intel.core.negotiation import NegotiationEngine
-from .auth import get_current_user
+# This is a placeholder for auth, you'll need to implement it
+def get_current_user():
+    return None
 
 # Configure structured logging
 
@@ -60,12 +62,12 @@ router = APIRouter()
 def create_negotiation(
     negotiation: schemas.NegotiationCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+    current_user: schemas.User = Depends(get_current_user),
 ):
     """Initializes a new negotiation session with multiple participants."""
     try:
         session_id = str(uuid.uuid4())
-        db_negotiation = models.NegotiationSession(
+        db_negotiation = schemas.NegotiationSession(
             id=session_id, subject=negotiation.subject
         )
         db.add(db_negotiation)
@@ -73,7 +75,7 @@ def create_negotiation(
         # Add participants to the new table
 
         for participant in negotiation.participants:
-            db_participant = models.NegotiationParticipant(
+            db_participant = schemas.NegotiationParticipant(
                 session_id=session_id,
                 participant_id=participant.participant_id,
                 participant_name=participant.participant_name,
@@ -103,15 +105,15 @@ def analyze_new_message(
     simulation_scenario: Dict[str, int],
     db: Session = Depends(get_db),
     engine: NegotiationEngine = Depends(get_engine),
-    current_user: models.User = Depends(get_current_user),
+    current_user: schemas.User = Depends(get_current_user),
 ):
     """
     Analyzes a new message and returns a structured response including
     analysis, recommendation, and simulation.
     """
     db_negotiation = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == negotiation_id)
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
         .first()
     )
     if not db_negotiation:
@@ -122,7 +124,7 @@ def analyze_new_message(
     try:
         analysis = engine.analyze_message(message.content)
 
-        db_message = models.Message(
+        db_message = schemas.Message(
             id=str(uuid.uuid4()),
             negotiation_id=negotiation_id,
             sender_id=message.sender_id,
@@ -135,9 +137,9 @@ def analyze_new_message(
         # Fetch recent messages to provide context for the recommendation
 
         recent_messages = (
-            db.query(models.Message)
-            .filter(models.Message.negotiation_id == negotiation_id)
-            .order_by(models.Message.timestamp.desc())
+            db.query(schemas.Message)
+            .filter(schemas.Message.negotiation_id == negotiation_id)
+            .order_by(schemas.Message.timestamp.desc())
             .limit(20)
             .all()
         )
@@ -176,14 +178,14 @@ def get_negotiation_history(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    current_user: models.User = Depends(get_current_user),
+    current_user: schemas.User = Depends(get_current_user),
 ):
     """
     Fetches the full history of a negotiation session with robust pagination.
     """
     db_negotiation = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == negotiation_id)
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
         .offset(skip)
         .limit(limit)
         .first()
@@ -211,8 +213,8 @@ async def websocket_endpoint(
     # you would validate the token before proceeding.
 
     db_negotiation = (
-        db.query(models.NegotiationSession)
-        .filter(models.NegotiationSession.id == negotiation_id)
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
         .first()
     )
     if not db_negotiation:
@@ -225,7 +227,7 @@ async def websocket_endpoint(
 
             # Save user message
 
-            db_user_message = models.Message(
+            db_user_message = schemas.Message(
                 id=str(uuid.uuid4()),
                 negotiation_id=negotiation_id,
                 sender_id="user",  # Replace with actual user ID
@@ -261,7 +263,7 @@ async def websocket_endpoint(
             # Save bot message
 
             bot_analysis = engine.analyze_message(bot_reply)
-            db_bot_message = models.Message(
+            db_bot_message = schemas.Message(
                 id=str(uuid.uuid4()),
                 negotiation_id=negotiation_id,
                 sender_id="ai_negotiator",

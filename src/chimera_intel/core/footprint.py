@@ -12,7 +12,7 @@ from typing import Dict, Any, List, Optional, Coroutine
 import logging
 import time
 from httpx import RequestError, HTTPStatusError
-from wappalyzer import Wappalyzer, WebPage
+from Wappalyzer import Wappalyzer, WebPage
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import CONFIG, API_KEYS

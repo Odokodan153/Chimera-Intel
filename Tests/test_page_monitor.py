@@ -1,9 +1,10 @@
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, mock_open
+import asyncio
 
 # The application instance to be tested
 
-from chimera_intel.core.page_monitor import page_monitor_app, run_page_monitor
+from chimera_intel.core.page_monitor import page_monitor_app, check_for_changes
 
 runner = CliRunner()
 
@@ -17,11 +18,12 @@ def test_add_page_monitor_command(mock_add_job):
     """
     result = runner.invoke(
         page_monitor_app,
-        ["add", "--url", "https://example.com", "--schedule", "0 0 * * *"],
+        ["add"],
+        input="https://example.com\n0 0 * * *\n"
     )
 
     assert result.exit_code == 0
-    assert "Successfully scheduled page monitor" in result.stdout
+    assert "Successfully scheduled web page monitor" in result.stdout
     mock_add_job.assert_called_once()
     call_args = mock_add_job.call_args[1]
     assert call_args["cron_schedule"] == "0 0 * * *"
@@ -32,75 +34,71 @@ def test_add_page_monitor_command(mock_add_job):
 
 
 @patch("chimera_intel.core.page_monitor.send_slack_notification")
-@patch("chimera_intel.core.page_monitor.sync_playwright")
-@patch("os.path.exists")
-@patch(
-    "builtins.open", new_callable=mock_open, read_data="This is the old baseline text."
-)
-@patch("os.rename")
-@patch(
-    "chimera_intel.core.page_monitor.compare_images", return_value=0.90
-)  # Simulate image change
-def test_run_page_monitor_change_detected(
-    mock_compare_img,
-    mock_rename,
-    mock_open_file,
-    mock_exists,
-    mock_playwright,
+@patch("chimera_intel.core.page_monitor.save_page_snapshot")
+@patch("chimera_intel.core.page_monitor.get_async_http_client")
+def test_check_for_changes_change_detected(
+    mock_get_client,
+    mock_save_snapshot,
     mock_slack,
 ):
     """
     Tests the core monitor function when a significant change is detected.
     """
-    # Arrange: Simulate that a baseline already exists
+    # Arrange: Simulate that a change is detected
+    mock_save_snapshot.return_value = (True, "old_hash")
 
-    mock_exists.return_value = True
+    # Mock the HTTP client to return new content
+    async def mock_get(*args, **kwargs):
+        class MockResponse:
+            def __init__(self):
+                self.text = "This is the NEW page text."
+                self.status_code = 200
+            def raise_for_status(self):
+                pass
+        return MockResponse()
 
-    # Mock Playwright to return new content
+    mock_client = MagicMock()
+    mock_client.get = MagicMock(side_effect=mock_get)
+    # This is to handle the async context manager
+    mock_get_client.return_value.__aenter__.return_value = mock_client
 
-    mock_page = MagicMock()
-    mock_page.inner_text.return_value = "This is the NEW page text."
-    mock_browser = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-    mock_playwright.return_value.__enter__.return_value.chromium.launch.return_value = (
-        mock_browser
-    )
 
     # Act
-
-    run_page_monitor(url="https://example.com")
+    asyncio.run(check_for_changes(url="https://example.com", job_id="test_job"))
 
     # Assert
-
     mock_slack.assert_called_once()
-    assert "Significant change detected" in mock_slack.call_args[0][0]
+    assert "Significant change detected" in mock_slack.call_args[1]['message']
 
-
-@patch("chimera_intel.core.page_monitor.sync_playwright")
-@patch("os.path.exists")
-@patch("os.rename")
-def test_run_page_monitor_creates_new_baseline(
-    mock_rename, mock_exists, mock_playwright
+@patch("chimera_intel.core.page_monitor.save_page_snapshot")
+@patch("chimera_intel.core.page_monitor.get_async_http_client")
+def test_check_for_changes_creates_new_baseline(
+    mock_get_client,
+    mock_save_snapshot,
 ):
     """
     Tests that the monitor creates a new baseline if one doesn't exist.
     """
-    # Arrange: Simulate that a baseline does NOT exist
+    # Arrange: Simulate that no change is detected (first run)
+    mock_save_snapshot.return_value = (False, None)
 
-    mock_exists.return_value = False
+    # Mock the HTTP client to return new content
+    async def mock_get(*args, **kwargs):
+        class MockResponse:
+            def __init__(self):
+                self.text = "Initial text."
+                self.status_code = 200
+            def raise_for_status(self):
+                pass
+        return MockResponse()
 
-    mock_page = MagicMock()
-    mock_page.inner_text.return_value = "Initial text."
-    mock_browser = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-    mock_playwright.return_value.__enter__.return_value.chromium.launch.return_value = (
-        mock_browser
-    )
+    mock_client = MagicMock()
+    mock_client.get = MagicMock(side_effect=mock_get)
+    # This is to handle the async context manager
+    mock_get_client.return_value.__aenter__.return_value = mock_client
 
     # Act
+    asyncio.run(check_for_changes(url="https://new-site.com", job_id="test_job"))
 
-    run_page_monitor(url="https://new-site.com")
-
-    # Assert that os.rename was called to create the new baseline file
-
-    mock_rename.assert_called()
+    # Assert that save_page_snapshot was called to create the new baseline file
+    mock_save_snapshot.assert_called()

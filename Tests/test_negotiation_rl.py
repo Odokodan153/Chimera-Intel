@@ -1,6 +1,6 @@
 import unittest
-from .negotiation import NegotiationEngine
-from .llm_interface import MockLLMInterface
+from chimera_intel.core.negotiation import NegotiationEngine
+from chimera_intel.core.llm_interface import MockLLMInterface
 
 class TestNegotiationRL(unittest.TestCase):
 

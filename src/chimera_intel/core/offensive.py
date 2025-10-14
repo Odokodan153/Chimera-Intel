@@ -69,7 +69,7 @@ async def discover_apis(domain: str) -> APIDiscoveryResult:
 # --- Content Enumeration ---
 
 
-async def enumerate_directories(domain: str) -> ContentEnumerationResult:
+async def enumerate_content(domain: str) -> ContentEnumerationResult:
     """
     Performs directory and file enumeration using a small, common wordlist.
     """
@@ -124,7 +124,7 @@ async def enumerate_directories(domain: str) -> ContentEnumerationResult:
 # --- Advanced Cloud Recon ---
 
 
-async def check_subdomain_takeover(domain: str) -> AdvancedCloudResult:
+async def check_for_subdomain_takeover(domain: str) -> AdvancedCloudResult:
     """
     Checks for dangling DNS records pointing to de-provisioned cloud services.
     """
@@ -229,7 +229,7 @@ async def run_content_enumeration(
 ):
     """Enumerates common directories and files on a web server."""
     with console.status(f"[bold cyan]Enumerating content on {domain}...[/bold cyan]"):
-        results = await enumerate_directories(domain)
+        results = await enumerate_content(domain)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_enum_content", data=results_dict)
@@ -246,7 +246,7 @@ async def run_cloud_takeover_check(
     with console.status(
         f"[bold cyan]Checking for subdomain takeovers on {domain}...[/bold cyan]"
     ):
-        results = await check_subdomain_takeover(domain)
+        results = await check_for_subdomain_takeover(domain)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_cloud_takeover", data=results_dict)

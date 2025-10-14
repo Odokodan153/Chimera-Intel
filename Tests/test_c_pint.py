@@ -5,7 +5,6 @@ from chimera_intel.core.c_pint import (
     analyze_cps_for_cascading_failures,
 )
 from chimera_intel.core.ot_intel import OTAsset
-from chimera_intel.core.geoint import GeoLocation
 from chimera_intel.core.sigint import SignalIntercept
 from chimera_intel.core.vulnerability_scanner import Vulnerability
 
@@ -19,12 +18,13 @@ class TestCPINT(unittest.TestCase):
             OTAsset(
                 device_id="PLC1",
                 device_type="PLC",
+                ip_address="192.168.1.10",
                 location="SubstationA",
                 vulnerabilities=["CVE-2023-1234"],
             )
         ]
         geo_locations = [
-            GeoLocation(name="SubstationA", latitude=40.7128, longitude=-74.0060)
+            {"name": "SubstationA", "latitude": 40.7128, "longitude": -74.0060}
         ]
         signal_intercepts = [
             SignalIntercept(signal_id="SIG1", frequency=100.0, modulation="FSK")
