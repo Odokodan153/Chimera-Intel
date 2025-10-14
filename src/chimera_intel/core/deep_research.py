@@ -46,14 +46,10 @@ async def gather_socmint(topic: str) -> List[Dict[str, str]]:
     return [
         {
             "source": "SOCMINT",
-            "data": f"Profile found: {item.source_title} at {item.url}",
+            "data": f"Profile found at: {url}",
         }
-        for r in results
-        for item in r.results
+        for url in results
     ]
-
-
-# ... (all other gather_* functions remain the same) ...
 
 
 async def gather_codeint(topic: str) -> List[Dict[str, str]]:
@@ -63,10 +59,9 @@ async def gather_codeint(topic: str) -> List[Dict[str, str]]:
     return [
         {
             "source": "CODEINT",
-            "data": f"Code repository mention: {item.source_title} at {item.url}",
+            "data": f"Code repository mention at: {url}",
         }
-        for r in results
-        for item in r.results
+        for url in results
     ]
 
 
@@ -77,9 +72,8 @@ async def gather_finint(topic: str) -> List[Dict[str, str]]:
     ]
     results = search(queries=queries)
     return [
-        {"source": "FININT", "data": f"Financial context: {item.snippet}"}
-        for r in results
-        for item in r.results
+        {"source": "FININT", "data": f"Financial context found at: {url}"}
+        for url in results
     ]
 
 
@@ -88,9 +82,8 @@ async def gather_geoint(topic: str) -> List[Dict[str, str]]:
     queries = [f'"{topic}" AND (location OR address OR headquarters)']
     results = search(queries=queries)
     return [
-        {"source": "GEOINT", "data": f"Geospatial information: {item.snippet}"}
-        for r in results
-        for item in r.results
+        {"source": "GEOINT", "data": f"Geospatial information found at: {url}"}
+        for url in results
     ]
 
 
@@ -101,9 +94,8 @@ async def gather_techint(topic: str) -> List[Dict[str, str]]:
     ]
     results = search(queries=queries)
     return [
-        {"source": "TECHINT", "data": f"Technical insight: {item.snippet}"}
-        for r in results
-        for item in r.results
+        {"source": "TECHINT", "data": f"Technical insight found at: {url}"}
+        for url in results
     ]
 
 
@@ -112,9 +104,8 @@ async def gather_legalint(topic: str) -> List[Dict[str, str]]:
     queries = [f'"{topic}" AND (lawsuit OR litigation OR "regulatory action" OR legal)']
     results = search(queries=queries)
     return [
-        {"source": "LEGALINT", "data": f"Legal context: {item.snippet}"}
-        for r in results
-        for item in r.results
+        {"source": "LEGALINT", "data": f"Legal context found at: {url}"}
+        for url in results
     ]
 
 
@@ -127,9 +118,8 @@ async def gather_vulnint(topic: str) -> List[Dict[str, str]]:
     ]
     results = search(queries=queries)
     return [
-        {"source": "VULNINT", "data": f"Vulnerability data: {item.snippet}"}
-        for r in results
-        for item in r.results
+        {"source": "VULNINT", "data": f"Vulnerability data found at: {url}"}
+        for url in results
     ]
 
 

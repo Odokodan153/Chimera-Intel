@@ -3,20 +3,22 @@
 from googlesearch import search as google_search_func
 from typing import List
 
-def search(query: str, num_results: int = 10) -> List[str]:
+def search(queries: List[str], num_results: int = 10) -> List[str]:
     """
-    Performs a simple Google search and returns a list of URLs.
+    Performs a simple Google search for multiple queries and returns a list of URLs.
 
     Args:
-        query (str): The search query.
-        num_results (int): The number of results to return.
+        queries (List[str]): A list of search queries.
+        num_results (int): The number of results to return for each query.
 
     Returns:
         List[str]: A list of result URLs.
     """
-    try:
-        results = list(google_search_func(query, num_results=num_results))
-        return results
-    except Exception as e:
-        print(f"An error occurred during Google search: {e}")
-        return []
+    all_results = []
+    for query in queries:
+        try:
+            results = list(google_search_func(query, num_results=num_results))
+            all_results.extend(results)
+        except Exception as e:
+            print(f"An error occurred during Google search for query '{query}': {e}")
+    return all_results
