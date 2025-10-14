@@ -81,8 +81,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# --- TESTING DEPENDENCIES ---
-# Packages required only for development and running tests.
+# --- LIGHTWEIGHT TESTING DEPENDENCIES ---
+# Packages for core testing, linting, and type analysis.
 test = [
     "pytest",
     "pytest-cov",
@@ -90,9 +90,29 @@ test = [
     "ruff",
     "black",
     "mypy",
+    "pip-audit",
+    # Missing dependencies identified from logs
+    "python-json-logger",
+    "hibpapi",
+    "matplotlib",
+    # Type Stubs
     "pandas-stubs",
     "scikit-learn-stubs",
     "types-networkx",
+    "types-requests",
+    "types-docker",
+    "types-PyYAML>=6.0.12.12,<7.0.0.0",
+    "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
+    "types-psycopg2>=2.9.21.20240523,<2.10.0.0",
+    "types-passlib>=1.7.4.20240106,<1.8.0.0",
+    "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
+    "types-reportlab~=4.2.0",
+    "types-sqlalchemy",
+]
+
+# --- HEAVYWEIGHT TESTING DEPENDENCIES ---
+# Large packages for ML, data processing, and browser automation.
+test-heavy = [
     "pyvis",
     "tweepy",
     "playwright",
@@ -102,26 +122,16 @@ test = [
     "scikit-image",
     "geopy",
     "SQLAlchemy",
-    "types-sqlalchemy",
     "opencv-python",
     "scapy",
     "librosa",
     "pypatent",
     "scholarly",
-    "types-requests",
     "pdfplumber",
     "python-docx",
-    "types-docker",
     "overpy",
     "sgp4",
     "skyfield",
-    "types-PyYAML>=6.0.12.12,<7.0.0.0",
-    "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
-    "types-psycopg2>=2.9.21.20240523,<2.10.0.0",
-    "types-passlib>=1.7.4.20240106,<1.8.0.0",
-    "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
-    "types-reportlab~=4.2.0",
-    "pip-audit",
 ]
 
 docs = [
