@@ -95,7 +95,7 @@ test = [
     "matplotlib~=3.9.1",
     # Type Stubs
     "pandas-stubs~=2.2.2.240603",
-    "scikit-learn-stubs~=0.1.0",
+    "scikit-learn-stubs~=0.0.3",
     "types-networkx~=3.2.1.20240428",
     "types-requests~=2.32.0.20240622",
     "types-docker~=7.1.0.20240530",
