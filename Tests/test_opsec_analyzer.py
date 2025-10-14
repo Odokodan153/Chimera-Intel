@@ -99,11 +99,12 @@ class TestOpsecAnalyzer(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(opsec_app, ["run", "example.com"])
+        result = runner.invoke(opsec_app, ["run", "--target", "example.com"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception)
         mock_generate.assert_called_with("example.com")
         output = json.loads(result.stdout)
         self.assertEqual(len(output["compromised_committers"]), 1)
@@ -127,6 +128,7 @@ class TestOpsecAnalyzer(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception)
         mock_resolve.assert_called_with(
             None, required_assets=["company_name", "domain"]
         )

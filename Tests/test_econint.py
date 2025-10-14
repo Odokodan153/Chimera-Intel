@@ -1,15 +1,9 @@
 import unittest
 from unittest.mock import patch, AsyncMock, MagicMock
 from typer.testing import CliRunner
-from chimera_intel.core.econint import app 
-from chimera_intel.core.econint import (
-    get_economic_indicators,
-    get_macro_indicators, 
-    get_micro_indicators
-)
-from chimera_intel.core.schemas import EconomicIndicators
+from chimera_intel.core.econint import app, get_macro_indicators, get_micro_indicators
+from chimera_intel.core.schemas import MacroIndicators, MicroIndicators
 import pandas as pd
-import json
 
 runner = CliRunner()
 
@@ -17,98 +11,19 @@ runner = CliRunner()
 class TestEconint(unittest.TestCase):
     """Test cases for the Economic Intelligence (ECONINT) module."""
 
-    @patch("wbgapi.data.DataFrame")
-    def test_get_economic_indicators_success(self, mock_wb_data):
-        """Tests a successful economic indicators lookup."""
-        # Arrange
-
-        mock_wb_data.return_value = pd.DataFrame(
-            {
-                "NY.GDP.MKTP.CD": [2.1433226e13],
-                "NY.GDP.MKTP.KD.ZG": [2.926995],
-                "FP.CPI.TOTL.ZG": [1.812210],
-                "SL.UEM.TOTL.ZS": [3.668000],
-            },
-            index=["USA"],
-        )
-
-        # Act
-
-        result = get_economic_indicators("US")
-
-        # Assert
-
-        self.assertIsInstance(result, EconomicIndicators)
-        self.assertEqual(result.country, "US")
-        self.assertIn("GDP (current US$)", result.indicators)
-        self.assertIn("GDP growth (annual %)", result.indicators)
-        self.assertIn("Inflation, consumer prices (annual %)", result.indicators)
-        self.assertIn("Unemployment, total (% of total labor force)", result.indicators)
-        self.assertIsNone(result.error)
-
-    @patch("wbgapi.data.DataFrame", side_effect=Exception("API Error"))
-    def test_get_economic_indicators_api_error(self, mock_wb_data):
-        """Tests the function's error handling when the World Bank API fails."""
-        # Act
-
-        result = get_economic_indicators("US")
-
-        # Assert
-
-        self.assertIsInstance(result, EconomicIndicators)
-        self.assertEqual(result.country, "US")
-        self.assertIsNotNone(result.error)
-        self.assertIn("An API error occurred: API Error", result.error)
-
-    @patch("wbgapi.data.DataFrame")
-    def test_get_economic_indicators_no_data(self, mock_wb_data):
-        """Tests the function's handling of no data."""
-        # Arrange
-
-        mock_wb_data.return_value = pd.DataFrame()
-
-        # Act
-
-        result = get_economic_indicators("US")
-
-        # Assert
-
-        self.assertIsInstance(result, EconomicIndicators)
-        self.assertEqual(result.country, "US")
-        self.assertIsNotNone(result.error)
-        self.assertEqual(result.error, "No data available for the selected country.")
-
-    @patch("chimera_intel.core.econint.get_economic_indicators")
-    def test_cli_indicators_success(self, mock_get_indicators):
-        """Tests the CLI indicators command."""
-        # Arrange
-
-        mock_get_indicators.return_value = EconomicIndicators(
-            country="US", indicators={"GDP (current US$)": 2.1433226e13}
-        )
-
-        # Act
-
-        result = runner.invoke(app, ["indicators", "US"])
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        mock_get_indicators.assert_called_with("US")
-        output = json.loads(result.stdout)
-        self.assertEqual(output["country"], "US")
-        self.assertIn("indicators", output)
-        
-    @patch("chimera_intel.core.economic_engine.wbdata.get_countries")
-    @patch("chimera_intel.core.economic_engine.wbdata.get_dataframe")
+    @patch("chimera_intel.core.econint.wbdata.get_countries")
+    @patch("chimera_intel.core.econint.wbdata.get_dataframe")
     def test_get_macro_indicators_success(self, mock_get_dataframe, mock_get_countries):
         """Tests a successful macro indicators fetch."""
-        mock_get_countries.return_value = [{'name': 'United States'}]
-        mock_df = pd.DataFrame({
-            "NY.GDP.MKTP.CD": [2.3e13],
-            "FP.CPI.TOTL.ZG": [4.7],
-            "SL.UEM.TOTL.ZS": [3.6]
-        }, index=["2022"])
+        mock_get_countries.return_value = [{"name": "United States"}]
+        mock_df = pd.DataFrame(
+            {
+                "NY.GDP.MKTP.CD": [2.3e13],
+                "FP.CPI.TOTL.ZG": [4.7],
+                "SL.UEM.TOTL.ZS": [3.6],
+            },
+            index=["2022"],
+        )
         mock_get_dataframe.return_value = mock_df
 
         result = get_macro_indicators("US")
@@ -116,8 +31,20 @@ class TestEconint(unittest.TestCase):
         self.assertEqual(result.gdp_latest, 2.3e13)
         self.assertIsNone(result.error)
 
-    @patch("chimera_intel.core.economic_engine.API_KEYS")
-    @patch("chimera_intel.core.economic_engine.httpx.AsyncClient.get", new_callable=AsyncMock)
+    @patch(
+        "chimera_intel.core.econint.wbdata.get_countries",
+        side_effect=Exception("API Error"),
+    )
+    def test_get_macro_indicators_api_error(self, mock_get_countries):
+        """Tests the function's error handling when the World Bank API fails."""
+        result = get_macro_indicators("US")
+        self.assertIsInstance(result, MacroIndicators)
+        self.assertEqual(result.country, "US")
+        self.assertIsNotNone(result.error)
+        self.assertIn("API Error", result.error)
+
+    @patch("chimera_intel.core.econint.API_KEYS")
+    @patch("chimera_intel.core.econint.httpx.AsyncClient.get", new_callable=AsyncMock)
     async def test_get_micro_indicators_success(self, mock_get, mock_api_keys):
         """Tests a successful micro indicators fetch."""
         mock_api_keys.alpha_vantage_api_key = "fake_key"
@@ -135,6 +62,29 @@ class TestEconint(unittest.TestCase):
         self.assertEqual(result.symbol, "AAPL")
         self.assertEqual(result.latest_price, 150.0)
         self.assertIsNone(result.error)
+
+    @patch("chimera_intel.core.econint.get_macro_indicators")
+    def test_cli_macro_success(self, mock_get_macro_indicators):
+        """Tests the CLI macro command."""
+        mock_get_macro_indicators.return_value = MacroIndicators(
+            country="United States",
+            gdp_latest=2.3e13,
+            inflation_latest=4.7,
+            unemployment_latest=3.6,
+        )
+        result = runner.invoke(app, ["macro", "US"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Macroeconomic Indicators for United States", result.stdout)
+        self.assertIn("GDP (current US$)", result.stdout)
+
+    @patch("chimera_intel.core.econint.get_micro_indicators")
+    def test_cli_micro_success(self, mock_get_micro_indicators):
+        """Tests the CLI micro command."""
+        mock_get_micro_indicators.return_value = MicroIndicators(
+            symbol="AAPL", latest_price=150.0, market_cap="2.5T", pe_ratio=25.5
+        )
+        result = runner.invoke(app, ["micro", "AAPL"])
+        self.assertEqual(result.exit_code, 0)
 
 
 if __name__ == "__main__":

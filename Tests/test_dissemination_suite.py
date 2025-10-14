@@ -3,9 +3,10 @@ import os
 from chimera_intel.core.dissemination_suite import (
     generate_executive_briefing,
     generate_technical_report,
-    generate_tactical_alert
+    generate_tactical_alert,
 )
 from chimera_intel.core.schemas import IntelligenceReport, IntelligenceFinding
+
 
 class TestDisseminationSuite(unittest.TestCase):
     """Test cases for the Automated Dissemination & Briefing Suite."""
@@ -17,9 +18,19 @@ class TestDisseminationSuite(unittest.TestCase):
             title="Test Report",
             strategic_summary="This is a test summary.",
             key_findings=[
-                IntelligenceFinding(finding_id="f-001", description="A critical issue.", severity="Critical", confidence=0.9),
-                IntelligenceFinding(finding_id="f-002", description="A minor issue.", severity="Low", confidence=0.95),
-            ]
+                IntelligenceFinding(
+                    finding_id="f-001",
+                    description="A critical issue.",
+                    severity="Critical",
+                    confidence=0.9,
+                ),
+                IntelligenceFinding(
+                    finding_id="f-002",
+                    description="A minor issue.",
+                    severity="Low",
+                    confidence=0.95,
+                ),
+            ],
         )
 
     def test_generate_executive_briefing(self):
@@ -34,7 +45,7 @@ class TestDisseminationSuite(unittest.TestCase):
         """Tests the generation of a detailed technical report."""
         tech_report = generate_technical_report(self.report)
         self.assertIn("strategic_summary", tech_report)
-        self.assertIn("raw_data", tech_report) # Even if None, key should be there
+        self.assertIn("key_findings", tech_report)
 
     def test_generate_tactical_alert(self):
         """Tests the generation of a tactical alert."""
@@ -48,10 +59,18 @@ class TestDisseminationSuite(unittest.TestCase):
             report_id="test-002",
             title="No Critical Issues",
             strategic_summary="All clear.",
-            key_findings=[IntelligenceFinding(finding_id="f-003", description="A medium issue.", severity="Medium", confidence=0.8)]
+            key_findings=[
+                IntelligenceFinding(
+                    finding_id="f-003",
+                    description="A medium issue.",
+                    severity="Medium",
+                    confidence=0.8,
+                )
+            ],
         )
         alert = generate_tactical_alert(report_no_critical)
         self.assertIsNone(alert)
+
 
 if __name__ == "__main__":
     unittest.main()

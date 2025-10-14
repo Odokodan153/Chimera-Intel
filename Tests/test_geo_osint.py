@@ -15,11 +15,9 @@ from typer.testing import CliRunner
 
 # Import the specific Typer app for this module, not the main one
 
-
 from chimera_intel.core.geo_osint import geo_osint_app
 
 # Import the functions and schemas to be tested
-
 
 from chimera_intel.core.geo_osint import (
     get_geolocation_data,
@@ -29,7 +27,6 @@ from chimera_intel.core.geo_osint import (
 from chimera_intel.core.schemas import GeoIntelData, GeoIntelResult
 
 # Initialize the Typer test runner
-
 
 runner = CliRunner()
 
@@ -187,11 +184,9 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
 
     def test_cli_geo_osint_no_ips_provided(self):
         """Tests that the CLI command exits if no IP addresses are provided."""
-        # Typer will handle this and show a "Missing argument" error
-        # FIX: The command name 'run' was being misinterpreted. Invoking just the app
-        # without the command name correctly triggers Typer's argument validation.
+        # This test ensures that Typer's argument validation is working as expected.
 
-        result = runner.invoke(geo_osint_app, [])
+        result = runner.invoke(geo_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Missing argument", result.stdout)
 

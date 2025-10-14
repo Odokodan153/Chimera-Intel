@@ -88,11 +88,14 @@ class TestLegint(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(legint_app, ["docket-search", "TestCorp"])
+        result = runner.invoke(
+            legint_app, ["docket-search", "--company-name", "TestCorp"]
+        )
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception)
         mock_search.assert_called_with("TestCorp")
         output = json.loads(result.stdout)
         self.assertEqual(output["query"], "TestCorp")
@@ -116,6 +119,7 @@ class TestLegint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception)
         mock_resolve_target.assert_called_with(None, required_assets=["company_name"])
         mock_search.assert_called_with("ProjectCorp")
         self.assertIn('"total_found": 5', result.stdout)

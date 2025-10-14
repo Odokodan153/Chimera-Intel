@@ -2306,30 +2306,32 @@ class SYSINTAnalysisResult(BaseModel):
 
 # --- Ethical Governance ---
 class Target(BaseModel):
-    """Represents a structured target for an operation."""
+    """Represents a target in an operation."""
     id: str
-    category: str  # e.g., 'network', 'individual', 'infrastructure'
-    jurisdiction: Optional[str] = None
+    category: str
 
 class Operation(BaseModel):
-    """Represents a proposed operation with structured targets."""
+    """Defines the structure for an intelligence operation to be audited."""
     operation_id: str
     operation_type: str
-    is_offensive: bool = False
     targets: List[Target] = Field(default_factory=list)
-    targets_eu_citizen: bool = False # Kept for specific GDPR check
+    justification: str = ""
+    is_offensive: bool = False
+    targets_eu_citizen: bool = False
     has_legal_basis: bool = False
-    justification: Optional[str] = None
+    # Allows for extra fields that are not explicitly defined
+    class Config:
+        extra = "allow"
 
 class ComplianceViolation(BaseModel):
-    """Represents a single rule violation with severity."""
+    """Represents a single rule violation."""
     rule_id: str
     framework: str
     severity: str
     description: str
 
 class ComplianceResult(BaseModel):
-    """Holds the result of a compliance audit."""
+    """Contains the full result of a compliance audit."""
     operation_id: str
     is_compliant: bool
     violations: List[ComplianceViolation] = Field(default_factory=list)

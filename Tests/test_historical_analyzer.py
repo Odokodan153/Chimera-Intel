@@ -117,6 +117,7 @@ class TestHistoricalAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        self.assertIsNone(result.exception)
         self.assertIn("Comparison between 2022 and 2023", result.stdout)
         self.assertIn("CLI AI Summary", result.stdout)
         mock_analyze.assert_awaited_with("example.com", None, None)
@@ -138,8 +139,9 @@ class TestHistoricalAnalyzer(unittest.IsolatedAsyncioTestCase):
         result = runner.invoke(historical_app, ["run", "example.com"])
 
         # Assert
-
+        
         self.assertEqual(result.exit_code, 1)
+        self.assertIsInstance(result.exception, SystemExit)
         self.assertIn("Could not find snapshots", result.stdout)
 
 

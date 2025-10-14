@@ -67,8 +67,8 @@ opsec_app = typer.Typer()
 
 @opsec_app.command("run")
 def run_opsec_analysis(
-    target: Optional[str] = typer.Argument(
-        None, help="The target to analyze. Uses active project."
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help="The target to analyze. Uses active project."
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."

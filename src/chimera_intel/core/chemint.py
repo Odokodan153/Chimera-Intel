@@ -18,6 +18,8 @@ import pdfplumber
 import docx
 import csv
 import re
+import pubchempy as pcp
+import json
 
 chemint_app = typer.Typer()
 
@@ -296,6 +298,39 @@ def monitor_chemical_news(
         print(table)
     else:
         print("\n[yellow]No chemical news found.[/yellow]")
+
+
+@chemint_app.command(name="lookup")
+def lookup(
+    cid: int = typer.Option(..., "--cid", "-c", help="PubChem CID to lookup."),
+    output_file: str = typer.Option(None, "--output", "-o", help="Output JSON file."),
+):
+    """
+    Lookup chemical properties from PubChem.
+    """
+    print(f"Looking up chemical properties for CID: {cid}")
+    try:
+        compound = pcp.Compound.from_cid(cid)
+        result = {
+            "cid": compound.cid,
+            "molecular_formula": compound.molecular_formula,
+            "molecular_weight": compound.molecular_weight,
+            "iupac_name": compound.iupac_name,
+            "canonical_smiles": compound.canonical_smiles,
+        }
+        print("\n[bold]Chemical Properties:[/bold]")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Property")
+        table.add_column("Value")
+        for key, value in result.items():
+            table.add_row(key, str(value))
+        print(table)
+        if output_file:
+            with open(output_file, "w") as f:
+                json.dump({"total_results": 1, "results": [result]}, f, indent=2)
+            print(f"\n[green]Results saved to {output_file}[/green]")
+    except Exception as e:
+        print(f"[red]Error looking up chemical properties: {e}[/red]")
 
 
 if __name__ == "__main__":

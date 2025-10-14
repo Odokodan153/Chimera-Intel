@@ -1,84 +1,119 @@
-"""
-Module for Financial Intelligence (FININT).
-
-Handles the gathering and analysis of financial data that can provide strategic
-insights, such as insider trading activity.
-"""
-
-import typer
 import logging
-from typing import Optional
-from sec_api import InsiderTradingApi  # type: ignore
-from .schemas import InsiderTradingResult, InsiderTransaction
-from .utils import save_or_print_results
-from .database import save_scan_to_db
+import httpx
+from .schemas import FinancialInstrument, InsiderTransaction
+from typing import List, Optional
 from .config_loader import API_KEYS
+import typer
+from rich.console import Console
+from rich.table import Table
 from .project_manager import resolve_target
+
+# --- Logger Configuration ---
 
 logger = logging.getLogger(__name__)
 
+# --- Core Logic ---
 
-def track_insider_trading(ticker: str) -> InsiderTradingResult:
+
+async def get_insider_transactions(ticker: str) -> List[InsiderTransaction]:
     """
-    Tracks the latest insider trading activities for a given stock ticker.
+    Fetches the latest insider transactions for a given stock ticker from the Finnhub API.
 
     Args:
-        ticker (str): The stock market ticker symbol (e.g., "AAPL").
+        ticker: The stock ticker symbol (e.g., 'AAPL').
 
     Returns:
-        InsiderTradingResult: A Pydantic model with the latest insider transactions.
+        A list of InsiderTransaction objects, or an empty list if an error occurs.
     """
-    api_key = API_KEYS.sec_api_io_key
+    api_key = API_KEYS.finnhub_api_key
     if not api_key:
-        return InsiderTradingResult(
-            ticker=ticker, error="SEC API (sec-api.io) key not found in .env file."
-        )
-    logger.info(f"Fetching insider trading data for ticker: {ticker}")
-    insider_api = InsiderTradingApi(api_key=api_key)
+        logger.error("Finnhub API key is not configured.")
+        return []
+    url = f"https://finnhub.io/api/v1/stock/insider-transactions?symbol={ticker}&token={api_key}"
 
     try:
-        # Get the most recent 50 transactions
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.json().get("data", [])
 
-        transactions_data = insider_api.get_insider_transactions(
-            lookup=ticker, page_size=50
+            return [InsiderTransaction(**item) for item in data]
+    except httpx.RequestError as e:
+        logger.error(
+            f"HTTP request failed while fetching insider transactions for {ticker}: {e}"
         )
-
-        transactions = [
-            InsiderTransaction.model_validate(tx)
-            for tx in transactions_data["transactions"]
-        ]
-
-        return InsiderTradingResult(
-            ticker=ticker,
-            total_transactions=transactions_data["total"],
-            transactions=transactions,
-        )
+        return []
     except Exception as e:
-        logger.error(f"Failed to get insider trading data for {ticker}: {e}")
-        return InsiderTradingResult(ticker=ticker, error=f"An API error occurred: {e}")
+        logger.error(
+            f"An unexpected error occurred while fetching insider transactions for {ticker}: {e}"
+        )
+        return []
 
 
-# --- Typer CLI Application ---
+# --- CLI Integration ---
 
 
-finint_app = typer.Typer()
+app = typer.Typer(
+    name="finint",
+    help="Financial Intelligence (FININT) Module for tracking market activities.",
+    no_args_is_help=True,
+)
 
 
-@finint_app.command("insider-tracking")
+@app.command("insider-tracking")
 def run_insider_tracking(
-    ticker_symbol: Optional[str] = typer.Argument(
-        None, help="The stock ticker to track. Uses active project if not provided."
+    target: Optional[str] = typer.Argument(
+        None, help="The stock ticker symbol to track (e.g., 'AAPL')."
     ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save results to a JSON file."
+    project: Optional[str] = typer.Option(
+        None, "--project", "-p", help="The project name to use for context."
     ),
 ):
-    """Tracks the latest insider trading activity for a given company."""
-    target_ticker = resolve_target(ticker_symbol, required_assets=["ticker"])
+    """
+    Tracks the latest insider trading activities for a given company.
+    """
+    console = Console()
 
-    results_model = track_insider_trading(target_ticker)
-    results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(
-        target=target_ticker, module="finint_insider_tracking", data=results_dict
-    )
+    # Resolve the target ticker using the project manager
+
+    ticker = resolve_target(target, project, required_assets=["ticker"])
+    if not ticker:
+        console.print(
+            "[bold red]Error: No target ticker specified or found in the project.[/]"
+        )
+        raise typer.Exit(code=1)
+    console.print(f"[bold green]Fetching insider transactions for {ticker}...[/]")
+
+    # Asynchronously fetch the transactions
+
+    import asyncio
+
+    transactions = asyncio.run(get_insider_transactions(ticker))
+
+    if not transactions:
+        console.print("[yellow]No insider transactions found or an error occurred.[/]")
+        return
+    # Create and display a table of the results
+
+    table = Table(title=f"Insider Transactions for {ticker}")
+    table.add_column("Name", style="cyan")
+    table.add_column("Share", style="magenta")
+    table.add_column("Change", style="green")
+    table.add_column("Transaction Date", style="yellow")
+    table.add_column("Transaction Price", style="blue")
+    table.add_column("Transaction Code", style="red")
+
+    for t in transactions:
+        table.add_row(
+            t.name,
+            str(t.share),
+            str(t.change),
+            t.transactionDate,
+            str(t.transactionPrice),
+            t.transactionCode,
+        )
+    console.print(table)
+
+
+if __name__ == "__main__":
+    app()

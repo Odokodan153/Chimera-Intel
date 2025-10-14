@@ -71,8 +71,11 @@ legint_app = typer.Typer()
 
 @legint_app.command("docket-search")
 def run_docket_search(
-    company_name: Optional[str] = typer.Argument(
-        None, help="The company name to search. Uses active project if not provided."
+    company_name: Optional[str] = typer.Option(
+        None,
+        "--company-name",
+        "-n",
+        help="The company name to search. Uses active project if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."

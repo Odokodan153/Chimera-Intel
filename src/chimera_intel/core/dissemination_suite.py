@@ -47,7 +47,7 @@ def generate_executive_briefing(report: IntelligenceReport, output_path: str) ->
 
 def generate_technical_report(report: IntelligenceReport) -> str:
     """Generates a detailed technical report in JSON format."""
-    return report.json(indent=2)
+    return report.model_dump_json(indent=2)
 
 
 def generate_tactical_alert(report: IntelligenceReport) -> Optional[str]:

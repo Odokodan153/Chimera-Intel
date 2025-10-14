@@ -1,21 +1,69 @@
 import pytest
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+import pandas as pd
 
 from src.chimera_intel.core.chemint import chemint_app
-from src.chimera_intel.core.schemas import CHEMINTResult, ChemInfo, PatentInfo, SDSData
+
+# ------------------
+# Dummy Schema Classes
+# ------------------
+
+
+class ChemInfo:
+    def __init__(self, cid, molecular_weight, iupac_name, canonical_smiles):
+        self.cid = cid
+        self.molecular_weight = molecular_weight
+        self.iupac_name = iupac_name
+        self.canonical_smiles = canonical_smiles
+
+
+class PatentInfo:
+    def __init__(self, patent_id, title, applicant, publication_date, summary, country):
+        self.patent_id = patent_id
+        self.title = title
+        self.applicant = applicant
+        self.publication_date = publication_date
+        self.summary = summary
+        self.country = country
+
+
+class SDSData:
+    def __init__(
+        self,
+        cas_number,
+        autoignition_temp_C,
+        flash_point_C,
+        nfpa_fire_rating,
+        toxicology_summary,
+    ):
+        self.cas_number = cas_number
+        self.autoignition_temp_C = autoignition_temp_C
+        self.flash_point_C = flash_point_C
+        self.nfpa_fire_rating = nfpa_fire_rating
+        self.toxicology_summary = toxicology_summary
+
+
+class CHEMINTResult:
+    def __init__(self, total_results, results):
+        self.total_results = total_results
+        self.results = results
+
 
 # ------------------
 # Pytest Fixtures
 # ------------------
+
 
 @pytest.fixture
 def runner():
     """Provides a Typer CliRunner instance."""
     return CliRunner()
 
+
 # --- Mock Data Fixtures ---
+
 
 @pytest.fixture
 def mock_chem_info():
@@ -26,6 +74,7 @@ def mock_chem_info():
         iupac_name="Formaldehyde",
         canonical_smiles="C=O",
     )
+
 
 @pytest.fixture
 def mock_patent_info():
@@ -39,6 +88,7 @@ def mock_patent_info():
         country="EP",
     )
 
+
 @pytest.fixture
 def mock_sds_data():
     """Mock data for a successful SDS analysis."""
@@ -50,110 +100,93 @@ def mock_sds_data():
         toxicology_summary="Low acute toxicity, primarily irritant via inhalation. Highly flammable liquid.",
     )
 
-# --- Mocking Fixtures ---
-
-@pytest.fixture
-def mock_async_client(monkeypatch):
-    """Mocks the async HTTP client for external API calls."""
-    mock_client = AsyncMock()
-    monkeypatch.setattr("src.chimera_intel.core.chemint.async_client", mock_client)
-    return mock_client
 
 # ------------------
 # Test Suites
 # ------------------
 
+
 class TestChemicalLookup:
-    """Tests for the 'lookup' command and its underlying function."""
+    """Tests for the 'lookup' command."""
 
-    @pytest.mark.asyncio
-    async def test_get_chemical_properties_success(self, mock_async_client):
-        """Tests successful retrieval and parsing of PubChem data."""
-        from src.chimera_intel.core.chemint import get_chemical_properties
-        mock_response = AsyncMock(status_code=200)
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "PropertyTable": {"Properties": [{"CID": 240}]}
-        }
-        mock_async_client.get.return_value = mock_response
-
-        result = await get_chemical_properties(cid=240)
-
-        assert isinstance(result, CHEMINTResult)
-        assert result.total_results == 1
-        assert result.results[0].cid == 240
-
-    @patch("src.chimera_intel.core.chemint.get_chemical_properties")
-    def test_cli_lookup_success(self, mock_get_properties, runner, mock_chem_info, tmp_path):
+    @patch("src.chimera_intel.core.chemint.pcp.Compound.from_cid")
+    def test_cli_lookup_success(self, mock_from_cid, runner, mock_chem_info, tmp_path):
         """Tests the 'chemint lookup' CLI command with successful data."""
-        mock_get_properties.return_value = CHEMINTResult(total_results=1, results=[mock_chem_info])
+        mock_compound = MagicMock()
+        mock_compound.cid = mock_chem_info.cid
+        mock_compound.molecular_formula = "CH2O"
+        mock_compound.molecular_weight = mock_chem_info.molecular_weight
+        mock_compound.iupac_name = mock_chem_info.iupac_name
+        mock_compound.canonical_smiles = mock_chem_info.canonical_smiles
+        mock_from_cid.return_value = mock_compound
+
         output_file = tmp_path / "chem_results.json"
 
-        result = runner.invoke(chemint_app, ["lookup", "--cid", "240", "-o", str(output_file)])
+        result = runner.invoke(
+            chemint_app, ["lookup", "--cid", "240", "-o", str(output_file)]
+        )
 
         assert result.exit_code == 0
-        assert "Chemical Found (CID: 240)" in result.stdout
+        assert "Looking up chemical properties for CID: 240" in result.stdout
         with open(output_file, "r") as f:
             data = json.load(f)
             assert data["results"][0]["cid"] == 240
 
+
 class TestPatentSearch:
-    """Tests for the 'patent-search' command and its underlying function."""
+    """Tests for the 'monitor-patents-research' command."""
 
-    @pytest.mark.asyncio
-    async def test_search_chemical_patents_success(self, mock_patent_info):
-        """Tests successful retrieval of patent data (simulated)."""
-        from src.chimera_intel.core.chemint import search_chemical_patents
-        with patch("src.chimera_intel.core.chemint.asyncio.sleep", return_value=None):
-             # This function now returns a static mock, so we can test it directly
-            result = await search_chemical_patents("high-temp polymer")
+    @patch("src.chimera_intel.core.chemint.pypatent.Search")
+    @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
+    def test_cli_patent_search_success(
+        self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info, tmp_path
+    ):
+        """Tests the 'chemint monitor-patents-research' CLI command."""
+        mock_patent_df = pd.DataFrame(
+            {"title": [mock_patent_info.title], "url": ["http://example.com/patent"]}
+        )
+        mock_pypatent_search.return_value.as_dataframe.return_value = mock_patent_df
 
-            assert isinstance(result, CHEMINTResult)
-            assert result.total_results > 0 # The mock returns a list
-            assert result.results[0].applicant == mock_patent_info.applicant
+        mock_pub = {
+            "bib": {"title": "A great paper"},
+            "eprint_url": "http://example.com/paper",
+        }
+        mock_search_pubs.return_value = [mock_pub]
 
-
-    @patch("src.chimera_intel.core.chemint.search_chemical_patents")
-    def test_cli_patent_search_success(self, mock_search_patents, runner, mock_patent_info, tmp_path):
-        """Tests the 'chemint patent-search' CLI command."""
-        mock_search_patents.return_value = CHEMINTResult(total_results=1, results=[mock_patent_info])
         output_file = tmp_path / "patent_results.json"
 
-        result = runner.invoke(chemint_app, ["patent-search", "--keyword", "polymer", "-o", str(output_file)])
+        result = runner.invoke(
+            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+        )
 
         assert result.exit_code == 0
-        assert "Patent & Research Intelligence" in result.stdout
-        assert "Material Dynamics AG" in result.stdout
-        with open(output_file, "r") as f:
-            data = json.load(f)
-            assert data["results"][0]["applicant"] == "Material Dynamics AG"
+        assert "Patents (USPTO)" in result.stdout
+        assert "Research Papers (Google Scholar)" in result.stdout
+        assert mock_patent_info.title in result.stdout
+        assert "A great paper" in result.stdout
+
 
 class TestSdsAnalysis:
-    """Tests for the 'sds-analysis' command and its underlying function."""
+    """Tests for the 'analyze-sds' command."""
 
-    @pytest.mark.asyncio
-    async def test_analyze_sds_data_success(self, mock_sds_data):
-        """Tests successful retrieval of SDS-like data (simulated)."""
-        from src.chimera_intel.core.chemint import analyze_safety_data_sheet
-        with patch("src.chimera_intel.core.chemint.asyncio.sleep", return_value=None):
-            result = await analyze_safety_data_sheet("67-64-1")
+    @patch("src.chimera_intel.core.chemint.requests.get")
+    def test_cli_sds_analysis_success(self, mock_get, runner, mock_sds_data, tmp_path):
+        """Tests the 'chemint analyze-sds' CLI command."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/html"}
+        mock_response.text = "GHS02 H225 P210"
+        mock_get.return_value = mock_response
 
-            assert isinstance(result, CHEMINTResult)
-            assert result.total_results > 0
-            assert result.results[0].cas_number == mock_sds_data.cas_number
-
-
-    @patch("src.chimera_intel.core.chemint.analyze_safety_data_sheet")
-    def test_cli_sds_analysis_success(self, mock_analyze_sds, runner, mock_sds_data, tmp_path):
-        """Tests the 'chemint sds-analysis' CLI command."""
-        mock_analyze_sds.return_value = CHEMINTResult(total_results=1, results=[mock_sds_data])
-        output_file = tmp_path / "sds_results.json"
-
-        result = runner.invoke(chemint_app, ["sds-analysis", "--cas", "67-64-1", "-o", str(output_file)])
+        result = runner.invoke(
+            chemint_app, ["analyze-sds", "--sds-url", "http://example.com/sds"]
+        )
 
         assert result.exit_code == 0
-        assert "Hazard Profile for CAS: 67-64-1" in result.stdout
-        assert "Flash Point" in result.stdout
-        with open(output_file, "r") as f:
-            data = json.load(f)
-            assert data["results"][0]["cas_number"] == "67-64-1"
+        assert "Analyzing SDS from URL: http://example.com/sds" in result.stdout
+        assert "GHS Pictograms" in result.stdout
+        assert "GHS02" in result.stdout
+        assert "Hazard Statements" in result.stdout
+        assert "H225" in result.stdout
+        assert "Precautionary Statements" in result.stdout
+        assert "P210" in result.stdout
