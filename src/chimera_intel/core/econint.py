@@ -3,13 +3,52 @@ import asyncio
 from .schemas import MacroIndicators, MicroIndicators
 import httpx
 import wbdata
+import pandas as pd
 import typer
 from rich.console import Console
 from rich.table import Table
+from datetime import datetime
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
 
+def get_economic_indicators(country_code: str, indicators: dict = None) -> pd.DataFrame:
+    """
+    Fetches key economic indicators for a given country using the World Bank API.
+
+    Args:
+        country_code: The ISO 3166-1 alpha-2 country code (e.g., "US", "CN").
+        indicators: A dictionary of indicators to fetch. Keys are the indicator codes
+                    from the World Bank, and values are the desired column names.
+                    If None, defaults to GDP and inflation.
+
+    Returns:
+        A pandas DataFrame containing the requested economic data, indexed by date.
+    """
+    if indicators is None:
+        indicators = {
+            'NY.GDP.MKTP.CD': 'GDP (Current US$)',
+            'FP.CPI.TOTL.ZG': 'Inflation, consumer prices (annual %)'
+        }
+
+    # Set the data range to the last 20 years for relevance
+    data_date = (datetime(datetime.now().year - 20, 1, 1), datetime.now())
+
+    try:
+        # Fetch the data from the World Bank
+        df = wbdata.get_dataframe(indicators, country=country_code, data_date=data_date)
+        
+        # Clean and format the DataFrame
+        df = df.reset_index().rename(columns={'date': 'Year'})
+        df['Year'] = pd.to_numeric(df['Year'])
+        df = df.sort_values(by='Year', ascending=False)
+        df = df.set_index('Year')
+        
+        return df
+
+    except Exception as e:
+        print(f"Could not fetch economic data for {country_code}. Error: {e}")
+        return pd.DataFrame()
 
 def get_macro_indicators(country_code: str) -> MacroIndicators:
     """

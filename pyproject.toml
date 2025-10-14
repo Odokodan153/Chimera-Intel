@@ -78,7 +78,7 @@ dependencies = [
     "shodan",
     "python-dotenv",
     "googlesearch-python",
-    "sherlock"
+    "sherlock-project"
 ]
 
 [project.optional-dependencies]
