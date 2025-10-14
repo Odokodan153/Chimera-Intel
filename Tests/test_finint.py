@@ -4,7 +4,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 import typer
 
-from chimera_intel.core.finint import track_insider_trading, finint_app
+from chimera_intel.core.finint import run_insider_tracking, finint_app
 from chimera_intel.core.schemas import (
     InsiderTradingResult
 )
@@ -39,7 +39,7 @@ class TestFinint(unittest.TestCase):
 
         # Act
 
-        result = track_insider_trading("AAPL")
+        result = run_insider_tracking("AAPL")
 
         # Assert
 
@@ -52,7 +52,7 @@ class TestFinint(unittest.TestCase):
     def test_track_insider_trading_no_api_key(self):
         """Tests insider trading tracking when the SEC API key is missing."""
         with patch("chimera_intel.core.finint.API_KEYS.sec_api_io_key", None):
-            result = track_insider_trading("AAPL")
+            result = run_insider_tracking("AAPL")
             self.assertIsNotNone(result.error)
             self.assertIn("SEC API (sec-api.io) key not found", result.error)
 
@@ -70,7 +70,7 @@ class TestFinint(unittest.TestCase):
 
         # Act
 
-        result = track_insider_trading("AAPL")
+        result = run_insider_tracking("AAPL")
 
         # Assert
 
