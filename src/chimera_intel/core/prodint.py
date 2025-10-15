@@ -23,7 +23,7 @@ class ProdInt:
             # Wappalyzer requires a live webpage to analyze
 
             webpage = WebPage.new_from_url(url)
-            wappalyzer = Wappalyzer.latest()
+            wappalyzer = Wappalyzer()
             tech_stack = wappalyzer.analyze_with_versions(webpage)
             return tech_stack
         except Exception as e:

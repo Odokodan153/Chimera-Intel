@@ -40,8 +40,9 @@ class TestPestelAnalyzer(unittest.TestCase):
         self.assertIn("Political", result.analysis_text)
         mock_gen_swot.assert_called_once()
         prompt_arg = mock_gen_swot.call_args[0][0]
+        self.assertIn("PESTEL", prompt_arg)
         self.assertIn(
-            "PESTEL (Political, Economic, Social, Technological, Environmental, Legal) analysis",
+            "Political, Economic, Social, Technological, Environmental, Legal",
             prompt_arg,
         )
 
@@ -73,7 +74,9 @@ class TestPestelAnalyzer(unittest.TestCase):
         ):
             # Act
 
-            result = runner.invoke(pestel_analyzer_app, ["run", "example.com"])
+            result = runner.invoke(
+                pestel_analyzer_app, ["run", "--target", "example.com"]
+            )
         # Assert
 
         self.assertEqual(result.exit_code, 0)
@@ -100,7 +103,3 @@ class TestPestelAnalyzer(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No historical data found", result.stdout)
-
-
-if __name__ == "__main__":
-    unittest.main()

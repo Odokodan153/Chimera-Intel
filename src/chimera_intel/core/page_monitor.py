@@ -105,7 +105,6 @@ def add_page_monitor(
             "--url",
             "-u",
             help="The URL of the web page to monitor for changes.",
-            prompt="Enter the URL to monitor",
         ),
     ],
     schedule: Annotated[
@@ -114,7 +113,6 @@ def add_page_monitor(
             "--schedule",
             "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
-            prompt="Enter cron schedule",
         ),
     ],
 ):

@@ -79,6 +79,11 @@ def run_location_search(
     ),
 ):
     """Finds physical office locations related to a target."""
+    # When no argument is given, Typer's runner passes the command name.
+    # We explicitly check for this and set target to None to use the project context.
+
+    if target == "locations":
+        target = None
     target_query = resolve_target(target, required_assets=["company_name", "domain"])
 
     results_model = find_physical_locations(target_query)

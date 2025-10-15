@@ -83,8 +83,8 @@ pestel_analyzer_app = typer.Typer()
 
 @pestel_analyzer_app.command("run")
 def run_pestel_analysis(
-    target: Optional[str] = typer.Argument(
-        None, help="The target to analyze. Uses active project if not provided."
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help="The target to analyze. Uses active project if not provided."
     ),
 ):
     """

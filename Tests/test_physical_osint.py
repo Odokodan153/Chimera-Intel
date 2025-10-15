@@ -7,10 +7,7 @@ from chimera_intel.core.physical_osint import (
     find_physical_locations,
     physical_osint_app,
 )
-from chimera_intel.core.schemas import (
-    PhysicalSecurityResult,
-    PhysicalLocation
-)
+from chimera_intel.core.schemas import PhysicalSecurityResult, PhysicalLocation
 
 runner = CliRunner()
 
@@ -81,11 +78,15 @@ class TestPhysicalOsint(unittest.TestCase):
 
     # --- CLI Tests ---
 
+    @patch("chimera_intel.core.physical_osint.resolve_target")
     @patch("chimera_intel.core.physical_osint.find_physical_locations")
-    def test_cli_locations_with_argument(self, mock_find_locations):
+    def test_cli_locations_with_argument(
+        self, mock_find_locations, mock_resolve_target
+    ):
         """Tests the 'locations' command with a direct argument."""
         # Arrange
 
+        mock_resolve_target.return_value = "Test Corp"
         mock_find_locations.return_value = PhysicalSecurityResult(
             query="Test Corp",
             locations_found=[
@@ -102,6 +103,9 @@ class TestPhysicalOsint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        mock_resolve_target.assert_called_with(
+            "Test Corp", required_assets=["company_name", "domain"]
+        )
         mock_find_locations.assert_called_with("Test Corp")
         output = json.loads(result.stdout)
         self.assertEqual(output["query"], "Test Corp")

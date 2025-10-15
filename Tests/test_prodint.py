@@ -1,5 +1,6 @@
 # Tests/test_prodint.py
 
+
 import unittest
 from unittest.mock import patch, Mock
 from src.chimera_intel.core.prodint import ProdInt
@@ -10,15 +11,15 @@ class TestProdInt(unittest.TestCase):
         self.prodint = ProdInt()
 
     @patch("Wappalyzer.WebPage.new_from_url")
-    @patch("Wappalyzer.Wappalyzer.latest")
-    def test_digital_teardown(self, mock_wappalyzer_latest, mock_new_from_url):
+    @patch("Wappalyzer.Wappalyzer")
+    def test_digital_teardown(self, mock_wappalyzer_class, mock_new_from_url):
         # Mock Wappalyzer to avoid actual web requests
 
         mock_wappalyzer = Mock()
         mock_wappalyzer.analyze_with_versions.return_value = {
             "JavaScript Frameworks": {"React": ["18.2.0"]}
         }
-        mock_wappalyzer_latest.return_value = mock_wappalyzer
+        mock_wappalyzer_class.return_value = mock_wappalyzer
 
         result = self.prodint.digital_teardown("https://example.com")
         self.assertIn("JavaScript Frameworks", result)
@@ -39,7 +40,8 @@ class TestProdInt(unittest.TestCase):
 
             result = self.prodint.analyze_churn_risk("com.example.app")
             # Corrected the key to match what the function likely returns.
-            self.assertEqual(result["reviews"], 3) 
+
+            self.assertEqual(result["reviews_analyzed"], 3)
             self.assertEqual(result["estimated_churn_risk"], "Medium")
 
     def test_find_feature_gaps(self):

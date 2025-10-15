@@ -5,20 +5,29 @@ Operational Technology (OT) & ICS/SCADA Intelligence Module for Chimera Intel.
 import typer
 from typing_extensions import Annotated
 import shodan
-from typing import Optional, List 
+from typing import Optional, List
 
 from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for OT Intelligence commands
+
 ot_intel_app = typer.Typer(
     name="ot-intel",
     help="Operational Technology (OT) & ICS/SCADA Intelligence",
 )
 
+
 class OTAsset:
     """Represents an Operational Technology (OT) asset."""
 
-    def __init__(self, ip_address: str, device_id: Optional[str] = None, device_type: Optional[str] = None, location: Optional[str] = None, vulnerabilities: Optional[List] = None):
+    def __init__(
+        self,
+        ip_address: str,
+        device_id: Optional[str] = None,
+        device_type: Optional[str] = None,
+        location: Optional[str] = None,
+        vulnerabilities: Optional[List] = None,
+    ):
         """
         Initializes the OTAsset with an IP address.
 
@@ -52,7 +61,10 @@ class OTAsset:
             print(f"An unexpected error occurred: {e}")
             raise
 
-@ot_intel_app.command(name="recon", help="Perform reconnaissance on an IP address for OT systems.")
+
+@ot_intel_app.command(
+    name="recon", help="Perform reconnaissance on an IP address for OT systems."
+)
 def ot_recon(
     ip_address: Annotated[
         str,
@@ -60,9 +72,8 @@ def ot_recon(
             "--ip",
             "-i",
             help="The IP address to scan for OT protocols.",
-            prompt="Enter the IP address for OT reconnaissance",
         ),
-    ]
+    ],
 ):
     """
     Uses Shodan to find exposed industrial protocols and other OT-related
@@ -77,33 +88,39 @@ def ot_recon(
         print("\n--- Shodan Host Information ---")
         print(f"IP: {host_info.get('ip_str')}")
         print(f"Organization: {host_info.get('org', 'N/A')}")
-        print(f"Location: {host_info.get('city', 'N/A')}, {host_info.get('country_name', 'N/A')}")
+        print(
+            f"Location: {host_info.get('city', 'N/A')}, {host_info.get('country_name', 'N/A')}"
+        )
         print(f"Open Ports: {', '.join(map(str, host_info.get('ports', [])))}")
 
         # Filter for common ICS/SCADA protocols
-        ics_protocols = {'modbus', 's7', 'bacnet', 'dnp3', 'ethernet/ip'}
+
+        ics_protocols = {"modbus", "s7", "bacnet", "dnp3", "ethernet/ip"}
         found_protocols = set()
 
-        for item in host_info.get('data', []):
+        for item in host_info.get("data", []):
             for protocol in ics_protocols:
-                if protocol in item.get('data', '').lower() or protocol in (item.get('product') or '').lower():
+                if (
+                    protocol in item.get("data", "").lower()
+                    or protocol in (item.get("product") or "").lower()
+                ):
                     found_protocols.add(protocol.upper())
-
         if found_protocols:
-            print("\n[bold green]Identified potential ICS/SCADA protocols:[/bold green]")
+            print(
+                "\n[bold green]Identified potential ICS/SCADA protocols:[/bold green]"
+            )
             for protocol in found_protocols:
                 print(f"- {protocol}")
         else:
             print("\nNo common ICS/SCADA protocols identified in banner data.")
-        
         print("-----------------------------")
-
     except (ValueError, shodan.APIError) as e:
         print(f"Error: {e}")
         raise typer.Exit(code=1)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         raise typer.Exit(code=1)
+
 
 if __name__ == "__main__":
     ot_intel_app()
