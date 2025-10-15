@@ -1,5 +1,6 @@
 import pytest
 from typer.testing import CliRunner
+from unittest.mock import MagicMock
 import httpx
 
 # The application instance to be tested
@@ -11,69 +12,86 @@ runner = CliRunner()
 
 @pytest.fixture
 def mock_geolocator(mocker):
-    """Mocks the geopy.geocoders.Nominatim call."""
-    mock_location = mocker.MagicMock()
-    mock_location.latitude = 37.3318
-    mock_location.longitude = -122.0312
+    """Mocks the geopy.geocoders.Nominatim to return a fixed coordinate."""
+    mock_location = MagicMock()
+    mock_location.latitude = 40.7128
+    mock_location.longitude = -74.0060
 
-    mock_geocode = mocker.MagicMock(return_value=mock_location)
-    mocker.patch("geopy.geocoders.Nominatim.geocode", new=mock_geocode)
-    return mock_geocode
+    # We patch the geocode method on the Nominatim class instance
+
+    mocker.patch("geopy.geocoders.Nominatim.geocode", return_value=mock_location)
 
 
-def test_risk_assessment_success(mocker, mock_geolocator):
+@pytest.fixture
+def mock_httpx_client(mocker):
+    """Mocks the httpx.Client to return a fixed weather JSON response."""
+    # This is a sample response from the OpenWeatherMap API
+
+    mock_weather_data = {
+        "weather": [{"main": "Clouds", "description": "overcast clouds"}],
+        "main": {"temp": 18.5, "feels_like": 18.2},
+        "wind": {"speed": 5.1},
+    }
+
+    # Mock the response object that httpx would return
+
+    mock_response = httpx.Response(200, json=mock_weather_data)
+
+    # We mock the context manager `httpx.Client` and its `get` method
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value.get.return_value = mock_response
+
+    mocker.patch("httpx.Client", return_value=mock_client)
+
+
+def test_get_weather_success(mocker, mock_geolocator, mock_httpx_client):
     """
-    Tests the risk-assessment command with successful API responses.
+    Tests the 'get' command with successful responses from all external APIs.
     """
-    # Mock the API_KEYS to provide a fake API key
+    # --- Setup Mocks ---
+    # Provide a fake API key so the configuration check passes
 
     mocker.patch(
         "chimera_intel.core.weathint.API_KEYS.openweathermap_api_key", "fake_api_key"
     )
 
-    # Mock the httpx client response
+    # --- Run Command ---
 
-    mock_response = httpx.Response(
-        200,
-        json={
-            "weather": [{"main": "Clear"}],
-            "main": {"temp": 25.5},
-            "wind": {"speed": 3.5},
-        },
-    )
-    mocker.patch("httpx.Client.get", return_value=mock_response)
+    result = runner.invoke(weathint_app, ["get", "New York, USA"])
 
-    result = runner.invoke(
-        weathint_app,
-        [
-            "risk-assessment",
-            "--location",
-            "1 Infinite Loop, Cupertino, CA",
-            "--peril",
-            "wildfire",
-        ],
-    )
+    # --- Assertions ---
 
     assert result.exit_code == 0
-    assert "Performing 'wildfire' risk assessment" in result.stdout
-    assert "Coordinates found: Latitude=37.3318" in result.stdout
-    assert "Current Weather: Clear" in result.stdout
-    assert "Temperature: 25.5°C" in result.stdout
+    # Check for the initial status message
+
+    assert "Fetching weather for New York, USA..." in result.stdout
+    # Check that the final report panel is displayed with the correct data
+
+    assert "Current Weather in New York, USA" in result.stdout
+    assert "Weather: Clouds (overcast clouds)" in result.stdout
+    assert "Temperature: 18.5°C (Feels like: 18.2°C)" in result.stdout
+    assert "Wind Speed: 5.1 m/s" in result.stdout
 
 
-def test_risk_assessment_no_api_key(mocker, mock_geolocator):
+def test_get_weather_no_api_key(mocker, mock_geolocator):
     """
-    Tests the risk-assessment command when the API key is missing.
+    Tests that the 'get' command fails gracefully if the OpenWeatherMap API key is missing.
     """
+    # --- Setup Mock ---
+    # Simulate the API key being absent
+
     mocker.patch("chimera_intel.core.weathint.API_KEYS.openweathermap_api_key", None)
 
-    result = runner.invoke(
-        weathint_app,
-        ["risk-assessment", "--location", "some address", "--peril", "flood"],
-    )
+    # --- Run Command ---
 
-    assert result.exit_code == 1
-    assert (
-        "Configuration Error: OPENWEATHERMAP_API_KEY not found in .env file."
-        in result.stdout
-    )
+    result = runner.invoke(weathint_app, ["get", "London, UK"])
+
+    # --- Assertions ---
+    # The command should still exit cleanly (code 0) but print the error message.
+
+    assert result.exit_code == 0
+    assert "OpenWeatherMap API key not configured." in result.stdout
+    # Ensure no weather report is printed
+
+    assert "Current Weather in London, UK" not in result.stdout

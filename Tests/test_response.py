@@ -1,97 +1,142 @@
 import pytest
 from typer.testing import CliRunner
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from chimera_intel.core.schemas import Base 
+from unittest.mock import MagicMock
 from chimera_intel.core.response import response_app
-from chimera_intel.core.schemas import ResponseRule
+
+# Create a CliRunner instance to invoke the Typer app
 
 runner = CliRunner()
 
-# Setup a temporary in-memory database for testing
-
-engine = create_engine("sqlite:///:memory:")
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture(scope="function")
-def test_db():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
 
 @pytest.fixture
-def mock_get_db(mocker, test_db):
-    return mocker.patch(
-        "chimera_intel.core.response.get_db", return_value=iter([test_db])
+def mock_db_connection(mocker):
+    """
+    Mocks the get_db_connection function to prevent actual database calls.
+    This fixture simulates the connection and cursor objects returned by psycopg2.
+    """
+    # Create mock objects for the connection and cursor
+
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+
+    # Configure the mocks to behave like real psycopg2 objects
+
+    mock_conn.cursor.return_value = mock_cursor
+
+    # Pre-configure the mock cursor for the simulate-event test
+    # This simulates finding a rule in the database
+
+    mock_cursor.fetchone.return_value = (["send_slack_alert", "quarantine_host"],)
+
+    # Patch the get_db_connection function in the response module
+
+    mocker.patch(
+        "chimera_intel.core.response.get_db_connection", return_value=mock_conn
     )
 
+    return mock_conn, mock_cursor
 
-def test_create_and_list_rules(mock_get_db, test_db):
-    """
-    Tests creating a response rule and then listing it.
-    """
-    # Create a rule
 
-    result_create = runner.invoke(
+def test_add_rule_success(mock_db_connection):
+    """
+    Tests the successful addition of a new response rule via the 'add-rule' command.
+    """
+    mock_conn, mock_cursor = mock_db_connection
+
+    # Invoke the 'add-rule' command with the required options
+
+    result = runner.invoke(
         response_app,
         [
-            "create-rule",
-            "--name",
-            "Leaked Credential Protocol",
+            "add-rule",
             "--trigger",
-            "dark-monitor:credential-leak",
+            "dark-web:credential-leak",
             "--action",
-            "iam:reset-password",
+            "reset_password",
             "--action",
-            "edr:isolate-host",
+            "send_slack_alert",
         ],
     )
-    assert result_create.exit_code == 0
-    assert (
-        "Response rule 'Leaked Credential Protocol' created successfully"
-        in result_create.stdout
-    )
 
-    # Verify it's in the DB
-
-    rule = (
-        test_db.query(ResponseRule)
-        .filter(ResponseRule.name == "Leaked Credential Protocol")
-        .first()
-    )
-    assert rule is not None
-    assert rule.trigger == "dark-monitor:credential-leak"
-    assert "iam:reset-password" in rule.actions
-
-    # List the rules
-
-    result_list = runner.invoke(response_app, ["list-rules"])
-    assert result_list.exit_code == 0
-    assert "Leaked Credential Protocol" in result_list.stdout
-    assert "edr:isolate-host" in result_list.stdout
-
-
-def test_simulate_trigger(mock_get_db, test_db):
-    """
-    Tests the simulation of a trigger event.
-    """
-    # Create a rule to be found by the simulation
-
-    rule = ResponseRule(
-        name="Test Rule", trigger="test:event", actions=["action1", "action2"]
-    )
-    test_db.add(rule)
-    test_db.commit()
-
-    result = runner.invoke(response_app, ["simulate-trigger", "test:event"])
+    # --- Assertions ---
+    # 1. The command should exit with a code of 0, indicating success.
 
     assert result.exit_code == 0
-    assert "Rule 'Test Rule' would be executed" in result.stdout
-    assert "Simulating action: action1" in result.stdout
-    assert "Simulating action: action2" in result.stdout
+
+    # 2. The success message should be present in the command's output.
+
+    assert "Successfully added/updated response rule." in result.stdout
+
+    # 3. Verify that the correct SQL query was executed to insert/update the rule.
+
+    mock_cursor.execute.assert_called_once()
+    # Get the arguments passed to the execute method
+
+    sql_query, params = mock_cursor.execute.call_args[0]
+    # Check if the query and parameters are correct
+
+    assert "INSERT INTO response_rules" in sql_query
+    assert params[0] == "dark-web:credential-leak"
+    assert "reset_password" in params[1]
+    assert "send_slack_alert" in params[1]
+
+    # 4. Verify that the transaction was committed to the database.
+
+    mock_conn.commit.assert_called_once()
+
+
+def test_simulate_event_rule_found(mock_db_connection):
+    """
+    Tests the 'simulate-event' command for a trigger that has a matching rule.
+    """
+    mock_conn, mock_cursor = mock_db_connection
+
+    # Invoke the 'simulate-event' command
+
+    result = runner.invoke(
+        response_app, ["simulate-event", "test:trigger", "Simulated event details"]
+    )
+
+    # --- Assertions ---
+    # 1. The command should exit successfully.
+
+    assert result.exit_code == 0
+
+    # 2. Check that the output indicates the event was detected.
+
+    assert "Event detected with trigger:" in result.stdout
+    assert "test:trigger" in result.stdout
+
+    # 3. Check that the predefined actions for the trigger were executed.
+
+    assert "Running action: [bold green]send_slack_alert[/bold green]" in result.stdout
+    assert "Running action: [bold green]quarantine_host[/bold green]" in result.stdout
+
+
+def test_simulate_event_no_rule(mock_db_connection):
+    """
+    Tests the 'simulate-event' command for a trigger that does NOT have a matching rule.
+    """
+    mock_conn, mock_cursor = mock_db_connection
+
+    # Configure the mock cursor to return None, simulating no rule found
+
+    mock_cursor.fetchone.return_value = None
+
+    # Invoke the 'simulate-event' command
+
+    result = runner.invoke(response_app, ["simulate-event", "unknown:trigger"])
+
+    # --- Assertions ---
+    # 1. The command should exit successfully.
+
+    assert result.exit_code == 0
+
+    # 2. The output should clearly state that no rule was found.
+
+    assert "No response rule found for trigger 'unknown:trigger'" in result.stdout
+    assert "No actions taken" in result.stdout
+
+    # 3. Ensure no actions were printed as "Executing".
+
+    assert "Executing response actions:" not in result.stdout

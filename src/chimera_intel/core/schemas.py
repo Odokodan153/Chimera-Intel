@@ -2598,18 +2598,28 @@ class NegotiationModel(Base): # type: ignore
     created_at = Column(DateTime, default=datetime.utcnow)
     
     messages = relationship("MessageModel", back_populates="negotiation")
+class OfferModel(Base): # type: ignore
+    __tablename__ = "offers"
 
+    id = Column(String, primary_key=True, index=True)
+    negotiation_id = Column(String, ForeignKey("negotiation_sessions.id"))
+    party_id = Column(String)
+    amount_terms = Column(JSON)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    accepted = Column(String, default='pending')
+    
+    session = relationship("NegotiationSession", back_populates="offers")
 class MessageModel(Base): # type: ignore
     __tablename__ = "messages"
 
     id = Column(String, primary_key=True, index=True)
-    negotiation_id = Column(String, ForeignKey("negotiations.id"))
+    negotiation_id = Column(String, ForeignKey("negotiation_sessions.id")) # Changed ForeignKey
     sender_id = Column(String)
     content = Column(String)
-    analysis = Column(JSON) # Store sentiment, intent, etc.
+    analysis = Column(JSON) 
     timestamp = Column(DateTime, default=datetime.utcnow)
 
-    negotiation = relationship("NegotiationModel", back_populates="messages")
+    session = relationship("NegotiationSession", back_populates="messages") # Updated relationship
 
 class MessageBase(BaseModel):
     sender_id: str
@@ -2655,8 +2665,9 @@ class NegotiationSession(Base): # type: ignore
     end_time = Column(DateTime)
     status = Column(String, default='ongoing')
     outcome = Column(String)
-    messages = relationship("Message", back_populates="session")
-    offers = relationship("Offer", back_populates="session")
+    messages = relationship("MessageModel", back_populates="session") # Corrected relationship
+    offers = relationship("OfferModel", back_populates="session") 
+    
 class BehavioralProfile(BaseModel):
     """Model for the behavioral profile of a negotiation party."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

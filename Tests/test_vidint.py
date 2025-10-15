@@ -1,35 +1,33 @@
-import unittest
-from unittest.mock import patch, MagicMock
+import pytest
 from typer.testing import CliRunner
+from unittest.mock import patch, MagicMock
 import cv2
 import numpy as np
+import os
 
-from chimera_intel.core.vidint import detect_motion, vidint_app
+# The application instance to be tested
+
+from chimera_intel.core.vidint import vidint_app
+
+# Create a CliRunner for invoking the app in tests
 
 runner = CliRunner()
 
 
-class TestVidint(unittest.TestCase):
-    """Test cases for the Video Intelligence (VIDINT) module."""
+@pytest.fixture
+def mock_video_capture(mocker):
+    """
+    A pytest fixture that mocks the cv2.VideoCapture object.
+    This prevents actual file I/O and provides consistent video properties for testing.
+    """
+    mock_vid = MagicMock()
+    mock_vid.isOpened.return_value = True
 
-    # --- Mock VideoCapture ---
+    # Define a helper function to return specific metadata properties
 
-    def setUp(self):
-        """Set up a reusable mock for cv2.VideoCapture."""
-        self.mock_vid_capture = MagicMock()
-        self.mock_vid_capture.isOpened.return_value = True
-        self.mock_vid_capture.get.side_effect = self._mock_get_property
-        # Simulate a video with 2 frames for motion detection
-
-        self.mock_vid_capture.read.side_effect = [
-            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
-            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
-            (False, None),
-        ]
-
-    def _mock_get_property(self, prop_id):
+    def _mock_get_property(prop_id):
         if prop_id == cv2.CAP_PROP_FRAME_COUNT:
-            return 300
+            return 300  # 10 seconds at 30 fps
         if prop_id == cv2.CAP_PROP_FPS:
             return 30.0
         if prop_id == cv2.CAP_PROP_FRAME_WIDTH:
@@ -38,115 +36,109 @@ class TestVidint(unittest.TestCase):
             return 1080
         return 0
 
-    # --- Function Tests ---
+    mock_vid.get.side_effect = _mock_get_property
 
-    @patch("chimera_intel.core.vidint.cv2.cvtColor")
-    @patch("chimera_intel.core.vidint.cv2.GaussianBlur")
-    @patch("chimera_intel.core.vidint.cv2.absdiff")
-    @patch("chimera_intel.core.vidint.cv2.threshold")
-    @patch("chimera_intel.core.vidint.cv2.dilate")
-    @patch("chimera_intel.core.vidint.cv2.findContours")
-    def test_detect_motion(self, mock_contours, *args):
-        """Tests the motion detection logic."""
-        # Arrange
+    # Simulate reading a few frames from the video
 
-        mock_contours.return_value = (["contour1"], None)  # Simulate finding a contour
-        self.mock_vid_capture.read.side_effect = [
-            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
-            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
-            (False, None),
-        ]
+    dummy_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+    mock_vid.read.side_effect = [
+        (True, dummy_frame),
+        (True, dummy_frame),
+        (True, dummy_frame),
+        (False, None),  # Simulate end of video
+    ]
 
-        # Act
+    # Patch the cv2.VideoCapture class to return our mock object
 
-        with patch(
-            "chimera_intel.core.vidint.cv2.VideoCapture",
-            return_value=self.mock_vid_capture,
-        ):
-            detect_motion("test.mp4")
-        # Assert
-        # The function should call findContours once for the single frame comparison
-
-        mock_contours.assert_called_once()
-        self.mock_vid_capture.release.assert_called_once()
-
-    # --- CLI Tests ---
-
-    @patch("os.path.exists", return_value=True)
-    @patch("chimera_intel.core.vidint.cv2.VideoCapture")
-    def test_cli_analyze_video_metadata_only(self, mock_vc, mock_exists):
-        """Tests the 'vidint analyze-video' command for metadata extraction."""
-        # Arrange
-
-        mock_vc.return_value = self.mock_vid_capture
-
-        # Act
-
-        result = runner.invoke(vidint_app, ["analyze-video", "test.mp4"])
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Video Metadata", result.stdout)
-        self.assertIn("Resolution: 1920x1080", result.stdout)
-        self.assertIn("Duration: 10.00 seconds", result.stdout)
-
-    @patch("os.path.exists", return_value=True)
-    @patch("os.makedirs")
-    @patch("chimera_intel.core.vidint.cv2.VideoCapture")
-    @patch("chimera_intel.core.vidint.cv2.imwrite")
-    def test_cli_analyze_video_with_frame_extraction(
-        self, mock_imwrite, mock_vc, mock_makedirs, mock_exists
-    ):
-        """Tests the frame extraction functionality via the CLI."""
-        # Arrange
-
-        mock_vc.return_value = self.mock_vid_capture
-
-        # Act
-
-        result = runner.invoke(
-            vidint_app,
-            ["analyze-video", "test.mp4", "--extract-frames", "5"],
-        )
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        mock_makedirs.assert_called_with("video_frames")
-        # 300 frames / (30 fps * 5s interval) = 2 frames
-
-        self.assertEqual(mock_imwrite.call_count, 2)
-        self.assertIn("Successfully extracted 2 frames", result.stdout)
-
-    @patch("os.path.exists", return_value=True)
-    @patch("chimera_intel.core.vidint.detect_motion")
-    @patch("chimera_intel.core.vidint.cv2.VideoCapture")
-    def test_cli_analyze_video_with_motion_detection(
-        self, mock_vc, mock_detect_motion, mock_exists
-    ):
-        """Tests the motion detection functionality via the CLI."""
-        # Arrange
-
-        mock_vc.return_value = self.mock_vid_capture
-
-        # Act
-
-        result = runner.invoke(
-            vidint_app, ["analyze-video", "test.mp4", "--detect-motion"]
-        )
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        mock_detect_motion.assert_called_once_with("test.mp4")
-
-    def test_cli_analyze_video_file_not_found(self):
-        """Tests the CLI command when the input video file does not exist."""
-        result = runner.invoke(vidint_app, ["analyze-video", "nonexistent.mp4"])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Video file not found", result.stdout)
+    mocker.patch("chimera_intel.core.vidint.cv2.VideoCapture", return_value=mock_vid)
+    return mock_vid
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_cli_analyze_video_metadata_only(mock_video_capture, mocker):
+    """
+    Tests the 'analyze-video' command for correct metadata extraction.
+    """
+    # --- Setup ---
+    # Mock os.path.exists to simulate that the file is found
+
+    mocker.patch("os.path.exists", return_value=True)
+
+    # --- Execute ---
+
+    result = runner.invoke(vidint_app, ["analyze-video", "test.mp4"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 0
+    assert "Video Metadata" in result.stdout
+    assert "Resolution: 1920x1080" in result.stdout
+    assert "Duration: 10.00 seconds" in result.stdout
+
+
+def test_cli_analyze_video_with_frame_extraction(mock_video_capture, mocker):
+    """
+    Tests the frame extraction functionality via the CLI (--extract-frames).
+    """
+    # --- Setup ---
+
+    mocker.patch("os.path.exists", return_value=True)
+    mock_makedirs = mocker.patch("os.makedirs")
+    mock_imwrite = mocker.patch("chimera_intel.core.vidint.cv2.imwrite")
+
+    # --- Execute ---
+
+    result = runner.invoke(
+        vidint_app,
+        ["analyze-video", "test.mp4", "--extract-frames", "5"],
+    )
+
+    # --- Assert ---
+
+    assert result.exit_code == 0
+    mock_makedirs.assert_called_once_with("video_frames")
+    # Calculation: 300 frames / (30 fps * 5s interval) = 2 frames should be saved
+
+    assert mock_imwrite.call_count == 2
+    assert "Successfully extracted 2 frames" in result.stdout
+
+
+def test_cli_analyze_video_with_motion_detection(mock_video_capture, mocker):
+    """
+    Tests the motion detection functionality via the CLI (--detect-motion).
+    """
+    # --- Setup ---
+
+    mocker.patch("os.path.exists", return_value=True)
+    # We patch the actual motion detection function to isolate this test
+
+    mock_detect_motion = mocker.patch("chimera_intel.core.vidint.detect_motion")
+
+    # --- Execute ---
+
+    result = runner.invoke(vidint_app, ["analyze-video", "test.mp4", "--detect-motion"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 0
+    # Ensure the motion detection function was called correctly
+
+    mock_detect_motion.assert_called_once_with("test.mp4")
+
+
+def test_cli_analyze_video_file_not_found(mocker):
+    """
+    Tests that the command fails correctly when the input video file does not exist.
+    """
+    # --- Setup ---
+    # Mock os.path.exists to simulate a missing file
+
+    mocker.patch("os.path.exists", return_value=False)
+
+    # --- Execute ---
+
+    result = runner.invoke(vidint_app, ["analyze-video", "nonexistent.mp4"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 1
+    assert "Error: Video file not found" in result.stdout

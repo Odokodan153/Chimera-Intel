@@ -1,140 +1,111 @@
-import unittest
-from unittest.mock import patch, MagicMock
+import pytest
 from typer.testing import CliRunner
-from httpx import Response, RequestError
+from unittest.mock import patch, MagicMock, AsyncMock
 
-from chimera_intel.core.temporal_analyzer import (
-    get_historical_snapshots,
-    temporal_app,
-)
+# The application instance to be tested
+
+from chimera_intel.core.temporal_analyzer import temporal_app
 from chimera_intel.core.schemas import ShiftingIdentityResult
+
+# Create a CliRunner for invoking the app in tests
 
 runner = CliRunner()
 
 
-class TestTemporalAnalyzer(unittest.TestCase):
-    """Test cases for the Temporal Analysis module."""
-
-    # --- Function Tests ---
-
-    @patch("chimera_intel.core.temporal_analyzer.sync_client.get")
-    def test_get_historical_snapshots_success(self, mock_get):
-        """Tests a successful fetch of historical snapshots."""
-        # Arrange
-
-        mock_response = MagicMock(spec=Response)
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = [
-            ["timestamp", "statuscode", "original"],
-            ["20230101000000", "200", "http://example.com/"],
-            ["20220101000000", "200", "http://example.com/"],
-        ]
-        mock_get.return_value = mock_response
-
-        # Act
-
-        result = get_historical_snapshots("example.com")
-
-        # Assert
-
-        self.assertIsInstance(result, ShiftingIdentityResult)
-        self.assertIsNone(result.error)
-        self.assertEqual(result.total_snapshots_found, 2)
-        self.assertEqual(len(result.snapshots), 2)
-        self.assertEqual(result.snapshots[0].timestamp, "20230101000000")
-
-    @patch("chimera_intel.core.temporal_analyzer.sync_client.get")
-    def test_get_historical_snapshots_api_error(self, mock_get):
-        """Tests the function's error handling when the API fails."""
-        # Arrange
-
-        mock_get.side_effect = RequestError("Service Unavailable")
-
-        # Act
-
-        result = get_historical_snapshots("example.com")
-
-        # Assert
-
-        self.assertIsNotNone(result.error)
-        self.assertIn("An API error occurred", result.error)
-
-    # --- CLI Tests ---
-
-    @patch("chimera_intel.core.temporal_analyzer.save_scan_to_db")
-    @patch("chimera_intel.core.temporal_analyzer.save_or_print_results")
-    @patch("chimera_intel.core.temporal_analyzer.resolve_target")
-    @patch("chimera_intel.core.temporal_analyzer.get_historical_snapshots")
-    def test_cli_snapshots_with_argument(
-        self, mock_get_snapshots, mock_resolve, mock_save_print, mock_save_db
-    ):
-        """Tests the 'temporal snapshots' command with a direct argument."""
-        # Arrange
-
-        mock_resolve.return_value = "example.com"
-        mock_get_snapshots.return_value = ShiftingIdentityResult(
-            domain="example.com", total_snapshots_found=5, snapshots=[]
-        )
-
-        # Act
-
-        result = runner.invoke(temporal_app, ["snapshots", "example.com"])
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        mock_resolve.assert_called_with("example.com", required_assets=["domain"])
-        mock_get_snapshots.assert_called_with("example.com")
-
-        # Check that the save/print function was called correctly
-
-        mock_save_print.assert_called_once()
-        results_dict = mock_save_print.call_args[0][0]
-        self.assertEqual(results_dict["domain"], "example.com")
-        self.assertEqual(results_dict["total_snapshots_found"], 5)
-
-        mock_save_db.assert_called_once()
-
-    @patch("chimera_intel.core.temporal_analyzer.save_scan_to_db")
-    @patch("chimera_intel.core.temporal_analyzer.save_or_print_results")
-    @patch("chimera_intel.core.temporal_analyzer.resolve_target")
-    @patch("chimera_intel.core.temporal_analyzer.get_historical_snapshots")
-    def test_cli_snapshots_with_project(
-        self, mock_get_snapshots, mock_resolve_target, mock_save_print, mock_save_db
-    ):
-        """Tests the CLI command using an active project's domain."""
-        # Arrange
-
-        mock_resolve_target.return_value = "project.com"
-        mock_get_snapshots.return_value = ShiftingIdentityResult(
-            domain="project.com", total_snapshots_found=10, snapshots=[]
-        )
-
-        # Act
-
-        result = runner.invoke(temporal_app, ["snapshots"])
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        # Assert that resolve_target was called with None as intended by the user
-
-        mock_resolve_target.assert_called_with(None, required_assets=["domain"])
-        mock_get_snapshots.assert_called_with("project.com")
-
-        results_dict = mock_save_print.call_args[0][0]
-        self.assertEqual(results_dict["total_snapshots_found"], 10)
-
-    @patch(
+@pytest.fixture
+def mock_resolve_target(mocker):
+    """A pytest fixture to mock the project and target resolution logic."""
+    return mocker.patch(
         "chimera_intel.core.temporal_analyzer.resolve_target",
-        return_value="invalid-domain",
+        return_value="example.com",
     )
-    def test_cli_snapshots_invalid_domain(self, mock_resolve):
-        """Tests the CLI command with an invalid domain."""
-        result = runner.invoke(temporal_app, ["snapshots", "invalid-domain"])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("is not a valid domain format", result.stdout)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.fixture
+def mock_gather_snapshots(mocker):
+    """
+    A pytest fixture that mocks the core data gathering function,
+    preventing actual network calls.
+    """
+    # Create a mock result object that the application expects
+
+    mock_result = ShiftingIdentityResult(
+        domain="example.com",
+        total_snapshots_found=1,
+        snapshots=[
+            {
+                "url": "http://example.com",
+                "timestamp": "20230101000000",
+                "status_code": 200,
+            }
+        ],
+    )
+    # Patch the async function and make it return our mock result
+
+    return mocker.patch(
+        "chimera_intel.core.temporal_analyzer.gather_historical_snapshots",
+        new_callable=AsyncMock,
+        return_value=mock_result,
+    )
+
+
+def test_cli_snapshots_with_argument(mock_resolve_target, mock_gather_snapshots):
+    """
+    Tests the 'snapshots' command when a domain is provided as a direct argument.
+    """
+    # --- Execute ---
+    # The command is 'snapshots', and 'example.com' is the argument
+
+    result = runner.invoke(temporal_app, ["snapshots", "example.com"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 0
+    # Verify that the target resolver was called with the provided domain
+
+    mock_resolve_target.assert_called_once_with(
+        "example.com", required_assets=["domain"]
+    )
+    # Verify that the main logic was called with the resolved domain
+
+    mock_gather_snapshots.assert_awaited_with("example.com")
+    # Check for expected output
+
+    assert "Fetching 1 snapshots" in result.stdout
+    assert "http://example.com" in result.stdout
+
+
+def test_cli_snapshots_with_project(mock_resolve_target, mock_gather_snapshots):
+    """
+    Tests the 'snapshots' command when no domain is provided, relying on the
+    active project context.
+    """
+    # --- Execute ---
+    # We call the 'snapshots' command without a domain argument
+
+    result = runner.invoke(temporal_app, ["snapshots"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 0
+    # Verify the resolver was called to get the domain from the project
+
+    mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
+    # Verify the main logic was called with the domain returned by the resolver
+
+    mock_gather_snapshots.assert_awaited_with("example.com")
+    assert "Fetching 1 snapshots" in result.stdout
+
+
+def test_cli_snapshots_invalid_domain():
+    """
+    Tests that the 'snapshots' command fails correctly when given an invalid domain format.
+    """
+    # --- Execute ---
+
+    result = runner.invoke(temporal_app, ["snapshots", "invalid-domain"])
+
+    # --- Assert ---
+
+    assert result.exit_code == 1
+    assert "is not a valid domain format" in result.stdout

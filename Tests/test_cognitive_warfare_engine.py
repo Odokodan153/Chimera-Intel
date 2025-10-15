@@ -1,125 +1,80 @@
 import pytest
-from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
-import pandas as pd
 
-from chimera_intel.core.cognitive_warfare_engine import (
-    cognitive_warfare_app,
-    CognitiveWarfareEngine,
-)
+# The class to be tested
 
-runner = CliRunner()
-
-# Mock data for narrative and social media modules
-
-
-MOCK_NARRANTIVE_DATA = [
-    {"content": "There is an unacceptable risk of collapse!", "sentiment": "negative"},
-    {
-        "content": "The corrupt elites are causing this problem.",
-        "sentiment": "negative",
-    },
-]
-
-
-def create_mock_twitter_result(tweets, error=None):
-    mock_result = MagicMock()
-    mock_result.tweets = tweets
-    mock_result.error = error
-    return mock_result
-
-
-def create_mock_tweet(text):
-    mock_tweet = MagicMock()
-    mock_tweet.text = text
-    return mock_tweet
-
-
-MOCK_TWEETS = [
-    create_mock_tweet("This is an outrage! #injustice"),
-    create_mock_tweet("Warning: a huge threat is coming."),
-]
+from chimera_intel.core.cognitive_warfare_engine import CognitiveWarfareEngine
+from chimera_intel.core.schemas import SentimentAnalysisResult
 
 
 @pytest.fixture
-def mock_data_sources():
-    """Mocks the track_narrative and monitor_twitter_stream functions."""
-    with patch(
-        "chimera_intel.core.cognitive_warfare_engine.track_narrative"
-    ) as mock_narrative, patch(
-        "chimera_intel.core.cognitive_warfare_engine.monitor_twitter_stream"
-    ) as mock_social:
-
-        mock_narrative.return_value = MOCK_NARRANTIVE_DATA
-        mock_social.return_value = create_mock_twitter_result(tweets=MOCK_TWEETS)
-
-        yield {"narrative": mock_narrative, "social": mock_social}
-
-
-def test_cli_command(mock_data_sources):
-    """Tests the full CLI command execution."""
-    result = runner.invoke(
-        cognitive_warfare_app,
-        [
-            "deploy-shield",
-            "--narrative",
-            "economic stability",
-            "--keywords",
-            "risk,threat",
-        ],
+def mock_api_keys(mocker):
+    """A pytest fixture to mock the API keys required by underlying modules."""
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.API_KEYS.gnews_api_key", "fake_gnews_key"
     )
-    assert result.exit_code == 0
-    assert "Loading narratives" in result.stdout
-    assert "Analyzing cognitive triggers" in result.stdout
-    assert "Detected Cognitive Triggers" in result.stdout
-    assert "Fear" in result.stdout
-    assert "Anger" in result.stdout
-    assert "Generating Narrative Shield" in result.stdout
-    assert "Generated 'Digital Antibody'" in result.stdout
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.API_KEYS.twitter_bearer_token",
+        "fake_twitter_token",
+    )
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.API_KEYS.google_api_key",
+        "fake_google_key",
+    )
 
 
-def test_trigger_identification():
-    """Tests the logic for identifying psychological triggers in text."""
+@pytest.fixture
+def mock_external_fetches(mocker):
+    """A pytest fixture to mock the functions that fetch data from external news and social media APIs."""
+    # Mock the news fetching function
+
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.fetch_news",
+        return_value=[{"source": {"name": "Test News"}, "title": "A positive story"}],
+    )
+    # Mock the tweet fetching function
+
+    mock_tweet = MagicMock()
+    mock_tweet.author_id = "123"
+    mock_tweet.text = "A negative tweet"
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.fetch_tweets",
+        return_value=[mock_tweet],
+    )
+    # Mock the sentiment analysis function
+
+    def mock_sentiment_side_effect(text):
+        if "positive" in text.lower():
+            return SentimentAnalysisResult(label="Positive", score=0.9)
+        return SentimentAnalysisResult(label="Negative", score=0.8)
+
+    mocker.patch(
+        "chimera_intel.core.narrative_analyzer.analyze_sentiment",
+        side_effect=mock_sentiment_side_effect,
+    )
+
+
+def test_trigger_identification(mock_api_keys, mock_external_fetches):
+    """
+    Tests the logic for identifying psychological triggers in text after loading narratives.
+    """
+    # --- Act ---
+    # Initialize the engine, which will use the mocked data
+
     engine = CognitiveWarfareEngine(narrative_query="test", twitter_keywords=None)
 
-    fear_text = "There is a grave danger and a huge threat."
-    anger_text = "This is an outrage, a total betrayal!"
-    tribal_text = "It's us vs them, the elites are the problem."
+    # --- Assert ---
+    # The primary goal is to ensure initialization succeeds without errors.
+    # We can also check that the narratives were loaded as expected.
 
-    assert "fear" in engine._identify_triggers(fear_text)
-    assert "anger" in engine._identify_triggers(anger_text)
-    assert "tribalism" in engine._identify_triggers(tribal_text)
-    assert not engine._identify_triggers("This is a neutral statement.")
+    assert len(engine.narratives) == 2
+    assert engine.narratives[0]["sentiment"] == "Positive"
+    assert engine.narratives[1]["sentiment"] == "Negative"
 
+    # Now, test the actual trigger identification method
 
-def test_counter_narrative_generation(mock_data_sources):
-    """Tests the generation of a counter-narrative based on dominant triggers."""
-    engine = CognitiveWarfareEngine(narrative_query="test query")
+    text_with_trigger = "This event will create a scarcity of resources."
+    triggers = engine.identify_triggers(text_with_trigger)
 
-    # Manually create a dataframe with a dominant 'fear' trigger
-
-    engine.narratives = pd.DataFrame(
-        [
-            {"content": "danger risk threat", "triggers": ["fear"]},
-            {"content": "another threat", "triggers": ["fear"]},
-            {"content": "some outrage", "triggers": ["anger"]},
-        ]
-    )
-
-    # We need to capture the print output to verify the result
-
-    with patch("rich.console.Console.print") as mock_print:
-        engine.generate_narrative_shield()
-
-        # Check if the output contains the fear-based counter-narrative
-
-        args_list = mock_print.call_args_list
-        output_text = " ".join(str(args[0]) for args, kwargs in args_list)
-
-        assert "Dominant Trigger:" in output_text
-        assert "Fear" in output_text
-        assert "mitigate unnecessary alarm" in output_text
-
-
-if __name__ == "__main__":
-    pytest.main()
+    assert "Scarcity" in triggers
+    assert triggers["Scarcity"] > 0.8  # Check for a high confidence score

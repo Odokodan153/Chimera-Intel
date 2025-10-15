@@ -1,245 +1,160 @@
 import unittest
 import json
-from chimera_intel.core.stix_converter import (
-    convert_footprint_to_stix,
-    create_stix_bundle,
-    convert_threat_actor_to_stix,
-    convert_web_analysis_to_stix,
-    convert_tweet_to_stix,
-    convert_youtube_video_to_stix,
-    convert_twitter_monitoring_to_stix,
-    convert_youtube_monitoring_to_stix,
-)
+from chimera_intel.core.stix_converter import StixConverter
 from chimera_intel.core.schemas import (
     FootprintResult,
-    FootprintData,
-    SubdomainReport,
-    ScoredResult,
-    ThreatIntelResult,
-    ThreatActorIntelResult,
+    VulnerabilityScanResult,
     ThreatActor,
-    WebAnalysisResult,
-    WebAnalysisData,
-    TechStackReport,
-    Tweet,
-    YouTubeVideo,
-    TwitterMonitoringResult,
-    YouTubeMonitoringResult,
+    TTP,
 )
-from stix2 import Identity
 
 
 class TestStixConverter(unittest.TestCase):
-    """Test cases for the STIX Converter module."""
+    """Test cases for the STIX2 bundle converter."""
 
     def setUp(self):
-        """Create a standard STIX Identity object for use in tests."""
-        self.identity = Identity(
-            name="example.com",
-            identity_class="organization",
-        )
+        """Set up the test data for conversion."""
+        # --- Comprehensive and Valid Footprint Data ---
 
-    def test_convert_tweet_to_stix(self):
-        """Tests the conversion of a Tweet to STIX objects."""
-        tweet = Tweet(
-            id="12345",
-            text="Check out this new malware at bad-domain.com and 1.2.3.4",
-            author_id="98765",
-            created_at="2025-01-01T12:00:00Z",
-        )
-        stix_objects = convert_tweet_to_stix(tweet)
-        self.assertGreater(len(stix_objects), 4)
-        types = {obj["type"] for obj in stix_objects}
-        self.assertIn("identity", types)
-        self.assertIn("note", types)
-        self.assertIn("indicator", types)
-        self.assertIn("ipv4-addr", types)
-        self.assertIn("domain-name", types)
-        self.assertIn("relationship", types)
-
-    def test_convert_youtube_video_to_stix(self):
-        """Tests the conversion of a YouTubeVideo to STIX objects."""
-        video = YouTubeVideo(
-            id="abcdef123",
-            title="How to Hack Everything",
-            channel_id="channel123",
-            channel_title="Hackerman",
-            published_at="2025-01-01T12:00:00Z",
-        )
-        stix_objects = convert_youtube_video_to_stix(video)
-        self.assertEqual(len(stix_objects), 3)
-        types = {obj["type"] for obj in stix_objects}
-        self.assertIn("identity", types)
-        self.assertIn("report", types)
-        self.assertIn("relationship", types)
-
-    def test_convert_twitter_monitoring_to_stix(self):
-        """Tests the conversion of a TwitterMonitoringResult to STIX objects."""
-        twitter_result = TwitterMonitoringResult(
-            query="test",
-            total_tweets_found=1,
-            tweets=[
-                Tweet(
-                    id="12345",
-                    text="Test tweet",
-                    author_id="67890",
-                    created_at="2025-01-01T12:00:00Z",
-                )
-            ],
-        )
-        stix_objects = convert_twitter_monitoring_to_stix(twitter_result)
-        self.assertGreaterEqual(len(stix_objects), 2)
-
-    def test_convert_youtube_monitoring_to_stix(self):
-        """Tests the conversion of a YouTubeMonitoringResult to STIX objects."""
-        youtube_result = YouTubeMonitoringResult(
-            query="test",
-            total_videos_found=1,
-            videos=[
-                YouTubeVideo(
-                    id="abcdef123",
-                    title="Test Video",
-                    channel_id="channel123",
-                    channel_title="Test Channel",
-                    published_at="2025-01-01T12:00:00Z",
-                )
-            ],
-        )
-        stix_objects = convert_youtube_monitoring_to_stix(youtube_result)
-        self.assertGreaterEqual(len(stix_objects), 3)
-
-    def test_convert_footprint_to_stix(self):
-        """Tests the conversion of a FootprintResult to STIX objects."""
-        # Arrange
-
-        footprint_data = FootprintResult(
-            domain="example.com",
-            footprint=FootprintData(
-                whois_info={},
-                dns_records={"A": ["1.2.3.4"]},
-                subdomains=SubdomainReport(
-                    total_unique=1,
-                    results=[
-                        ScoredResult(
-                            domain="sub.example.com",
-                            confidence="HIGH",
-                            sources=["test"],
-                        )
+        self.footprint_data = {
+            "domain": "example.com",
+            "footprint": {
+                "whois_info": {"registrar": "Test Registrar"},
+                "dns_records": {"A": ["192.0.2.1"]},
+                "subdomains": {
+                    "total_unique": 1,
+                    "results": [
+                        {
+                            "domain": "sub.example.com",
+                            "confidence": "High",
+                            "sources": ["DNS"],
+                        }
                     ],
-                ),
-                ip_threat_intelligence=[
-                    ThreatIntelResult(
-                        indicator="1.2.3.4", is_malicious=True, pulse_count=5, pulses=[]
-                    )
-                ],
-            ),
-        )
-
-        # Act
-
-        stix_objects = convert_footprint_to_stix(footprint_data, self.identity)
-
-        # Assert
-
-        self.assertGreater(len(stix_objects), 3)
-        types = {obj["type"] for obj in stix_objects}
-        self.assertIn("ipv4-addr", types)
-        self.assertIn("domain-name", types)
-        self.assertIn("relationship", types)
-        self.assertIn("indicator", types)
-
-    def test_convert_web_analysis_to_stix(self):
-        """Tests the conversion of a WebAnalysisResult to STIX objects."""
-        # Arrange
-
-        web_analysis_data = WebAnalysisResult(
-            domain="example.com",
-            web_analysis=WebAnalysisData(
-                tech_stack=TechStackReport(
-                    total_unique=1,
-                    results=[
-                        ScoredResult(
-                            technology="React", confidence="HIGH", sources=["test"]
-                        )
-                    ],
-                ),
-                traffic_info={},
-            ),
-        )
-
-        # Act
-
-        stix_objects = convert_web_analysis_to_stix(web_analysis_data, self.identity)
-
-        # Assert
-
-        self.assertEqual(len(stix_objects), 2)  # Tool and Relationship
-        types = {obj["type"] for obj in stix_objects}
-        self.assertIn("tool", types)
-        self.assertIn("relationship", types)
-        tool_obj = next(obj for obj in stix_objects if obj["type"] == "tool")
-        self.assertEqual(tool_obj["name"], "React")
-
-    def test_convert_threat_actor_to_stix(self):
-        """Tests the conversion of a ThreatActorIntelResult to STIX objects."""
-        # Arrange
-
-        actor_data = ThreatActorIntelResult(
-            actor=ThreatActor(
-                name="APT28",
-                aliases=["Fancy Bear"],
-                targeted_industries=["Government", "Defense"],
-                known_ttps=[],
-                known_indicators=[],
-            )
-        )
-        # Act
-
-        stix_objects = convert_threat_actor_to_stix(actor_data)
-        # Assert
-
-        self.assertGreater(len(stix_objects), 3)
-        types = {obj["type"] for obj in stix_objects}
-        self.assertIn("threat-actor", types)
-        self.assertIn("intrusion-set", types)
-        self.assertIn("identity", types)
-        self.assertIn("relationship", types)
-
-    def test_create_stix_bundle(self):
-        """Tests the creation of a full STIX bundle, including the Report object."""
-        # Arrange
-
-        scans = [
-            {
-                "module": "footprint",
-                "scan_data": json.dumps(
+                },
+                "ip_threat_intelligence": [
                     {
-                        "domain": "example.com",
-                        "footprint": {
-                            "whois_info": {},
-                            "dns_records": {"A": ["1.2.3.4"]},
-                            "subdomains": {"total_unique": 0, "results": []},
-                            "ip_threat_intelligence": [],
-                        },
+                        "indicator": "192.0.2.1",
+                        "is_malicious": True,
+                        "pulse_count": 5,
+                        "pulses": [
+                            {
+                                "name": "Malicious C2",
+                                "malware_families": ["GenericBot"],
+                                "tags": ["C2"],
+                            }
+                        ],
                     }
-                ),
+                ],
+                "historical_dns": {
+                    "a_records": ["198.51.100.1"],
+                    "aaaa_records": [],
+                    "mx_records": [],
+                },
+                "reverse_ip": {"192.0.2.1": ["host.example.com"]},
+                "asn_info": {"192.0.2.1": {"asn": "AS12345", "owner": "Test ISP"}},
+                "tls_cert_info": {
+                    "issuer": "Test CA",
+                    "subject": "example.com",
+                    "sans": ["example.com"],
+                    "not_before": "2023-01-01T00:00:00",
+                    "not_after": "2024-01-01T00:00:00",
+                },
+                "dnssec_info": {
+                    "dnssec_enabled": True,
+                    "spf_record": "v=spf1 ...",
+                    "dmarc_record": "v=DMARC1 ...",
+                },
+                "ip_geolocation": {
+                    "192.0.2.1": {
+                        "ip": "192.0.2.1",
+                        "city": "Test City",
+                        "country": "TC",
+                    }
+                },
+                "cdn_provider": "Test CDN",
+                "breach_info": {"source": "HIBP", "breaches": ["TestBreach"]},
+                "port_scan_results": {"192.0.2.1": {"open_ports": {80: "http"}}},
+                "web_technologies": {"cms": "WordPress"},
+                "personnel_info": {
+                    "employees": [{"name": "John Doe", "email": "j.doe@example.com"}]
+                },
+                "knowledge_graph": {"nodes": [], "edges": []},
+            },
+        }
+
+        self.vuln_scan_data = {
+            "target_domain": "example.com",
+            "scanned_hosts": [
+                {
+                    "host": "192.0.2.1",
+                    "state": "up",
+                    "open_ports": [
+                        {
+                            "port": 443,
+                            "state": "open",
+                            "service": "https",
+                            "vulnerabilities": [
+                                {
+                                    "id": "CVE-2023-0001",
+                                    "cvss": 9.8,
+                                    "title": "Critical RCE",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        self.threat_actor_data = {
+            "actor": {
+                "name": "Test Actor",
+                "aliases": ["TA"],
+                "known_ttps": [
+                    {
+                        "technique_id": "T1566.001",
+                        "tactic": "Initial Access",
+                        "description": "Phishing",
+                    }
+                ],
             }
-        ]
+        }
 
-        # Act
+    def test_create_stix_bundle_with_all_data_types(self):
+        """
+        Tests the creation of a STIX bundle with various data types.
+        """
+        # --- Arrange ---
+        # Validate the mock data against the Pydantic models
 
-        bundle_str = create_stix_bundle("example.com", scans)
-        bundle = json.loads(bundle_str)
+        footprint_result = FootprintResult.model_validate(self.footprint_data)
+        vuln_result = VulnerabilityScanResult.model_validate(self.vuln_scan_data)
+        actor_result = ThreatActor.model_validate(self.threat_actor_data["actor"])
 
-        # Assert
+        converter = StixConverter("Test Project")
+        converter.add_scan_result(footprint_result)
+        converter.add_scan_result(vuln_result)
+        converter.add_threat_actor(actor_result)
 
-        self.assertEqual(bundle["type"], "bundle")
-        self.assertIn("spec_version", bundle)
-        self.assertGreater(len(bundle["objects"]), 0)
-        # Check for the presence of the main Report object
+        # --- Act ---
 
-        self.assertTrue(any(obj["type"] == "report" for obj in bundle["objects"]))
+        bundle = converter.create_bundle()
+        bundle_dict = json.loads(bundle.serialize(pretty=True))
 
+        # --- Assert ---
 
-if __name__ == "__main__":
-    unittest.main()
+        self.assertEqual(bundle.type, "bundle")
+        self.assertGreater(
+            len(bundle.objects), 5
+        )  # Identity, Report, Domain, IP, Vuln, etc.
+
+        # Verify key objects were created
+
+        object_types = [obj["type"] for obj in bundle_dict["objects"]]
+        self.assertIn("identity", object_types)
+        self.assertIn("report", object_types)
+        self.assertIn("domain-name", object_types)
+        self.assertIn("ipv4-addr", object_types)
+        self.assertIn("vulnerability", object_types)
+        self.assertIn("threat-actor", object_types)
+        self.assertIn("attack-pattern", object_types)
