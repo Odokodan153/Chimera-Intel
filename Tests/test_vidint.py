@@ -6,9 +6,11 @@ import numpy as np
 
 # The application instance to be tested
 
+
 from chimera_intel.core.vidint import vidint_app
 
 # Create a CliRunner for invoking the app in tests
+
 
 runner = CliRunner()
 
@@ -110,7 +112,9 @@ def test_cli_analyze_video_with_motion_detection(mock_video_capture, mocker):
     mocker.patch("os.path.exists", return_value=True)
     # We patch the actual motion detection function to isolate this test
 
-    mock_detect_motion = mocker.patch("chimera_intel.core.vidint.detect_motion")
+    mock_run_motion_detection = mocker.patch(
+        "chimera_intel.core.vidint.run_motion_detection"
+    )
 
     # --- Execute ---
 
@@ -121,7 +125,7 @@ def test_cli_analyze_video_with_motion_detection(mock_video_capture, mocker):
     assert result.exit_code == 0
     # Ensure the motion detection function was called correctly
 
-    mock_detect_motion.assert_called_once_with("test.mp4")
+    mock_run_motion_detection.assert_called_once_with("test.mp4")
 
 
 def test_cli_analyze_video_file_not_found(mocker):

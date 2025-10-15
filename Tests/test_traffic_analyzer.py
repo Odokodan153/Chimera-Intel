@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, mock_open
 from typer.testing import CliRunner
-from scapy.all import IP, TCP, Raw
+from scapy.all import IP, TCP, Raw, PacketList
 
 from chimera_intel.core.traffic_analyzer import (
     carve_files_from_pcap,
@@ -24,7 +24,9 @@ def create_mock_packets():
         / TCP(dport=80)
         / Raw(load=b"HTTP/1.1 200 OK\r\n\r\n<html>test</html>")
     )
-    return [pkt1, pkt2, pkt3, pkt4]
+    mock_packet_list = PacketList([pkt1, pkt2, pkt3, pkt4])
+    mock_packet_list.sessions = lambda: {"mock_session": [pkt1, pkt2, pkt3, pkt4]}
+    return mock_packet_list
 
 
 class TestTrafficAnalyzer(unittest.TestCase):
@@ -42,11 +44,7 @@ class TestTrafficAnalyzer(unittest.TestCase):
         """Tests successful file carving from a PCAP."""
         # Arrange
 
-        mock_packets = create_mock_packets()
-        # Scapy's sessions() returns a dictionary-like object
-
-        mock_rdpcap.return_value = MagicMock()
-        mock_rdpcap.return_value.sessions.return_value = {"session1": mock_packets}
+        mock_rdpcap.return_value = create_mock_packets()
 
         # Act
 
@@ -54,6 +52,7 @@ class TestTrafficAnalyzer(unittest.TestCase):
 
         # Assert
 
+        mock_makedirs.assert_called_with("output_dir")
         mock_file.assert_called_with("output_dir/carved_file_0.bin", "wb")
         mock_file().write.assert_called_with(b"<html>test</html>")
 
@@ -99,7 +98,8 @@ class TestTrafficAnalyzer(unittest.TestCase):
         mock_analyze.assert_called_with("test.pcap")
         mock_carve.assert_called_with("test.pcap", "carved_files_output")
 
-    def test_cli_analyze_traffic_file_not_found(self):
+    @patch("os.path.exists", return_value=False)
+    def test_cli_analyze_traffic_file_not_found(self, mock_exists):
         """Tests the CLI command when the input capture file does not exist."""
         result = runner.invoke(traffic_analyzer_app, ["analyze", "nonexistent.pcap"])
         self.assertEqual(result.exit_code, 1)

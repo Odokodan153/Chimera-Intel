@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.ttp_mapper import ttp_app, map_cves_to_ttp
@@ -19,17 +19,12 @@ class TestTtpMapper(unittest.TestCase):
         # Arrange
 
         mock_attack_instance = mock_mitre_data.return_value
-
-        # Create a mock for the phase and set its .name attribute correctly
-
-        mock_phase = MagicMock()
-        mock_phase.name = "initial-access"
-
-        mock_technique = MagicMock()
-        mock_technique.name = "Phishing"
-        mock_technique.external_references = [MagicMock(external_id="T1566")]
-        mock_technique.kill_chain_phases = [mock_phase]  # Use the configured mock
-
+        mock_phase = {"phase_name": "initial-access"}
+        mock_technique = {
+            "name": "Phishing",
+            "external_references": [{"external_id": "T1566"}],
+            "kill_chain_phases": [mock_phase],
+        }
         mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
 
         # Act
@@ -82,9 +77,7 @@ class TestTtpMapper(unittest.TestCase):
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.ttp_mapper.save_scan_to_db")
-    @patch(
-        "chimera_intel.core.ttp_mapper.save_or_print_results"
-    )  # Mock the print utility
+    @patch("chimera_intel.core.ttp_mapper.save_or_print_results")
     @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
     def test_cli_map_cve_success(
         self, mock_mitre_data, mock_save_or_print, mock_save_scan_to_db
@@ -93,12 +86,12 @@ class TestTtpMapper(unittest.TestCase):
         # Arrange
 
         mock_attack_instance = mock_mitre_data.return_value
-        mock_phase = MagicMock()
-        mock_phase.name = "initial-access"
-        mock_technique = MagicMock()
-        mock_technique.name = "Phishing"
-        mock_technique.external_references = [MagicMock(external_id="T1566")]
-        mock_technique.kill_chain_phases = [mock_phase]
+        mock_phase = {"phase_name": "initial-access"}
+        mock_technique = {
+            "name": "Phishing",
+            "external_references": [{"external_id": "T1566"}],
+            "kill_chain_phases": [mock_phase],
+        }
         mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
 
         # Act
@@ -112,8 +105,6 @@ class TestTtpMapper(unittest.TestCase):
         # Check that the save/print function was called correctly
 
         mock_save_or_print.assert_called_once()
-        # Get the dictionary that was passed to the function
-
         results_dict = mock_save_or_print.call_args[0][0]
         self.assertEqual(results_dict["total_cves_analyzed"], 1)
         self.assertEqual(results_dict["mapped_techniques"][0]["technique_id"], "T1566")

@@ -3,7 +3,6 @@ Advanced Network Traffic Analysis Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
 from scapy.all import rdpcap, Raw
 from scapy.layers.inet import TCP, IP
 import os
@@ -41,21 +40,21 @@ def carve_files_from_pcap(pcap_path: str, output_dir: str):
                     http_payload += packet[Raw].load
         if http_payload:
             try:
-                headers, content = http_payload.split(b"\r\n\r\n", 1)
-                if content:
-                    filename = f"carved_file_{carved_files}.bin"
-                    filepath = os.path.join(output_dir, filename)
-                    with open(filepath, "wb") as f:
-                        f.write(content)
-                    # Use console.print for consistent output
+                # Find the end of headers
 
-                    console.print(f"Carved file: {filepath}")
-                    carved_files += 1
+                header_end_index = http_payload.find(b"\r\n\r\n")
+                if header_end_index != -1:
+                    content = http_payload[header_end_index + 4 :]
+                    if content:
+                        filename = f"carved_file_{carved_files}.bin"
+                        filepath = os.path.join(output_dir, filename)
+                        with open(filepath, "wb") as f:
+                            f.write(content)
+                        console.print(f"Carved file: {filepath}")
+                        carved_files += 1
             except ValueError:
                 continue
     if carved_files == 0:
-        # Use console.print
-
         console.print("No files could be carved from the capture.")
 
 
@@ -98,7 +97,7 @@ def analyze_protocols(pcap_path: str):
         convo_table.add_row(u, v, str(attrs["weight"]))
     console.print(convo_table)
 
-    net = Network(height="750px", width="100%", notebook=False)
+    net = Network(height="750px", width="100%", notebook=False, cdn_resources="local")
     net.from_nx(G)
     net.save_graph("communication_map.html")
     console.print(
@@ -110,48 +109,35 @@ def analyze_protocols(pcap_path: str):
     name="analyze", help="Analyze a network traffic capture file."
 )
 def analyze_traffic(
-    capture_file: Annotated[
-        str,
-        typer.Argument(help="Path to the network capture file (.pcap or .pcapng)."),
-    ],
-    carve_files: Annotated[
-        bool,
-        typer.Option(
-            "--carve-files",
-            "-c",
-            help="Attempt to carve files from unencrypted traffic.",
-        ),
-    ] = False,
+    capture_file: str = typer.Argument(
+        ..., help="Path to the network capture file (.pcap or .pcapng)."
+    ),
+    carve_files: bool = typer.Option(
+        False,
+        "--carve-files",
+        "-c",
+        help="Attempt to carve files from unencrypted traffic.",
+    ),
 ):
     """
     Analyzes raw network traffic captures to extract files, identify protocols,
     and map communication channels.
     """
-    # Use console.print instead of print
-
     console.print(f"Analyzing network traffic from: {capture_file}")
 
     if not os.path.exists(capture_file):
-        # Use console.print for error messages
-
         console.print(f"Error: Capture file not found at '{capture_file}'")
         raise typer.Exit(code=1)
     analyze_protocols(capture_file)
 
     if carve_files:
         output_dir = "carved_files_output"
-        # Use console.print
-
         console.print(f"\nCarving files to directory: {output_dir}")
         try:
             carve_files_from_pcap(capture_file, output_dir)
         except Exception as e:
-            # Use console.print
-
             console.print(f"An error occurred during file carving: {e}")
             raise typer.Exit(code=1)
-    # Use console.print
-
     console.print("\nTraffic analysis complete.")
 
 

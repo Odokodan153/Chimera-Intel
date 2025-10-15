@@ -42,12 +42,22 @@ def map_cves_to_ttp(cve_ids: List[str]) -> TTPMappingResult:
             for tech in techniques:
                 # A technique can belong to multiple tactics (e.g., Discovery, Execution)
 
-                tactics = ", ".join([phase.name for phase in tech.kill_chain_phases])
+                tactics = "N/A"
+                if tech.get("kill_chain_phases"):
+                    tactics = ", ".join(
+                        [
+                            phase.get("phase_name", "unknown")
+                            for phase in tech.kill_chain_phases
+                        ]
+                    )
+                technique_id = "N/A"
+                if tech.get("external_references"):
+                    technique_id = tech.external_references[0].get("external_id", "N/A")
                 mapped_techniques.append(
                     MappedTechnique(
                         cve_id=cve_id,
-                        technique_id=tech.external_references[0].external_id,
-                        technique_name=tech.name,
+                        technique_id=technique_id,
+                        technique_name=tech.get("name", "Unknown"),
                         tactic=tactics,
                     )
                 )

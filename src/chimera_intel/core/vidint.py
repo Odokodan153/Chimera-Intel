@@ -20,7 +20,7 @@ vidint_app = typer.Typer(
 )
 
 
-def detect_motion(file_path: str, threshold: int = 30):
+def run_motion_detection(file_path: str, threshold: int = 30):
     """
     Detects motion in a video file by comparing consecutive frames.
     """
@@ -78,7 +78,7 @@ def analyze_video(
     output_dir: str = typer.Option(
         "video_frames", "--output-dir", "-d", help="Directory to save extracted frames."
     ),
-    detect_motion_flag: bool = typer.Option(
+    detect_motion: bool = typer.Option(
         False,
         "--detect-motion",
         help="Detect motion in the video.",
@@ -134,8 +134,8 @@ def analyze_video(
             console.print(
                 f"\nSuccessfully extracted {saved_count} frames to '{output_dir}'."
             )
-        if detect_motion_flag:
-            detect_motion(file_path)
+        if detect_motion:
+            run_motion_detection(file_path)
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during video analysis:[/bold red] {e}"
