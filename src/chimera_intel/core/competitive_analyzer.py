@@ -112,29 +112,28 @@ def run_competitive_analysis(
     )
 
     # Fetch aggregated data for both targets
-
-    with console.status(
-        "[bold cyan]Fetching historical data for both targets...[/bold cyan]"
-    ):
-        target_a_data = get_aggregated_data_for_target(target_a)
-        target_b_data = get_aggregated_data_for_target(target_b)
+    console.print("[bold cyan]Fetching historical data for both targets...[/bold cyan]")
+    target_a_data = get_aggregated_data_for_target(target_a)
+    target_b_data = get_aggregated_data_for_target(target_b)
+    
     if not target_a_data or not target_b_data:
         console.print(
             "[bold red]Error:[/bold red] Could not retrieve historical data for one or both targets. Ensure scans have been run for both."
         )
         raise typer.Exit(code=1)
+    
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
         raise typer.Exit(code=1)
-    with console.status(
-        "[bold cyan]Synthesizing data with AI for competitive analysis...[/bold cyan]"
-    ):
-        comp_result = generate_competitive_analysis(
-            target_a_data, target_b_data, api_key
-        )
+    
+    console.print("[bold cyan]Synthesizing data with AI for competitive analysis...[/bold cyan]")
+    comp_result = generate_competitive_analysis(
+        target_a_data, target_b_data, api_key
+    )
+    
     console.print(
         f"\n--- [bold]Competitive Analysis: {target_a} vs. {target_b}[/bold] ---\n"
     )

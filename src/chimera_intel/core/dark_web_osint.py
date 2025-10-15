@@ -56,52 +56,49 @@ async def search_dark_web_engine(
     found_results: List[DarkWebResult] = []
 
     try:
-        async with asyncio.timeout(60):  # Set a timeout for the entire operation
-            async with httpx.AsyncClient(transport=transport) as client:
-                if engine == "ahmia":
-                    response = await client.get(AHMIA_URL, params={"q": query})
-                elif engine == "darksearch":
-                    response = await client.get(
-                        DARK_SEARCH_URL, params={"query": query}
-                    )
-                else:
-                    raise ValueError("Unsupported search engine")
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, "html.parser")
+        async with httpx.AsyncClient(transport=transport, timeout=60.0) as client:
+            if engine == "ahmia":
+                response = await client.get(AHMIA_URL, params={"q": query})
+            elif engine == "darksearch":
+                response = await client.get(DARK_SEARCH_URL, params={"query": query})
+            else:
+                raise ValueError("Unsupported search engine")
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
 
-                if engine == "ahmia":
-                    results = soup.select("li.result")
-                    for result in results:
-                        title_tag = result.select_one("a")
-                        url_tag = result.select_one("cite")
-                        desc_tag = result.select_one("p")
+            if engine == "ahmia":
+                results = soup.select("li.result")
+                for result in results:
+                    title_tag = result.select_one("a")
+                    url_tag = result.select_one("cite")
+                    desc_tag = result.select_one("p")
 
-                        if title_tag and url_tag:
-                            found_results.append(
-                                DarkWebResult(
-                                    title=title_tag.text,
-                                    url=url_tag.text,
-                                    description=desc_tag.text if desc_tag else None,
-                                )
+                    if title_tag and url_tag:
+                        found_results.append(
+                            DarkWebResult(
+                                title=title_tag.text,
+                                url=url_tag.text,
+                                description=desc_tag.text if desc_tag else None,
                             )
-                elif engine == "darksearch":
-                    results = soup.select("div.card-body")
-                    for result in results:
-                        title_tag = result.select_one("h5 a")
-                        url_tag = result.select_one("h5 small")
-                        desc_tag = result.select_one("p.text-break")
+                        )
+            elif engine == "darksearch":
+                results = soup.select("div.card-body")
+                for result in results:
+                    title_tag = result.select_one("h5 a")
+                    url_tag = result.select_one("h5 small")
+                    desc_tag = result.select_one("p.text-break")
 
-                        if title_tag and url_tag:
-                            found_results.append(
-                                DarkWebResult(
-                                    title=title_tag.text.strip(),
-                                    url=url_tag.text.strip(),
-                                    description=(
-                                        desc_tag.text.strip() if desc_tag else None
-                                    ),
-                                )
+                    if title_tag and url_tag:
+                        found_results.append(
+                            DarkWebResult(
+                                title=title_tag.text.strip(),
+                                url=url_tag.text.strip(),
+                                description=(
+                                    desc_tag.text.strip() if desc_tag else None
+                                ),
                             )
-    except TimeoutError:
+                        )
+    except asyncio.TimeoutError:
         error_msg = "Search timed out. The Tor network can be slow, or the Tor proxy is not running."
         logger.error(error_msg)
         return DarkWebScanResult(query=query, found_results=[], error=error_msg)

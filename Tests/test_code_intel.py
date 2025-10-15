@@ -99,9 +99,10 @@ class TestCodeIntel(unittest.TestCase):
 
     # --- CLI Command Tests ---
 
+    @patch("chimera_intel.core.code_intel.save_scan_to_db")
     @patch("chimera_intel.core.code_intel.analyze_git_repository")
-    def test_cli_repo_analysis_success(self, mock_analyze_repo):
-        """NEW: Tests a successful run of the 'repo' CLI command."""
+    def test_cli_repo_analysis_success(self, mock_analyze_repo, mock_save_db):
+        """Tests a successful run of the 'repo' CLI command."""
         # Arrange
 
         mock_analyze_repo.return_value = RepoAnalysisResult(
@@ -127,20 +128,21 @@ class TestCodeIntel(unittest.TestCase):
         self.assertEqual(output["repository_url"], "https://github.com/user/repo.git")
         self.assertEqual(output["total_commits"], 10)
         mock_analyze_repo.assert_called_with("https://github.com/user/repo.git")
+        mock_save_db.assert_called_once()
 
     def test_cli_repo_no_url_fails(self):
         """
-        CORRECTED: Tests that the CLI command fails correctly if no repository URL is provided.
-        The command's internal logic should exit with code 1.
+        Tests that the CLI command fails correctly if no repository URL is provided.
         """
         # Act
 
         result = runner.invoke(code_intel_app, ["repo"])
 
         # Assert
+        # Typer exits with code 2 for missing arguments
 
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("A repository URL must be provided", result.stdout)
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("Missing argument 'REPO_URL'", result.stdout)
 
 
 if __name__ == "__main__":

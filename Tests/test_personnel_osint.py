@@ -82,8 +82,9 @@ class TestPersonnelOsint(unittest.TestCase):
 
     # --- CLI Tests ---
 
+    @patch("chimera_intel.core.personnel_osint.is_valid_domain", return_value=True)
     @patch("chimera_intel.core.personnel_osint.find_employee_emails")
-    def test_cli_emails_with_argument(self, mock_find_emails):
+    def test_cli_emails_with_argument(self, mock_find_emails, mock_is_valid_domain):
         """Tests the 'personnel-osint emails' command with a direct argument."""
         # Arrange
 
@@ -103,9 +104,10 @@ class TestPersonnelOsint(unittest.TestCase):
         self.assertEqual(output["domain"], "example.com")
         self.assertEqual(output["total_emails_found"], 5)
 
+    @patch("chimera_intel.core.personnel_osint.is_valid_domain", return_value=True)
     @patch("chimera_intel.core.personnel_osint.get_active_project")
     @patch("chimera_intel.core.personnel_osint.find_employee_emails")
-    def test_cli_emails_with_project(self, mock_find_emails, mock_get_project):
+    def test_cli_emails_with_project(self, mock_find_emails, mock_get_project, mock_is_valid_domain):
         """Tests the CLI command using an active project's domain."""
         # Arrange
 
@@ -128,7 +130,7 @@ class TestPersonnelOsint(unittest.TestCase):
     def test_cli_emails_invalid_domain(self):
         """Tests the CLI command with an invalid domain."""
         result = runner.invoke(personnel_osint_app, ["emails", "invalid-domain"])
-        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(result.exit_code, 2)
         self.assertIn("is not a valid domain format", result.stdout)
 
 

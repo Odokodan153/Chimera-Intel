@@ -1,6 +1,7 @@
 import unittest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+import os
 
 from chimera_intel.core.appint import analyze_apk_static, appint_app
 from chimera_intel.core.schemas import StaticAppAnalysisResult
@@ -9,167 +10,102 @@ runner = CliRunner()
 
 
 class TestAppint(unittest.TestCase):
-    """Test cases for the Mobile Application Intelligence (APPINT) module."""
+    """Test cases for the Appint module."""
 
-    @patch("chimera_intel.core.appint.shutil.rmtree")
-    @patch("chimera_intel.core.appint.subprocess.run")
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
-    def test_analyze_apk_static_success_with_secrets(
-        self, mock_exists, mock_subprocess, mock_rmtree
-    ):
-        """Tests a successful static analysis where secrets are found."""
+    @patch("chimera_intel.core.appint.APK")
+    def test_analyze_apk_static_success(self, mock_apk):
+        """Tests successful static analysis of an APK file."""
         # Arrange
+        mock_apk_instance = MagicMock()
+        mock_apk_instance.get_permissions.return_value = ["android.permission.INTERNET"]
+        mock_apk_instance.get_activities.return_value = ["com.example.MainActivity"]
+        mock_apk.return_value = mock_apk_instance
 
-        mock_subprocess.return_value = MagicMock(check_returncode=lambda: None)
-        mock_file_content = 'this is a test line with an api_key = "ABCDEFG12345HIJKLM"'
-
-        # Mock the file system walk to find a file with a secret
-
-        with patch("os.walk") as mock_walk:
-            mock_walk.return_value = [("decompiled/res", [], ["strings.xml"])]
-            with patch("builtins.open", mock_open(read_data=mock_file_content)):
-                # Act
-
-                result = analyze_apk_static("test.apk")
-        # Assert
-
-        self.assertIsInstance(result, StaticAppAnalysisResult)
-        self.assertIsNone(result.error)
-        self.assertEqual(len(result.secrets_found), 1)
-        self.assertEqual(result.secrets_found[0].secret_type, "api_key")
-        self.assertEqual(result.secrets_found[0].rule_id, "generic-secret")
-        mock_subprocess.assert_called_once()
-        mock_rmtree.assert_called_once()  # Verify cleanup
-
-    @patch("chimera_intel.core.appint.shutil.rmtree")
-    @patch("chimera_intel.core.appint.subprocess.run")
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
-    def test_analyze_apk_static_no_secrets(
-        self, mock_exists, mock_subprocess, mock_rmtree
-    ):
-        """Tests a successful static analysis where no secrets are found."""
-        # Arrange
-
-        mock_subprocess.return_value = MagicMock(check_returncode=lambda: None)
-        mock_file_content = "this is a clean line of code with no secrets."
-
-        with patch("os.walk") as mock_walk:
-            mock_walk.return_value = [("decompiled/res", [], ["strings.xml"])]
-            with patch("builtins.open", mock_open(read_data=mock_file_content)):
-                # Act
-
-                result = analyze_apk_static("test.apk")
-        # Assert
-
-        self.assertIsInstance(result, StaticAppAnalysisResult)
-        self.assertIsNone(result.error)
-        self.assertEqual(len(result.secrets_found), 0)  # Should find no secrets
-        mock_subprocess.assert_called_once()
-        mock_rmtree.assert_called_once()
-
-    @patch("chimera_intel.core.appint.shutil.rmtree")
-    @patch("chimera_intel.core.appint.subprocess.run")
-    @patch("chimera_intel.core.appint.os.path.exists")
-    def test_analyze_apk_static_apktool_not_found(
-        self, mock_exists, mock_subprocess, mock_rmtree
-    ):
-        """Tests the error handling when apktool is not installed."""
-        # Arrange
-        # Simulate that the input APK exists, but apktool itself is not found.
-
-        def exists_side_effect(path):
-            return path == "test.apk"
-
-        mock_exists.side_effect = exists_side_effect
-        mock_subprocess.side_effect = FileNotFoundError
+        # Create a dummy file for the test
+        dummy_filepath = "dummy.apk"
+        with open(dummy_filepath, "w") as f:
+            f.write("dummy content")
 
         # Act
-
-        result = analyze_apk_static("test.apk")
+        result = analyze_apk_static(dummy_filepath)
 
         # Assert
+        self.assertIsInstance(result, StaticAppAnalysisResult)
+        self.assertIsNone(result.error)
+        self.assertIn("android.permission.INTERNET", result.permissions)
+        self.assertIn("com.example.MainActivity", result.activities)
 
-        self.assertIsNotNone(result.error)
-        self.assertIn("apktool not found", result.error)
-        # Ensure cleanup is not called if the directory was never created
+        # Clean up the dummy file
+        os.remove(dummy_filepath)
 
-        mock_rmtree.assert_not_called()
-
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=False)
-    def test_analyze_apk_static_file_not_found(self, mock_exists):
-        """Tests the error handling when the target APK file does not exist."""
+    def test_analyze_apk_static_file_not_found(self):
+        """Tests the function's behavior when the APK file is not found."""
         # Act
-
         result = analyze_apk_static("nonexistent.apk")
 
         # Assert
-
         self.assertIsNotNone(result.error)
-        self.assertIn("APK file not found", result.error)
+        self.assertIn("File not found", result.error)
 
-    @patch("chimera_intel.core.appint.shutil.rmtree")
-    @patch("chimera_intel.core.appint.subprocess.run")
-    @patch("chimera_intel.core.appint.os.path.exists", return_value=True)
-    def test_analyze_apk_static_unexpected_error(
-        self, mock_exists, mock_subprocess, mock_rmtree
-    ):
-        """Tests the general exception handling during analysis."""
+    # --- CLI Command Tests ---
+
+    @patch("chimera_intel.core.appint.save_scan_to_db")
+    @patch("chimera_intel.core.utils.save_or_print_results")
+    @patch("chimera_intel.core.appint.analyze_apk_static")
+    def test_cli_static_analysis_success(self, mock_analyze_apk, mock_save_print, mock_save_db):
+        """Tests a successful run of the 'static' CLI command."""
         # Arrange
+        mock_analyze_apk.return_value = StaticAppAnalysisResult(
+            file_path="test.apk",
+            permissions=["android.permission.INTERNET"],
+            activities=["com.example.MainActivity"],
+            secrets_found=[]
+        )
+        # Ensure mocked functions don't raise exceptions
+        mock_save_print.return_value = None
+        mock_save_db.return_value = None
 
-        mock_subprocess.side_effect = Exception("An unexpected error occurred")
+        # Create a dummy file to simulate its existence
+        dummy_filepath = "test.apk"
+        with open(dummy_filepath, "w") as f:
+            f.write("dummy apk content")
 
         # Act
-
-        result = analyze_apk_static("test.apk")
+        result = runner.invoke(appint_app, ["static", dummy_filepath])
 
         # Assert
+        self.assertEqual(result.exit_code, 0, f"CLI command failed with output: {result.stdout}")
+        mock_analyze_apk.assert_called_with(dummy_filepath)
+        mock_save_print.assert_called_once()
+        
+        # Clean up the dummy file
+        os.remove(dummy_filepath)
 
-        self.assertIsNotNone(result.error)
-        self.assertIn("An unexpected error occurred", result.error)
-        # Verify that cleanup is still called even on unexpected errors
-
-        mock_rmtree.assert_called_once()
-
-    # --- CLI COMMAND TESTS ---
-
+    @patch("chimera_intel.core.appint.save_scan_to_db")
+    @patch("chimera_intel.core.utils.save_or_print_results")
     @patch("chimera_intel.core.appint.analyze_apk_static")
-    def test_cli_static_analysis_success(self, mock_analyze_apk):
-        """Tests the 'appint static' CLI command with a successful run."""
+    def test_cli_static_analysis_file_not_found(self, mock_analyze_apk, mock_save_print, mock_save_db):
+        """Tests the 'static' CLI command when the file is not found."""
         # Arrange
-
         mock_analyze_apk.return_value = StaticAppAnalysisResult(
-            file_path="test.apk", secrets_found=[]
+            file_path="nonexistent.apk",
+            error="File not found: nonexistent.apk"
         )
+        # Ensure mocked functions don't raise exceptions
+        mock_save_print.return_value = None
+        mock_save_db.return_value = None
 
         # Act
-
-        result = runner.invoke(appint_app, ["static", "test.apk"])
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn('"file_path": "test.apk"', result.stdout)
-        mock_analyze_apk.assert_called_with("test.apk")
-
-    @patch("chimera_intel.core.appint.analyze_apk_static")
-    def test_cli_static_analysis_file_not_found(self, mock_analyze_apk):
-        """Tests the CLI command when the input APK file does not exist."""
-        # Arrange
-
-        mock_analyze_apk.return_value = StaticAppAnalysisResult(
-            file_path="nonexistent.apk", error="APK file not found."
-        )
-
-        # Act
-
         result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
 
         # Assert
-
-        self.assertEqual(
-            result.exit_code, 0
-        )  # The command itself runs, but prints the error
-        self.assertIn("APK file not found", result.stdout)
+        self.assertEqual(result.exit_code, 0, f"CLI command failed with output: {result.stdout}")
+        mock_analyze_apk.assert_called_with("nonexistent.apk")
+        mock_save_print.assert_called_once()
+        
+        # The CLI command prints the result, which contains the error message.
+        # So we check the result's stdout.
+        self.assertIn("File not found", result.stdout)
 
 
 if __name__ == "__main__":

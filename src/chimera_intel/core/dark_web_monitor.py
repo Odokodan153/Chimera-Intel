@@ -12,7 +12,7 @@ from rich.console import Console
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
-from chimera_intel.core.scheduler import add_job 
+from chimera_intel.core.scheduler import add_job
 from chimera_intel.core.utils import send_slack_notification, send_teams_notification
 
 console = Console()
@@ -150,7 +150,6 @@ def add_dark_web_monitor(
             "--keywords",
             "-k",
             help="Comma-separated list of keywords to monitor (e.g., 'mycompany.com,internal-api').",
-            prompt="Enter keywords to monitor",
         ),
     ],
     schedule: Annotated[
@@ -159,7 +158,6 @@ def add_dark_web_monitor(
             "--schedule",
             "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
-            prompt="Enter cron schedule",
         ),
     ],
 ):

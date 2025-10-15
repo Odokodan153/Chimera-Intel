@@ -121,17 +121,13 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     def test_cli_competitive_analysis_no_api_key(self, mock_get_data):
         """NEW: Tests the CLI command when the Google API key is not configured."""
         # Arrange
-
         mock_get_data.return_value = {"target": "companyA", "modules": {}}
-
-        # Act
-
-        result = runner.invoke(
-            competitive_analyzer_app, ["run", "companyA", "companyB"]
-        )
-
+        with patch("chimera_intel.core.competitive_analyzer.API_KEYS.google_api_key", None):
+            # Act
+            result = runner.invoke(
+                competitive_analyzer_app, ["run", "companyA", "companyB"]
+            )
         # Assert
-
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Google API key (GOOGLE_API_KEY) not found", result.stdout)
 

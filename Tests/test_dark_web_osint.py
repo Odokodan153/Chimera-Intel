@@ -1,7 +1,7 @@
 import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
-from httpx import Response
+from httpx import Response, AsyncClient
 from typer.testing import CliRunner
 import json
 
@@ -15,14 +15,16 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the dark_web_osint module."""
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("httpx_socks.AsyncProxyTransport.from_url")
-    async def test_search_dark_web_engine_success(self, mock_transport, mock_config):
+    @patch("httpx.AsyncClient")
+    async def test_search_dark_web_engine_success(
+        self, mock_async_client_cls, mock_config
+    ):
         """Tests a successful dark web search using the Ahmia engine."""
         # Arrange
 
         mock_config.modules.dark_web.tor_proxy_url = "socks5://127.0.0.1:9150"
 
-        mock_async_client = AsyncMock()
+        mock_async_client = AsyncMock(spec=AsyncClient)
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
         mock_response.text = """
@@ -35,11 +37,12 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         </body></html>
         """
         mock_async_client.get.return_value = mock_response
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_async_client
 
-        with patch("httpx.AsyncClient", return_value=mock_async_client):
-            # Act
+        # Act
 
-            result = await search_dark_web_engine("test query", engine="ahmia")
+        result = await search_dark_web_engine("test query", engine="ahmia")
+
         # Assert
 
         self.assertIsInstance(result, DarkWebScanResult)
@@ -58,20 +61,23 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Tor proxy URL is not configured", result.error)
 
     @patch("chimera_intel.core.dark_web_osint.CONFIG")
-    @patch("httpx_socks.AsyncProxyTransport.from_url")
-    async def test_search_dark_web_engine_timeout(self, mock_transport, mock_config):
+    @patch("httpx.AsyncClient")
+    async def test_search_dark_web_engine_timeout(
+        self, mock_async_client_cls, mock_config
+    ):
         """NEW: Tests the function's timeout handling."""
         # Arrange
 
         mock_config.modules.dark_web.tor_proxy_url = "socks5://127.0.0.1:9150"
 
-        mock_async_client = AsyncMock()
+        mock_async_client = AsyncMock(spec=AsyncClient)
         mock_async_client.get.side_effect = asyncio.TimeoutError
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_async_client
 
-        with patch("httpx.AsyncClient", return_value=mock_async_client):
-            # Act
+        # Act
 
-            result = await search_dark_web_engine("test query")
+        result = await search_dark_web_engine("test query")
+
         # Assert
 
         self.assertIsNotNone(result.error)
@@ -79,11 +85,12 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Command Tests ---
 
+    @patch("chimera_intel.core.dark_web_osint.save_scan_to_db")
     @patch(
         "chimera_intel.core.dark_web_osint.search_dark_web_engine",
         new_callable=AsyncMock,
     )
-    def test_cli_dark_web_search_success(self, mock_search):
+    def test_cli_dark_web_search_success(self, mock_search, mock_save_db):
         """NEW: Tests a successful run of the 'dark-web search' command."""
         # Arrange
 
@@ -104,12 +111,15 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(output["found_results"]), 1)
         mock_search.assert_awaited_with("testcorp", "ahmia")
 
+    @patch("chimera_intel.core.dark_web_osint.save_scan_to_db")
     @patch("chimera_intel.core.dark_web_osint.get_active_project")
     @patch(
         "chimera_intel.core.dark_web_osint.search_dark_web_engine",
         new_callable=AsyncMock,
     )
-    def test_cli_dark_web_search_with_project(self, mock_search, mock_get_project):
+    def test_cli_dark_web_search_with_project(
+        self, mock_search, mock_get_project, mock_save_db
+    ):
         """NEW: Tests the CLI command using an active project's company name."""
         # Arrange
 

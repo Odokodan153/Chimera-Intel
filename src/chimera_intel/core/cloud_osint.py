@@ -156,18 +156,16 @@ def run_cloud_scan(
         active_project = get_active_project()
         if active_project and active_project.company_name:
             target_keyword = active_project.company_name.lower().replace(" ", "")
-            console.print(
-                f"[bold cyan]Using keyword '{target_keyword}' from active project '{active_project.project_name}'.[/bold cyan]"
+            logger.info(
+                f"Using keyword '{target_keyword}' from active project '{active_project.project_name}'."
             )
         else:
-            console.print(
-                "[bold red]Error:[/bold red] No keyword provided and no active project with a company name is set."
+            logger.error(
+                "Error: No keyword provided and no active project with a company name is set."
             )
             raise typer.Exit(code=1)
     if not target_keyword:
-        console.print(
-            "[bold red]Error:[/bold red] A keyword is required for this scan."
-        )
+        logger.error("Error: A keyword is required for this scan.")
         raise typer.Exit(code=1)
     results_model = asyncio.run(find_cloud_assets(target_keyword))
 

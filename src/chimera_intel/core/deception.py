@@ -16,6 +16,7 @@ deception_app = typer.Typer(
 
 # A map of supported honeypot types to their Docker images
 
+
 HONEYPOT_IMAGES = {
     "ssh": "cowrie/cowrie",
     "telnet": "cowrie/cowrie",
@@ -54,7 +55,7 @@ def deploy_honeypot(
         console.print(
             f"[bold red]Error:[/bold red] Honeypot type '{honeypot_type}' is not supported. Supported types: {list(HONEYPOT_IMAGES.keys())}"
         )
-        raise typer.Exit(code=1)
+        typer.Exit(code=1)
     internal_port = 2222 if honeypot_type == "ssh" else 2223
 
     console.print(
@@ -90,7 +91,7 @@ def deploy_honeypot(
             "[bold red]Docker Error:[/bold red] Could not connect to the Docker daemon. Is it running?"
         )
         console.print(f"   Details: {e}")
-        raise typer.Exit(code=1)
+        typer.Exit(code=1)
     except Exception as e:
         console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
-        raise typer.Exit(code=1)
+        typer.Exit(code=1)

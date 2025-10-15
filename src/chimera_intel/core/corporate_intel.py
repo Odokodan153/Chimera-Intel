@@ -251,7 +251,7 @@ def get_lobbying_data(company_name: str) -> LobbyingResult:
         records = [
             LobbyingRecord(
                 issue=record.get("specific_issue"),
-                amount=int(record.get("amount", 0)),
+                amount=int(float(record.get("amount", 0))),
                 year=int(record.get("year", 0)),
             )
             for record in data.get("results", [{}])[0].get("lobbying_represents", [])
