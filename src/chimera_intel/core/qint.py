@@ -47,7 +47,10 @@ class QInt:
         """
         try:
             search_url = f"https://en.wikipedia.org/w/index.php?search={entity.replace(' ', '+')}+quantum+computing"
-            response = requests.get(search_url)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+            }
+            response = requests.get(search_url, headers=headers)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 

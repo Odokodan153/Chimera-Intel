@@ -8,10 +8,7 @@ from chimera_intel.core.geoint import (
     generate_geoint_report,
     geoint_app,
 )
-from chimera_intel.core.schemas import (
-    GeointReport,
-    CountryRiskProfile
-)
+from chimera_intel.core.schemas import GeointReport, CountryRiskProfile
 
 runner = CliRunner()
 
@@ -59,7 +56,7 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.geoint.get_aggregated_data_for_target")
     @patch("chimera_intel.core.geoint._get_countries_from_ips", new_callable=AsyncMock)
     @patch("chimera_intel.core.geoint.get_country_risk_data")
-    def test_generate_geoint_report_success(
+    async def test_generate_geoint_report_success(
         self, mock_get_risk, mock_get_ips, mock_get_agg_data
     ):
         """Tests the successful generation of a GEOINT report."""
@@ -68,7 +65,7 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
         mock_get_agg_data.return_value = {
             "modules": {
                 "physical_osint_locations": {
-                    "locations_found": [{"address": "Somewhere, USA"}]
+                    "locations_found": [{"address": "Somewhere, Canada"}]
                 },
                 "footprint": {"dns_records": {"A": ["1.1.1.1"]}},
             }
@@ -103,8 +100,6 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.geoint.generate_geoint_report")
     def test_cli_run_geoint_analysis_success(self, mock_generate, mock_resolve):
         """Tests a successful run of the 'geoint run' CLI command."""
-        # Arrange
-
         mock_resolve.return_value = "example.com"
         mock_generate.return_value = GeointReport(
             target="example.com",
@@ -113,13 +108,13 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
 
         # Act
 
-        result = runner.invoke(geoint_app, ["run"])
+        result = runner.invoke(geoint_app, ["run", "example.com"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
         mock_resolve.assert_called_with(
-            None, required_assets=["company_name", "domain"]
+            "example.com", required_assets=["company_name", "domain"]
         )
         mock_generate.assert_called_with("example.com")
         self.assertIn('"country_name": "Testland"', result.stdout)

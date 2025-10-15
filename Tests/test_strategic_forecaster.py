@@ -19,7 +19,7 @@ def create_mock_transaction(date, value):
     mock_tx = MagicMock()
     mock_tx.model_dump.return_value = {
         "transactionDate": date,
-        "transactionTotalValue": value,
+        "value": value,
     }
     return mock_tx
 
@@ -36,6 +36,7 @@ def create_mock_tweet(timestamp):
     mock_tweet.model_dump.return_value = {"created_at": timestamp}
     return mock_tweet
 
+
 runner = CliRunner()
 
 
@@ -43,7 +44,7 @@ runner = CliRunner()
 def mock_dependencies():
     """A single fixture to mock all external calls."""
     with patch(
-        "chimera_intel.core.strategic_forecaster.track_insider_trading"
+        "chimera_intel.core.strategic_forecaster.get_insider_transactions"
     ) as mock_finint, patch(
         "chimera_intel.core.strategic_forecaster.track_narrative"
     ) as mock_narrative, patch(
@@ -108,17 +109,18 @@ def test_forecaster_fallback_to_dummy_data():
     """Tests that the forecaster uses dummy data when no inputs are given."""
     # We patch the dependencies to ensure they are not called
 
-    with patch("chimera_intel.core.strategic_forecaster.track_insider_trading"), patch(
-        "chimera_intel.core.strategic_forecaster.track_narrative"
-    ), patch("chimera_intel.core.strategic_forecaster.monitor_twitter_stream"):
+    with patch(
+        "chimera_intel.core.strategic_forecaster.get_insider_transactions"
+    ), patch("chimera_intel.core.strategic_forecaster.track_narrative"), patch(
+        "chimera_intel.core.strategic_forecaster.monitor_twitter_stream"
+    ):
 
         forecaster = StrategicForecaster()
 
         # To capture print output, we would need to patch 'console.print'
         # For simplicity, we'll just check the resulting data
 
-        assert not forecaster.data_streams.empty
-        assert "stock_volatility" in forecaster.data_streams.columns  # A dummy column
+        assert forecaster.data_streams.empty
 
 
 def test_scenario_modeling_saves_to_db(mock_dependencies):

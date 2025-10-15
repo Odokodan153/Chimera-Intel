@@ -3,7 +3,7 @@ import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
-from chimera_intel.core.ttp_mapper import map_cves_to_ttp, ttp_app
+from chimera_intel.core.ttp_mapper import ttp_app
 from chimera_intel.core.schemas import TTPMappingResult, MappedTechnique
 
 runner = CliRunner()
@@ -26,11 +26,13 @@ class TestTtpMapper(unittest.TestCase):
         mock_technique = MagicMock()
         mock_technique.name = "Phishing"
         mock_technique.external_references = [MagicMock(external_id="T1566")]
-        mock_technique.kill_chain_phases = [MagicMock(phase_name="initial-access")]
+        mock_technique.kill_chain_phases = [MagicMock(name="initial-access")]
 
         mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
 
         # Act
+
+        from chimera_intel.core.ttp_mapper import map_cves_to_ttp
 
         result = map_cves_to_ttp(["CVE-2023-1234"])
 
@@ -56,6 +58,8 @@ class TestTtpMapper(unittest.TestCase):
 
         # Act
 
+        from chimera_intel.core.ttp_mapper import map_cves_to_ttp
+
         result = map_cves_to_ttp(["CVE-2000-0001"])
 
         # Assert
@@ -72,6 +76,8 @@ class TestTtpMapper(unittest.TestCase):
 
         # Act
 
+        from chimera_intel.core.ttp_mapper import map_cves_to_ttp
+
         result = map_cves_to_ttp(["CVE-2023-1234"])
 
         # Assert
@@ -81,22 +87,18 @@ class TestTtpMapper(unittest.TestCase):
 
     # --- CLI Tests ---
 
-    @patch("chimera_intel.core.ttp_mapper.map_cves_to_ttp")
-    def test_cli_map_cve_success(self, mock_map_cves):
+    @patch("chimera_intel.core.ttp_mapper.save_scan_to_db")
+    @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
+    def test_cli_map_cve_success(self, mock_mitre_data, mock_save_scan_to_db):
         """Tests a successful run of the 'ttp map-cve' CLI command."""
         # Arrange
 
-        mock_map_cves.return_value = TTPMappingResult(
-            total_cves_analyzed=1,
-            mapped_techniques=[
-                MappedTechnique(
-                    cve_id="CVE-2023-1234",
-                    technique_id="T1566",
-                    technique_name="Phishing",
-                    tactic="Initial Access",
-                )
-            ],
-        )
+        mock_attack_instance = mock_mitre_data.return_value
+        mock_technique = MagicMock()
+        mock_technique.name = "Phishing"
+        mock_technique.external_references = [MagicMock(external_id="T1566")]
+        mock_technique.kill_chain_phases = [MagicMock(name="initial-access")]
+        mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
 
         # Act
 
@@ -105,10 +107,14 @@ class TestTtpMapper(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        mock_map_cves.assert_called_with(["CVE-2023-1234"])
         output = json.loads(result.stdout)
         self.assertEqual(output["total_cves_analyzed"], 1)
         self.assertEqual(output["mapped_techniques"][0]["technique_id"], "T1566")
+        mock_save_scan_to_db.assert_called_with(
+            target="CVE-2023-1234",
+            module="ttp_mapper_cve",
+            data=output,
+        )
 
 
 if __name__ == "__main__":

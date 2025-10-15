@@ -1,115 +1,113 @@
-"""
-Core Correlation Engine for Chimera Intel.
-
-This module acts as the central brain for automated analysis, triggering follow-up
-scans based on the results of a completed scan.
-"""
-
-import subprocess
 import logging
-from typing import Dict, Any
-from .utils import console
-from .differ import get_last_two_scans
+from typing import Dict, Any, List
+from .schemas import Event
+from .plugin_manager import PluginManager
 
 logger = logging.getLogger(__name__)
 
 
-def run_correlations(target: str, module: str, scan_data: Dict[str, Any]):
+class CorrelationEngine:
     """
-    Analyzes scan data and triggers new scans based on a set of rules.
-
-    Args:
-        target (str): The primary target of the scan that just finished.
-        module (str): The name of the module that produced the data.
-        scan_data (Dict[str, Any]): The JSON data from the completed scan.
+    Correlates security events to identify complex threats and trigger automated responses.
     """
-    logger.info(f"Running correlation engine for '{target}' from module '{module}'.")
 
-    # --- Rule 1: New IP Address Found ---
+    def __init__(self, plugin_manager: PluginManager, config: Dict[str, Any]):
+        self.plugin_manager = plugin_manager
+        self.config = config.get("correlation_rules", [])
+        self.ttp_knowledge_base = self._load_ttp_knowledge_base()
 
-    if module == "footprint":
-        _, previous_scan = get_last_two_scans(target, "footprint")
-        if previous_scan:
-            current_ips = set(
-                scan_data.get("footprint", {}).get("dns_records", {}).get("A", [])
-            )
-            previous_ips = set(
-                previous_scan.get("footprint", {}).get("dns_records", {}).get("A", [])
-            )
-            new_ips = current_ips - previous_ips
-            for ip in new_ips:
-                logger.info(
-                    f"Correlation: New IP {ip} found for {target}. Triggering vulnerability scan."
+    def _load_ttp_knowledge_base(self) -> Dict[str, Any]:
+        """Loads TTP knowledge base from configuration."""
+        # In a real system, this would load from a comprehensive, up-to-date source.
+
+        return self.config.get("ttp_knowledge_base", {})
+
+    def process_event(self, event: Event) -> None:
+        """
+        Processes a single event and checks for correlation triggers.
+
+        Args:
+            event: The event to be processed.
+        """
+        logger.info(f"Processing event: {event.event_type} from {event.source}")
+        for rule in self.config.get("rules", []):
+            if self._rule_matches(event, rule):
+                self._handle_match(event, rule)
+
+    def _rule_matches(self, event: Event, rule: Dict[str, Any]) -> bool:
+        """
+        Checks if an event matches the conditions of a correlation rule.
+        """
+        conditions = rule.get("conditions", {})
+
+        # Simple matching logic, can be expanded to support more complex queries
+
+        for key, value in conditions.items():
+            if getattr(event, key, None) != value:
+                return False
+        return True
+
+    def _handle_match(self, event: Event, rule: Dict[str, Any]) -> None:
+        """
+        Handles a matched rule by executing the defined actions.
+        """
+        logger.info(f"Rule '{rule['name']}' matched for event {event.id}")
+        for action in rule.get("actions", []):
+            action_type = action.get("type")
+            if action_type == "trigger_scan":
+                self._trigger_scan(
+                    action.get("params", []), rule.get("description", "")
                 )
-                _trigger_scan(
-                    ["defensive", "vuln", "run", ip],
-                    f"New IP {ip} found for {target}",
+            elif action_type == "ttp_lookup":
+                self._ttp_lookup(event, action)
+
+    def _trigger_scan(self, params: List[str], description: str) -> None:
+        """
+        Triggers a plugin command.
+        """
+        if not params:
+            logger.error(
+                "Trigger scan action requires parameters (plugin name, command, args...)."
+            )
+            return
+        plugin_name = params[0]
+        command = params[1]
+        args = params[2:]
+
+        logger.info(
+            f"Triggering scan '{command}' from plugin '{plugin_name}' with args {args}. Reason: {description}"
+        )
+        try:
+            # This is a simplified call. A real implementation would handle plugin execution
+            # context, state, and potential return values more robustly.
+
+            self.plugin_manager.run_command(plugin_name, command, *args)
+            logger.info(f"Successfully triggered scan '{command}' on '{plugin_name}'.")
+        except Exception as e:
+            logger.error(f"Failed to trigger scan '{command}' on '{plugin_name}': {e}")
+
+    def _ttp_lookup(self, event: Event, action: Dict[str, Any]):
+        """
+        Performs a TTP lookup based on event data.
+        """
+        cve_id = event.details.get("cve_id")
+        if not cve_id:
+            return
+        ttp_info = self.ttp_knowledge_base.get(cve_id)
+        if ttp_info:
+            message = (
+                f"TTP found for {cve_id}: {ttp_info['name']} ({ttp_info['attack_id']})."
+            )
+            logger.info(message)
+
+            # Example of chaining actions: trigger a scan based on TTP lookup
+
+            if action.get("trigger_on_find"):
+                params = action["trigger_on_find"].get("params", [])
+                # Customize params with event data, e.g., mapping CVE to a specific scan
+
+                custom_params = [p.replace("{cve_id}", cve_id) for p in params]
+                description = (
+                    f"Critical CVE {cve_id} found on {event.details.get('source_ip')}"
                 )
-    # --- Rule 2: New Subdomain Found ---
-
-    if module == "footprint":
-        _, previous_scan = get_last_two_scans(target, "footprint")
-        if previous_scan:
-            current_subdomains = {
-                res.get("domain")
-                for res in scan_data.get("footprint", {})
-                .get("subdomains", {})
-                .get("results", [])
-            }
-            previous_subdomains = {
-                res.get("domain")
-                for res in previous_scan.get("footprint", {})
-                .get("subdomains", {})
-                .get("results", [])
-            }
-            new_subdomains = current_subdomains - previous_subdomains
-            for sub in new_subdomains:
-                if sub:
-                    logger.info(
-                        f"Correlation: New subdomain {sub} found for {target}. Triggering web analysis."
-                    )
-                    _trigger_scan(
-                        ["scan", "web", "run", sub],
-                        f"New subdomain {sub} found",
-                    )
-    # --- Rule 3: Critical CVE Found ---
-
-    if module == "vulnerability_scanner":
-        for host in scan_data.get("scanned_hosts", []):
-            for port in host.get("open_ports", []):
-                for cve in port.get("vulnerabilities", []):
-                    if cve.get("cvss_score", 0.0) >= 9.0:
-                        cve_id = cve.get("id")
-                        logger.info(
-                            f"Correlation: Critical CVE {cve_id} found on {host.get('host')}. Triggering TTP mapping."
-                        )
-                        _trigger_scan(
-                            ["ttp", "map-cve", cve_id],
-                            f"Critical CVE {cve_id} found",
-                        )
-
-
-def _trigger_scan(command: list, reason: str):
-    """
-    Helper function to launch a new Chimera Intel scan as a subprocess.
-
-    Args:
-        command (list): The list of arguments for the chimera command.
-        reason (str): The reason the scan is being triggered, for logging.
-    """
-    try:
-        full_command = ["chimera"] + command
-        console.print(
-            f"\n[bold yellow]🧠 Correlation Engine Triggered[/bold yellow]: [cyan]{reason}[/cyan]"
-        )
-        console.print(f"  [dim]-> Running command: {' '.join(full_command)}[/dim]")
-        # We run this in the background and don't wait for it to complete.
-        # This prevents the initial scan from hanging.
-
-        subprocess.Popen(
-            full_command,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception as e:
-        logger.error(f"Failed to trigger correlated scan '{' '.join(command)}': {e}")
+                self._trigger_scan(custom_params, description)

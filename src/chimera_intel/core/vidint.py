@@ -30,6 +30,7 @@ def detect_motion(file_path: str, threshold: int = 30):
         return
     _, frame1 = vid.read()
     if frame1 is None:
+        vid.release()
         return
     gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
     gray1 = cv2.GaussianBlur(gray1, (21, 21), 0)
@@ -93,6 +94,7 @@ def analyze_video(
             f"[bold red]Error:[/bold red] Video file not found at '{file_path}'"
         )
         raise typer.Exit(code=1)
+    vid = None
     try:
         vid = cv2.VideoCapture(file_path)
         if not vid.isOpened():
@@ -134,12 +136,14 @@ def analyze_video(
             )
         if detect_motion_flag:
             detect_motion(file_path)
-        vid.release()
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during video analysis:[/bold red] {e}"
         )
         raise typer.Exit(code=1)
+    finally:
+        if vid:
+            vid.release()
 
 
 if __name__ == "__main__":

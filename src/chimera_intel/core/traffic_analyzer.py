@@ -105,9 +105,9 @@ def analyze_protocols(pcap_path: str):
 
     # Generate interactive graph
 
-    net = Network(height="750px", width="100%", notebook=True)
+    net = Network(height="750px", width="100%", notebook=False)
     net.from_nx(G)
-    net.show("communication_map.html")
+    net.save_graph("communication_map.html")
     console.print(
         "\n[cyan]Interactive communication map saved to 'communication_map.html'[/cyan]"
     )

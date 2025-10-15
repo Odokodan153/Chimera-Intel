@@ -74,7 +74,7 @@ class TestTrafficAnalyzer(unittest.TestCase):
         # Check that the pyvis network was created and saved
 
         mock_net_instance.from_nx.assert_called_once()
-        mock_net_instance.show.assert_called_with("communication_map.html")
+        mock_net_instance.save_graph.assert_called_with("communication_map.html")
 
     # --- CLI Tests ---
 

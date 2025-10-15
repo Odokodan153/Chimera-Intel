@@ -12,6 +12,7 @@ runner = CliRunner()
 
 # Mock data for narrative and social media modules
 
+
 MOCK_NARRANTIVE_DATA = [
     {"content": "There is an unacceptable risk of collapse!", "sentiment": "negative"},
     {
@@ -77,7 +78,7 @@ def test_cli_command(mock_data_sources):
     assert "Generated 'Digital Antibody'" in result.stdout
 
 
-def test_trigger_identification(mock_data_sources):
+def test_trigger_identification():
     """Tests the logic for identifying psychological triggers in text."""
     engine = CognitiveWarfareEngine(narrative_query="test", twitter_keywords=None)
 
@@ -118,3 +119,7 @@ def test_counter_narrative_generation(mock_data_sources):
         assert "Dominant Trigger:" in output_text
         assert "Fear" in output_text
         assert "mitigate unnecessary alarm" in output_text
+
+
+if __name__ == "__main__":
+    pytest.main()

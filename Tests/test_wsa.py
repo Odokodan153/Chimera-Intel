@@ -7,10 +7,7 @@ from chimera_intel.core.weak_signal_analyzer import (
     amplify_signals_with_dempster_shafer,
     wsa_app,
 )
-from chimera_intel.core.schemas import (
-    AmplifiedEventResult,
-    WeakSignal
-)
+from chimera_intel.core.schemas import AmplifiedEventResult, WeakSignal
 
 runner = CliRunner()
 
@@ -93,8 +90,9 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
     @patch(
         "chimera_intel.core.weak_signal_analyzer.amplify_signals_with_dempster_shafer"
     )
+    @patch("chimera_intel.core.weak_signal_analyzer.save_scan_to_db")
     def test_cli_run_wsa_analysis_success(
-        self, mock_amplify, mock_get_data, mock_resolve
+        self, mock_save_scan, mock_amplify, mock_get_data, mock_resolve
     ):
         """Tests a successful run of the 'wsa run' CLI command."""
         # Arrange
@@ -134,7 +132,7 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(wsa_app, ["run"])
+        result = runner.invoke(wsa_app, ["run", "example.com"])
 
         # Assert
 

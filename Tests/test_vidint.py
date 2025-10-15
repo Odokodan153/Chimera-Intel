@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import cv2
+import numpy as np
 
 from chimera_intel.core.vidint import detect_motion, vidint_app
 
@@ -21,8 +22,8 @@ class TestVidint(unittest.TestCase):
         # Simulate a video with 2 frames for motion detection
 
         self.mock_vid_capture.read.side_effect = [
-            (True, MagicMock()),
-            (True, MagicMock()),
+            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
+            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
             (False, None),
         ]
 
@@ -39,7 +40,6 @@ class TestVidint(unittest.TestCase):
 
     # --- Function Tests ---
 
-    @patch("chimera_intel.core.vidint.cv2.VideoCapture")
     @patch("chimera_intel.core.vidint.cv2.cvtColor")
     @patch("chimera_intel.core.vidint.cv2.GaussianBlur")
     @patch("chimera_intel.core.vidint.cv2.absdiff")
@@ -52,8 +52,8 @@ class TestVidint(unittest.TestCase):
 
         mock_contours.return_value = (["contour1"], None)  # Simulate finding a contour
         self.mock_vid_capture.read.side_effect = [
-            (True, MagicMock()),
-            (True, MagicMock()),
+            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
+            (True, np.zeros((1080, 1920, 3), dtype=np.uint8)),
             (False, None),
         ]
 

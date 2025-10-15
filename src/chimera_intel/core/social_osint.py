@@ -11,6 +11,7 @@ import typer
 import logging
 from typing import List
 import asyncio
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,10 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
     logger.info("Starting social media profile search for username: %s", username)
 
     # Initialize Sherlock's site data
-
-    site_data = SitesInformation(None)
+    # The default URL is outdated, so we provide the correct one.
+    data_file_path = os.path.join(os.path.dirname(__file__), "resources/data.json")
+    site_data = SitesInformation(data_file_path)
+    
     found_profiles: List[SocialProfile] = []
     try:
         # Sherlock's main function is async, so we await it.

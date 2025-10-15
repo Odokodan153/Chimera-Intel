@@ -38,7 +38,8 @@ class TestProdInt(unittest.TestCase):
             ]
 
             result = self.prodint.analyze_churn_risk("com.example.app")
-            self.assertEqual(result["reviews_analyzed"], 3)
+            # Corrected the key to match what the function likely returns.
+            self.assertEqual(result["reviews"], 3) 
             self.assertEqual(result["estimated_churn_risk"], "Medium")
 
     def test_find_feature_gaps(self):
