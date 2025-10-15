@@ -146,7 +146,7 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.physical_osint.run_location_search">[docs]</a>
 <span class="nd">@physical_osint_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;locations&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_location_search</span><span class="p">(</span>
-    <span class="n">query</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+    <span class="n">target</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The company name or search query. Uses active project&#39;s company name if not provided.&quot;</span><span class="p">,</span>
     <span class="p">),</span>
@@ -155,7 +155,7 @@
     <span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Finds physical office locations related to a target.&quot;&quot;&quot;</span>
-    <span class="n">target_query</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
+    <span class="n">target_query</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
 
     <span class="n">results_model</span> <span class="o">=</span> <span class="n">find_physical_locations</span><span class="p">(</span><span class="n">target_query</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>

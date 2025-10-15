@@ -114,9 +114,13 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">response</span> <span class="o">=</span> <span class="n">sync_client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PEP_DATA_URL</span><span class="p">,</span> <span class="n">follow_redirects</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">pep_text</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">PEP_FILE_PATH</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pep_text</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Successfully downloaded PEP list.&quot;</span><span class="p">)</span>
+            <span class="n">pep_set</span> <span class="o">=</span> <span class="p">{</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pep_text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()}</span>
+            <span class="n">PEP_LIST_CACHE</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pep_set</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">PEP_LIST_CACHE</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to download PEP list: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="nb">set</span><span class="p">()</span>
@@ -159,31 +163,39 @@
         <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
         <span class="n">records</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;companies&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-            <span class="n">company_data</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;company&quot;</span><span class="p">,</span> <span class="p">{})</span>
-            <span class="n">officers</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">Officer</span><span class="p">(</span>
-                    <span class="n">name</span><span class="o">=</span><span class="n">officer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                    <span class="n">position</span><span class="o">=</span><span class="n">officer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;position&quot;</span><span class="p">),</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+            <span class="n">companies</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;companies&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">companies</span><span class="p">:</span>
+                <span class="n">company_data</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;company&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="n">officers</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">Officer</span><span class="p">(</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">officer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
+                        <span class="n">position</span><span class="o">=</span><span class="n">officer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officer&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;position&quot;</span><span class="p">),</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">officer</span> <span class="ow">in</span> <span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officers&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="p">]</span>
+                <span class="n">address</span> <span class="o">=</span> <span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;registered_address_in_full&quot;</span><span class="p">)</span>
+                <span class="n">record</span> <span class="o">=</span> <span class="n">CompanyRecord</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
+                    <span class="n">company_number</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;company_number&quot;</span><span class="p">),</span>
+                    <span class="n">jurisdiction</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;jurisdiction_code&quot;</span><span class="p">),</span>
+                    <span class="n">registered_address</span><span class="o">=</span><span class="n">address</span><span class="p">,</span>
+                    <span class="n">is_inactive</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inactive&quot;</span><span class="p">),</span>
+                    <span class="n">officers</span><span class="o">=</span><span class="n">officers</span><span class="p">,</span>
                 <span class="p">)</span>
-                <span class="k">for</span> <span class="n">officer</span> <span class="ow">in</span> <span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;officers&quot;</span><span class="p">,</span> <span class="p">[])</span>
-            <span class="p">]</span>
-            <span class="n">address</span> <span class="o">=</span> <span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;registered_address_in_full&quot;</span><span class="p">)</span>
-            <span class="n">record</span> <span class="o">=</span> <span class="n">CompanyRecord</span><span class="p">(</span>
-                <span class="n">name</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">),</span>
-                <span class="n">company_number</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;company_number&quot;</span><span class="p">),</span>
-                <span class="n">jurisdiction</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;jurisdiction_code&quot;</span><span class="p">),</span>
-                <span class="n">registered_address</span><span class="o">=</span><span class="n">address</span><span class="p">,</span>
-                <span class="n">is_inactive</span><span class="o">=</span><span class="n">company_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;inactive&quot;</span><span class="p">),</span>
-                <span class="n">officers</span><span class="o">=</span><span class="n">officers</span><span class="p">,</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">CorporateRegistryResult</span><span class="p">(</span>
+                <span class="n">query</span><span class="o">=</span><span class="n">company_name</span><span class="p">,</span>
+                <span class="n">total_found</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">CorporateRegistryResult</span><span class="p">(</span>
-            <span class="n">query</span><span class="o">=</span><span class="n">company_name</span><span class="p">,</span>
-            <span class="n">total_found</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_count&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
-            <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">CorporateRegistryResult</span><span class="p">(</span>
+                <span class="n">query</span><span class="o">=</span><span class="n">company_name</span><span class="p">,</span>
+                <span class="n">total_found</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
+            <span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error querying OpenCorporates for &#39;</span><span class="si">%s</span><span class="s2">&#39;: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">company_name</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">CorporateRegistryResult</span><span class="p">(</span>
@@ -281,10 +293,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Searches official company registries for a given company name.&quot;&quot;&quot;</span>
     <span class="n">target_company</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">company</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">])</span>
 
-    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;[bold cyan]Searching corporate registry for &#39;</span><span class="si">{</span><span class="n">target_company</span><span class="si">}</span><span class="s2">&#39;...[/bold cyan]&quot;</span>
-    <span class="p">):</span>
-        <span class="n">results_model</span> <span class="o">=</span> <span class="n">get_company_records</span><span class="p">(</span><span class="n">target_company</span><span class="p">)</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">get_company_records</span><span class="p">(</span><span class="n">target_company</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span>
@@ -308,10 +317,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Screens a name against the OFAC sanctions and watchlists.&quot;&quot;&quot;</span>
     <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">])</span>
 
-    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;[bold cyan]Screening &#39;</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">&#39; against sanctions lists...[/bold cyan]&quot;</span>
-    <span class="p">):</span>
-        <span class="n">results_model</span> <span class="o">=</span> <span class="n">screen_sanctions_list</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">screen_sanctions_list</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span>
@@ -335,10 +341,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Screens a name against a Politically Exposed Persons (PEP) list.&quot;&quot;&quot;</span>
     <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">])</span>
 
-    <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;[bold cyan]Screening &#39;</span><span class="si">{</span><span class="n">target_name</span><span class="si">}</span><span class="s2">&#39; against PEP list...[/bold cyan]&quot;</span>
-    <span class="p">):</span>
-        <span class="n">results_model</span> <span class="o">=</span> <span class="n">screen_pep_list</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">screen_pep_list</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span>

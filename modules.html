@@ -44,8 +44,7 @@
               <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Project Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.correlation_engine">Core Intelligence &amp; Analysis</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.correlation_engine.run_correlations"><code class="docutils literal notranslate"><span class="pre">run_correlations()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.deception_detector">Core Intelligence &amp; Analysis</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.analyze_for_deception"><code class="docutils literal notranslate"><span class="pre">analyze_for_deception()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.reverse_ip_lookup"><code class="docutils literal notranslate"><span class="pre">reverse_ip_lookup()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.run_deception_analysis"><code class="docutils literal notranslate"><span class="pre">run_deception_analysis()</span></code></a></li>
@@ -1486,27 +1485,9 @@
 <p>This section provides auto-generated documentation for all modules within the Chimera Intel project’s core directory. The <code class="docutils literal notranslate"><span class="pre">:members:</span></code> option ensures that all functions, classes, and methods within each module are documented.</p>
 <div class="toctree-wrapper compound">
 </div>
-<section id="module-chimera_intel.core.correlation_engine">
-<span id="core-intelligence-analysis"></span><h2>Core Intelligence &amp; Analysis<a class="headerlink" href="#module-chimera_intel.core.correlation_engine" title="Link to this heading"></a></h2>
-<p>Core Correlation Engine for Chimera Intel.</p>
-<p>This module acts as the central brain for automated analysis, triggering follow-up
-scans based on the results of a completed scan.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="chimera_intel.core.correlation_engine.run_correlations">
-<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.correlation_engine.</span></span><span class="sig-name descname"><span class="pre">run_correlations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/correlation_engine.html#run_correlations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.correlation_engine.run_correlations" title="Link to this definition"></a></dt>
-<dd><p>Analyzes scan data and triggers new scans based on a set of rules.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>target</strong> (<em>str</em>) – The primary target of the scan that just finished.</p></li>
-<li><p><strong>module</strong> (<em>str</em>) – The name of the module that produced the data.</p></li>
-<li><p><strong>scan_data</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The JSON data from the completed scan.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<p id="module-chimera_intel.core.deception_detector">Module for Corporate Deception &amp; Mimicry Analysis.</p>
+<section id="module-chimera_intel.core.deception_detector">
+<span id="core-intelligence-analysis"></span><h2>Core Intelligence &amp; Analysis<a class="headerlink" href="#module-chimera_intel.core.deception_detector" title="Link to this heading"></a></h2>
+<p>Module for Corporate Deception &amp; Mimicry Analysis.</p>
 <p>Identifies hidden relationships between companies by finding shared digital
 assets like IP addresses, SSL certificates, and WHOIS registration details.</p>
 <dl class="py function">
@@ -1971,7 +1952,7 @@ project activity, and operational security.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="chimera_intel.core.code_intel.run_repo_analysis">
-<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.code_intel.</span></span><span class="sig-name descname"><span class="pre">run_repo_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repo_url:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/code_intel.html#run_repo_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.code_intel.run_repo_analysis" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.code_intel.</span></span><span class="sig-name descname"><span class="pre">run_repo_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repo_url:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/code_intel.html#run_repo_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.code_intel.run_repo_analysis" title="Link to this definition"></a></dt>
 <dd><p>Analyzes a public Git repository for committer and activity intelligence.</p>
 </dd></dl>
 
@@ -3127,7 +3108,7 @@ enumerating hidden web content, and performing advanced cloud reconnaissance.</p
 
 <dl class="py function">
 <dt class="sig sig-object py" id="chimera_intel.core.physical_osint.run_location_search">
-<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.physical_osint.</span></span><span class="sig-name descname"><span class="pre">run_location_search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/physical_osint.html#run_location_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.physical_osint.run_location_search" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.physical_osint.</span></span><span class="sig-name descname"><span class="pre">run_location_search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/physical_osint.html#run_location_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.physical_osint.run_location_search" title="Link to this definition"></a></dt>
 <dd><p>Finds physical office locations related to a target.</p>
 </dd></dl>
 

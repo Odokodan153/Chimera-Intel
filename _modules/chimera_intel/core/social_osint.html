@@ -82,6 +82,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -101,8 +102,10 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting social media profile search for username: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">username</span><span class="p">)</span>
 
     <span class="c1"># Initialize Sherlock&#39;s site data</span>
-
-    <span class="n">site_data</span> <span class="o">=</span> <span class="n">SitesInformation</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1"># The default URL is outdated, so we provide the correct one.</span>
+    <span class="n">data_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;resources/data.json&quot;</span><span class="p">)</span>
+    <span class="n">site_data</span> <span class="o">=</span> <span class="n">SitesInformation</span><span class="p">(</span><span class="n">data_file_path</span><span class="p">)</span>
+    
     <span class="n">found_profiles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SocialProfile</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Sherlock&#39;s main function is async, so we await it.</span>
