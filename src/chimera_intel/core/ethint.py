@@ -1,6 +1,6 @@
 import logging
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .schemas import Operation, ComplianceResult, ComplianceViolation
 import typer
 from rich.console import Console
@@ -11,6 +11,7 @@ import os
 
 # --- : Logger Configuration ---
 # Configure the logger to write to a file, ensuring all audits are recorded.
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +27,7 @@ audit_logger = logging.getLogger("ETHINT_Audit")
 
 # Maps severity names to a numerical level for filtering.
 
+
 SEVERITY_LEVELS = {
     "LOW": 1,
     "MEDIUM": 2,
@@ -34,7 +36,7 @@ SEVERITY_LEVELS = {
 }
 
 
-def load_frameworks(path: str = None) -> Dict:
+def load_frameworks(path: Optional[str] = None) -> Dict:
     """Loads ethical frameworks from a read-only JSON file."""
     if path is None:
         dir_path = os.path.dirname(os.path.realpath(__file__))
