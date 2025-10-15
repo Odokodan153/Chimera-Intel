@@ -3485,6 +3485,19 @@
     
     <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;MessageModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;negotiation&quot;</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="OfferModel">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.OfferModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OfferModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;offers&quot;</span>
+
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">negotiation_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiation_sessions.id&quot;</span><span class="p">))</span>
+    <span class="n">party_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
+    <span class="n">amount_terms</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
+    <span class="n">accepted</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;pending&#39;</span><span class="p">)</span>
+    
+    <span class="n">session</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;NegotiationSession&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;offers&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="MessageModel">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.MessageModel">[docs]</a>
@@ -3492,13 +3505,13 @@
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;messages&quot;</span>
 
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">negotiation_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiations.id&quot;</span><span class="p">))</span>
+    <span class="n">negotiation_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiation_sessions.id&quot;</span><span class="p">))</span> <span class="c1"># Changed ForeignKey</span>
     <span class="n">sender_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">content</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
-    <span class="n">analysis</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span> <span class="c1"># Store sentiment, intent, etc.</span>
+    <span class="n">analysis</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span> 
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
 
-    <span class="n">negotiation</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;NegotiationModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;messages&quot;</span><span class="p">)</span></div>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;NegotiationSession&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;messages&quot;</span><span class="p">)</span> <span class="c1"># Updated relationship</span></div>
 
 
 <div class="viewcode-block" id="MessageBase">
@@ -3562,9 +3575,10 @@
     <span class="n">end_time</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">)</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;ongoing&#39;</span><span class="p">)</span>
     <span class="n">outcome</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
-    <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;Message&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
-    <span class="n">offers</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;Offer&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span></div>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;MessageModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span> <span class="c1"># Corrected relationship</span>
+    <span class="n">offers</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;OfferModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span> </div>
 
+    
 <div class="viewcode-block" id="BehavioralProfile">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.BehavioralProfile">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BehavioralProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
