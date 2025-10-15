@@ -95,7 +95,7 @@ test = [
     "black",
     "mypy",
     "pip-audit",
-    "pytest-mock"
+    "pytest-mock",
     # Missing dependencies identified from logs
     "python-json-logger",
     "matplotlib",
