@@ -1,12 +1,6 @@
 import unittest
 import json
 from chimera_intel.core import stix_converter
-from chimera_intel.core.schemas import (
-    FootprintResult,
-    VulnerabilityScanResult,
-    ThreatActorIntelResult,
-    ThreatActor,
-)
 from stix2 import Bundle
 
 
