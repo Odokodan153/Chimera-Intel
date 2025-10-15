@@ -66,9 +66,13 @@ def test_analyze_wifi_success(mock_wifi_pcap):
     assert result.exit_code == 0
     assert "Discovered Wi-Fi Networks" in result.stdout
     assert "SSID: OpenWiFi" in result.stdout
-    assert "Security: [red]Open[/red]" in result.stdout
+    # Check for the rendered text, not the markup
+
+    assert "Security: Open" in result.stdout
     assert "SSID: SecureWiFi" in result.stdout
-    assert "Security: [green]WPA2[/green]" in result.stdout
+    # Check for the rendered text, not the markup
+
+    assert "Security: WPA2" in result.stdout
 
 
 def test_analyze_wifi_file_not_found():

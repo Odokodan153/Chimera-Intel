@@ -7,6 +7,11 @@ from typing_extensions import Annotated
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
+from rich.console import Console  # Import Console
+
+# Create a console object
+
+console = Console()
 
 # Create a new Typer application for Wi-Fi Analysis commands
 
@@ -26,8 +31,12 @@ def analyze_wifi_capture(pcap_path: str):
     for packet in packets:
         if packet.haslayer(Dot11Beacon):
             bssid = packet[Dot11].addr2
-            ssid = packet[Dot11Elt].info.decode()
+            # Use a try-except block for safer SSID decoding
 
+            try:
+                ssid = packet[Dot11Elt].info.decode()
+            except UnicodeDecodeError:
+                ssid = packet[Dot11Elt].info.hex()  # Fallback for undecodable SSIDs
             if bssid not in aps:
                 stats = packet[Dot11Beacon].network_stats()
                 crypto = stats.get("crypto")
@@ -50,21 +59,25 @@ def analyze_wifi_capture(pcap_path: str):
                     "channel": stats.get("channel"),
                 }
     if not aps:
-        print("No Wi-Fi access points found in the capture file.")
+        console.print("No Wi-Fi access points found in the capture file.")
         return
-    print("\n--- Discovered Wi-Fi Networks ---")
+    console.print("\n--- Discovered Wi-Fi Networks ---")
     for bssid, info in aps.items():
-        print(f"\nSSID: {info['ssid']}")
-        print(f"  BSSID: {bssid}")
-        print(f"  Channel: {info['channel']}")
+        console.print(f"\nSSID: {info['ssid']}")
+        console.print(f"  BSSID: {bssid}")
+        console.print(f"  Channel: {info['channel']}")
 
         security_color = "green"
         if info["security"] in ["WEP", "Open"]:
             security_color = "red"
         elif info["security"] == "WPA":
             security_color = "yellow"
-        print(f"  Security: [{security_color}]{info['security']}[/{security_color}]")
-    print("---------------------------------")
+        # Use console.print to render the markup
+
+        console.print(
+            f"  Security: [{security_color}]{info['security']}[/{security_color}]"
+        )
+    console.print("---------------------------------")
 
 
 @wifi_analyzer_app.command(
@@ -80,17 +93,17 @@ def analyze_wifi(
     Analyzes wireless network capture files to identify, profile, and assess
     the security of Wi-Fi and Bluetooth devices.
     """
-    print(f"Analyzing wireless networks from: {capture_file}")
+    console.print(f"Analyzing wireless networks from: {capture_file}")
 
     if not os.path.exists(capture_file):
-        print(f"Error: Capture file not found at '{capture_file}'")
+        console.print(f"Error: Capture file not found at '{capture_file}'")
         raise typer.Exit(code=1)
     try:
         analyze_wifi_capture(capture_file)
     except Exception as e:
-        print(f"An error occurred during Wi-Fi analysis: {e}")
+        console.print(f"An error occurred during Wi-Fi analysis: {e}")
         raise typer.Exit(code=1)
-    print("\nWireless network analysis complete.")
+    console.print("\nWireless network analysis complete.")
 
 
 if __name__ == "__main__":

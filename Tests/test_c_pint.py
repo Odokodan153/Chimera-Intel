@@ -4,9 +4,12 @@ from chimera_intel.core.c_pint import (
     model_cyber_physical_system,
     analyze_cps_for_cascading_failures,
 )
-from chimera_intel.core.ot_intel import OTAsset
-from chimera_intel.core.sigint import SignalIntercept
-from chimera_intel.core.schemas import Vulnerability
+from chimera_intel.core.schemas import (
+    OTAsset,
+    GeoLocation,
+    SignalIntercept,
+    Vulnerability,
+)
 
 
 class TestCPINT(unittest.TestCase):
@@ -24,7 +27,7 @@ class TestCPINT(unittest.TestCase):
             )
         ]
         geo_locations = [
-            {"name": "SubstationA", "latitude": 40.7128, "longitude": -74.0060}
+            GeoLocation(name="SubstationA", latitude=40.7128, longitude=-74.0060)
         ]
         signal_intercepts = [
             SignalIntercept(signal_id="SIG1", frequency=100.0, modulation="FSK")
@@ -46,7 +49,7 @@ class TestCPINT(unittest.TestCase):
         G.add_edges_from([("A", "B"), ("B", "C"), ("C", "D")])
         nx.set_node_attributes(G, "TestNode", "node_type")
 
-        result = analyze_cps_for_cascading_failures(G)
+        result, _ = analyze_cps_for_cascading_failures(G)
         self.assertGreater(len(result.critical_nodes), 0)
         self.assertGreater(len(result.failure_paths), 0)
         self.assertIsNone(result.error)

@@ -17,7 +17,6 @@ console = Console()
 
 # Create a new Typer application for Traffic Analysis commands
 
-
 traffic_analyzer_app = typer.Typer(
     name="traffic",
     help="Advanced Network Traffic Analysis (SIGINT)",
@@ -38,28 +37,26 @@ def carve_files_from_pcap(pcap_path: str, output_dir: str):
         http_payload = b""
         for packet in sessions[session]:
             if packet.haslayer(TCP) and packet.haslayer(Raw):
-                # Simple check for HTTP GET/POST requests
-
                 if packet[TCP].dport == 80 or packet[TCP].sport == 80:
                     http_payload += packet[Raw].load
         if http_payload:
             try:
-                # Naive check for HTTP headers and splitting content
-
                 headers, content = http_payload.split(b"\r\n\r\n", 1)
                 if content:
-                    # A more robust implementation would parse Content-Disposition
-
                     filename = f"carved_file_{carved_files}.bin"
                     filepath = os.path.join(output_dir, filename)
                     with open(filepath, "wb") as f:
                         f.write(content)
-                    print(f"Carved file: {filepath}")
+                    # Use console.print for consistent output
+
+                    console.print(f"Carved file: {filepath}")
                     carved_files += 1
             except ValueError:
-                continue  # No valid HTTP header/body split
+                continue
     if carved_files == 0:
-        print("No files could be carved from the capture.")
+        # Use console.print
+
+        console.print("No files could be carved from the capture.")
 
 
 def analyze_protocols(pcap_path: str):
@@ -78,8 +75,6 @@ def analyze_protocols(pcap_path: str):
     for proto, count in protocol_counts.most_common():
         proto_table.add_row(proto, str(count))
     console.print(proto_table)
-
-    # Communication mapping
 
     G: nx.DiGraph = nx.DiGraph()
     for pkt in packets:
@@ -102,8 +97,6 @@ def analyze_protocols(pcap_path: str):
     for u, v, attrs in sorted_edges[:10]:
         convo_table.add_row(u, v, str(attrs["weight"]))
     console.print(convo_table)
-
-    # Generate interactive graph
 
     net = Network(height="750px", width="100%", notebook=False)
     net.from_nx(G)
@@ -134,22 +127,32 @@ def analyze_traffic(
     Analyzes raw network traffic captures to extract files, identify protocols,
     and map communication channels.
     """
-    print(f"Analyzing network traffic from: {capture_file}")
+    # Use console.print instead of print
+
+    console.print(f"Analyzing network traffic from: {capture_file}")
 
     if not os.path.exists(capture_file):
-        print(f"Error: Capture file not found at '{capture_file}'")
+        # Use console.print for error messages
+
+        console.print(f"Error: Capture file not found at '{capture_file}'")
         raise typer.Exit(code=1)
     analyze_protocols(capture_file)
 
     if carve_files:
         output_dir = "carved_files_output"
-        print(f"\nCarving files to directory: {output_dir}")
+        # Use console.print
+
+        console.print(f"\nCarving files to directory: {output_dir}")
         try:
             carve_files_from_pcap(capture_file, output_dir)
         except Exception as e:
-            print(f"An error occurred during file carving: {e}")
+            # Use console.print
+
+            console.print(f"An error occurred during file carving: {e}")
             raise typer.Exit(code=1)
-    print("\nTraffic analysis complete.")
+    # Use console.print
+
+    console.print("\nTraffic analysis complete.")
 
 
 if __name__ == "__main__":

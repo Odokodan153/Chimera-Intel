@@ -79,7 +79,6 @@ def test_run_forecast_command(mock_dependencies):
         forecaster_app,
         [
             "run",
-            "--scenario",
             "Test the command",
             "--ticker",
             "TEST",

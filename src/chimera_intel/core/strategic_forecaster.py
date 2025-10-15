@@ -180,8 +180,8 @@ forecaster_app = typer.Typer()
 
 @forecaster_app.command(name="run")
 def run_forecast(
-    scenario: str = typer.Option(
-        ..., "--scenario", help="The 'what-if' scenario to model."
+    scenario: str = typer.Argument(
+        ..., help="The 'what-if' scenario to model."
     ),
     ticker: Optional[str] = typer.Option(
         None, "--ticker", help="Stock ticker for FININT data."
