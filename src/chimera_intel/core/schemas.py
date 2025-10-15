@@ -2848,4 +2848,11 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+class Event:
+    """Represents a security event."""
+    def __init__(self, event_type: str, source: str, details: Dict[str, Any]):
+        self.id = ""
+        self.event_type = event_type
+        self.source = source
+        self.details = details
 
