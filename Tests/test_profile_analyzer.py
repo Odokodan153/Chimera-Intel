@@ -1,6 +1,5 @@
-import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import the application instance and the SWOTAnalysisResult schema
 
