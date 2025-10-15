@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from httpx import Response, RequestError
