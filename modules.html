@@ -44,7 +44,11 @@
               <p class="caption" role="heading"><span class="caption-text">Project Documentation:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Project Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.deception_detector">Core Intelligence &amp; Analysis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-chimera_intel.core.correlation_engine">Core Intelligence &amp; Analysis</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.correlation_engine.CorrelationEngine"><code class="docutils literal notranslate"><span class="pre">CorrelationEngine</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.correlation_engine.CorrelationEngine.process_event"><code class="docutils literal notranslate"><span class="pre">CorrelationEngine.process_event()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.analyze_for_deception"><code class="docutils literal notranslate"><span class="pre">analyze_for_deception()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.reverse_ip_lookup"><code class="docutils literal notranslate"><span class="pre">reverse_ip_lookup()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.deception_detector.run_deception_analysis"><code class="docutils literal notranslate"><span class="pre">run_deception_analysis()</span></code></a></li>
@@ -247,6 +251,12 @@
 <li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin.app"><code class="docutils literal notranslate"><span class="pre">ChimeraPlugin.app</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin.initialize"><code class="docutils literal notranslate"><span class="pre">ChimeraPlugin.initialize()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin.name"><code class="docutils literal notranslate"><span class="pre">ChimeraPlugin.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.plugin_manager.PluginManager"><code class="docutils literal notranslate"><span class="pre">PluginManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_manager.PluginManager.get_all_plugins"><code class="docutils literal notranslate"><span class="pre">PluginManager.get_all_plugins()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_manager.PluginManager.get_plugin"><code class="docutils literal notranslate"><span class="pre">PluginManager.get_plugin()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#chimera_intel.core.plugin_manager.PluginManager.run_command"><code class="docutils literal notranslate"><span class="pre">PluginManager.run_command()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.plugin_manager.discover_plugins"><code class="docutils literal notranslate"><span class="pre">discover_plugins()</span></code></a></li>
@@ -1486,9 +1496,26 @@
 <p>This section provides auto-generated documentation for all modules within the Chimera Intel project’s core directory. The <code class="docutils literal notranslate"><span class="pre">:members:</span></code> option ensures that all functions, classes, and methods within each module are documented.</p>
 <div class="toctree-wrapper compound">
 </div>
-<section id="module-chimera_intel.core.deception_detector">
-<span id="core-intelligence-analysis"></span><h2>Core Intelligence &amp; Analysis<a class="headerlink" href="#module-chimera_intel.core.deception_detector" title="Link to this heading"></a></h2>
-<p>Module for Corporate Deception &amp; Mimicry Analysis.</p>
+<section id="module-chimera_intel.core.correlation_engine">
+<span id="core-intelligence-analysis"></span><h2>Core Intelligence &amp; Analysis<a class="headerlink" href="#module-chimera_intel.core.correlation_engine" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="chimera_intel.core.correlation_engine.CorrelationEngine">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.correlation_engine.</span></span><span class="sig-name descname"><span class="pre">CorrelationEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plugin_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#chimera_intel.core.plugin_manager.PluginManager" title="chimera_intel.core.plugin_manager.PluginManager"><span class="pre">PluginManager</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/correlation_engine.html#CorrelationEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.correlation_engine.CorrelationEngine" title="Link to this definition"></a></dt>
+<dd><p>Correlates security events to identify complex threats and trigger automated responses.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="chimera_intel.core.correlation_engine.CorrelationEngine.process_event">
+<span class="sig-name descname"><span class="pre">process_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#chimera_intel.core.schemas.Event" title="chimera_intel.core.schemas.Event"><span class="pre">Event</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/chimera_intel/core/correlation_engine.html#CorrelationEngine.process_event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.correlation_engine.CorrelationEngine.process_event" title="Link to this definition"></a></dt>
+<dd><p>Processes a single event and checks for correlation triggers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>event</strong> – The event to be processed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-chimera_intel.core.deception_detector">Module for Corporate Deception &amp; Mimicry Analysis.</p>
 <p>Identifies hidden relationships between companies by finding shared digital
 assets like IP addresses, SSL certificates, and WHOIS registration details.</p>
 <dl class="py function">
@@ -3746,16 +3773,66 @@ requiring proxy support.</p>
 </dd></dl>
 
 <p id="module-chimera_intel.core.plugin_manager">Plugin Manager for dynamically discovering and loading Chimera Intel plugins.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="chimera_intel.core.plugin_manager.PluginManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">chimera_intel.core.plugin_manager.</span></span><span class="sig-name descname"><span class="pre">PluginManager</span></span><a class="reference internal" href="_modules/chimera_intel/core/plugin_manager.html#PluginManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.plugin_manager.PluginManager" title="Link to this definition"></a></dt>
+<dd><p>Manages the discovery, loading, and execution of Chimera Intel plugins.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="chimera_intel.core.plugin_manager.PluginManager.get_all_plugins">
+<span class="sig-name descname"><span class="pre">get_all_plugins</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin" title="chimera_intel.core.plugin_interface.ChimeraPlugin"><span class="pre">ChimeraPlugin</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/plugin_manager.html#PluginManager.get_all_plugins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.plugin_manager.PluginManager.get_all_plugins" title="Link to this definition"></a></dt>
+<dd><p>Returns a list of all discovered plugins.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="chimera_intel.core.plugin_manager.PluginManager.get_plugin">
+<span class="sig-name descname"><span class="pre">get_plugin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plugin_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin" title="chimera_intel.core.plugin_interface.ChimeraPlugin"><span class="pre">ChimeraPlugin</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/chimera_intel/core/plugin_manager.html#PluginManager.get_plugin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.plugin_manager.PluginManager.get_plugin" title="Link to this definition"></a></dt>
+<dd><p>Retrieves a plugin by its name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>plugin_name</strong> – The name of the plugin to retrieve.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The plugin instance, or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="chimera_intel.core.plugin_manager.PluginManager.run_command">
+<span class="sig-name descname"><span class="pre">run_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plugin_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">command</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="_modules/chimera_intel/core/plugin_manager.html#PluginManager.run_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.plugin_manager.PluginManager.run_command" title="Link to this definition"></a></dt>
+<dd><p>Runs a command on a specific plugin.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>plugin_name</strong> – The name of the plugin.</p></li>
+<li><p><strong>command</strong> – The command to run.</p></li>
+<li><p><strong>*args</strong> – Positional arguments for the command.</p></li>
+<li><p><strong>**kwargs</strong> – Keyword arguments for the command.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The result of the command execution.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the plugin is not found.</p></li>
+<li><p><strong>NotImplementedError</strong> – If the plugin does not support the command.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="chimera_intel.core.plugin_manager.discover_plugins">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.plugin_manager.</span></span><span class="sig-name descname"><span class="pre">discover_plugins</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin" title="chimera_intel.core.plugin_interface.ChimeraPlugin"><span class="pre">ChimeraPlugin</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/chimera_intel/core/plugin_manager.html#discover_plugins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.plugin_manager.discover_plugins" title="Link to this definition"></a></dt>
 <dd><p>Discovers all installed plugins using the ‘chimera_intel.plugins’ entry point.</p>
+<p>This function is kept for backward compatibility or for scenarios where
+only a list of plugins is needed without the management capabilities of PluginManager.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>A list of instantiated plugin objects.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>List[<a class="reference internal" href="#chimera_intel.core.plugin_interface.ChimeraPlugin" title="chimera_intel.core.plugin_interface.ChimeraPlugin">ChimeraPlugin</a>]</p>
 </dd>
 </dl>
 </dd></dl>

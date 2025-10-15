@@ -75,10 +75,132 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">metadata</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.plugin_interface</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChimeraPlugin</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PluginManager">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.plugin_manager.PluginManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PluginManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Manages the discovery, loading, and execution of Chimera Intel plugins.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the PluginManager and discovers all available plugins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ChimeraPlugin</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_discover_plugins</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_discover_plugins</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ChimeraPlugin</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Discovers all installed plugins using the &#39;chimera_intel.plugins&#39; entry point.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A dictionary of instantiated plugin objects, with plugin names as keys.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plugins</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ChimeraPlugin</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Discovering plugins...&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entry_points</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">entry_points</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s2">&quot;chimera_intel.plugins&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">entry_point</span> <span class="ow">in</span> <span class="n">entry_points</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">plugin_class</span> <span class="o">=</span> <span class="n">entry_point</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+                    <span class="n">plugin_instance</span> <span class="o">=</span> <span class="n">plugin_class</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plugin_instance</span><span class="p">,</span> <span class="n">ChimeraPlugin</span><span class="p">):</span>
+                        <span class="n">plugin_instance</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">plugin_instance</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">plugins</span><span class="p">:</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Duplicate plugin name &#39;</span><span class="si">{</span><span class="n">plugin_instance</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; found. Overwriting.&quot;</span>
+                            <span class="p">)</span>
+                        <span class="n">plugins</span><span class="p">[</span><span class="n">plugin_instance</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">plugin_instance</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Successfully loaded plugin: </span><span class="si">{</span><span class="n">plugin_instance</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Plugin </span><span class="si">{</span><span class="n">entry_point</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> does not inherit from ChimeraPlugin.&quot;</span>
+                        <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Failed to load plugin </span><span class="si">{</span><span class="n">entry_point</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;An error occurred during plugin discovery: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Discovered </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">plugins</span><span class="p">)</span><span class="si">}</span><span class="s2"> plugins.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">plugins</span>
+
+<div class="viewcode-block" id="PluginManager.get_plugin">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.plugin_manager.PluginManager.get_plugin">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_plugin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plugin_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChimeraPlugin</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a plugin by its name.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plugin_name: The name of the plugin to retrieve.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The plugin instance, or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PluginManager.get_all_plugins">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.plugin_manager.PluginManager.get_all_plugins">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_all_plugins</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">ChimeraPlugin</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of all discovered plugins.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">plugins</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="PluginManager.run_command">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.plugin_manager.PluginManager.run_command">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_command</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">plugin_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">command</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs a command on a specific plugin.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plugin_name: The name of the plugin.</span>
+<span class="sd">            command: The command to run.</span>
+<span class="sd">            *args: Positional arguments for the command.</span>
+<span class="sd">            **kwargs: Keyword arguments for the command.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The result of the command execution.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the plugin is not found.</span>
+<span class="sd">            NotImplementedError: If the plugin does not support the command.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plugin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_plugin</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">plugin</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Plugin &#39;</span><span class="si">{</span><span class="n">plugin_name</span><span class="si">}</span><span class="s2">&#39; not found.&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Assumes that plugins have a generic `execute_command` method.</span>
+            <span class="c1"># You might need to adjust this based on your plugin interface.</span>
+
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">plugin</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">callable</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">plugin</span><span class="p">,</span> <span class="n">command</span><span class="p">)):</span>
+                <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">plugin</span><span class="p">,</span> <span class="n">command</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Plugin &#39;</span><span class="si">{</span><span class="n">plugin_name</span><span class="si">}</span><span class="s2">&#39; does not have a command &#39;</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error running command &#39;</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&#39; on plugin &#39;</span><span class="si">{</span><span class="n">plugin_name</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">raise</span></div>
+</div>
+
 
 
 <div class="viewcode-block" id="discover_plugins">
@@ -87,30 +209,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Discovers all installed plugins using the &#39;chimera_intel.plugins&#39; entry point.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        List[ChimeraPlugin]: A list of instantiated plugin objects.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">plugins</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ChimeraPlugin</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="sd">    This function is kept for backward compatibility or for scenarios where</span>
+<span class="sd">    only a list of plugins is needed without the management capabilities of PluginManager.</span>
 
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">entry_points</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">entry_points</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s2">&quot;chimera_intel.plugins&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">entry_point</span> <span class="ow">in</span> <span class="n">entry_points</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">plugin_class</span> <span class="o">=</span> <span class="n">entry_point</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
-                <span class="n">plugin_instance</span> <span class="o">=</span> <span class="n">plugin_class</span><span class="p">()</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plugin_instance</span><span class="p">,</span> <span class="n">ChimeraPlugin</span><span class="p">):</span>
-                    <span class="n">plugin_instance</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
-                    <span class="n">plugins</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugin_instance</span><span class="p">)</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully loaded plugin: </span><span class="si">{</span><span class="n">plugin_instance</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Plugin </span><span class="si">{</span><span class="n">entry_point</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> does not inherit from ChimeraPlugin.&quot;</span>
-                    <span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load plugin </span><span class="si">{</span><span class="n">entry_point</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An error occurred during plugin discovery: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">plugins</span></div>
+<span class="sd">    Returns:</span>
+<span class="sd">        A list of instantiated plugin objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">PluginManager</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_all_plugins</span><span class="p">()</span></div>
 
 </pre></div>
 

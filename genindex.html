@@ -280,6 +280,13 @@
 </li>
       </ul></li>
       <li>
+    chimera_intel.core.correlation_engine
+
+      <ul>
+        <li><a href="modules.html#module-chimera_intel.core.correlation_engine">module</a>
+</li>
+      </ul></li>
+      <li>
     chimera_intel.core.daemon
 
       <ul>
@@ -573,6 +580,8 @@
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.CorporateRegistryResult">CorporateRegistryResult (class in chimera_intel.core.schemas)</a>
 </li>
+      <li><a href="modules.html#chimera_intel.core.correlation_engine.CorrelationEngine">CorrelationEngine (class in chimera_intel.core.correlation_engine)</a>
+</li>
       <li><a href="modules.html#chimera_intel.core.schemas.Counterparty">Counterparty (class in chimera_intel.core.schemas)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.CountryRiskProfile">CountryRiskProfile (class in chimera_intel.core.schemas)</a>
@@ -773,6 +782,8 @@
 </li>
       <li><a href="modules.html#chimera_intel.core.database.get_aggregated_data_for_target">get_aggregated_data_for_target() (in module chimera_intel.core.database)</a>
 </li>
+      <li><a href="modules.html#chimera_intel.core.plugin_manager.PluginManager.get_all_plugins">get_all_plugins() (chimera_intel.core.plugin_manager.PluginManager method)</a>
+</li>
       <li><a href="modules.html#chimera_intel.core.database.get_all_scans_for_target">get_all_scans_for_target() (in module chimera_intel.core.database)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.http_client.get_async_http_client">get_async_http_client() (in module chimera_intel.core.http_client)</a>
@@ -806,6 +817,8 @@
       <li><a href="modules.html#chimera_intel.core.corporate_intel.get_lobbying_data">get_lobbying_data() (in module chimera_intel.core.corporate_intel)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.footprint.get_passive_dns">get_passive_dns() (in module chimera_intel.core.footprint)</a>
+</li>
+      <li><a href="modules.html#chimera_intel.core.plugin_manager.PluginManager.get_plugin">get_plugin() (chimera_intel.core.plugin_manager.PluginManager method)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.project_manager.get_project_config_by_name">get_project_config_by_name() (in module chimera_intel.core.project_manager)</a>
 </li>
@@ -1635,6 +1648,8 @@
 </li>
         <li><a href="modules.html#module-chimera_intel.core.corporate_records">chimera_intel.core.corporate_records</a>
 </li>
+        <li><a href="modules.html#module-chimera_intel.core.correlation_engine">chimera_intel.core.correlation_engine</a>
+</li>
         <li><a href="modules.html#module-chimera_intel.core.daemon">chimera_intel.core.daemon</a>
 </li>
         <li><a href="modules.html#module-chimera_intel.core.dark_web_osint">chimera_intel.core.dark_web_osint</a>
@@ -1820,13 +1835,15 @@
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.PESTELAnalysisResult">PESTELAnalysisResult (class in chimera_intel.core.schemas)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#chimera_intel.core.schemas.PhysicalLocation">PhysicalLocation (class in chimera_intel.core.schemas)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules.html#chimera_intel.core.schemas.PhysicalSecurityResult">PhysicalSecurityResult (class in chimera_intel.core.schemas)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.Plan">Plan (class in chimera_intel.core.schemas)</a>
+</li>
+      <li><a href="modules.html#chimera_intel.core.plugin_manager.PluginManager">PluginManager (class in chimera_intel.core.plugin_manager)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.PodcastAnalysisResult">PodcastAnalysisResult (class in chimera_intel.core.schemas)</a>
 </li>
@@ -1845,6 +1862,8 @@
       <li><a href="modules.html#chimera_intel.core.forecaster.predict_breach_likelihood">predict_breach_likelihood() (in module chimera_intel.core.forecaster)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.Prediction">Prediction (class in chimera_intel.core.schemas)</a>
+</li>
+      <li><a href="modules.html#chimera_intel.core.correlation_engine.CorrelationEngine.process_event">process_event() (chimera_intel.core.correlation_engine.CorrelationEngine method)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.schemas.Project">Project (class in chimera_intel.core.schemas)</a>
 </li>
@@ -1906,6 +1925,8 @@
 </li>
       <li><a href="modules.html#chimera_intel.core.offensive.run_cloud_takeover_check">run_cloud_takeover_check() (in module chimera_intel.core.offensive)</a>
 </li>
+      <li><a href="modules.html#chimera_intel.core.plugin_manager.PluginManager.run_command">run_command() (chimera_intel.core.plugin_manager.PluginManager method)</a>
+</li>
       <li><a href="modules.html#chimera_intel.core.offensive.run_content_enumeration">run_content_enumeration() (in module chimera_intel.core.offensive)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.recon.run_credential_recon">run_credential_recon() (in module chimera_intel.core.recon)</a>
@@ -1940,10 +1961,10 @@
 </li>
       <li><a href="modules.html#chimera_intel.core.corporate_intel.run_hr_intel">run_hr_intel() (in module chimera_intel.core.corporate_intel)</a>
 </li>
-      <li><a href="modules.html#chimera_intel.core.defensive.run_iac_scan">run_iac_scan() (in module chimera_intel.core.defensive)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules.html#chimera_intel.core.defensive.run_iac_scan">run_iac_scan() (in module chimera_intel.core.defensive)</a>
+</li>
       <li><a href="modules.html#chimera_intel.core.finint.run_insider_tracking">run_insider_tracking() (in module chimera_intel.core.finint)</a>
 </li>
       <li><a href="modules.html#chimera_intel.core.automation.run_ioc_enrichment">run_ioc_enrichment() (in module chimera_intel.core.automation)</a>
