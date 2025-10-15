@@ -1,9 +1,9 @@
 from typer.testing import CliRunner
 from unittest.mock import patch
 
-# Import the application instance and the SWOTAnalysisResult schema
+# Import the application instance
 
-from chimera_intel.core.strategic_forecaster import strategic_forecaster_app
+from chimera_intel.core.strategic_forecaster import forecaster_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
@@ -27,7 +27,7 @@ def test_forecast_success(mock_api_keys, mock_generate_swot, mock_get_data):
 
     # --- Run Command ---
 
-    result = runner.invoke(strategic_forecaster_app, ["forecast", "TestCorp"])
+    result = runner.invoke(forecaster_app, ["run", "TestCorp"])
 
     # --- Assertions ---
 
@@ -50,7 +50,7 @@ def test_forecast_no_data(mock_api_keys, mock_get_data):
 
     # --- Run Command ---
 
-    result = runner.invoke(strategic_forecaster_app, ["forecast", "nonexistent-target"])
+    result = runner.invoke(forecaster_app, ["run", "nonexistent-target"])
 
     # --- Assertions ---
 
@@ -69,7 +69,7 @@ def test_forecast_no_api_key(mock_api_keys):
 
     # --- Run Command ---
 
-    result = runner.invoke(strategic_forecaster_app, ["forecast", "any-target"])
+    result = runner.invoke(forecaster_app, ["run", "any-target"])
 
     # --- Assertions ---
 
