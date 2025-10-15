@@ -1,118 +1,77 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock
-import tweepy
+from unittest.mock import patch, MagicMock
 
-# The application instance to be tested
+# Import the application instance and the SWOTAnalysisResult schema
+
 from chimera_intel.core.profile_analyzer import profile_analyzer_app
-from chimera_intel.core.ai_core import AIResult
+from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
 
 
-@pytest.fixture
-def mock_tweepy_api(mocker):
-    """Mocks the tweepy.API object and its user_timeline method."""
-    # This dictionary simulates the JSON response from the Twitter API
-    mock_tweet_json = {
-        "full_text": "This is a test tweet about #python and @chimera_intel.",
-        "entities": {
-            "user_mentions": [{"screen_name": "chimera_intel"}],
-            "hashtags": [{"text": "python"}],
-        },
-    }
-    
-    # The API returns a list of these tweet objects
-    mock_tweet_obj = MagicMock()
-    mock_tweet_obj._json = mock_tweet_json
+@patch("chimera_intel.core.profile_analyzer.get_aggregated_data_for_target")
+@patch("chimera_intel.core.profile_analyzer.generate_swot_from_data")
+@patch("chimera_intel.core.profile_analyzer.API_KEYS")
+def test_analyze_profile_success(mock_api_keys, mock_generate_swot, mock_get_data):
+    """
+    Tests the successful run of a profile analysis.
+    """
+    # --- Setup Mocks ---
 
-    # Mock the tweepy.API instance
-    mock_api = MagicMock()
-    mock_api.user_timeline.return_value = [mock_tweet_obj]
-    
-    # Patch the OAuth handler and the API object itself
-    mocker.patch("chimera_intel.core.profile_analyzer.tweepy.OAuth2BearerHandler")
-    mocker.patch("chimera_intel.core.profile_analyzer.tweepy.API", return_value=mock_api)
-    
-    return mock_api
-
-
-@pytest.fixture
-def mock_ai_core(mocker):
-    """Mocks the generate_swot_from_data function in the ai_core module."""
-    mock_ai_result = AIResult(
-        analysis_text="The user shows a strong interest in Python programming and the Chimera Intel platform.",
-        error=None,
-    )
-    return mocker.patch(
-        "chimera_intel.core.profile_analyzer.generate_swot_from_data",
-        return_value=mock_ai_result,
+    mock_api_keys.google_api_key = "test_key"
+    mock_get_data.return_value = {"key_personnel": ["John Doe"]}
+    mock_generate_swot.return_value = SWOTAnalysisResult(
+        analysis_text="Strengths: Experienced leadership.", error=None
     )
 
+    # --- Run Command ---
 
-def test_analyze_twitter_profile_success(mock_tweepy_api, mock_ai_core, mocker):
-    """
-    Tests the full 'twitter' command with successful responses from all APIs.
-    """
-    # Mock the necessary API keys to pass the configuration checks
-    mocker.patch("chimera_intel.core.profile_analyzer.API_KEYS.twitter_bearer_token", "fake_token")
-    mocker.patch("chimera_intel.core.profile_analyzer.API_KEYS.google_api_key", "fake_key")
-
-    # Invoke the CLI command
-    result = runner.invoke(profile_analyzer_app, ["twitter", "testuser"])
+    result = runner.invoke(profile_analyzer_app, ["analyze", "TestCorp"])
 
     # --- Assertions ---
+
     assert result.exit_code == 0
-    # Check for the initial analysis message
-    assert "Analyzing Twitter profile for @testuser..." in result.stdout
-    # Check for the activity summary panel
-    assert "Activity Summary" in result.stdout
-    assert "Most Mentioned" in result.stdout
-    assert "'chimera_intel', 1" in result.stdout
-    # Check for the AI-powered behavioral profile panel
-    assert "AI Behavioral Profile" in result.stdout
-    assert "The user shows a strong interest in Python programming" in result.stdout
+    assert "Analyzing profile for TestCorp..." in result.stdout
+    assert "Threat Profile Analysis for TestCorp" in result.stdout
+    assert "Strengths: Experienced leadership." in result.stdout
 
 
-def test_analyze_twitter_profile_no_tweets(mock_tweepy_api, mocker):
+@patch("chimera_intel.core.profile_analyzer.get_aggregated_data_for_target")
+@patch("chimera_intel.core.profile_analyzer.API_KEYS")
+def test_analyze_profile_no_data(mock_api_keys, mock_get_data):
     """
-    Tests the command's behavior when a user has no tweets.
+    Tests the command's behavior when no aggregated data is found for the target.
     """
-    # Mock the API keys
-    mocker.patch("chimera_intel.core.profile_analyzer.API_KEYS.twitter_bearer_token", "fake_token")
-    mocker.patch("chimera_intel.core.profile_analyzer.API_KEYS.google_api_key", "fake_key")
-    
-    # Configure the mock to return an empty list, simulating no tweets found
-    mock_tweepy_api.user_timeline.return_value = []
+    # --- Setup Mocks ---
 
-    # Invoke the command
-    result = runner.invoke(profile_analyzer_app, ["twitter", "no_tweets_user"])
+    mock_api_keys.google_api_key = "test_key"
+    mock_get_data.return_value = None  # Simulate no data found
+
+    # --- Run Command ---
+
+    result = runner.invoke(profile_analyzer_app, ["analyze", "nonexistent-target"])
 
     # --- Assertions ---
+
     assert result.exit_code == 0
-    assert "No tweets found for this user." in result.stdout
-    # Ensure no analysis panels are displayed
-    assert "Activity Summary" not in result.stdout
-    assert "AI Behavioral Profile" not in result.stdout
+    assert "No data found for target 'nonexistent-target'" in result.stdout
 
 
-def test_analyze_twitter_profile_api_error(mock_tweepy_api, mocker):
+@patch("chimera_intel.core.profile_analyzer.API_KEYS")
+def test_analyze_profile_no_api_key(mock_api_keys):
     """
-    Tests how the command handles a Twitter API error.
+    Tests that the command fails gracefully if the Google API key is not configured.
     """
-    # Mock the API keys
-    mocker.patch("chimera_intel.core.profile_analyzer.API_KEYS.twitter_bearer_token", "fake_token")
-    
-    # Configure the mock to raise a TweepyException
-    mock_tweepy_api.user_timeline.side_effect = tweepy.errors.TweepyException(
-        "User not found."
-    )
+    # --- Setup Mock ---
 
-    # Invoke the command
-    result = runner.invoke(profile_analyzer_app, ["twitter", "nonexistentuser"])
-    
+    mock_api_keys.google_api_key = None  # Simulate missing API key
+
+    # --- Run Command ---
+
+    result = runner.invoke(profile_analyzer_app, ["analyze", "any-target"])
+
     # --- Assertions ---
-    assert result.exit_code == 0 # The app handles the error gracefully and exits 0
-    assert "Twitter API Error:" in result.stdout
-    assert "User not found." in result.stdout
-    assert "No tweets found for this user." in result.stdout
+
+    assert result.exit_code == 1
+    assert "Error: Google API key not configured." in result.stdout
