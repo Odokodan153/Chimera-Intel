@@ -4,7 +4,7 @@ from unittest.mock import patch
 # The application instance to be tested
 
 from chimera_intel.core.cultint import cultint_app
-from chimera_intel.core.ai_core import AIResult
+from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
 
@@ -30,7 +30,7 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
 
     # 3. Mock the AI analysis result.
 
-    mock_ai_result = AIResult(
+    mock_ai_result = SWOTAnalysisResult(
         analysis_text="Analysis shows a hierarchical culture focused on tradition.",
         error=None,
     )
