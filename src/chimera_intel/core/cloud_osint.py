@@ -9,7 +9,7 @@ from .schemas import (
     GCSBucket,
 )
 from .http_client import async_client
-from .utils import save_or_print_results, console
+from .utils import save_or_print_results
 from .database import save_scan_to_db
 from .project_manager import get_active_project
 

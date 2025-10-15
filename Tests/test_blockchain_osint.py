@@ -2,9 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
-import json
-import typer
-
 from chimera_intel.core.blockchain_osint import get_wallet_analysis, blockchain_app
 from chimera_intel.core.schemas import WalletAnalysisResult, WalletTransaction
 

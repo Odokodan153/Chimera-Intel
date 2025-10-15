@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.ttp_mapper import ttp_app
-from chimera_intel.core.schemas import TTPMappingResult, MappedTechnique
+from chimera_intel.core.schemas import TTPMappingResult
 
 runner = CliRunner()
 

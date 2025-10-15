@@ -13,7 +13,7 @@ import shutil
 from collections import Counter
 from typing import Optional, Counter as CounterType
 from .schemas import RepoAnalysisResult, CommitterInfo
-from .utils import save_or_print_results, console
+from .utils import save_or_print_results
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)

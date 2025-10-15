@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch
 from typer.testing import CliRunner
 import typer
