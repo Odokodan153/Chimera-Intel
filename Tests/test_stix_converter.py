@@ -4,8 +4,7 @@ from chimera_intel.core.stix_converter import StixConverter
 from chimera_intel.core.schemas import (
     FootprintResult,
     VulnerabilityScanResult,
-    ThreatActor,
-    TTP,
+    ThreatActor
 )
 
 

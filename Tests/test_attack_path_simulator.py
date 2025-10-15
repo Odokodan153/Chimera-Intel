@@ -1,5 +1,4 @@
 import pytest
-import json
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 

@@ -1,9 +1,8 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 import cv2
 import numpy as np
-import os
 
 # The application instance to be tested
 

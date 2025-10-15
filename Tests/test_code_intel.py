@@ -1,10 +1,9 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 # The application instance to be tested
 from chimera_intel.core.code_intel import code_intel_app
-from chimera_intel.core.schemas import RepoAnalysisResult
 
 # Create a CliRunner for invoking the app in tests
 runner = CliRunner()
