@@ -7,7 +7,7 @@ developers using compromised credentials.
 
 import typer
 import logging
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Dict
 
 from .schemas import OpsecReport, CompromisedCommitter
 from .utils import save_or_print_results
@@ -38,7 +38,7 @@ def generate_opsec_report(target: str) -> OpsecReport:
     if committer_emails and breach_data:
         # Create a mapping from breached emails to breach names for efficient lookup
 
-        breached_email_map = {}
+        breached_email_map: Dict[str, Set[str]] = {}
         for breach in breach_data:
             breach_name = breach.get("Name")
             if not breach_name:

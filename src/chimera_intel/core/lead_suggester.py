@@ -126,11 +126,13 @@ def run_lead_suggestion(
         if not api_key:
             typer.echo("Error: Google API key (GOOGLE_API_KEY) not found.", err=True)
             raise typer.Exit(code=1)
-        with console.status(
-            "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]",
-            disable=no_rich,
-        ):
+        if no_rich:
             suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
+        else:
+            with console.status(
+                "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]"
+            ):
+                suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
         if not no_rich:
             console.print(
                 f"\n--- [bold]Suggested Intelligence Leads for {active_project.project_name}[/bold] ---\n"

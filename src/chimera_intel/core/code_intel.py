@@ -123,5 +123,5 @@ def run_repo_analysis(
         )
         raise typer.Exit(code=1)
     results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file, "Repository Analysis")
+    save_or_print_results(results_dict, output_file)  # Corrected line
     save_scan_to_db(target=repo_url, module="code_intel_repo", data=results_dict)
