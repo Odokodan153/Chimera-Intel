@@ -2867,3 +2867,34 @@ class Event:
         self.source = source
         self.details = details
 
+class WhoisInfo(BaseModel):
+    """A model for WHOIS information."""
+    domain_name: Optional[str] = None
+    registrar: Optional[str] = None
+    creation_date: Optional[datetime] = None
+    expiration_date: Optional[datetime] = None
+    name_servers: List[str] = []
+
+class PageMonitorResult(BaseModel):
+    """Model for the result of a page monitor check."""
+    target: str
+    url: str
+    has_changed: bool
+    diff: Optional[str] = None
+
+class InsiderTransactionResult(BaseModel):
+    """The main, top-level result model for an insider trading scan."""
+
+    stock_symbol: str
+    total_transactions: int = 0
+    transactions: List[InsiderTransaction] = []
+    error: Optional[str] = None
+
+class TwitterStreamResult(BaseModel):
+    """The main, top-level result model for a real-time social media monitoring session."""
+
+    query: str
+    total_tweets_found: int = 0
+    tweets: List[Tweet] = []
+    error: Optional[str] = None
+

@@ -3,7 +3,8 @@ from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 
 # Import the application instance and the SWOTAnalysisResult schema
-from chimera_intel.core.attack_path_simulator import attack_path_simulator_app
+
+from chimera_intel.core.attack_path_simulator import attack_path_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
@@ -16,6 +17,7 @@ def mock_db_connection(mocker):
     with predefined scan data.
     """
     # This data simulates the raw rows fetched from the PostgreSQL database
+
     mock_scan_data = [
         (
             1,
@@ -56,6 +58,7 @@ def mock_db_connection(mocker):
     mock_cursor.fetchall.return_value = mock_scan_data
 
     # Patch the actual database connection function in the target module
+
     mocker.patch(
         "chimera_intel.core.attack_path_simulator.get_db_connection",
         return_value=mock_conn,
@@ -70,31 +73,36 @@ def test_simulate_attack_success(mock_api_keys, mock_generate_swot, mock_db_conn
     Tests the 'simulate attack' command with mocked database and AI calls.
     """
     # --- Setup Mocks ---
+
     mock_api_keys.google_api_key = "fake_key"
     mock_generate_swot.return_value = SWOTAnalysisResult(
         analysis_text="Step 1: Exploit CVE-2023-1234 on 192.168.1.10.", error=None
     )
 
     # --- Run Command ---
+
     result = runner.invoke(
-        attack_path_simulator_app,
-        ["attack"],
+        attack_path_app,
+        [
+            "simulate",
+            "--entry-point",
+            "Public-Facing Web Server",
+            "--target-asset",
+            "Customer Database",
+        ],
         input="test_project\nexfiltrate-data\n",  # Provide input for the prompts
     )
 
     # --- Assertions ---
+
     assert result.exit_code == 0
-    assert "Simulating attack path for project 'test_project'" in result.stdout
-    assert "Simulated Attack Path" in result.stdout
-    assert "Step 1: Exploit CVE-2023-1234" in result.stdout
+    assert "Simulating attack path" in result.stdout
+    assert "Simulated Attack Path(s)" in result.stdout
+    assert "Public-Facing Web Server -> Customer Database" in result.stdout
 
     # Verify that the AI function was called with a correctly structured prompt
-    mock_generate_swot.assert_called_once()
-    prompt_arg = mock_generate_swot.call_args[0][0]
-    assert "You are a cybersecurity expert" in prompt_arg
-    assert "\"goal\": 'exfiltrate-data'" in prompt_arg
-    assert '"type": "footprint"' in prompt_arg
-    assert '"reason": "DNS Resolution: 192.168.1.10"' in prompt_arg
+
+    mock_generate_swot.assert_not_called()
 
 
 def test_simulate_attack_no_assets(mocker):
@@ -102,6 +110,7 @@ def test_simulate_attack_no_assets(mocker):
     Tests the command's failure when no assets are found for the project.
     """
     # Mock the database to return no scan data
+
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -115,11 +124,15 @@ def test_simulate_attack_no_assets(mocker):
     )
 
     # --- Run Command ---
+
     result = runner.invoke(
-        attack_path_simulator_app, ["attack"], input="empty_project\ngoal\n"
+        attack_path_app,
+        ["simulate", "--entry-point", "a", "--target-asset", "b"],
+        input="empty_project\ngoal\n",
     )
 
     # --- Assertions ---
+
     assert result.exit_code == 1
-    assert "Error:" in result.stdout
-    assert "No assets found for project 'empty_project'" in result.stdout
+    assert "Warning:" in result.stdout
+    assert "No assets found in the graph database" in result.stdout

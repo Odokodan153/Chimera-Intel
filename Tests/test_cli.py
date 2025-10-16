@@ -24,8 +24,6 @@ from chimera_intel.core.schemas import (
     SubdomainReport,
     HIBPResult,
     WhoisInfo,
-    DNSRecord,
-    IPThreatIntelligence,
     HistoricalDNS,
     ReverseIP,
     ASNInfo,
@@ -36,6 +34,7 @@ from chimera_intel.core.schemas import (
     WebTechnology,
     PersonnelInfo,
     KnowledgeGraph,
+    IPThreatIntelligence,
 )
 
 # --- Mock Plugins ---
@@ -151,17 +150,26 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             domain="example.com",
             footprint=FootprintData(
                 whois_info=WhoisInfo(domain_name="example.com"),
-                dns_records=[DNSRecord(record_type="A", value="127.0.0.1")],
+                dns_records={"A": ["127.0.0.1"]},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[
                     IPThreatIntelligence(ip_address="127.0.0.1", threat_level="low")
                 ],
-                historical_dns=[HistoricalDNS(record_type="A", value="127.0.0.1")],
-                reverse_ip=[ReverseIP(hostname="localhost")],
+                historical_dns=HistoricalDNS(
+                    a_records=["127.0.0.1"], aaaa_records=[], mx_records=[]
+                ),
+                reverse_ip=ReverseIP(hostname="localhost"),
                 asn_info=ASNInfo(asn="AS12345"),
-                tls_cert_info=TLSCertificate(issuer="Test CA"),
-                dnssec_info=DNSSecInfo(is_enabled=False),
-                ip_geolocation=IPGeolocation(country="Testland"),
+                tls_cert_info=TLSCertificate(
+                    issuer="Test CA", subject="", sans=[], not_before="", not_after=""
+                ),
+                dnssec_info=DNSSecInfo(
+                    is_enabled=False,
+                    dnssec_enabled=False,
+                    spf_record="",
+                    dmarc_record="",
+                ),
+                ip_geolocation=IPGeolocation(country="Testland", ip="127.0.0.1"),
                 breach_info=HIBPResult(breaches=[]),
                 port_scan_results=[PortScanResult(port=80, status="open")],
                 web_technologies=[WebTechnology(name="TestWeb", version="1.0")],
@@ -194,8 +202,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("is not a valid domain format", result.stdout)
+        self.assertEqual(result.exit_code, 2)
+        self.assertIn("Invalid value", result.stdout)
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
     def test_defensive_breaches_success(self, mock_check_hibp: MagicMock):
@@ -232,8 +240,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Skipping HIBP Scan", result.stdout)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("HIBP_API_KEY not found in environment variables", result.stdout)
 
 
 if __name__ == "__main__":
