@@ -5,13 +5,10 @@ Influence & Information Operations (IO) Tracking Module for Chimera Intel.
 import typer
 from typing_extensions import Annotated
 import httpx
-from rich.console import Console
 from rich.table import Table
-from collections import Counter
 import tweepy
 
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.utils import console
 
 
@@ -97,8 +94,8 @@ def track_influence(
 
         with httpx.Client() as client:
             news_articles = search_news_narrative(narrative, client)
-            tweets = search_twitter_narrative(narrative)
-            reddit_posts = search_reddit_narrative(narrative, client)
+            search_twitter_narrative(narrative)
+            search_reddit_narrative(narrative, client)
         console.print(
             f"\nFound {len(news_articles)} news articles related to the narrative."
         )
