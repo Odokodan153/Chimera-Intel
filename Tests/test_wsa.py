@@ -7,7 +7,7 @@ from chimera_intel.core.weak_signal_analyzer import (
     amplify_signals_with_dempster_shafer,
     wsa_app,
 )
-from chimera_intel.core.schemas import AmplifiedEventResult, WeakSignal
+from chimera_intel.core.schemas import WeakSignal
 
 runner = CliRunner()
 
