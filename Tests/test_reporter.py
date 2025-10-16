@@ -5,7 +5,6 @@ from chimera_intel.core.reporter import (
     create_pdf_report,
     generate_graph_report,
 )
-from chimera_intel.core.graph_schemas import EntityGraphResult, GraphNode
 
 
 class TestReporter(unittest.TestCase):

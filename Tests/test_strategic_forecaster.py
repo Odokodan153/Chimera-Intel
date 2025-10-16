@@ -1,5 +1,5 @@
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pandas as pd
 
 # Import the application instance
