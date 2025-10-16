@@ -115,7 +115,7 @@
 <span class="sd">        engine (str): The search engine to use (&#39;ahmia&#39; or &#39;darksearch&#39;).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        DarkWebScanResult: A Pydantic model containing the list of found results.</span>
+<span class="sd">        DarkWebScanResult: A Pantic model containing the list of found results.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting dark web search on </span><span class="si">{</span><span class="n">engine</span><span class="si">}</span><span class="s2"> for query: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -211,9 +211,10 @@
 <span class="sd">    Searches for a query on the dark web via a selected search engine.</span>
 <span class="sd">    REQUIRES TOR BROWSER TO BE RUNNING.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># FIX: This wrapper ensures that the async function is called correctly.</span>
-
-    <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">async_run_dark_web_search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">output_file</span><span class="p">))</span></div>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">async_run_dark_web_search</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">engine</span><span class="p">,</span> <span class="n">output_file</span><span class="p">))</span>
+    <span class="k">except</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">e</span></div>
 
 
 
@@ -227,8 +228,8 @@
         <span class="n">active_project</span> <span class="o">=</span> <span class="n">get_active_project</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">active_project</span> <span class="ow">and</span> <span class="n">active_project</span><span class="o">.</span><span class="n">company_name</span><span class="p">:</span>
             <span class="n">target_query</span> <span class="o">=</span> <span class="n">active_project</span><span class="o">.</span><span class="n">company_name</span>
-            <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;[bold cyan]Using query &#39;</span><span class="si">{</span><span class="n">target_query</span><span class="si">}</span><span class="s2">&#39; from active project &#39;</span><span class="si">{</span><span class="n">active_project</span><span class="o">.</span><span class="n">project_name</span><span class="si">}</span><span class="s2">&#39;.[/bold cyan]&quot;</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Using query &#39;</span><span class="si">{</span><span class="n">target_query</span><span class="si">}</span><span class="s2">&#39; from active project &#39;</span><span class="si">{</span><span class="n">active_project</span><span class="o">.</span><span class="n">project_name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>

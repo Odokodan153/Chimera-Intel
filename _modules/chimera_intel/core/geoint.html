@@ -155,7 +155,7 @@
 
 <div class="viewcode-block" id="generate_geoint_report">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.geoint.generate_geoint_report">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_geoint_report</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeointReport</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">generate_geoint_report</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeointReport</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generates a GEOINT report by analyzing the geographic distribution of assets.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -185,7 +185,7 @@
         <span class="k">if</span> <span class="n">dns_records</span><span class="p">:</span>
             <span class="n">ip_addresses</span> <span class="o">=</span> <span class="n">dns_records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="p">[])</span>
             <span class="k">if</span> <span class="n">ip_addresses</span><span class="p">:</span>
-                <span class="n">ip_countries</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_get_countries_from_ips</span><span class="p">(</span><span class="n">ip_addresses</span><span class="p">))</span>
+                <span class="n">ip_countries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">_get_countries_from_ips</span><span class="p">(</span><span class="n">ip_addresses</span><span class="p">)</span>
                 <span class="n">countries</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ip_countries</span><span class="p">)</span>
     <span class="c1"># Fetch risk profiles for each unique country</span>
 
@@ -217,7 +217,7 @@
 <span class="sd">    Analyzes a target&#39;s geographic footprint for geopolitical risks.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">target_name</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
-    <span class="n">results_model</span> <span class="o">=</span> <span class="n">generate_geoint_report</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">generate_geoint_report</span><span class="p">(</span><span class="n">target_name</span><span class="p">))</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target_name</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;geoint_report&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
