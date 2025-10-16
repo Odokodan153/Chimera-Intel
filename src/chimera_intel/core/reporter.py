@@ -180,9 +180,9 @@ def create_pdf_report(
     generate_pdf_report(data, output_path)
 
 
-def generate_graph_report(target: str, output_path: str):
+def generate_graph_report(json_data: Dict[str, Any], output_path: str):
     """Generates an HTML graph report for a target."""
     try:
-        build_and_save_graph(target, output_path)
+        build_and_save_graph(json_data, output_path)
     except Exception as e:
         console.print(f"[bold red]Error generating graph report:[/bold red] {e}")
