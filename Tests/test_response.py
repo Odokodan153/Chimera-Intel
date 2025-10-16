@@ -1,9 +1,10 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from chimera_intel.core.response import response_app
 
 # Create a CliRunner instance to invoke the Typer app
+
 
 runner = CliRunner()
 
@@ -85,7 +86,9 @@ def test_add_rule_success(mock_db_connection):
     mock_conn.commit.assert_called_once()
 
 
-def test_simulate_event_rule_found(mock_db_connection):
+@patch("chimera_intel.core.response.SLACK_WEBHOOK_URL", "https://dummy-webhook")
+@patch("chimera_intel.core.response.send_slack_notification")
+def test_simulate_event_rule_found(mock_send_slack, mock_db_connection):
     """
     Tests the 'simulate-event' command for a trigger that has a matching rule.
     """

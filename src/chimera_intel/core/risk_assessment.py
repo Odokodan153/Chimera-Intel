@@ -31,11 +31,19 @@ def calculate_risk(
     """
     try:
         # Adjust impact based on vulnerabilities
-
         if vulnerabilities:
-            impact = min(10.0, impact + len(vulnerabilities) * 0.5)
-        # Adjust probability based on threat actor activity
+            severity_impact = 0.0
+            for vuln in vulnerabilities:
+                # Check for severity and add to impact
+                if hasattr(vuln, "severity"):
+                    severity = str(getattr(vuln, "severity")).lower()
+                    if severity == "critical":
+                        severity_impact += 1.5  # Boost for critical
+                    elif severity == "high":
+                        severity_impact += 0.5  # Boost for high
 
+            impact = min(10.0, impact + severity_impact + len(vulnerabilities) * 0.5)
+        # Adjust probability based on threat actor activity
         if threat_actors:
             probability = min(1.0, probability + len(threat_actors) * 0.1)
         risk_score = probability * impact
@@ -49,7 +57,6 @@ def calculate_risk(
         else:
             risk_level = "Low"
         # Generate mitigation suggestions
-
         mitigation = []
         if vulnerabilities:
             mitigation.append("Patch identified vulnerabilities.")
@@ -95,7 +102,6 @@ def calculate_risk(
             threat_actors=[],
             mitigation=[],
         )
-
 
 async def assess_risk_from_indicator(
     indicator: str, service: Optional[str] = None

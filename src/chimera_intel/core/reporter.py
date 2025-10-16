@@ -183,8 +183,6 @@ def create_pdf_report(
 def generate_graph_report(target: str, output_path: str):
     """Generates an HTML graph report for a target."""
     try:
-        with open(target, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        build_and_save_graph(data, output_path)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+        build_and_save_graph(target, output_path)
+    except Exception as e:
         console.print(f"[bold red]Error generating graph report:[/bold red] {e}")

@@ -2597,7 +2597,6 @@ class NegotiationModel(Base): # type: ignore
     status = Column(SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    messages = relationship("MessageModel", back_populates="negotiation")
 class OfferModel(Base): # type: ignore
     __tablename__ = "offers"
 
@@ -2618,8 +2617,6 @@ class MessageModel(Base): # type: ignore
     content = Column(String)
     analysis = Column(JSON) 
     timestamp = Column(DateTime, default=datetime.utcnow)
-
-    session = relationship("NegotiationSession", back_populates="messages") # Updated relationship
 
 class MessageBase(BaseModel):
     sender_id: str
@@ -2885,7 +2882,7 @@ class PageMonitorResult(BaseModel):
 class InsiderTransactionResult(BaseModel):
     """The main, top-level result model for an insider trading scan."""
 
-    stock_symbol: str
+    stock_symbol: str = ""
     total_transactions: int = 0
     transactions: List[InsiderTransaction] = []
     error: Optional[str] = None

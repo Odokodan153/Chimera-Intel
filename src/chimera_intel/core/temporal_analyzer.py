@@ -70,7 +70,8 @@ temporal_app = typer.Typer()
 @temporal_app.command("snapshots")
 def run_snapshot_search(
     domain: Optional[str] = typer.Argument(
-        None, help="The domain to search for. Uses active project if not provided."
+        None,
+        help="Optional domain to search for. Uses active project if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -82,9 +83,7 @@ def run_snapshot_search(
     target_domain = resolve_target(domain, required_assets=["domain"])
 
     if not is_valid_domain(target_domain):
-        logger.warning(
-            "Invalid domain format provided to 'temporal' command: %s", target_domain
-        )
+        logger.warning("Invalid domain format provided: %s", target_domain)
         console.print(
             Panel(
                 f"[bold red]Invalid Input:[/] '{target_domain}' is not a valid domain format.",

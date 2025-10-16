@@ -2,60 +2,95 @@ import pytest
 from typer.testing import CliRunner
 
 # The application instance to be tested
+
 from chimera_intel.core.sigint import sigint_app
 
 runner = CliRunner()
 
-@pytest.fixture
-def mock_capture_file(mocker, tmp_path):
-    """Creates a mock capture file and mocks the pyModeS decoder."""
-    capture_path = tmp_path / "test.cu8"
-    
-    # Create a dummy file, as the content will be mocked
-    with open(capture_path, "wb") as f:
-        f.write(b"dummy_data")
 
-    # Mock the pyModeS decoding function
-    mock_messages = [
-        ("8D4840D6202CC371C32CE0576098", 1633104000.0), # Example ADS-B message
-    ]
-    mocker.patch('pymodes.demod.decode', return_value=mock_messages)
+@pytest.fixture
+def mock_adsb_capture_file(tmp_path):
+    """Creates a mock ADSB capture file."""
+    capture_path = tmp_path / "adsb_test.csv"
+    with open(capture_path, "w") as f:
+        # Add a header and a sample ADS-B message
+
+        f.write("timestamp,hex_message\n")
+        f.write("1633104000.0,8D4840D6202CC371C32CE0576098\n")
     return str(capture_path)
 
-def test_decode_capture_adsb_success(mock_capture_file):
+
+@pytest.fixture
+def mock_ais_capture_file(tmp_path):
+    """Creates a mock AIS capture file."""
+    capture_path = tmp_path / "ais_test.txt"
+    with open(capture_path, "w") as f:
+        # Add a sample AIS message
+
+        f.write("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24\n")
+    return str(capture_path)
+
+
+def test_decode_adsb_success(mock_adsb_capture_file):
     """
-    Tests the decode-capture command with the 'adsb' protocol.
+    Tests the decode-adsb command with a valid capture file.
     """
     result = runner.invoke(
         sigint_app,
-        ["decode-capture", mock_capture_file, "--protocol", "adsb"],
+        [
+            "decode-adsb",
+            mock_adsb_capture_file,
+            "--lat",
+            "34.0522",
+            "--lon",
+            "-118.2437",
+        ],
     )
 
     assert result.exit_code == 0
-    assert f"Decoding 'ADSB' signals from: {mock_capture_file}" in result.stdout
-    assert "Decoded ADS-B Messages" in result.stdout
-    assert "ICAO: 4840d6" in result.stdout # ICAO derived from the mock message
+    assert f"Decoding ADS-B data from {mock_adsb_capture_file}" in result.stdout
+    assert "ADS-B capture file decoding complete." in result.stdout
+    # Check for a known ICAO from the sample data
 
-def test_decode_capture_unsupported_protocol(mock_capture_file):
-    """
-    Tests the command with an unsupported protocol.
-    """
-    result = runner.invoke(
-        sigint_app,
-        ["decode-capture", mock_capture_file, "--protocol", "ais"],
-    )
+    assert "4840d6" in result.stdout
 
-    assert result.exit_code == 1
-    assert "Error: Protocol 'ais' is not currently supported." in result.stdout
 
-def test_decode_capture_file_not_found():
+def test_decode_ais_success(mock_ais_capture_file):
     """
-    Tests the command when the capture file does not exist.
+    Tests the decode-ais command with a valid capture file.
     """
     result = runner.invoke(
         sigint_app,
-        ["decode-capture", "non_existent.cu8", "--protocol", "adsb"],
+        ["decode-ais", mock_ais_capture_file],
     )
 
-    assert result.exit_code == 1
-    assert "Error: Capture file not found at 'non_existent.cu8'" in result.stdout
+    assert result.exit_code == 0
+    assert f"Decoding AIS data from {mock_ais_capture_file}" in result.stdout
+    assert "AIS capture file decoding complete." in result.stdout
+
+
+def test_decode_adsb_file_not_found():
+    """
+    Tests the decode-adsb command when the capture file does not exist.
+    """
+    result = runner.invoke(
+        sigint_app,
+        ["decode-adsb", "non_existent_adsb.csv", "--lat", "0", "--lon", "0"],
+    )
+
+    # Typer/Click can return different non-zero exit codes for errors
+
+    assert result.exit_code != 0
+    assert "Error: File not found at 'non_existent_adsb.csv'" in result.stdout
+
+
+def test_decode_ais_file_not_found():
+    """
+    Tests the decode-ais command when the capture file does not exist.
+    """
+    result = runner.invoke(
+        sigint_app,
+        ["decode-ais", "non_existent_ais.txt"],
+    )
+    assert result.exit_code != 0
+    assert "Error: File not found at 'non_existent_ais.txt'" in result.stdout

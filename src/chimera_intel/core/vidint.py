@@ -69,7 +69,7 @@ def run_motion_detection(file_path: str, threshold: int = 30):
 )
 def analyze_video(
     file_path: str = typer.Argument(..., help="Path to the video file to analyze."),
-    extract_frames: Optional[int] = typer.Option(
+    extract_frames: int = typer.Option(
         None,
         "--extract-frames",
         "-f",

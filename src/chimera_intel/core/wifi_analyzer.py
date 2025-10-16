@@ -7,8 +7,7 @@ from typing_extensions import Annotated
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
-import sys  # Import the sys module
-from rich.console import Console  # Import Console
+from rich.console import Console
 
 # Create a console object
 
@@ -98,12 +97,12 @@ def analyze_wifi(
 
     if not os.path.exists(capture_file):
         console.print(f"Error: Capture file not found at '{capture_file}'")
-        sys.exit(1)  # Use sys.exit(1) for error cases
+        raise typer.Exit(code=1)
     try:
         analyze_wifi_capture(capture_file)
     except Exception as e:
         console.print(f"An error occurred during Wi-Fi analysis: {e}")
-        sys.exit(1)  # Use sys.exit(1) for error cases
+        raise typer.Exit(code=1)
     console.print("\nWireless network analysis complete.")
 
 

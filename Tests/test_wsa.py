@@ -87,26 +87,22 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
 
     @patch("chimera_intel.core.weak_signal_analyzer.resolve_target")
     @patch("chimera_intel.core.weak_signal_analyzer.get_aggregated_data_for_target")
-    @patch(
-        "chimera_intel.core.weak_signal_analyzer.amplify_signals_with_dempster_shafer"
-    )
     @patch("chimera_intel.core.weak_signal_analyzer.save_scan_to_db")
     def test_cli_run_wsa_analysis_success(
-        self, mock_save_scan, mock_amplify, mock_get_data, mock_resolve
+        self, mock_save_scan, mock_get_data, mock_resolve
     ):
         """Tests a successful run of the 'wsa run' CLI command."""
         # Arrange
 
         mock_resolve.return_value = "example.com"
-        mock_get_data.return_value = {"modules": {}}
-        mock_amplify.return_value = [
-            AmplifiedEventResult(
-                event_hypothesis="Test Event",
-                combined_belief=0.8,
-                contributing_signals=[],
-                summary="This is a test summary.",
-            )
-        ]
+        mock_get_data.return_value = {
+            "modules": {
+                "business_intel": {
+                    "news": {"totalArticles": 25},
+                    "financials": {"trailingPE": 10},
+                }
+            }
+        }
 
         # Act
 
@@ -116,8 +112,8 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Amplified Intelligence Events", result.stdout)
-        self.assertIn("Hypothesis: Test Event", result.stdout)
-        self.assertIn("Combined Belief: 80.0%", result.stdout)
+        self.assertIn("Hypothesis: MergerOrAcquisition", result.stdout)
+        self.assertIn("Combined Belief: 58.0%", result.stdout)
 
     @patch("chimera_intel.core.weak_signal_analyzer.resolve_target")
     @patch(

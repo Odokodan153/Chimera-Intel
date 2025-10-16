@@ -30,9 +30,10 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
     # Initialize Sherlock's site data
     # The default URL is outdated, so we provide the correct one.
+
     data_file_path = os.path.join(os.path.dirname(__file__), "resources/data.json")
     site_data = SitesInformation(data_file_path)
-    
+
     found_profiles: List[SocialProfile] = []
     try:
         # Sherlock's main function is async, so we await it.
@@ -60,6 +61,7 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
 # --- Typer CLI Application ---
 
+
 social_osint_app = typer.Typer()
 
 
@@ -77,7 +79,14 @@ def run_social_osint_scan(
         username (str): The username to search for.
         output_file (str): Optional path to save the results to a JSON file.
     """
-    results_model = asyncio.run(find_social_profiles(username))
+    # Fix for running in an environment with an existing event loop (like pytest-asyncio)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    results_model = loop.run_until_complete(find_social_profiles(username))
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=username, module="social_osint", data=results_dict)

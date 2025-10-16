@@ -12,6 +12,7 @@ import json
 
 # Create a new Typer application for SCAINT commands
 
+
 scaint_app = typer.Typer(
     name="scaint",
     help="Software Supply Chain Security (SCAINT)",
@@ -51,7 +52,6 @@ def analyze_repo(
             "--repo-url",
             "-r",
             help="The URL of the public Git repository to analyze.",
-            prompt="Enter the repository URL",
         ),
     ],
 ):

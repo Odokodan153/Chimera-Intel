@@ -13,7 +13,16 @@ class TestStixConverter(unittest.TestCase):
             "domain": "example.com",
             "footprint": {
                 "dns_records": {"A": ["192.0.2.1"]},
-                "subdomains": {"results": [{"domain": "sub.example.com"}]},
+                "subdomains": {
+                    "total_unique": 1,
+                    "results": [
+                        {
+                            "domain": "sub.example.com",
+                            "confidence": "High",
+                            "sources": ["DNS"],
+                        }
+                    ],
+                },
                 "ip_threat_intelligence": [
                     {
                         "indicator": "192.0.2.1",
@@ -21,6 +30,32 @@ class TestStixConverter(unittest.TestCase):
                         "pulse_count": 5,
                     }
                 ],
+                "whois_info": {},
+                "historical_dns": {
+                    "a_records": [],
+                    "aaaa_records": [],
+                    "mx_records": [],
+                },
+                "reverse_ip": {},
+                "asn_info": {},
+                "tls_cert_info": {
+                    "issuer": "",
+                    "subject": "",
+                    "sans": [],
+                    "not_before": "",
+                    "not_after": "",
+                },
+                "dnssec_info": {
+                    "dnssec_enabled": False,
+                    "spf_record": "",
+                    "dmarc_record": "",
+                },
+                "ip_geolocation": {},
+                "breach_info": {"source": "", "breaches": []},
+                "port_scan_results": {},
+                "web_technologies": {},
+                "personnel_info": {"employees": []},
+                "knowledge_graph": {"nodes": [], "edges": []},
             },
         }
 
@@ -35,6 +70,7 @@ class TestStixConverter(unittest.TestCase):
                             "vulnerabilities": [
                                 {
                                     "id": "CVE-2023-0001",
+                                    "cvss_score": 9.8,
                                     "title": "Critical RCE",
                                 }
                             ],
@@ -51,6 +87,7 @@ class TestStixConverter(unittest.TestCase):
                 "known_ttps": [
                     {
                         "technique_id": "T1566.001",
+                        "tactic": "Initial Access",
                         "description": "Phishing",
                     }
                 ],
@@ -66,14 +103,14 @@ class TestStixConverter(unittest.TestCase):
         # --- Arrange ---
 
         all_scans = [
-            {"module": "footprint", "scan_data": json.dumps(self.footprint_data)},
+            {"module": "footprint", "result": json.dumps(self.footprint_data)},
             {
                 "module": "vulnerability_scanner",
-                "scan_data": json.dumps(self.vuln_scan_data),
+                "result": json.dumps(self.vuln_scan_data),
             },
             {
                 "module": "threat_actor_profile",
-                "scan_data": json.dumps(self.threat_actor_data),
+                "result": json.dumps(self.threat_actor_data),
             },
         ]
 

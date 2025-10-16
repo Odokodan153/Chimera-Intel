@@ -21,11 +21,13 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
     # --- Function Tests ---
 
+    @patch("chimera_intel.core.social_osint.SitesInformation")
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    async def test_find_social_profiles_success(self, mock_sherlock):
+    async def test_find_social_profiles_success(self, mock_sherlock, mock_sites_info):
         """Tests a successful social media profile search."""
         # Arrange
 
+        mock_sites_info.return_value = {}  # Mock away the file access
         mock_sherlock.return_value = {
             "GitHub": {
                 "status": MockClaimedStatus(),
@@ -50,11 +52,15 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         self.assertIn("GitHub", profile_names)
         self.assertIn("Twitter", profile_names)
 
+    @patch("chimera_intel.core.social_osint.SitesInformation")
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    async def test_find_social_profiles_no_results(self, mock_sherlock):
+    async def test_find_social_profiles_no_results(
+        self, mock_sherlock, mock_sites_info
+    ):
         """Tests a search that yields no results."""
         # Arrange
 
+        mock_sites_info.return_value = {}
         mock_sherlock.return_value = {}
 
         # Act
@@ -66,11 +72,15 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result.found_profiles), 0)
         self.assertIsNone(result.error)
 
+    @patch("chimera_intel.core.social_osint.SitesInformation")
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
-    async def test_find_social_profiles_sherlock_error(self, mock_sherlock):
+    async def test_find_social_profiles_sherlock_error(
+        self, mock_sherlock, mock_sites_info
+    ):
         """Tests error handling when the Sherlock library raises an exception."""
         # Arrange
 
+        mock_sites_info.return_value = {}
         mock_sherlock.side_effect = Exception("Network timeout")
 
         # Act
@@ -115,7 +125,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests that the CLI command fails if no username is provided."""
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Missing argument 'USERNAME'", result.output)
+        self.assertIn("Missing argument 'USERNAME'", result.stdout)
 
 
 if __name__ == "__main__":

@@ -47,12 +47,14 @@ def map_cves_to_ttp(cve_ids: List[str]) -> TTPMappingResult:
                     tactics = ", ".join(
                         [
                             phase.get("phase_name", "unknown")
-                            for phase in tech.kill_chain_phases
+                            for phase in tech.get("kill_chain_phases", [])
                         ]
                     )
                 technique_id = "N/A"
                 if tech.get("external_references"):
-                    technique_id = tech.external_references[0].get("external_id", "N/A")
+                    technique_id = tech["external_references"][0].get(
+                        "external_id", "N/A"
+                    )
                 mapped_techniques.append(
                     MappedTechnique(
                         cve_id=cve_id,
