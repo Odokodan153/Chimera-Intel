@@ -120,12 +120,14 @@
                     <span class="n">tactics</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
                         <span class="p">[</span>
                             <span class="n">phase</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phase_name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-                            <span class="k">for</span> <span class="n">phase</span> <span class="ow">in</span> <span class="n">tech</span><span class="o">.</span><span class="n">kill_chain_phases</span>
+                            <span class="k">for</span> <span class="n">phase</span> <span class="ow">in</span> <span class="n">tech</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;kill_chain_phases&quot;</span><span class="p">,</span> <span class="p">[])</span>
                         <span class="p">]</span>
                     <span class="p">)</span>
                 <span class="n">technique_id</span> <span class="o">=</span> <span class="s2">&quot;N/A&quot;</span>
                 <span class="k">if</span> <span class="n">tech</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;external_references&quot;</span><span class="p">):</span>
-                    <span class="n">technique_id</span> <span class="o">=</span> <span class="n">tech</span><span class="o">.</span><span class="n">external_references</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;external_id&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span><span class="p">)</span>
+                    <span class="n">technique_id</span> <span class="o">=</span> <span class="n">tech</span><span class="p">[</span><span class="s2">&quot;external_references&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                        <span class="s2">&quot;external_id&quot;</span><span class="p">,</span> <span class="s2">&quot;N/A&quot;</span>
+                    <span class="p">)</span>
                 <span class="n">mapped_techniques</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="n">MappedTechnique</span><span class="p">(</span>
                         <span class="n">cve_id</span><span class="o">=</span><span class="n">cve_id</span><span class="p">,</span>

@@ -3481,10 +3481,9 @@
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">subject</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">SQLAlchemyEnum</span><span class="p">(</span><span class="n">NegotiationStatus</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">NegotiationStatus</span><span class="o">.</span><span class="n">ONGOING</span><span class="p">)</span>
-    <span class="n">created_at</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
-    
-    <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;MessageModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;negotiation&quot;</span><span class="p">)</span></div>
+    <span class="n">created_at</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
+    
 <div class="viewcode-block" id="OfferModel">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.OfferModel">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">OfferModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
@@ -3509,9 +3508,7 @@
     <span class="n">sender_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">content</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">analysis</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span> 
-    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
-
-    <span class="n">session</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;NegotiationSession&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;messages&quot;</span><span class="p">)</span> <span class="c1"># Updated relationship</span></div>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="MessageBase">
@@ -3894,7 +3891,7 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">InsiderTransactionResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The main, top-level result model for an insider trading scan.&quot;&quot;&quot;</span>
 
-    <span class="n">stock_symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">stock_symbol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
     <span class="n">total_transactions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">transactions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">InsiderTransaction</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>

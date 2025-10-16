@@ -103,9 +103,10 @@
 
     <span class="c1"># Initialize Sherlock&#39;s site data</span>
     <span class="c1"># The default URL is outdated, so we provide the correct one.</span>
+
     <span class="n">data_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s2">&quot;resources/data.json&quot;</span><span class="p">)</span>
     <span class="n">site_data</span> <span class="o">=</span> <span class="n">SitesInformation</span><span class="p">(</span><span class="n">data_file_path</span><span class="p">)</span>
-    
+
     <span class="n">found_profiles</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SocialProfile</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Sherlock&#39;s main function is async, so we await it.</span>
@@ -134,6 +135,7 @@
 
 <span class="c1"># --- Typer CLI Application ---</span>
 
+
 <span class="n">social_osint_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
 
 
@@ -153,7 +155,14 @@
 <span class="sd">        username (str): The username to search for.</span>
 <span class="sd">        output_file (str): Optional path to save the results to a JSON file.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">results_model</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">find_social_profiles</span><span class="p">(</span><span class="n">username</span><span class="p">))</span>
+    <span class="c1"># Fix for running in an environment with an existing event loop (like pytest-asyncio)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+    <span class="n">results_model</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">find_social_profiles</span><span class="p">(</span><span class="n">username</span><span class="p">))</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;social_osint&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span>
