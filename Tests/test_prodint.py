@@ -1,6 +1,3 @@
-# Tests/test_prodint.py
-
-
 import unittest
 from unittest.mock import patch, Mock
 from src.chimera_intel.core.prodint import ProdInt
@@ -10,41 +7,67 @@ class TestProdInt(unittest.TestCase):
     def setUp(self):
         self.prodint = ProdInt()
 
-    @patch("Wappalyzer.WebPage.new_from_url")
-    @patch("Wappalyzer.Wappalyzer")
-    def test_digital_teardown(self, mock_wappalyzer_class, mock_new_from_url):
-        # Mock Wappalyzer to avoid actual web requests
+    @patch("src.chimera_intel.core.prodint.WebPage")
+    @patch("src.chimera_intel.core.prodint.Wappalyzer")
+    def test_digital_teardown(self, mock_wappalyzer_class, mock_webpage_class):
+        # --- Setup Mocks ---
+        # Mock the WebPage object that is created
 
-        mock_wappalyzer = Mock()
-        mock_wappalyzer.analyze_with_versions.return_value = {
+        mock_webpage_instance = Mock()
+        mock_webpage_class.new_from_url.return_value = mock_webpage_instance
+
+        # Mock the Wappalyzer instance and its analyze method
+
+        mock_wappalyzer_instance = Mock()
+        mock_wappalyzer_instance.analyze_with_versions.return_value = {
             "JavaScript Frameworks": {"React": ["18.2.0"]}
         }
-        mock_wappalyzer_class.return_value = mock_wappalyzer
+        mock_wappalyzer_class.return_value = mock_wappalyzer_instance
+
+        # --- Run Test ---
 
         result = self.prodint.digital_teardown("https://example.com")
+
+        # --- Assertions ---
+
         self.assertIn("JavaScript Frameworks", result)
         self.assertEqual(result["JavaScript Frameworks"]["React"][0], "18.2.0")
+        mock_webpage_class.new_from_url.assert_called_once_with("https://example.com")
+        mock_wappalyzer_instance.analyze_with_versions.assert_called_once_with(
+            mock_webpage_instance
+        )
 
-    @patch("app_store_scraper.AppStore.review")
-    def test_analyze_churn_risk(self, mock_review):
-        # Mock the app_store_scraper to avoid hitting the app store
-        # A bit complex to mock the instance, so we patch the method
+    @patch("src.chimera_intel.core.prodint.AppStore")
+    def test_analyze_churn_risk(self, mock_app_store_class):
+        # --- Setup Mocks ---
+        # Mock the AppStore instance, its 'review' method, and 'reviews' attribute
 
-        with patch("app_store_scraper.AppStore") as mock_app_store:
-            instance = mock_app_store.return_value
-            instance.reviews = [
-                {"review": "This is the best app ever!"},
-                {"review": "I hate this, it is terrible."},
-                {"review": "It is okay, not great."},
-            ]
+        mock_app_store_instance = Mock()
+        mock_app_store_instance.reviews = [
+            {"review": "This is the best app ever!"},  # Positive
+            {"review": "I hate this, it is terrible."},  # Negative
+            {"review": "It is okay, not great."},  # Neutral
+        ]
+        mock_app_store_class.return_value = mock_app_store_instance
 
-            result = self.prodint.analyze_churn_risk("com.example.app")
-            # Corrected the key to match what the function likely returns.
+        # --- Run Test ---
 
-            self.assertEqual(result["reviews_analyzed"], 3)
-            self.assertEqual(result["estimated_churn_risk"], "Medium")
+        result = self.prodint.analyze_churn_risk("com.example.app", review_count=3)
+
+        # --- Assertions ---
+
+        self.assertEqual(result["reviews_analyzed"], 3)
+        self.assertEqual(result["positive_sentiment"], "33.3%")
+        self.assertEqual(result["negative_sentiment"], "33.3%")
+        self.assertEqual(result["estimated_churn_risk"], "Medium")
+        mock_app_store_class.assert_called_once_with(
+            country="us", app_name="com.example.app"
+        )
+        mock_app_store_instance.review.assert_called_once_with(how_many=3)
 
     def test_find_feature_gaps(self):
+        # This test is logically correct and needs no changes.
+
         our_features = ["A", "B"]
         competitor_features = ["B", "C"]
         requested_features = ["C", "D"]

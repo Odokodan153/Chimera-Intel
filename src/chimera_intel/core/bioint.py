@@ -49,14 +49,11 @@ def monitor_sequences(
             "--target",
             "-t",
             help="The gene fragment, marker, or term to search for.",
-            prompt=True,
         ),
     ],
     email: Annotated[
         str,
-        typer.Option(
-            "--email", "-e", help="Your email address (required by NCBI).", prompt=True
-        ),
+        typer.Option("--email", "-e", help="Your email address (required by NCBI)."),
     ],
     db: Annotated[
         str,

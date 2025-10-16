@@ -7,6 +7,13 @@ from chimera_intel.core.schemas import (
     FootprintResult,
     FootprintData,
     SubdomainReport,
+    HistoricalDns,
+    TlsCertInfo,
+    DnssecInfo,
+    BreachInfo,
+    WebTechInfo,
+    PersonnelInfo,
+    KnowledgeGraph,
 )
 
 
@@ -27,14 +34,31 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
         # Arrange
         # The first call to gather_footprint_data is for the initial footprint.
 
+        mock_footprint_data = FootprintData(
+            whois_info={},
+            dns_records={"A": ["1.1.1.1"]},
+            subdomains=SubdomainReport(total_unique=0, results=[]),
+            ip_threat_intelligence=[],
+            historical_dns=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[]),
+            reverse_ip={},
+            asn_info={},
+            tls_cert_info=TlsCertInfo(
+                issuer="", subject="", sans=[], not_before="", not_after=""
+            ),
+            dnssec_info=DnssecInfo(
+                dnssec_enabled=False, spf_record="", dmarc_record=""
+            ),
+            ip_geolocation={},
+            breach_info=BreachInfo(source="", breaches=[]),
+            port_scan_results={},
+            web_technologies=WebTechInfo(),
+            personnel_info=PersonnelInfo(employees=[]),
+            knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
+        )
+
         mock_gather_footprint.return_value = FootprintResult(
             domain="company-a.com",
-            footprint=FootprintData(
-                whois_info={},
-                dns_records={"A": ["1.1.1.1"]},
-                subdomains=SubdomainReport(total_unique=0, results=[]),
-                ip_threat_intelligence=[],
-            ),
+            footprint=mock_footprint_data,
         )
 
         # Mock the return value of asyncio.gather to simulate having found and
@@ -42,20 +66,17 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
 
         footprint_a = FootprintResult(
             domain="company-a.com",
-            footprint=FootprintData(
-                whois_info={"emails": ["contact@shared.com"]},
-                dns_records={"A": ["1.1.1.1"]},
-                subdomains=SubdomainReport(total_unique=0, results=[]),
-                ip_threat_intelligence=[],
+            footprint=mock_footprint_data.model_copy(
+                update={"whois_info": {"emails": ["contact@shared.com"]}}
             ),
         )
         footprint_b = FootprintResult(
             domain="company-b.com",
-            footprint=FootprintData(
-                whois_info={"emails": ["contact@shared.com"]},
-                dns_records={"A": ["2.2.2.2"]},
-                subdomains=SubdomainReport(total_unique=0, results=[]),
-                ip_threat_intelligence=[],
+            footprint=mock_footprint_data.model_copy(
+                update={
+                    "whois_info": {"emails": ["contact@shared.com"]},
+                    "dns_records": {"A": ["2.2.2.2"]},
+                }
             ),
         )
         mock_asyncio_gather.return_value = [footprint_a, footprint_b]

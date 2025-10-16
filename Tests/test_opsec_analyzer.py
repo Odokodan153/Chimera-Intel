@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch
 from typer.testing import CliRunner
 
@@ -31,7 +30,11 @@ class TestOpsecAnalyzer(unittest.TestCase):
                 },
                 "defensive_breaches": {
                     "breaches": [
-                        {"Name": "Breach1", "DataClasses": ["dev@example.com"]}
+                        {
+                            "Name": "Breach1",
+                            "DataClasses": ["dev@example.com", "other@test.com"],
+                        },
+                        {"Name": "Breach2", "DataClasses": ["another@test.com"]},
                     ]
                 },
             },
@@ -47,7 +50,7 @@ class TestOpsecAnalyzer(unittest.TestCase):
         self.assertIsNone(result.error)
         self.assertEqual(len(result.compromised_committers), 1)
         self.assertEqual(result.compromised_committers[0].email, "dev@example.com")
-        self.assertIn("Breach1", result.compromised_committers[0].related_breaches)
+        self.assertEqual(result.compromised_committers[0].related_breaches, ["Breach1"])
 
     @patch("chimera_intel.core.opsec_analyzer.get_aggregated_data_for_target")
     def test_generate_opsec_report_no_findings(self, mock_get_agg_data):
@@ -71,31 +74,43 @@ class TestOpsecAnalyzer(unittest.TestCase):
         self.assertEqual(len(result.compromised_committers), 0)
         self.assertIsNone(result.error)
 
-    def test_generate_opsec_report_no_data(self):
+    @patch("chimera_intel.core.opsec_analyzer.get_aggregated_data_for_target")
+    def test_generate_opsec_report_no_data(self, mock_get_agg_data):
         """Tests report generation when no historical data is available."""
-        with patch(
-            "chimera_intel.core.opsec_analyzer.get_aggregated_data_for_target",
-            return_value=None,
-        ):
-            result = generate_opsec_report("example.com")
-            self.assertIsNotNone(result.error)
-            self.assertIn("No historical data found", result.error)
+        # Arrange
+
+        mock_get_agg_data.return_value = None
+
+        # Act
+
+        result = generate_opsec_report("example.com")
+
+        # Assert
+
+        self.assertIsNotNone(result.error)
+        self.assertIn("No historical data found", result.error)
 
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.opsec_analyzer.resolve_target")
     @patch("chimera_intel.core.opsec_analyzer.generate_opsec_report")
-    def test_cli_opsec_run_success(self, mock_generate, mock_resolve):
+    @patch("chimera_intel.core.opsec_analyzer.save_scan_to_db")
+    @patch("chimera_intel.core.opsec_analyzer.save_or_print_results")
+    def test_cli_opsec_run_success(
+        self, mock_save_print, mock_save_db, mock_generate, mock_resolve
+    ):
         """Tests a successful run of the 'opsec run' CLI command."""
         # Arrange
 
         mock_resolve.return_value = "example.com"
-        mock_generate.return_value = OpsecReport(
+        report = OpsecReport(
             target="example.com",
             compromised_committers=[
                 CompromisedCommitter(email="test@example.com", related_breaches=[])
             ],
         )
+        mock_generate.return_value = report
+        expected_dict = report.model_dump(exclude_none=True)
 
         # Act
 
@@ -103,23 +118,28 @@ class TestOpsecAnalyzer(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIsNone(result.exception)
         mock_generate.assert_called_with("example.com")
-        output = json.loads(result.stdout)
-        self.assertEqual(len(output["compromised_committers"]), 1)
-        self.assertEqual(
-            output["compromised_committers"][0]["email"], "test@example.com"
+        mock_save_print.assert_called_with(expected_dict, None)
+        mock_save_db.assert_called_with(
+            target="example.com", module="opsec_report", data=expected_dict
         )
 
     @patch("chimera_intel.core.opsec_analyzer.resolve_target")
     @patch("chimera_intel.core.opsec_analyzer.generate_opsec_report")
-    def test_cli_opsec_run_with_project(self, mock_generate, mock_resolve):
+    @patch("chimera_intel.core.opsec_analyzer.save_scan_to_db")
+    @patch("chimera_intel.core.opsec_analyzer.save_or_print_results")
+    def test_cli_opsec_run_with_project(
+        self, mock_save_print, mock_save_db, mock_generate, mock_resolve
+    ):
         """Tests the CLI command using an active project's context."""
         # Arrange
 
         mock_resolve.return_value = "project.com"
-        mock_generate.return_value = OpsecReport(target="project.com")
+        mock_generate.return_value = OpsecReport(
+            target="project.com", compromised_committers=[]
+        )
 
         # Act
 
@@ -127,7 +147,7 @@ class TestOpsecAnalyzer(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIsNone(result.exception)
         mock_resolve.assert_called_with(
             None, required_assets=["company_name", "domain"]

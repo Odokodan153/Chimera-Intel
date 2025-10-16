@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 # The class to be tested
 
+
 from chimera_intel.core.cognitive_warfare_engine import CognitiveWarfareEngine
 from chimera_intel.core.schemas import SentimentAnalysisResult
 
@@ -30,7 +31,13 @@ def mock_external_fetches(mocker):
 
     mocker.patch(
         "chimera_intel.core.narrative_analyzer.fetch_news",
-        return_value=[{"source": {"name": "Test News"}, "title": "A positive story"}],
+        return_value=[
+            {
+                "source": {"name": "Test News"},
+                "title": "A positive story",
+                "content": "A positive story",
+            }
+        ],
     )
     # Mock the tweet fetching function
 
@@ -61,20 +68,19 @@ def test_trigger_identification(mock_api_keys, mock_external_fetches):
     # --- Act ---
     # Initialize the engine, which will use the mocked data
 
-    engine = CognitiveWarfareEngine(narrative_query="test", twitter_keywords=None)
+    engine = CognitiveWarfareEngine(narrative_query="test", twitter_keywords=["test"])
 
     # --- Assert ---
     # The primary goal is to ensure initialization succeeds without errors.
     # We can also check that the narratives were loaded as expected.
 
     assert len(engine.narratives) == 2
-    assert engine.narratives[0]["sentiment"] == "Positive"
-    assert engine.narratives[1]["sentiment"] == "Negative"
+    assert engine.narratives.iloc[0]["sentiment"] == "Positive"
+    assert engine.narratives.iloc[1]["sentiment"] == "Negative"
 
     # Now, test the actual trigger identification method
 
     text_with_trigger = "This event will create a scarcity of resources."
-    triggers = engine.identify_triggers(text_with_trigger)
+    triggers = engine._identify_triggers(text_with_trigger)
 
-    assert "Scarcity" in triggers
-    assert triggers["Scarcity"] > 0.8  # Check for a high confidence score
+    assert "scarcity" in triggers

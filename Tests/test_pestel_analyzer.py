@@ -6,10 +6,7 @@ from chimera_intel.core.pestel_analyzer import (
     generate_pestel_analysis,
     pestel_analyzer_app,
 )
-from chimera_intel.core.schemas import (
-    PESTELAnalysisResult,
-    SWOTAnalysisResult
-)
+from chimera_intel.core.schemas import PESTELAnalysisResult, SWOTAnalysisResult
 
 runner = CliRunner()
 
@@ -41,8 +38,10 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_gen_swot.assert_called_once()
         prompt_arg = mock_gen_swot.call_args[0][0]
         self.assertIn("PESTEL", prompt_arg)
+        # Corrected assertion to include parentheses
+
         self.assertIn(
-            "Political, Economic, Social, Technological, Environmental, Legal",
+            "(Political, Economic, Social, Technological, Environmental, Legal)",
             prompt_arg,
         )
 
@@ -54,11 +53,11 @@ class TestPestelAnalyzer(unittest.TestCase):
 
     # --- CLI Tests ---
 
-    @patch("chimera_intel.core.pestel_analyzer.resolve_target")
-    @patch("chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.pestel_analyzer.generate_pestel_analysis")
+    @patch("chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.pestel_analyzer.resolve_target")
     def test_cli_run_pestel_analysis_success(
-        self, mock_generate, mock_get_data, mock_resolve
+        self, mock_resolve, mock_get_data, mock_generate
     ):
         """Tests a successful run of the 'pestel-analyzer run' command."""
         # Arrange
@@ -79,7 +78,7 @@ class TestPestelAnalyzer(unittest.TestCase):
             )
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, result.stdout)
         self.assertIn("PESTEL Analysis for example.com", result.stdout)
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
@@ -89,7 +88,7 @@ class TestPestelAnalyzer(unittest.TestCase):
         "chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target",
         return_value=None,
     )
-    def test_cli_run_no_historical_data(self, mock_get_data, mock_resolve):
+    def test_cli_run_no_historical_data(self, mock_resolve, mock_get_data):
         """Tests the CLI command when no historical data is found."""
         # Arrange
 
@@ -97,9 +96,9 @@ class TestPestelAnalyzer(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(pestel_analyzer_app, ["run"])
+        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
 
         # Assert
 
-        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(result.exit_code, 1, result.stdout)
         self.assertIn("No historical data found", result.stdout)

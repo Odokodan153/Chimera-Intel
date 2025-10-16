@@ -12,11 +12,13 @@ from .social_media_monitor import monitor_twitter_stream
 
 # Import HUMINT scenario components
 
+
 from .humint import HumintScenario, run_humint_scenario
 
 console = Console()
 
 # A simplified model of psychological triggers for demonstration purposes.
+
 
 PSYCHOLOGICAL_TRIGGERS = {
     "fear": ["panic", "threat", "danger", "risk", "warning", "collapse", "afraid"],
@@ -41,6 +43,7 @@ PSYCHOLOGICAL_TRIGGERS = {
 }
 
 # Templates for generating counter-narratives.
+
 
 COUNTER_NARRATIVE_TEMPLATES = {
     "fear": "While concerns about '{topic}' are noted, focusing on verifiable facts and data provides a clearer picture and helps mitigate unnecessary alarm.",
@@ -157,7 +160,9 @@ class CognitiveWarfareEngine:
         )
         counter_narrative = template.format(topic=self.narrative_query)
 
-        console.print(f"  - [bold]Dominant Trigger:[/bold] [yellow]{trigger_key.capitalize()}[/yellow]")
+        console.print(
+            f"  - [bold]Dominant Trigger:[/bold] [yellow]{trigger_key.capitalize()}[/yellow]"
+        )
         console.print("  - [bold]Generated 'Digital Antibody':[/bold]")
         console.print(f'    [green i]"{counter_narrative}"[/green i]')
 

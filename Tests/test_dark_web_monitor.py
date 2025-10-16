@@ -2,12 +2,13 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock
 
-# The application instance to be tested
+# Import the main app from the cli module to ensure full context
 
-from chimera_intel.core.dark_web_monitor import (
-    dark_web_monitor_app,
-    run_dark_web_monitor,
-)
+from chimera_intel.cli import app
+
+# Import the function to be tested directly
+
+from chimera_intel.core.dark_web_monitor import run_dark_web_monitor
 
 runner = CliRunner()
 
@@ -19,9 +20,12 @@ def test_add_dark_web_monitor_command(mock_add_job):
     """
     Tests that the 'add' command correctly calls the scheduler.
     """
+    # Invoke the command through the main 'app' instance
+
     result = runner.invoke(
-        dark_web_monitor_app,
+        app,
         [
+            "dark-monitor",
             "add",
             "--keywords",
             "mycompany.com, secret-project",
@@ -30,8 +34,13 @@ def test_add_dark_web_monitor_command(mock_add_job):
         ],
     )
 
-    assert result.exit_code == 0
+    # Assert that the command runs successfully
+
+    assert result.exit_code == 0, f"CLI command failed: {result.stdout}"
     assert "Successfully scheduled dark web monitor." in result.stdout
+
+    # Verify that the scheduler was called with the correct parameters
+
     mock_add_job.assert_called_once()
     call_args = mock_add_job.call_args[1]
     assert call_args["cron_schedule"] == "0 0 * * *"
@@ -48,13 +57,15 @@ async def test_run_dark_web_monitor_keyword_found(mock_teams, mock_slack, mocker
     """
     Tests the core monitor function when a keyword is found.
     """
-    # Mock the config
+    # Mock the configuration object with all necessary attributes
 
     mock_config = MagicMock()
     mock_config.modules.dark_web.tor_proxy_url = "socks5://localhost:9050"
+    mock_config.notifications.slack_webhook_url = "https://fake-slack-webhook.com"
+    mock_config.notifications.teams_webhook_url = "https://fake-teams-webhook.com"
     mocker.patch("chimera_intel.core.dark_web_monitor.CONFIG", mock_config)
 
-    # Mock the HTTP client and response
+    # Mock the HTTP client and its response
 
     mock_response = MagicMock()
     mock_response.text = "<html><body><h1>Leaked Data</h1><p>We have data from mycompany.com for sale.</p></body></html>"
@@ -68,16 +79,16 @@ async def test_run_dark_web_monitor_keyword_found(mock_teams, mock_slack, mocker
         return_value=mock_async_client,
     )
 
-    # Mock file system operations
+    # Mock file system operations to prevent actual file creation
 
     mocker.patch("os.path.exists", return_value=True)
     mocker.patch("builtins.open", mocker.mock_open())
 
-    # Run the monitor
+    # Execute the monitor function
 
     await run_dark_web_monitor(keywords=["mycompany.com"])
 
-    # Assert that notifications were sent
+    # Assert that both Slack and Teams notifications were sent
 
     mock_slack.assert_called_once()
     mock_teams.assert_called_once()

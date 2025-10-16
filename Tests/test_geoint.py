@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 import typer
+import asyncio
 
 from chimera_intel.core.geoint import (
     get_country_risk_data,
@@ -13,7 +14,7 @@ from chimera_intel.core.schemas import GeointReport, CountryRiskProfile
 runner = CliRunner()
 
 
-class TestGeoint(unittest.IsolatedAsyncioTestCase):
+class TestGeoint(unittest.TestCase):
     """Test cases for the Geopolitical Intelligence (GEOINT) module."""
 
     # --- Function Tests ---
@@ -56,7 +57,7 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.geoint.get_aggregated_data_for_target")
     @patch("chimera_intel.core.geoint._get_countries_from_ips", new_callable=AsyncMock)
     @patch("chimera_intel.core.geoint.get_country_risk_data")
-    async def test_generate_geoint_report_success(
+    def test_generate_geoint_report_success(
         self, mock_get_risk, mock_get_ips, mock_get_agg_data
     ):
         """Tests the successful generation of a GEOINT report."""
@@ -75,7 +76,7 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
 
         # Act
 
-        report = generate_geoint_report("example.com")
+        report = asyncio.run(generate_geoint_report("example.com"))
 
         # Assert
 
@@ -90,15 +91,18 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
             "chimera_intel.core.geoint.get_aggregated_data_for_target",
             return_value=None,
         ):
-            report = generate_geoint_report("example.com")
+            report = asyncio.run(generate_geoint_report("example.com"))
             self.assertIsNotNone(report.error)
             self.assertIn("No historical data", report.error)
 
     # --- CLI Tests ---
 
+    @patch("chimera_intel.core.geoint.save_scan_to_db")
     @patch("chimera_intel.core.geoint.resolve_target")
-    @patch("chimera_intel.core.geoint.generate_geoint_report")
-    def test_cli_run_geoint_analysis_success(self, mock_generate, mock_resolve):
+    @patch("chimera_intel.core.geoint.generate_geoint_report", new_callable=AsyncMock)
+    def test_cli_run_geoint_analysis_success(
+        self, mock_generate, mock_resolve, mock_save
+    ):
         """Tests a successful run of the 'geoint run' CLI command."""
         mock_resolve.return_value = "example.com"
         mock_generate.return_value = GeointReport(
@@ -128,7 +132,7 @@ class TestGeoint(unittest.IsolatedAsyncioTestCase):
 
         # Act
 
-        result = runner.invoke(geoint_app, ["run"])
+        result = runner.invoke(geoint_app, ["run", "example.com"])
 
         # Assert
 

@@ -129,7 +129,17 @@ class TestCorporateIntel(unittest.TestCase):
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {
-            "results": [{"lobbying_represents": [{"amount": "50000", "year": "2023"}]}]
+            "results": [
+                {
+                    "lobbying_represents": [
+                        {
+                            "amount": "50000",
+                            "year": "2023",
+                            "specific_issue": "Test Issue",
+                        }
+                    ]
+                }
+            ]
         }
         mock_get.return_value = mock_response
 
@@ -176,7 +186,7 @@ class TestCorporateIntel(unittest.TestCase):
             domain="project.com",
         )
         mock_get_project.return_value = mock_project
-        mock_hiring.return_value = HiringTrendsResult(total_postings=5)
+        mock_hiring.return_value = HiringTrendsResult(total_postings=5, job_postings=[])
         mock_sentiment.return_value = EmployeeSentimentResult(overall_rating=4.0)
 
         result = runner.invoke(corporate_intel_app, ["hr-intel"])
@@ -189,7 +199,7 @@ class TestCorporateIntel(unittest.TestCase):
     @patch("chimera_intel.core.corporate_intel.get_trade_data")
     def test_cli_supplychain_with_argument(self, mock_get_trade):
         """NEW: Tests the 'corporate supplychain' command with a direct argument."""
-        mock_get_trade.return_value = TradeDataResult(total_shipments=10)
+        mock_get_trade.return_value = TradeDataResult(total_shipments=10, shipments=[])
 
         result = runner.invoke(corporate_intel_app, ["supplychain", "Test Company"])
 
@@ -205,7 +215,10 @@ class TestCorporateIntel(unittest.TestCase):
         result = runner.invoke(corporate_intel_app, ["ip-deep"])
 
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No company name provided and no active project", result.stdout)
+        self.assertIn(
+            "No company name provided and no active project with a company name is set.",
+            result.stdout,
+        )
 
 
 if __name__ == "__main__":

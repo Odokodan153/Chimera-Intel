@@ -12,6 +12,7 @@ console = Console()
 
 # Create a new Typer application for Insider Threat commands
 
+
 insider_threat_app = typer.Typer(
     name="insider",
     help="Insider Threat & Counterintelligence Analysis",
@@ -26,11 +27,12 @@ def analyze_log_anomalies(df: pd.DataFrame) -> list:
 
     # Anomaly 1: Logins outside of standard business hours (e.g., 8 AM to 6 PM)
 
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
     df["hour"] = df["timestamp"].dt.hour
     outside_hours = df[(df["hour"] < 8) | (df["hour"] > 18)]
     for index, row in outside_hours.iterrows():
         anomalies.append(
-            f"[bold yellow]Unusual Login Time[/bold yellow]: User '{row['user']}' logged in at {row['timestamp']} from {row['ip_address']}"
+            f"Unusual Login Time: User '{row['user']}' logged in at {row['timestamp']} from {row['ip_address']}"
         )
     # Anomaly 2: User logging in from multiple locations in a short time frame
 
@@ -41,7 +43,7 @@ def analyze_log_anomalies(df: pd.DataFrame) -> list:
             # This is a simplified check; a real implementation would check time deltas
 
             anomalies.append(
-                f"[bold red]Multiple Locations[/bold red]: User '{user}' logged in from multiple IPs: {', '.join(locations)}"
+                f"Multiple Locations: User '{user}' logged in from multiple IPs: {', '.join(locations)}"
             )
     return anomalies
 
@@ -67,38 +69,32 @@ def analyze_vpn_logs(
     Ingests and analyzes logs from internal systems to identify potential
     insider threats and flag anomalous user behavior.
     """
-    console.print(f"Analyzing VPN logs from: {log_file}")
+    typer.echo(f"Analyzing VPN logs from: {log_file}")
 
     if not os.path.exists(log_file):
-        console.print(f"[bold red]Error:[/bold red] Log file not found at '{log_file}'")
+        typer.echo(f"Error: Log file not found at '{log_file}'", err=True)
         raise typer.Exit(code=1)
     try:
         # Load the log file into a pandas DataFrame
         # Assuming CSV format: timestamp,user,ip_address,action
 
-        df = pd.read_csv(log_file, parse_dates=["timestamp"])
+        df = pd.read_csv(log_file)
 
         if flag_anomalies:
             anomalies = analyze_log_anomalies(df)
             if anomalies:
-                console.print(
-                    "\n--- [bold red]Potential Insider Threat Anomalies Detected[/bold red] ---"
-                )
+                typer.echo("\n--- Potential Insider Threat Anomalies Detected ---")
                 for anomaly in anomalies:
-                    console.print(f"- {anomaly}")
-                console.print("----------------------------------------------------")
+                    typer.echo(f"- {anomaly}")
+                typer.echo("----------------------------------------------------")
             else:
-                console.print(
-                    "\n[bold green]No obvious anomalies detected.[/bold green]"
-                )
+                typer.echo("\nNo obvious anomalies detected.")
         else:
-            console.print(
+            typer.echo(
                 "\nLog file parsed successfully. Use --flag-anomalies to run analysis."
             )
     except Exception as e:
-        console.print(
-            f"[bold red]An error occurred during log analysis:[/bold red] {e}"
-        )
+        typer.echo(f"An error occurred during log analysis: {e}", err=True)
         raise typer.Exit(code=1)
 
 

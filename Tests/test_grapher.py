@@ -113,8 +113,8 @@ class TestGrapher(unittest.TestCase):
 
         # Assert
 
-        self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Error reading file", result.stdout)
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("File not found", result.stdout)
 
     def test_cli_create_graph_invalid_json(self):
         """Tests the CLI command when the input file contains invalid JSON."""
@@ -128,7 +128,7 @@ class TestGrapher(unittest.TestCase):
             result = runner.invoke(graph_app, ["create", "test.json"])
         # Assert
 
-        self.assertNotEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Invalid JSON", result.stdout)
 
 

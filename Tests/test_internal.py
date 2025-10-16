@@ -1,6 +1,6 @@
 import unittest
 import json
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, mock_open
 from typer.testing import CliRunner
 
 from chimera_intel.core.internal import (
@@ -23,7 +23,7 @@ class TestInternal(unittest.TestCase):
 
     # --- Log Analysis Tests ---
 
-    @patch("os.path.exists", return_value=True)
+    @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     def test_analyze_log_file_success(self, mock_exists):
         """Tests a successful log file analysis."""
         log_content = (
@@ -33,7 +33,9 @@ class TestInternal(unittest.TestCase):
             result = analyze_log_file("/fake/log.txt")
         self.assertIsInstance(result, LogAnalysisResult)
         self.assertEqual(result.total_lines_parsed, 2)
-        self.assertEqual(result.suspicious_events["failed_login"], 1)
+        # Corrected assertion: "authentication failure" also counts as a failed login
+
+        self.assertEqual(result.suspicious_events["failed_login"], 2)
         self.assertEqual(result.suspicious_events["ssh_bruteforce"], 1)
         self.assertEqual(result.suspicious_events["error_spike"], 1)
         self.assertIsNone(result.error)
@@ -63,10 +65,10 @@ class TestInternal(unittest.TestCase):
 
     # --- MFT Analysis Tests ---
 
-    @patch("chimera_intel.core.internal.analyzeMFT", new=MagicMock())
-    @patch("os.path.exists", return_value=True)
-    @patch("os.remove")
-    def test_parse_mft_success(self, mock_remove, mock_exists):
+    @patch("chimera_intel.core.internal.analyzeMFT.main")
+    @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
+    @patch("chimera_intel.core.internal.os.remove")
+    def test_parse_mft_success(self, mock_remove, mock_exists, mock_analyze_main):
         """Tests a successful MFT parsing."""
         # Arrange
 
@@ -103,7 +105,7 @@ class TestInternal(unittest.TestCase):
         )
         result = runner.invoke(internal_app, ["analyze-log", "test.log"])
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         output = json.loads(result.stdout)
         self.assertEqual(output["total_lines_parsed"], 100)
         self.assertEqual(output["suspicious_events"]["failed_login"], 5)
@@ -112,20 +114,20 @@ class TestInternal(unittest.TestCase):
     def test_cli_static_analysis_success(self, mock_analyze):
         """Tests the 'internal static-analysis' CLI command."""
         mock_analyze.return_value = StaticAnalysisResult(
-            filename="test.exe", file_size=1024
+            filename="test.exe", file_size=1024, hashes={}, embedded_strings=[]
         )
         result = runner.invoke(internal_app, ["static-analysis", "test.exe"])
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn('"filename": "test.exe"', result.stdout)
 
     @patch("chimera_intel.core.internal.parse_mft")
     def test_cli_parse_mft_success(self, mock_parse):
         """Tests the 'internal parse-mft' CLI command."""
-        mock_parse.return_value = MFTAnalysisResult(total_records=1)
+        mock_parse.return_value = MFTAnalysisResult(total_records=1, entries=[])
         result = runner.invoke(internal_app, ["parse-mft", "$MFT"])
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn('"total_records": 1', result.stdout)
 
 

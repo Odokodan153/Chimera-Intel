@@ -24,12 +24,14 @@ class TestFinint(unittest.TestCase):
         mock_response.json.return_value = {
             "data": [
                 {
+                    "companyName": "Apple Inc.",
                     "insiderName": "John Doe",
                     "transactionShares": 100,
                     "change": 100,
                     "transactionDate": "2023-10-26",
                     "price": 100.0,
                     "transactionCode": "P-Purchase",
+                    "transactionType": "Buy",
                 }
             ]
         }
@@ -106,12 +108,14 @@ class TestFinint(unittest.TestCase):
             stock_symbol="GOOGL",
             transactions=[
                 InsiderTransaction(
+                    companyName="Alphabet Inc.",
                     insiderName="Sundar Pichai",
                     transactionShares=1000,
                     change=1000,
                     transactionDate="2023-01-01",
                     price=200.0,
                     transactionCode="S-Sale",
+                    transactionType="Sale",
                 )
             ],
         )

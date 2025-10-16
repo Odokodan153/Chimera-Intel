@@ -179,6 +179,9 @@ def run_log_analysis(
 ):
     """Parses log files for suspicious activities."""
     results = analyze_log_file(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        raise typer.Exit(code=1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -192,6 +195,9 @@ def run_static_analysis(
 ):
     """Performs static analysis on a file to extract hashes and strings."""
     results = perform_static_analysis(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        raise typer.Exit(code=1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -205,5 +211,8 @@ def run_mft_parsing(
 ):
     """Parses a Master File Table to reconstruct file activity."""
     results = parse_mft(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        raise typer.Exit(code=1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)

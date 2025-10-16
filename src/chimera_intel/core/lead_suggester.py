@@ -88,51 +88,66 @@ lead_suggester_app = typer.Typer()
 
 
 @lead_suggester_app.command("run")
-def run_lead_suggestion():
+def run_lead_suggestion(
+    no_rich: bool = typer.Option(
+        False, "--no-rich", help="Disable rich text formatting."
+    )
+):
     """
     Analyzes the active project and suggests next steps for the investigation.
     """
-    active_project = get_active_project()
-    if not active_project:
-        console.print(
-            "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
+    try:
+        active_project = get_active_project()
+        if not active_project:
+            typer.echo(
+                "Error: No active project set. Use 'chimera project use <name>' first.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        target_name = active_project.company_name or active_project.domain
+        if not target_name:
+            typer.echo(
+                "Error: Active project has no target (domain or company name) set.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        logger.info(
+            f"Generating lead suggestions for project: {active_project.project_name}"
         )
-        raise typer.Exit(code=1)
-    target_name = active_project.company_name or active_project.domain
-    if not target_name:
-        console.print(
-            "[bold red]Error:[/bold red] Active project has no target (domain or company name) set."
-        )
-        raise typer.Exit(code=1)
-    logger.info(
-        f"Generating lead suggestions for project: {active_project.project_name}"
-    )
 
-    aggregated_data = get_aggregated_data_for_target(target_name)
-    if not aggregated_data:
-        console.print(
-            f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
-        )
+        aggregated_data = get_aggregated_data_for_target(target_name)
+        if not aggregated_data:
+            typer.echo(
+                f"Error: No historical data found for '{target_name}'. Run scans first.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        api_key = API_KEYS.google_api_key
+        if not api_key:
+            typer.echo("Error: Google API key (GOOGLE_API_KEY) not found.", err=True)
+            raise typer.Exit(code=1)
+        with console.status(
+            "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]",
+            disable=no_rich,
+        ):
+            suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
+        if not no_rich:
+            console.print(
+                f"\n--- [bold]Suggested Intelligence Leads for {active_project.project_name}[/bold] ---\n"
+            )
+        if suggestion_result.error:
+            typer.echo(
+                f"Error generating suggestions: {suggestion_result.error}", err=True
+            )
+            raise typer.Exit(code=1)
+        else:
+            output_text = (
+                suggestion_result.suggestions_text or "No suggestions generated."
+            )
+            if no_rich:
+                typer.echo(output_text)
+            else:
+                console.print(Markdown(output_text))
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)
-    api_key = API_KEYS.google_api_key
-    if not api_key:
-        console.print(
-            "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
-        )
-        raise typer.Exit(code=1)
-    with console.status(
-        "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]"
-    ):
-        suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
-    console.print(
-        f"\n--- [bold]Suggested Intelligence Leads for {active_project.project_name}[/bold] ---\n"
-    )
-    if suggestion_result.error:
-        console.print(
-            f"[bold red]Error generating suggestions:[/bold red] {suggestion_result.error}"
-        )
-        raise typer.Exit(code=1)
-    else:
-        console.print(
-            Markdown(suggestion_result.suggestions_text or "No suggestions generated.")
-        )

@@ -34,12 +34,14 @@ def test_analyze_vpn_logs_flag_anomalies(mock_vpn_log):
         ["analyze-vpn-logs", mock_vpn_log, "--flag-anomalies"],
     )
 
-    assert result.exit_code == 0
-    assert "Analyzing VPN logs from:" in result.stdout
-    assert "Potential Insider Threat Anomalies Detected" in result.stdout
-    assert "Unusual Login Time" in result.stdout
-    assert "user_a" in result.stdout
-    assert "Multiple Locations" in result.stdout
+    assert (
+        result.exit_code == 0
+    ), f"CLI exited with code {result.exit_code}: {result.output}"
+    assert "Analyzing VPN logs from:" in result.output
+    assert "Potential Insider Threat Anomalies Detected" in result.output
+    assert "Unusual Login Time" in result.output
+    assert "user_a" in result.output
+    assert "Multiple Locations" in result.output
 
 
 def test_analyze_vpn_logs_file_not_found():
@@ -51,5 +53,7 @@ def test_analyze_vpn_logs_file_not_found():
         ["analyze-vpn-logs", "non_existent.log"],
     )
 
-    assert result.exit_code == 1
-    assert "Error: Log file not found at 'non_existent.log'" in result.stdout
+    assert (
+        result.exit_code == 1
+    ), f"CLI exited with code {result.exit_code}: {result.output}"
+    assert "Error: Log file not found at 'non_existent.log'" in result.output

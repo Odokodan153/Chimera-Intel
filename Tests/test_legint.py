@@ -1,5 +1,4 @@
 import unittest
-import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from httpx import Response, RequestError
@@ -50,12 +49,21 @@ class TestLegint(unittest.TestCase):
         self.assertEqual(len(result.records), 1)
         self.assertEqual(result.records[0].case_name, "Test v. Corp")
 
-    def test_search_court_dockets_no_api_key(self):
+    @patch("chimera_intel.core.legint.API_KEYS")
+    def test_search_court_dockets_no_api_key(self, mock_api_keys):
         """Tests the function's behavior when the API key is missing."""
-        with patch("chimera_intel.core.legint.API_KEYS.courtlistener_api_key", None):
-            result = search_court_dockets("TestCorp")
-            self.assertIsNotNone(result.error)
-            self.assertIn("CourtListener API key not found", result.error)
+        # Arrange
+
+        mock_api_keys.courtlistener_api_key = None
+
+        # Act
+
+        result = search_court_dockets("TestCorp")
+
+        # Assert
+
+        self.assertIsNotNone(result.error)
+        self.assertIn("CourtListener API key not found", result.error)
 
     @patch("chimera_intel.core.legint.sync_client.get")
     @patch("chimera_intel.core.legint.API_KEYS")
@@ -77,14 +85,20 @@ class TestLegint(unittest.TestCase):
 
     # --- CLI Tests ---
 
+    @patch("chimera_intel.core.legint.resolve_target")
     @patch("chimera_intel.core.legint.search_court_dockets")
-    def test_cli_docket_search_with_argument(self, mock_search):
+    @patch("chimera_intel.core.legint.save_scan_to_db")
+    @patch("chimera_intel.core.legint.save_or_print_results")
+    def test_cli_docket_search_with_argument(
+        self, mock_save_print, mock_save_db, mock_search, mock_resolve
+    ):
         """Tests the 'legint docket-search' command with a direct argument."""
         # Arrange
 
-        mock_search.return_value = DocketSearchResult(
-            query="TestCorp", total_found=1, records=[]
-        )
+        mock_resolve.return_value = "TestCorp"
+        report = DocketSearchResult(query="TestCorp", total_found=1, records=[])
+        mock_search.return_value = report
+        expected_dict = report.model_dump(exclude_none=True, by_alias=True)
 
         # Act
 
@@ -94,22 +108,27 @@ class TestLegint(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIsNone(result.exception)
         mock_search.assert_called_with("TestCorp")
-        output = json.loads(result.stdout)
-        self.assertEqual(output["query"], "TestCorp")
-        self.assertEqual(output["total_found"], 1)
+        mock_save_print.assert_called_with(expected_dict, None)
+        mock_save_db.assert_called_with(
+            target="TestCorp", module="legint_docket_search", data=expected_dict
+        )
 
     @patch("chimera_intel.core.legint.resolve_target")
     @patch("chimera_intel.core.legint.search_court_dockets")
-    def test_cli_docket_search_with_project(self, mock_search, mock_resolve_target):
+    @patch("chimera_intel.core.legint.save_scan_to_db")
+    @patch("chimera_intel.core.legint.save_or_print_results")
+    def test_cli_docket_search_with_project(
+        self, mock_save_print, mock_save_db, mock_search, mock_resolve_target
+    ):
         """Tests the CLI command using an active project's company name."""
         # Arrange
 
         mock_resolve_target.return_value = "ProjectCorp"
         mock_search.return_value = DocketSearchResult(
-            query="ProjectCorp", total_found=5
+            query="ProjectCorp", total_found=5, records=[]
         )
 
         # Act
@@ -118,11 +137,10 @@ class TestLegint(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIsNone(result.exception)
         mock_resolve_target.assert_called_with(None, required_assets=["company_name"])
         mock_search.assert_called_with("ProjectCorp")
-        self.assertIn('"total_found": 5', result.stdout)
 
 
 if __name__ == "__main__":

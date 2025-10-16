@@ -62,7 +62,7 @@ class TestCorrelationEngine(unittest.TestCase):
         }
         self.engine = CorrelationEngine(self.mock_plugin_manager, self.config)
 
-    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.database.get_last_two_scans")
     def test_new_ip_triggers_vuln_scan(self, mock_get_scans):
         """Tests that a new IP in a footprint scan triggers a vulnerability scan."""
         # Arrange
@@ -73,7 +73,6 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            target="example.com",
             details={"new_ip": "2.2.2.2"},
         )
 
@@ -87,7 +86,7 @@ class TestCorrelationEngine(unittest.TestCase):
             "defensive", "vuln", "run", "2.2.2.2"
         )
 
-    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.database.get_last_two_scans")
     def test_new_subdomain_triggers_web_scan(self, mock_get_scans):
         """Tests that a new subdomain triggers a web analysis scan."""
         # Arrange
@@ -109,7 +108,6 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            target="example.com",
             details={"new_subdomain": "new.example.com"},
         )
 
@@ -130,7 +128,6 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="vulnerability_scan",
             source="vulnerability_scanner",
-            target="1.2.3.4",
             details={"cve_id": "CVE-2023-1337", "cvss_score": 9.8},
         )
 
@@ -144,7 +141,7 @@ class TestCorrelationEngine(unittest.TestCase):
             "ttp", "map-cve", "CVE-2023-1337"
         )
 
-    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.database.get_last_two_scans")
     def test_no_change_does_not_trigger_scan(self, mock_get_scans):
         """NEW: Tests that no scan is triggered if the footprint has not changed."""
         # Arrange
@@ -155,7 +152,6 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            target="example.com",
             details={},
         )
 
@@ -167,7 +163,7 @@ class TestCorrelationEngine(unittest.TestCase):
 
         self.mock_plugin_manager.run_command.assert_not_called()
 
-    @patch("chimera_intel.core.correlation_engine.get_last_two_scans")
+    @patch("chimera_intel.core.database.get_last_two_scans")
     def test_no_previous_scan_does_not_trigger(self, mock_get_scans):
         """NEW: Tests that no scan is triggered if there is no previous scan to compare against."""
         # Arrange
@@ -179,7 +175,6 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            target="example.com",
             details={},
         )
 

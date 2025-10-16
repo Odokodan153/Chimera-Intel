@@ -31,7 +31,6 @@ def deploy_honeypot(
             "--type",
             "-t",
             help="The type of honeypot to deploy (e.g., 'ssh', 'telnet').",
-            prompt="Enter the honeypot type",
         ),
     ],
     port: Annotated[
@@ -40,7 +39,6 @@ def deploy_honeypot(
             "--port",
             "-p",
             help="The external host port to expose the honeypot on.",
-            prompt="Enter the host port",
         ),
     ],
 ):

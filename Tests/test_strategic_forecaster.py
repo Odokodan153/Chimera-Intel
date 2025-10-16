@@ -1,77 +1,91 @@
 from typer.testing import CliRunner
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import pandas as pd
 
 # Import the application instance
-
 from chimera_intel.core.strategic_forecaster import forecaster_app
-from chimera_intel.core.schemas import SWOTAnalysisResult
+from chimera_intel.core.schemas import InsiderTransactionResult, TwitterStreamResult, Tweet
 
 runner = CliRunner()
 
 
-@patch("chimera_intel.core.strategic_forecaster.get_aggregated_data_for_target")
-@patch("chimera_intel.core.strategic_forecaster.generate_swot_from_data")
-@patch("chimera_intel.core.strategic_forecaster.API_KEYS")
-def test_forecast_success(mock_api_keys, mock_generate_swot, mock_get_data):
+@patch("chimera_intel.core.strategic_forecaster.save_forecast_to_db")
+@patch("chimera_intel.core.strategic_forecaster.monitor_twitter_stream")
+@patch("chimera_intel.core.strategic_forecaster.track_narrative")
+@patch("chimera_intel.core.strategic_forecaster.get_insider_transactions")
+def test_run_forecast_success(
+    mock_get_insider, mock_track_narrative, mock_monitor_twitter, mock_save_db
+):
     """
-    Tests the successful run of a strategic forecast.
+    Tests the successful execution of a forecast with all data streams.
     """
     # --- Setup Mocks ---
+    # Mock FININT data
+    mock_insider_result = InsiderTransactionResult(
+        ticker="TEST", transactions=[MagicMock(value=1000, transactionDate="2023-01-01")]
+    )
+    mock_get_insider.return_value = mock_insider_result
 
-    mock_api_keys.google_api_key = "test_key"
-    mock_get_data.return_value = {"market_trends": ["AI adoption"]}
-    mock_generate_swot.return_value = SWOTAnalysisResult(
-        analysis_text="Future trend: Increased focus on AI-driven security.",
-        error=None,
+    # Mock Narrative data
+    mock_track_narrative.return_value = [
+        {"sentiment": "positive"},
+        {"sentiment": "negative"},
+    ]
+
+    # Mock Social Media data
+    mock_twitter_result = TwitterStreamResult(
+        tweets=[Tweet(text="Test tweet", created_at="2023-01-01T12:00:00Z")]
+    )
+    mock_monitor_twitter.return_value = mock_twitter_result
+
+    # --- Run Command ---
+    result = runner.invoke(
+        forecaster_app,
+        [
+            "run",
+            "Market expansion into AI",
+            "--ticker",
+            "TEST",
+            "--narrative",
+            "AI in finance",
+            "--keywords",
+            "AI,finance",
+        ],
     )
 
-    # --- Run Command ---
+    # --- Assertions ---
+    assert result.exit_code == 0
+    assert "Loading real-time data streams" in result.stdout
+    assert "Running AI-driven scenario model" in result.stdout
+    assert "Detecting anomalies" in result.stdout
+    assert "Analyzing trends and trajectories" in result.stdout
+    mock_save_db.assert_called_once()
 
-    result = runner.invoke(forecaster_app, ["run", "TestCorp"])
+
+def test_run_forecast_no_data():
+    """
+    Tests that the command handles cases where no data can be loaded.
+    """
+    # --- Run Command without mocks to simulate no data ---
+    result = runner.invoke(forecaster_app, ["run", "A scenario with no data"])
 
     # --- Assertions ---
-
     assert result.exit_code == 0
-    assert "Forecasting strategic landscape for TestCorp..." in result.stdout
-    assert "Strategic Forecast for TestCorp" in result.stdout
-    assert "Future trend: Increased focus on AI-driven security." in result.stdout
+    assert "Warning: No data loaded. Forecasting will be limited." in result.stdout
 
 
-@patch("chimera_intel.core.strategic_forecaster.get_aggregated_data_for_target")
-@patch("chimera_intel.core.strategic_forecaster.API_KEYS")
-def test_forecast_no_data(mock_api_keys, mock_get_data):
+@patch("chimera_intel.core.strategic_forecaster.StrategicForecaster._load_real_data")
+def test_forecast_insufficient_data_for_trends(mock_load_data):
     """
-    Tests the command's behavior when no aggregated data is found for the target.
-    """
-    # --- Setup Mocks ---
-
-    mock_api_keys.google_api_key = "test_key"
-    mock_get_data.return_value = None  # Simulate no data found
-
-    # --- Run Command ---
-
-    result = runner.invoke(forecaster_app, ["run", "nonexistent-target"])
-
-    # --- Assertions ---
-
-    assert result.exit_code == 0
-    assert "No data found for target 'nonexistent-target'" in result.stdout
-
-
-@patch("chimera_intel.core.strategic_forecaster.API_KEYS")
-def test_forecast_no_api_key(mock_api_keys):
-    """
-    Tests that the command fails gracefully if the Google API key is not configured.
+    Tests the command's behavior when data is loaded, but it's not enough for trend analysis.
     """
     # --- Setup Mock ---
-
-    mock_api_keys.google_api_key = None  # Simulate missing API key
+    # Return a DataFrame with too few rows for ARIMA model
+    mock_load_data.return_value = pd.DataFrame({"insider_trading_volume": [1, 2, 3]})
 
     # --- Run Command ---
-
-    result = runner.invoke(forecaster_app, ["run", "any-target"])
+    result = runner.invoke(forecaster_app, ["run", "test-scenario"])
 
     # --- Assertions ---
-
-    assert result.exit_code == 1
-    assert "Error: Google API key not configured." in result.stdout
+    assert result.exit_code == 0
+    assert "Not enough data to generate forecast" in result.stdout

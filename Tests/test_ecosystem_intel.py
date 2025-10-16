@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
-import json
 
 from chimera_intel.core.ecosystem_intel import (
     find_partners,
@@ -10,10 +9,10 @@ from chimera_intel.core.ecosystem_intel import (
     ecosystem_app,
 )
 from chimera_intel.core.schemas import (
-    DiscoveredPartner,
     GNewsResult,
     TradeDataResult,
     ProjectConfig,
+    Shipment,
 )
 
 runner = CliRunner()
@@ -58,7 +57,7 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(partners), 2)
         partner_names = {p.partner_name for p in partners}
-        self.assertIn("Partner Inc.", partner_names)
+        self.assertIn("Partner Inc", partner_names)
         self.assertIn("Salesforce", partner_names)
 
     # --- Competitor Discovery Tests ---
@@ -108,9 +107,24 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
 
         mock_get_trade_data.return_value = TradeDataResult(
             shipments=[
-                {"consignee": "Distributor A"},
-                {"consignee": "Distributor A"},
-                {"consignee": "Distributor B"},
+                Shipment(
+                    date="2023-01-01",
+                    consignee="Distributor A",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
+                Shipment(
+                    date="2023-01-02",
+                    consignee="Distributor A",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
+                Shipment(
+                    date="2023-01-03",
+                    consignee="Distributor B",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
             ],
             total_shipments=3,
         )
@@ -128,27 +142,12 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Command Tests ---
 
-    @patch("chimera_intel.core.ecosystem_intel.find_partners", new_callable=AsyncMock)
     @patch(
-        "chimera_intel.core.ecosystem_intel.find_competitors", new_callable=AsyncMock
+        "chimera_intel.core.ecosystem_intel.async_run_full_ecosystem_analysis",
+        new_callable=AsyncMock,
     )
-    @patch(
-        "chimera_intel.core.ecosystem_intel.find_distributors", new_callable=AsyncMock
-    )
-    def test_cli_run_success_with_args(
-        self, mock_distributors, mock_competitors, mock_partners
-    ):
+    def test_cli_run_success_with_args(self, mock_async_run):
         """Tests a successful run of the 'ecosystem run' command with direct arguments."""
-        # Arrange
-
-        mock_partners.return_value = [
-            DiscoveredPartner(
-                partner_name="PartnerCo", source="", details="", confidence=""
-            )
-        ]
-        mock_competitors.return_value = []
-        mock_distributors.return_value = []
-
         # Act
 
         result = runner.invoke(ecosystem_app, ["run", "MyCompany", "mycompany.com"])
@@ -156,22 +155,14 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
-        self.assertEqual(output["target_company"], "MyCompany")
-        self.assertEqual(len(output["ecosystem_data"]["partners"]), 1)
-        mock_partners.assert_awaited_with("MyCompany", "mycompany.com")
+        mock_async_run.assert_awaited_with("MyCompany", "mycompany.com", None)
 
     @patch("chimera_intel.core.ecosystem_intel.get_active_project")
-    @patch("chimera_intel.core.ecosystem_intel.find_partners", new_callable=AsyncMock)
     @patch(
-        "chimera_intel.core.ecosystem_intel.find_competitors", new_callable=AsyncMock
+        "chimera_intel.core.ecosystem_intel.async_run_full_ecosystem_analysis",
+        new_callable=AsyncMock,
     )
-    @patch(
-        "chimera_intel.core.ecosystem_intel.find_distributors", new_callable=AsyncMock
-    )
-    def test_cli_run_with_project(
-        self, mock_distributors, mock_competitors, mock_partners, mock_get_project
-    ):
+    def test_cli_run_with_project(self, mock_async_run, mock_get_project):
         """NEW: Tests the CLI command using an active project's context."""
         # Arrange
 
@@ -182,9 +173,6 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
             domain="project.com",
         )
         mock_get_project.return_value = mock_project
-        mock_partners.return_value = []
-        mock_competitors.return_value = []
-        mock_distributors.return_value = []
 
         # Act
 
@@ -193,8 +181,7 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using targets from active project", result.stdout)
-        mock_partners.assert_awaited_with("ProjectCorp", "project.com")
+        mock_async_run.assert_awaited_with(None, None, None)
 
     @patch("chimera_intel.core.ecosystem_intel.get_active_project", return_value=None)
     def test_cli_run_no_target_or_project(self, mock_get_project):

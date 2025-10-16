@@ -1,62 +1,94 @@
 from typer.testing import CliRunner
 import httpx
+from unittest.mock import patch
 
 # The application instance to be tested
+
 
 from chimera_intel.core.io_tracking import io_tracking_app
 
 runner = CliRunner()
 
 
-def test_track_influence_success(mocker):
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_news_narrative")
+def test_track_influence_success(
+    mock_search_news, mock_search_twitter, mock_search_reddit, mocker
+):
     """
     Tests the track-influence command with a successful API response.
     """
-    # Mock the API_KEYS to provide a fake GNews API key
+    # Arrange
 
-    mocker.patch(
-        "chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_gnews_key"
-    )
-
-    # Mock the httpx client response
-
-    mock_response = httpx.Response(
-        200,
-        json={
-            "articles": [
-                {
-                    "title": "Rumors of Failure Swirl Around New Product",
-                    "source": {"name": "Tech News Today"},
-                },
-                {
-                    "title": "Product Failure Claims Debunked by Company",
-                    "source": {"name": "Business Insider"},
-                },
-            ]
+    mock_search_news.return_value = [
+        {
+            "title": "Rumors of Failure Swirl Around New Product",
+            "source": {"name": "Tech News Today"},
+            "url": "http://example.com/news1",
         },
-    )
-    mocker.patch("httpx.Client.get", return_value=mock_response)
+        {
+            "title": "Product Failure Claims Debunked by Company",
+            "source": {"name": "Business Insider"},
+            "url": "http://example.com/news2",
+        },
+    ]
+
+    # Act
 
     result = runner.invoke(
-        io_tracking_app, ["track"], input="rumors of product failure\n"
+        io_tracking_app, ["track", "--narrative", "rumors of product failure"]
     )
+
+    # Assert
 
     assert result.exit_code == 0
     assert (
         "Tracking influence campaign for narrative: 'rumors of product failure'"
-        in result.stdout
+        in result.output
     )
-    assert "Found 2 news articles related to the narrative." in result.stdout
-    assert "Source: Tech News Today" in result.stdout
+    assert "Found 2 news articles related to the narrative." in result.output
+    assert "Tech News Today" in result.output
+    assert "Business Insider" in result.output
 
 
 def test_track_influence_no_api_key(mocker):
     """
     Tests the track-influence command when the API key is missing.
     """
+    # Arrange
+
     mocker.patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None)
 
-    result = runner.invoke(io_tracking_app, ["track"], input="some narrative\n")
+    # Act
+
+    result = runner.invoke(io_tracking_app, ["track", "--narrative", "some narrative"])
+
+    # Assert
 
     assert result.exit_code == 1
-    assert "Configuration Error: GNEWS_API_KEY not found in .env file." in result.stdout
+    assert "Configuration Error: GNEWS_API_KEY not found in .env file." in result.output
+
+
+@patch("chimera_intel.core.io_tracking.search_news_narrative")
+def test_track_influence_api_error(mock_search_news, mocker):
+    """
+    Tests the track-influence command when the GNews API returns an error.
+    """
+    # Arrange
+
+    mocker.patch(
+        "chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_gnews_key"
+    )
+    mock_search_news.side_effect = httpx.HTTPStatusError(
+        "API Error", request=mocker.MagicMock(), response=httpx.Response(500)
+    )
+
+    # Act
+
+    result = runner.invoke(io_tracking_app, ["track", "--narrative", "api failure"])
+
+    # Assert
+
+    assert result.exit_code == 1
+    assert "API Error: Failed to fetch data. Status code: 500" in result.output

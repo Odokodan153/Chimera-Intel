@@ -50,13 +50,13 @@ def monitor_patents_research(
     try:
         print("\n[bold]Patents (USPTO):[/bold]")
         search = pypatent.Search(keywords, results_limit=limit)
-        patents = search.as_dataframe()
-        if not patents.empty:
+        patents = search.results
+        if patents:
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Title")
             table.add_column("URL")
-            for index, row in patents.iterrows():
-                table.add_row(row["title"], row["url"])
+            for patent in patents:
+                table.add_row(patent.title, patent.url)
             print(table)
         else:
             print("No patents found on USPTO.")

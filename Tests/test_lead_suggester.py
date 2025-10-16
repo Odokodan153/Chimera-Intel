@@ -81,7 +81,9 @@ class TestLeadSuggester(unittest.TestCase):
         # Arrange
 
         mock_get_project.return_value = ProjectConfig(
-            project_name="TestProject", domain="example.com", created_at=""
+            project_name="TestProject",
+            company_name="example.com",
+            created_at="",
         )
         mock_get_data.return_value = {"target": "example.com"}
         mock_generate.return_value = LeadSuggestionResult(
@@ -93,12 +95,11 @@ class TestLeadSuggester(unittest.TestCase):
         ):
             # Act
 
-            result = runner.invoke(lead_suggester_app, ["run"])
+            result = runner.invoke(lead_suggester_app, ["run", "--no-rich"])
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Suggested Intelligence Leads", result.stdout)
-        self.assertIn("Suggested Lead", result.stdout)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIn("Suggested Lead", result.output)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
 
     @patch("chimera_intel.core.lead_suggester.get_active_project", return_value=None)
@@ -106,7 +107,7 @@ class TestLeadSuggester(unittest.TestCase):
         """Tests the CLI command when no active project is set."""
         result = runner.invoke(lead_suggester_app, ["run"])
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No active project set", result.stdout)
+        self.assertIn("No active project set", result.output)
 
     @patch("chimera_intel.core.lead_suggester.get_active_project")
     @patch(
@@ -118,7 +119,9 @@ class TestLeadSuggester(unittest.TestCase):
         # Arrange
 
         mock_get_project.return_value = ProjectConfig(
-            project_name="TestProject", domain="example.com", created_at=""
+            project_name="TestProject",
+            company_name="example.com",
+            created_at="",
         )
 
         # Act
@@ -128,7 +131,7 @@ class TestLeadSuggester(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No historical data found", result.stdout)
+        self.assertIn("No historical data found", result.output)
 
 
 if __name__ == "__main__":

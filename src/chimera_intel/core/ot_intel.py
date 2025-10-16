@@ -11,6 +11,7 @@ from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for OT Intelligence commands
 
+
 ot_intel_app = typer.Typer(
     name="ot-intel",
     help="Operational Technology (OT) & ICS/SCADA Intelligence",
@@ -55,11 +56,9 @@ class OTAsset:
             host_info = self.api.host(self.ip_address)
             return host_info
         except shodan.APIError as e:
-            print(f"Shodan API Error: {e}")
-            raise
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            raise
+            # Re-raise to be caught by the command handler
+
+            raise e
 
 
 @ot_intel_app.command(
@@ -79,19 +78,19 @@ def ot_recon(
     Uses Shodan to find exposed industrial protocols and other OT-related
     information for a given IP address.
     """
-    print(f"Performing OT reconnaissance on: {ip_address}")
+    typer.echo(f"Performing OT reconnaissance on: {ip_address}")
 
     try:
         asset = OTAsset(ip_address)
         host_info = asset.collect_data()
 
-        print("\n--- Shodan Host Information ---")
-        print(f"IP: {host_info.get('ip_str')}")
-        print(f"Organization: {host_info.get('org', 'N/A')}")
-        print(
+        typer.echo("\n--- Shodan Host Information ---")
+        typer.echo(f"IP: {host_info.get('ip_str')}")
+        typer.echo(f"Organization: {host_info.get('org', 'N/A')}")
+        typer.echo(
             f"Location: {host_info.get('city', 'N/A')}, {host_info.get('country_name', 'N/A')}"
         )
-        print(f"Open Ports: {', '.join(map(str, host_info.get('ports', [])))}")
+        typer.echo(f"Open Ports: {', '.join(map(str, host_info.get('ports', [])))}")
 
         # Filter for common ICS/SCADA protocols
 
@@ -106,19 +105,19 @@ def ot_recon(
                 ):
                     found_protocols.add(protocol.upper())
         if found_protocols:
-            print(
+            typer.echo(
                 "\n[bold green]Identified potential ICS/SCADA protocols:[/bold green]"
             )
             for protocol in found_protocols:
-                print(f"- {protocol}")
+                typer.echo(f"- {protocol}")
         else:
-            print("\nNo common ICS/SCADA protocols identified in banner data.")
-        print("-----------------------------")
+            typer.echo("\nNo common ICS/SCADA protocols identified in banner data.")
+        typer.echo("-----------------------------")
     except (ValueError, shodan.APIError) as e:
-        print(f"Error: {e}")
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)
 
 

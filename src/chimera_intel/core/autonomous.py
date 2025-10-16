@@ -83,9 +83,8 @@ def optimize_models(
             "--module",
             "-m",
             help="The module whose models to optimize (e.g., 'forecaster').",
-            prompt=True,
         ),
-    ],
+    ] = "forecaster",
     performance_data: Annotated[
         str,
         typer.Option(

@@ -42,7 +42,7 @@ async def search_dark_web_engine(
         engine (str): The search engine to use ('ahmia' or 'darksearch').
 
     Returns:
-        DarkWebScanResult: A Pydantic model containing the list of found results.
+        DarkWebScanResult: A Pantic model containing the list of found results.
     """
     logger.info(f"Starting dark web search on {engine} for query: {query}")
 
@@ -135,9 +135,10 @@ def run_dark_web_search(
     Searches for a query on the dark web via a selected search engine.
     REQUIRES TOR BROWSER TO BE RUNNING.
     """
-    # FIX: This wrapper ensures that the async function is called correctly.
-
-    asyncio.run(async_run_dark_web_search(query, engine, output_file))
+    try:
+        asyncio.run(async_run_dark_web_search(query, engine, output_file))
+    except typer.Exit as e:
+        raise e
 
 
 async def async_run_dark_web_search(
@@ -150,8 +151,8 @@ async def async_run_dark_web_search(
         active_project = get_active_project()
         if active_project and active_project.company_name:
             target_query = active_project.company_name
-            console.print(
-                f"[bold cyan]Using query '{target_query}' from active project '{active_project.project_name}'.[/bold cyan]"
+            print(
+                f"Using query '{target_query}' from active project '{active_project.project_name}'."
             )
         else:
             console.print(

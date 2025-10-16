@@ -23,6 +23,19 @@ from chimera_intel.core.schemas import (
     FootprintData,
     SubdomainReport,
     HIBPResult,
+    WhoisInfo,
+    DNSRecord,
+    IPThreatIntelligence,
+    HistoricalDNS,
+    ReverseIP,
+    ASNInfo,
+    TLSCertificate,
+    DNSSecInfo,
+    IPGeolocation,
+    PortScanResult,
+    WebTechnology,
+    PersonnelInfo,
+    KnowledgeGraph,
 )
 
 # --- Mock Plugins ---
@@ -137,10 +150,23 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         mock_result_model = FootprintResult(
             domain="example.com",
             footprint=FootprintData(
-                whois_info={},
-                dns_records={},
+                whois_info=WhoisInfo(domain_name="example.com"),
+                dns_records=[DNSRecord(record_type="A", value="127.0.0.1")],
                 subdomains=SubdomainReport(total_unique=0, results=[]),
-                ip_threat_intelligence=[],
+                ip_threat_intelligence=[
+                    IPThreatIntelligence(ip_address="127.0.0.1", threat_level="low")
+                ],
+                historical_dns=[HistoricalDNS(record_type="A", value="127.0.0.1")],
+                reverse_ip=[ReverseIP(hostname="localhost")],
+                asn_info=ASNInfo(asn="AS12345"),
+                tls_cert_info=TLSCertificate(issuer="Test CA"),
+                dnssec_info=DNSSecInfo(is_enabled=False),
+                ip_geolocation=IPGeolocation(country="Testland"),
+                breach_info=HIBPResult(breaches=[]),
+                port_scan_results=[PortScanResult(port=80, status="open")],
+                web_technologies=[WebTechnology(name="TestWeb", version="1.0")],
+                personnel_info=[PersonnelInfo(name="John Doe")],
+                knowledge_graph=KnowledgeGraph(entities=[], relationships=[]),
             ),
         )
         mock_gather_footprint.return_value = mock_result_model
@@ -189,7 +215,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
+        # Extract the JSON part of the output for validation
+
+        json_output_str = result.stdout.splitlines()[-1]
+        output = json.loads(json_output_str)
         self.assertEqual(output["breaches"], [])
 
     @patch("chimera_intel.core.config_loader.API_KEYS.hibp_api_key", None)

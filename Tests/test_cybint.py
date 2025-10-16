@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 from typer.testing import CliRunner
 from chimera_intel.core.cybint import generate_attack_surface_report, cybint_app
 from chimera_intel.core.schemas import (
@@ -12,12 +12,19 @@ from chimera_intel.core.schemas import (
     APIDiscoveryResult,
     ProjectConfig,
     SWOTAnalysisResult,
+    HistoricalDns,
+    TlsCertInfo,
+    DnssecInfo,
+    BreachInfo,
+    WebTechInfo,
+    PersonnelInfo,
+    KnowledgeGraph,
 )
 
 runner = CliRunner()
 
 
-class TestCybint(unittest.IsolatedAsyncioTestCase):
+class TestCybint(unittest.IsolatedAsyncIOTestCase):
     """Test cases for the Cyber Intelligence (CYBINT) module."""
 
     @patch("chimera_intel.core.cybint.gather_footprint_data", new_callable=AsyncMock)
@@ -37,7 +44,6 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests a successful run of the full attack surface report generation."""
         # Arrange
-
         mock_api_keys.google_api_key = "fake_google_key"
         mock_footprint.return_value = FootprintResult(
             domain="example.com",
@@ -46,6 +52,17 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
                 dns_records={},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[],
+                historical_dns=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[]),
+                reverse_ip={},
+                asn_info={},
+                tls_cert_info=TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after=""),
+                dnssec_info=DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record=""),
+                ip_geolocation={},
+                breach_info=BreachInfo(source="", breaches=[]),
+                port_scan_results={},
+                web_technologies=WebTechInfo(),
+                personnel_info=PersonnelInfo(employees=[]),
+                knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
             ),
         )
         mock_vuln_scan.return_value = VulnerabilityScanResult(
@@ -68,11 +85,9 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
         report = await generate_attack_surface_report("example.com")
 
         # Assert
-
         self.assertIsInstance(report, AttackSurfaceReport)
         self.assertEqual(report.target_domain, "example.com")
         self.assertEqual(report.ai_risk_assessment, "AI Risk Assessment")
@@ -96,7 +111,6 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     ):
         """NEW: Tests report generation when some underlying scans fail."""
         # Arrange
-
         mock_api_keys.google_api_key = "fake_google_key"
         mock_footprint.return_value = FootprintResult(
             domain="example.com",
@@ -105,10 +119,20 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
                 dns_records={},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[],
+                historical_dns=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[]),
+                reverse_ip={},
+                asn_info={},
+                tls_cert_info=TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after=""),
+                dnssec_info=DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record=""),
+                ip_geolocation={},
+                breach_info=BreachInfo(source="", breaches=[]),
+                port_scan_results={},
+                web_technologies=WebTechInfo(),
+                personnel_info=PersonnelInfo(employees=[]),
+                knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
             ),
         )
         # Simulate a failure in the vulnerability scanner
-
         mock_vuln_scan.return_value = VulnerabilityScanResult(
             target_domain="example.com", scanned_hosts=[], error="Nmap not found."
         )
@@ -121,16 +145,13 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
         report = await generate_attack_surface_report("example.com")
 
         # Assert
-
         self.assertIsInstance(report, AttackSurfaceReport)
         self.assertIsNotNone(report.vulnerability_scan_results.error)
         self.assertIsNone(report.web_security_posture)
         # The AI summary should still be generated with the available data
-
         self.assertEqual(report.ai_risk_assessment, "AI Risk Assessment")
         mock_gen_swot.assert_called_once()
 
@@ -151,7 +172,6 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     ):
         """NEW: Tests that AI analysis is skipped if the API key is missing."""
         # Arrange
-
         mock_api_keys.google_api_key = None  # No API key
         mock_footprint.return_value = FootprintResult(
             domain="example.com",
@@ -160,6 +180,17 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
                 dns_records={},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[],
+                historical_dns=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[]),
+                reverse_ip={},
+                asn_info={},
+                tls_cert_info=TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after=""),
+                dnssec_info=DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record=""),
+                ip_geolocation={},
+                breach_info=BreachInfo(source="", breaches=[]),
+                port_scan_results={},
+                web_technologies=WebTechInfo(),
+                personnel_info=PersonnelInfo(employees=[]),
+                knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
             ),
         )
         mock_vuln_scan.return_value = VulnerabilityScanResult(
@@ -179,11 +210,9 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
         report = await generate_attack_surface_report("example.com")
 
         # Assert
-
         self.assertIn("AI analysis skipped", report.ai_risk_assessment)
         mock_gen_swot.assert_not_called()  # Ensure the AI function was never called
 
@@ -199,7 +228,6 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests the CLI command using an active project's domain."""
         # Arrange
-
         mock_project = ProjectConfig(
             project_name="TestProject", domain="project.com", created_at=""
         )
@@ -207,17 +235,38 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         mock_generate_report.return_value = AttackSurfaceReport(
             target_domain="project.com",
             ai_risk_assessment="Risk Level: LOW",
-            full_footprint_data=MagicMock(),
-            vulnerability_scan_results=MagicMock(),
-            api_discovery_results=MagicMock(),
+            full_footprint_data=FootprintResult(
+                domain="project.com",
+                footprint=FootprintData(
+                    whois_info={},
+                    dns_records={},
+                    subdomains=SubdomainReport(total_unique=0, results=[]),
+                    ip_threat_intelligence=[],
+                    historical_dns=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[]),
+                    reverse_ip={},
+                    asn_info={},
+                    tls_cert_info=TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after=""),
+                    dnssec_info=DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record=""),
+                    ip_geolocation={},
+                    breach_info=BreachInfo(source="", breaches=[]),
+                    port_scan_results={},
+                    web_technologies=WebTechInfo(),
+                    personnel_info=PersonnelInfo(employees=[]),
+                    knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
+                ),
+            ),
+            vulnerability_scan_results=VulnerabilityScanResult(
+                target_domain="project.com", scanned_hosts=[]
+            ),
+            api_discovery_results=APIDiscoveryResult(
+                target_domain="project.com", discovered_apis=[]
+            ),
         )
 
         # Act
-
         result = runner.invoke(cybint_app, ["attack-surface"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Using domain 'project.com' from active project", result.stdout)
         self.assertIn("Risk Level: LOW", result.stdout)
@@ -227,15 +276,12 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
     def test_cli_attack_surface_no_project_or_domain(self, mock_get_project):
         """NEW: Tests CLI failure when no domain is provided and no project is active."""
         # Arrange
-
         mock_get_project.return_value = None
 
         # Act
-
         result = runner.invoke(cybint_app, ["attack-surface"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No domain provided and no active project set", result.stdout)
 

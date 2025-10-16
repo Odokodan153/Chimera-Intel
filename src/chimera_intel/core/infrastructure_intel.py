@@ -1,7 +1,8 @@
 """
 Public Infrastructure & Utilities Intelligence Module for Chimera Intel.
 """
-import os 
+
+import os
 import typer
 from typing_extensions import Annotated
 from geopy.geocoders import Nominatim
@@ -9,6 +10,7 @@ import overpy
 import requests
 
 # Create a new Typer application for Infrastructure Intelligence commands
+
 
 infrastructure_intel_app = typer.Typer(
     name="infrastructure-dependency",
@@ -119,7 +121,7 @@ def infrastructure_dependency(
             "--address",
             "-a",
             help="The physical address to analyze for infrastructure dependencies.",
-            prompt="Enter the address to analyze",
+            # The prompt has been removed from here to make the option testable
         ),
     ],
 ):

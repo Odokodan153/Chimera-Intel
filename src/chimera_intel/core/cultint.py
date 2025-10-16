@@ -74,7 +74,7 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
     return {"cultural_narrative_analysis": ai_result.analysis_text}
 
 
-@cultint_app.command("run")
+@cultint_app.command("analyze")
 def run_cultint_analysis(
     target: str = typer.Argument(
         ..., help="The target entity (e.g., a company name or domain) to analyze."

@@ -2,10 +2,23 @@ import unittest
 from unittest.mock import patch, MagicMock
 from httpx import Response, RequestError
 from typer.testing import CliRunner
-from chimera_intel.core.blockchain_osint import get_wallet_analysis, blockchain_app
+
+# Import the main app creator and the blockchain subcommand app
+
+from chimera_intel.cli import get_cli_app
+from chimera_intel.core.blockchain_osint import blockchain_app as blockchain_plugin_app
 from chimera_intel.core.schemas import WalletAnalysisResult, WalletTransaction
 
+# Create a runner
+
 runner = CliRunner()
+
+# Create the main app instance for testing
+
+app = get_cli_app()
+# Manually add the blockchain app as a subcommand, as the plugin discovery won't run
+
+app.add_typer(blockchain_plugin_app, name="blockchain")
 
 
 class TestBlockchainOsint(unittest.TestCase):
@@ -48,6 +61,9 @@ class TestBlockchainOsint(unittest.TestCase):
         mock_get.side_effect = [mock_balance_response, mock_tx_response]
 
         # Act
+        # We are still testing get_wallet_analysis directly here, which is fine
+
+        from chimera_intel.core.blockchain_osint import get_wallet_analysis
 
         result = get_wallet_analysis("0x123abc")
 
@@ -62,6 +78,8 @@ class TestBlockchainOsint(unittest.TestCase):
 
     def test_get_wallet_analysis_no_api_key(self):
         """Tests the function's behavior when the Etherscan API key is missing."""
+        from chimera_intel.core.blockchain_osint import get_wallet_analysis
+
         with patch(
             "chimera_intel.core.blockchain_osint.API_KEYS.etherscan_api_key", None
         ):
@@ -74,6 +92,8 @@ class TestBlockchainOsint(unittest.TestCase):
     def test_get_wallet_analysis_api_error(self, mock_get, mock_api_keys):
         """Tests the function's error handling when the Etherscan API fails."""
         # Arrange
+
+        from chimera_intel.core.blockchain_osint import get_wallet_analysis
 
         mock_api_keys.etherscan_api_key = "fake_etherscan_key"
         mock_get.side_effect = RequestError("Service Unavailable")
@@ -104,26 +124,24 @@ class TestBlockchainOsint(unittest.TestCase):
         )
 
         # Act
+        # Invoke the command through the main app
 
-        result = runner.invoke(blockchain_app, ["analyze", "0x123abc"])
+        result = runner.invoke(app, ["blockchain", "analyze", "0x123abc"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # We check the call to save_or_print_results instead of stdout,
-        # as the output formatting is handled by that function.
-
         mock_save_print.assert_called_once()
-        # You could add more specific assertions here about what was passed to save_or_print_results
 
     def test_cli_wallet_no_address_fails(self):
         """
-        CORRECTED: Tests that the CLI command fails correctly if no address is provided.
+        Tests that the CLI command fails correctly if no address is provided.
         Typer exits with code 2 for missing arguments.
         """
         # Act
+        # Invoke the command through the main app
 
-        result = runner.invoke(blockchain_app, ["analyze"])
+        result = runner.invoke(app, ["blockchain", "analyze"])
 
         # Assert
 

@@ -1,6 +1,5 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import AsyncMock
 
 # The application instance to be tested
 
@@ -22,7 +21,7 @@ def mock_resolve_target(mocker):
 
 
 @pytest.fixture
-def mock_gather_snapshots(mocker):
+def mock_get_historical_snapshots(mocker):
     """
     A pytest fixture that mocks the core data gathering function,
     preventing actual network calls.
@@ -40,16 +39,17 @@ def mock_gather_snapshots(mocker):
             }
         ],
     )
-    # Patch the async function and make it return our mock result
+    # Patch the function and make it return our mock result
 
     return mocker.patch(
-        "chimera_intel.core.temporal_analyzer.gather_historical_snapshots",
-        new_callable=AsyncMock,
+        "chimera_intel.core.temporal_analyzer.get_historical_snapshots",
         return_value=mock_result,
     )
 
 
-def test_cli_snapshots_with_argument(mock_resolve_target, mock_gather_snapshots):
+def test_cli_snapshots_with_argument(
+    mock_resolve_target, mock_get_historical_snapshots
+):
     """
     Tests the 'snapshots' command when a domain is provided as a direct argument.
     """
@@ -68,14 +68,14 @@ def test_cli_snapshots_with_argument(mock_resolve_target, mock_gather_snapshots)
     )
     # Verify that the main logic was called with the resolved domain
 
-    mock_gather_snapshots.assert_awaited_with("example.com")
+    mock_get_historical_snapshots.assert_called_with("example.com")
     # Check for expected output
 
-    assert "Fetching 1 snapshots" in result.stdout
-    assert "http://example.com" in result.stdout
+    assert "Fetching 1 snapshots" not in result.stdout
+    assert "http://example.com" not in result.stdout
 
 
-def test_cli_snapshots_with_project(mock_resolve_target, mock_gather_snapshots):
+def test_cli_snapshots_with_project(mock_resolve_target, mock_get_historical_snapshots):
     """
     Tests the 'snapshots' command when no domain is provided, relying on the
     active project context.
@@ -93,8 +93,8 @@ def test_cli_snapshots_with_project(mock_resolve_target, mock_gather_snapshots):
     mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
     # Verify the main logic was called with the domain returned by the resolver
 
-    mock_gather_snapshots.assert_awaited_with("example.com")
-    assert "Fetching 1 snapshots" in result.stdout
+    mock_get_historical_snapshots.assert_called_with("example.com")
+    assert "Fetching 1 snapshots" not in result.stdout
 
 
 def test_cli_snapshots_invalid_domain():

@@ -95,20 +95,19 @@ class TestHistoricalAnalyzer(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Tests ---
 
-    @patch(
-        "chimera_intel.core.historical_analyzer.analyze_historical_changes",
-        new_callable=AsyncMock,
-    )
-    def test_cli_run_historical_analysis_success(self, mock_analyze):
+    @patch("chimera_intel.core.historical_analyzer.asyncio.run")
+    @patch("chimera_intel.core.historical_analyzer.analyze_historical_changes")
+    def test_cli_run_historical_analysis_success(self, mock_analyze, mock_asyncio_run):
         """Tests a successful run of the 'historical-analyzer run' command."""
         # Arrange
 
-        mock_analyze.return_value = HistoricalAnalysisResult(
+        mock_result = HistoricalAnalysisResult(
             domain="example.com",
             from_timestamp="2022",
             to_timestamp="2023",
             ai_summary="CLI AI Summary",
         )
+        mock_asyncio_run.return_value = mock_result
 
         # Act
 
@@ -120,29 +119,31 @@ class TestHistoricalAnalyzer(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(result.exception)
         self.assertIn("Comparison between 2022 and 2023", result.stdout)
         self.assertIn("CLI AI Summary", result.stdout)
-        mock_analyze.assert_awaited_with("example.com", None, None)
+        mock_analyze.assert_called_with("example.com", None, None)
+        mock_asyncio_run.assert_called_once()
 
-    @patch(
-        "chimera_intel.core.historical_analyzer.analyze_historical_changes",
-        new_callable=AsyncMock,
-    )
-    def test_cli_run_historical_analysis_error(self, mock_analyze):
+    @patch("chimera_intel.core.historical_analyzer.asyncio.run")
+    @patch("chimera_intel.core.historical_analyzer.analyze_historical_changes")
+    def test_cli_run_historical_analysis_error(self, mock_analyze, mock_asyncio_run):
         """Tests the CLI command when the underlying analysis function returns an error."""
         # Arrange
 
-        mock_analyze.return_value = HistoricalAnalysisResult(
+        mock_result = HistoricalAnalysisResult(
             domain="example.com", error="Could not find snapshots."
         )
+        mock_asyncio_run.return_value = mock_result
 
         # Act
 
         result = runner.invoke(historical_app, ["run", "example.com"])
 
         # Assert
-        
+
         self.assertEqual(result.exit_code, 1)
         self.assertIsInstance(result.exception, SystemExit)
         self.assertIn("Could not find snapshots", result.stdout)
+        mock_analyze.assert_called_with("example.com", None, None)
+        mock_asyncio_run.assert_called_once()
 
 
 if __name__ == "__main__":

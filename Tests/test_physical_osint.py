@@ -48,14 +48,13 @@ class TestPhysicalOsint(unittest.TestCase):
         self.assertEqual(result.locations_found[0].name, "Googleplex")
         self.assertEqual(result.locations_found[0].latitude, 37.422)
 
-    def test_find_physical_locations_no_api_key(self):
+    @patch("chimera_intel.core.physical_osint.API_KEYS")
+    def test_find_physical_locations_no_api_key(self, mock_api_keys):
         """Tests the function's behavior when the API key is missing."""
-        with patch(
-            "chimera_intel.core.physical_osint.API_KEYS.google_maps_api_key", None
-        ):
-            result = find_physical_locations("Googleplex")
-            self.assertIsNotNone(result.error)
-            self.assertIn("Google Maps API key not found", result.error)
+        mock_api_keys.google_maps_api_key = None
+        result = find_physical_locations("Googleplex")
+        self.assertIsNotNone(result.error)
+        self.assertIn("Google Maps API key not found", result.error)
 
     @patch("chimera_intel.core.physical_osint.googlemaps.Client")
     @patch("chimera_intel.core.physical_osint.API_KEYS")
@@ -102,7 +101,7 @@ class TestPhysicalOsint(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, result.stdout)
         mock_resolve_target.assert_called_with(
             "Test Corp", required_assets=["company_name", "domain"]
         )
@@ -128,7 +127,7 @@ class TestPhysicalOsint(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, result.stdout)
         mock_resolve_target.assert_called_with(
             None, required_assets=["company_name", "domain"]
         )

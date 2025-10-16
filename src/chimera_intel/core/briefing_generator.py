@@ -9,10 +9,6 @@ import typer
 import json
 import logging
 from rich.markdown import Markdown
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import inch
-
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
@@ -136,13 +132,13 @@ def run_briefing_generation(
         console.print(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(1)
     target_name = active_project.company_name or active_project.domain
     if not target_name:
         console.print(
             "[bold red]Error:[/bold red] Active project has no target (domain or company name) set."
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(1)
     logger.info(
         f"Generating intelligence briefing for project: {active_project.project_name}"
     )
@@ -152,13 +148,13 @@ def run_briefing_generation(
         console.print(
             f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(1)
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(1)
     with console.status(
         "[bold cyan]AI is generating the executive briefing... This may take a moment.[/bold cyan]"
     ):
@@ -169,32 +165,18 @@ def run_briefing_generation(
         console.print(
             f"[bold red]Error generating briefing:[/bold red] {briefing_result.error}"
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(1)
     # --- Output Handling ---
 
     if output:
-        doc = SimpleDocTemplate(output)
-        styles = getSampleStyleSheet()
-        story = [
-            Paragraph(briefing_result.title or "Intelligence Briefing", styles["h1"]),
-            Spacer(1, 0.25 * inch),
-        ]
-        # Basic markdown to reportlab conversion
-
-        for line in (briefing_result.briefing_text or "").split("\n"):
-            if line.startswith("# "):
-                story.append(Paragraph(line.lstrip("# "), styles["h1"]))
-            elif line.startswith("## "):
-                story.append(Paragraph(line.lstrip("## "), styles["h2"]))
-            elif line.startswith("### "):
-                story.append(Paragraph(line.lstrip("### "), styles["h3"]))
-            elif line.startswith("* "):
-                story.append(Paragraph(f"• {line.lstrip('* ')}", styles["Normal"]))
-            else:
-                story.append(Paragraph(line, styles["Normal"]))
-            story.append(Spacer(1, 0.1 * inch))
-        doc.build(story)
-        console.print(f"[bold green]Briefing saved to:[/bold green] {output}")
+        try:
+            with open(output, "w") as f:
+                f.write(f"# {briefing_result.title}\n\n")
+                f.write(briefing_result.briefing_text or "")
+            console.print(f"[bold green]Briefing saved to:[/bold green] {output}")
+        except Exception as e:
+            console.print(f"[bold red]Error saving file:[/bold red] {e}")
+            raise typer.Exit(1)
     else:
         console.print(
             f"\n--- [bold]{briefing_result.title}: {active_project.project_name}[/bold] ---\n"

@@ -79,7 +79,7 @@ async def _get_countries_from_ips(ips: List[str]) -> Set[str]:
     return countries
 
 
-def generate_geoint_report(target: str) -> GeointReport:
+async def generate_geoint_report(target: str) -> GeointReport:
     """
     Generates a GEOINT report by analyzing the geographic distribution of assets.
     """
@@ -109,7 +109,7 @@ def generate_geoint_report(target: str) -> GeointReport:
         if dns_records:
             ip_addresses = dns_records.get("A", [])
             if ip_addresses:
-                ip_countries = asyncio.run(_get_countries_from_ips(ip_addresses))
+                ip_countries = await _get_countries_from_ips(ip_addresses)
                 countries.update(ip_countries)
     # Fetch risk profiles for each unique country
 
@@ -138,7 +138,7 @@ def run_geoint_analysis(
     Analyzes a target's geographic footprint for geopolitical risks.
     """
     target_name = resolve_target(target, required_assets=["company_name", "domain"])
-    results_model = generate_geoint_report(target_name)
+    results_model = asyncio.run(generate_geoint_report(target_name))
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=target_name, module="geoint_report", data=results_dict)

@@ -121,8 +121,20 @@ def create_knowledge_graph(
     try:
         with open(json_file, "r", encoding="utf-8") as f:
             data = json.load(f)
+    except FileNotFoundError:
+        console.print(
+            f"[bold red]Error:[/bold red] Error reading file '{json_file}': File not found."
+        )
+        raise typer.Exit(code=1)
+    except json.JSONDecodeError as e:
+        console.print(
+            f"[bold red]Error:[/bold red] Error reading file '{json_file}': Invalid JSON. Details: {e}"
+        )
+        raise typer.Exit(code=1)
     except Exception as e:
-        logger.error("Error reading file '%s' for graph generation: %s", json_file, e)
+        console.print(
+            f"[bold red]Error:[/bold red] Error reading file '{json_file}' for graph generation: {e}"
+        )
         raise typer.Exit(code=1)
     if not output_file:
         target_name = data.get("domain") or data.get("company", "graph")

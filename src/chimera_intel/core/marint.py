@@ -11,20 +11,20 @@ from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for MARINT commands
 
+
 marint_app = typer.Typer(
     name="marint",
     help="Maritime & Shipping Intelligence (MARINT)",
 )
 
 
-async def get_vessel_data(imo: str):
+async def get_vessel_data(imo: str, test_mode: bool = False):
     """
     Connects to the aisstream.io websocket and retrieves data for the specified vessel.
     """
     api_key = API_KEYS.aisstream_api_key
     if not api_key:
-        print("Error: AISSTREAM_API_KEY not found in .env file.")
-        return
+        raise ValueError("AISSTREAM_API_KEY not found in .env file.")
     async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
         subscribe_message = {
             "APIKey": api_key,
@@ -41,13 +41,15 @@ async def get_vessel_data(imo: str):
             if message_type == "PositionReport":
                 position_report = message["Message"]["PositionReport"]
                 if str(position_report.get("ImoNumber")) == imo:
-                    print("--- Live Vessel Data ---")
-                    print(f"IMO: {position_report.get('ImoNumber')}")
-                    print(f"Latitude: {position_report['Latitude']}")
-                    print(f"Longitude: {position_report['Longitude']}")
-                    print(f"Speed Over Ground: {position_report['Sog']} knots")
-                    print(f"Course Over Ground: {position_report['Cog']} degrees")
-                    print("----------------------")
+                    typer.echo("--- Live Vessel Data ---")
+                    typer.echo(f"IMO: {position_report.get('ImoNumber')}")
+                    typer.echo(f"Latitude: {position_report['Latitude']}")
+                    typer.echo(f"Longitude: {position_report['Longitude']}")
+                    typer.echo(f"Speed Over Ground: {position_report['Sog']} knots")
+                    typer.echo(f"Course Over Ground: {position_report['Cog']} degrees")
+                    typer.echo("----------------------")
+                    if test_mode:
+                        break  # Exit after one message in test mode
 
 
 @marint_app.command(name="track-vessel", help="Track a vessel by its IMO number.")
@@ -61,15 +63,22 @@ def track_vessel(
             prompt="Enter the vessel's IMO number",
         ),
     ],
+    test: bool = typer.Option(False, "--test", help="Run in test mode.", hidden=True),
 ):
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
     """
-    print(f"Starting live tracking for vessel with IMO: {imo}...")
+    typer.echo(f"Starting live tracking for vessel with IMO: {imo}...")
     try:
-        asyncio.run(get_vessel_data(imo))
+        asyncio.run(get_vessel_data(imo, test_mode=test))
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
     except KeyboardInterrupt:
-        print("\nStopping vessel tracking.")
+        typer.echo("\nStopping vessel tracking.")
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

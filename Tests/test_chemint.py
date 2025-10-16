@@ -2,8 +2,6 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-import pandas as pd
-
 from src.chimera_intel.core.chemint import chemint_app
 
 # ------------------
@@ -142,16 +140,16 @@ class TestPatentSearch:
         self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info, tmp_path
     ):
         """Tests the 'chemint monitor-patents-research' CLI command."""
-        mock_patent_df = pd.DataFrame(
-            {"title": [mock_patent_info.title], "url": ["http://example.com/patent"]}
-        )
-        mock_pypatent_search.return_value.as_dataframe.return_value = mock_patent_df
+        mock_patent = MagicMock()
+        mock_patent.title = mock_patent_info.title
+        mock_patent.url = "http://example.com/patent"
+        mock_pypatent_search.return_value.results = [mock_patent]
 
         mock_pub = {
             "bib": {"title": "A great paper"},
             "eprint_url": "http://example.com/paper",
         }
-        mock_search_pubs.return_value = [mock_pub]
+        mock_search_pubs.return_value = iter([mock_pub])
 
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
