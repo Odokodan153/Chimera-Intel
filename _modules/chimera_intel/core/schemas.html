@@ -3868,6 +3868,49 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="n">details</span></div>
 
 
+<div class="viewcode-block" id="WhoisInfo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.WhoisInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WhoisInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model for WHOIS information.&quot;&quot;&quot;</span>
+    <span class="n">domain_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">registrar</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">creation_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">expiration_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">name_servers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="PageMonitorResult">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PageMonitorResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PageMonitorResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for the result of a page monitor check.&quot;&quot;&quot;</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">url</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">has_changed</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">diff</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="InsiderTransactionResult">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.InsiderTransactionResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InsiderTransactionResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The main, top-level result model for an insider trading scan.&quot;&quot;&quot;</span>
+
+    <span class="n">stock_symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_transactions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">transactions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">InsiderTransaction</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TwitterStreamResult">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TwitterStreamResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TwitterStreamResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The main, top-level result model for a real-time social media monitoring session.&quot;&quot;&quot;</span>
+
+    <span class="n">query</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_tweets_found</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">tweets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tweet</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
 </pre></div>
 
            </div>
