@@ -24,17 +24,17 @@ from chimera_intel.core.schemas import (
     SubdomainReport,
     HIBPResult,
     WhoisInfo,
-    HistoricalDNS,
-    ReverseIP,
-    ASNInfo,
-    TLSCertificate,
-    DNSSecInfo,
-    IPGeolocation,
+    HistoricalDns,
+    AsnInfo,
+    TlsCertInfo,
+    DnssecInfo,
+    IpGeolocation,
     PortScanResult,
-    WebTechnology,
+    WebTechInfo,
     PersonnelInfo,
     KnowledgeGraph,
-    IPThreatIntelligence,
+    ThreatIntelResult,
+    BreachInfo,
 )
 
 # --- Mock Plugins ---
@@ -149,32 +149,34 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         mock_result_model = FootprintResult(
             domain="example.com",
             footprint=FootprintData(
-                whois_info=WhoisInfo(domain_name="example.com"),
+                whois_info=WhoisInfo(domain_name="example.com").dict(),
                 dns_records={"A": ["127.0.0.1"]},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[
-                    IPThreatIntelligence(ip_address="127.0.0.1", threat_level="low")
+                    ThreatIntelResult(indicator="127.0.0.1", is_malicious=False)
                 ],
-                historical_dns=HistoricalDNS(
+                historical_dns=HistoricalDns(
                     a_records=["127.0.0.1"], aaaa_records=[], mx_records=[]
                 ),
-                reverse_ip=ReverseIP(hostname="localhost"),
-                asn_info=ASNInfo(asn="AS12345"),
-                tls_cert_info=TLSCertificate(
+                reverse_ip={"localhost": ["127.0.0.1"]},
+                asn_info={"AS12345": AsnInfo(asn="AS12345")},
+                tls_cert_info=TlsCertInfo(
                     issuer="Test CA", subject="", sans=[], not_before="", not_after=""
                 ),
-                dnssec_info=DNSSecInfo(
-                    is_enabled=False,
+                dnssec_info=DnssecInfo(
                     dnssec_enabled=False,
                     spf_record="",
                     dmarc_record="",
                 ),
-                ip_geolocation=IPGeolocation(country="Testland", ip="127.0.0.1"),
-                breach_info=HIBPResult(breaches=[]),
-                port_scan_results=[PortScanResult(port=80, status="open")],
-                web_technologies=[WebTechnology(name="TestWeb", version="1.0")],
-                personnel_info=[PersonnelInfo(name="John Doe")],
-                knowledge_graph=KnowledgeGraph(entities=[], relationships=[]),
+                ip_geolocation={
+                    "127.0.0.1": IpGeolocation(country="Testland", ip="127.0.0.1")
+                },
+                cdn_provider=None,
+                breach_info=BreachInfo(source="", breaches=[]),
+                port_scan_results={"80": PortScanResult(open_ports={})},
+                web_technologies=WebTechInfo(),
+                personnel_info=PersonnelInfo(employees=[]),
+                knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
             ),
         )
         mock_gather_footprint.return_value = mock_result_model

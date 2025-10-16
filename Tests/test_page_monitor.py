@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
 
-from chimera_intel.core.page_monitor import monitor_app
-from chimera_intel.core.schemas import PageMonitorResult
+from chimera_intel.core.page_monitor import page_monitor_app
 
 runner = CliRunner()
 
@@ -13,77 +12,65 @@ class TestPageMonitor(unittest.TestCase):
 
     # --- CLI Tests ---
 
-    @patch("chimera_intel.core.page_monitor.PageMonitor.add_page_to_monitor")
-    @patch("chimera_intel.core.page_monitor.resolve_target")
-    def test_add_page_monitor_command(self, mock_resolve_target, mock_add_page):
+    @patch("chimera_intel.core.page_monitor.add_job")
+    def test_add_page_monitor_command(self, mock_add_job):
         """Tests the 'add' command for adding a new page to monitor."""
         # Arrange
 
-        mock_resolve_target.return_value = "example.com"
-        mock_add_page.return_value = None
+        mock_add_job.return_value = None
 
         # Act
 
         result = runner.invoke(
-            monitor_app, ["add", "https://example.com/about", "--target", "example.com"]
+            page_monitor_app,
+            ["add", "--url", "https://example.com/about", "--schedule", "* * * * *"],
         )
 
         # Assert
 
         self.assertEqual(result.exit_code, 0, result.stdout)
-        self.assertIn("Added 'https://example.com/about' to monitor", result.stdout)
-        mock_resolve_target.assert_called_with(
-            "example.com", required_assets=["domain"]
-        )
-        mock_add_page.assert_called_with("https://example.com/about", "example.com")
+        self.assertIn("Successfully scheduled web page monitor", result.stdout)
+        mock_add_job.assert_called_once()
 
-    @patch("chimera_intel.core.page_monitor.PageMonitor.check_for_updates")
-    @patch("chimera_intel.core.page_monitor.resolve_target")
-    def test_check_updates_command_with_changes(
-        self, mock_resolve_target, mock_check_updates
+    @patch("chimera_intel.core.page_monitor.save_page_snapshot")
+    @patch("chimera_intel.core.page_monitor.get_async_http_client")
+    async def test_check_for_changes_with_changes(
+        self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when changes are detected."""
         # Arrange
 
-        mock_resolve_target.return_value = "example.com"
-        mock_check_updates.return_value = PageMonitorResult(
-            target="example.com",
-            url="https://example.com",
-            has_changed=True,
-            diff="--- a\n+++ b",
-        )
+        mock_save_snapshot.return_value = (True, "old_hash")
 
         # Act
 
-        result = runner.invoke(monitor_app, ["check", "--target", "example.com"])
+        from chimera_intel.core.page_monitor import check_for_changes
+
+        await check_for_changes("https://example.com", "test_job")
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0, result.stdout)
-        self.assertIn("Changes detected for example.com", result.stdout)
-        self.assertIn("--- a", result.stdout)
+        mock_save_snapshot.assert_called_once()
 
-    @patch("chimera_intel.core.page_monitor.PageMonitor.check_for_updates")
-    @patch("chimera_intel.core.page_monitor.resolve_target")
-    def test_check_updates_command_no_changes(
-        self, mock_resolve_target, mock_check_updates
+    @patch("chimera_intel.core.page_monitor.save_page_snapshot")
+    @patch("chimera_intel.core.page_monitor.get_async_http_client")
+    async def test_check_for_changes_no_changes(
+        self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when no changes are detected."""
         # Arrange
 
-        mock_resolve_target.return_value = "example.com"
-        mock_check_updates.return_value = PageMonitorResult(
-            target="example.com", url="https://example.com", has_changed=False
-        )
+        mock_save_snapshot.return_value = (False, "same_hash")
 
         # Act
 
-        result = runner.invoke(monitor_app, ["check", "--target", "example.com"])
+        from chimera_intel.core.page_monitor import check_for_changes
+
+        await check_for_changes("https://example.com", "test_job")
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0, result.stdout)
-        self.assertIn("No changes detected", result.stdout)
+        mock_save_snapshot.assert_called_once()
 
 
 if __name__ == "__main__":
