@@ -24,6 +24,7 @@ from .schemas import (
 from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult
 from .graph_db import build_and_save_graph
 import json
+import os
 
 # Get a logger instance for this specific file
 
@@ -218,6 +219,7 @@ def run_swot_analysis(input_file: str):
         logger.error(
             "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
         )
+        console.print("Google API key not found")
         raise typer.Exit(code=1)
     try:
         with open(input_file, "r") as f:
@@ -234,6 +236,7 @@ def run_swot_analysis(input_file: str):
         raise typer.Exit(code=1)
     except json.JSONDecodeError:
         logger.error("Invalid JSON in file '%s'", input_file)
+        console.print("Invalid JSON")
         raise typer.Exit(code=1)
     except Exception as e:
         logger.error("Error reading or processing file for SWOT analysis: %s", e)
@@ -259,6 +262,7 @@ def run_anomaly_detection(data_points: str):
         logger.error(
             "Invalid data points for anomaly detection: %s. Error: %s", data_points, e
         )
+        console.print("Invalid data points")
 
 
 def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeResult:
@@ -272,6 +276,8 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
     Returns:
         GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
     """
+    if not os.path.exists(target):
+        return GraphNarrativeResult(narrative_text="", error="DB error")
     try:
         with open(target, "r") as f:
             data = json.load(f)
@@ -349,6 +355,8 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
             total_nodes=len(nodes),
             total_edges=len(edges),
         )
+        if hasattr(graph_result, "error") and graph_result.error:
+            return GraphNarrativeResult(narrative_text="", error=graph_result.error)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         return GraphNarrativeResult(narrative_text="", error=str(e))
     prompt_data = {

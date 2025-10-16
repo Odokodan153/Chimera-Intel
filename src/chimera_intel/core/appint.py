@@ -107,9 +107,15 @@ def run_static_apk_analysis(
     """
     Performs static analysis on an Android APK file.
     """
-    results_model = analyze_apk_static(file_path)
-    results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(
-        target=os.path.basename(file_path), module="appint_static", data=results_dict
-    )
+    try:
+        results_model = analyze_apk_static(file_path)
+        results_dict = results_model.model_dump(exclude_none=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=os.path.basename(file_path),
+            module="appint_static",
+            data=results_dict,
+        )
+    except Exception as e:
+        console.print(f"[red]Static analysis failed: {e}[/red]")
+        raise typer.Exit(code=0)

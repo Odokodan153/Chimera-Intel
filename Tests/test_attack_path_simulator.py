@@ -67,7 +67,7 @@ def mock_db_connection(mocker):
 
 
 @patch("chimera_intel.core.attack_path_simulator.generate_swot_from_data")
-@patch("chimera_intel.core.attack_path_simulator.API_KEYS")
+@patch("chimera_intel.core.config_loader.API_KEYS")
 def test_simulate_attack_success(mock_api_keys, mock_generate_swot, mock_db_connection):
     """
     Tests the 'simulate attack' command with mocked database and AI calls.
@@ -120,7 +120,7 @@ def test_simulate_attack_no_assets(mocker):
         return_value=mock_conn,
     )
     mocker.patch(
-        "chimera_intel.core.attack_path_simulator.API_KEYS.google_api_key", "fake_key"
+        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key"
     )
 
     # --- Run Command ---
