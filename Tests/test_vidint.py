@@ -57,40 +57,42 @@ def mock_video_capture():
 
 
 @patch("os.path.exists", return_value=True)
-def test_cli_analyze_video_metadata_only(mock_exists, mock_video_capture):
+def test_cli_analyze_video_metadata_only(mock_exists, mock_video_capture, mocker):
     """
-    Tests the 'analyze-video' command for correct metadata extraction.
+    Tests the 'analyze' command for correct metadata extraction.
     """
-    result = runner.invoke(vidint_app, ["analyze-video", "test.mp4"])
+    mock_console_print = mocker.patch("chimera_intel.core.vidint.console.print")
+    result = runner.invoke(vidint_app, ["analyze", "test.mp4"])
 
     assert result.exit_code == 0, result.output
-    assert "Video Metadata" in result.stdout
-    assert "Resolution: 1920x1080" in result.stdout
-    assert "Duration: 10.00 seconds" in result.stdout
+    mock_console_print.assert_any_call(
+        "\n--- [bold green]Video Metadata[/bold green] ---"
+    )
+    mock_console_print.assert_any_call("- Resolution: 1920x1080")
+    mock_console_print.assert_any_call("- Duration: 10.00 seconds")
 
 
 @patch("os.path.exists", return_value=True)
 @patch("os.makedirs")
 @patch("chimera_intel.core.vidint.cv2.imwrite")
 def test_cli_analyze_video_with_frame_extraction(
-    mock_imwrite, mock_makedirs, mock_exists, mock_video_capture
+    mock_imwrite, mock_makedirs, mock_exists, mock_video_capture, mocker
 ):
     """
     Tests the frame extraction functionality via the CLI (--extract-frames).
     """
+    mock_console_print = mocker.patch("chimera_intel.core.vidint.console.print")
     result = runner.invoke(
         vidint_app,
-        ["analyze-video", "test.mp4", "--extract-frames", "5"],
+        ["analyze", "test.mp4", "--extract-frames", "5"],
     )
 
     assert result.exit_code == 0, result.output
     mock_makedirs.assert_called_once_with("video_frames")
-    # Calculation: At 30 fps, a 5-second interval means we extract a frame at 0s and 5s.
-    # Total frames: 300. Interval: 30fps * 5s = 150 frames.
-    # Frames at index 0 and 150 will be extracted.
-
     assert mock_imwrite.call_count == 2
-    assert "Successfully extracted 2 frames" in result.stdout
+    mock_console_print.assert_any_call(
+        "\nSuccessfully extracted 2 frames to 'video_frames'."
+    )
 
 
 @patch("os.path.exists", return_value=True)
@@ -101,18 +103,21 @@ def test_cli_analyze_video_with_motion_detection(
     """
     Tests the motion detection functionality via the CLI (--detect-motion).
     """
-    result = runner.invoke(vidint_app, ["analyze-video", "test.mp4", "--detect-motion"])
+    result = runner.invoke(vidint_app, ["analyze", "test.mp4", "--detect-motion"])
 
     assert result.exit_code == 0, result.output
     mock_run_motion_detection.assert_called_once_with("test.mp4")
 
 
 @patch("os.path.exists", return_value=False)
-def test_cli_analyze_video_file_not_found(mock_exists):
+def test_cli_analyze_video_file_not_found(mock_exists, mocker):
     """
     Tests that the command fails correctly when the input video file does not exist.
     """
-    result = runner.invoke(vidint_app, ["analyze-video", "nonexistent.mp4"])
+    mock_console_print = mocker.patch("chimera_intel.core.vidint.console.print")
+    result = runner.invoke(vidint_app, ["analyze", "nonexistent.mp4"])
 
     assert result.exit_code == 1
-    assert "Error: Video file not found" in result.stdout
+    mock_console_print.assert_any_call(
+        "[bold red]Error:[/bold red] Video file not found at 'nonexistent.mp4'"
+    )

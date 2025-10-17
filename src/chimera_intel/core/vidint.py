@@ -68,7 +68,7 @@ def run_motion_detection(file_path: str, threshold: int = 30):
 
 
 @vidint_app.command(
-    name="analyze-video", help="Analyze a video file and extract metadata or frames."
+    "analyze", help="Analyze a video file and extract metadata or frames."
 )
 def analyze_video(
     file_path: str = typer.Argument(..., help="Path to the video file to analyze."),
