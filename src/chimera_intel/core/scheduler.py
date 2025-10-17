@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # --- APScheduler Setup ---
 # This creates a scheduler that runs in a background thread.
 
+
 scheduler = BackgroundScheduler()
 scheduler.start()
 
@@ -31,20 +32,14 @@ def add_job(
     """Adds a job to the APScheduler."""
     if trigger == "cron":
         # Create a cron trigger from the schedule string
-        minute, hour, day, month, day_of_week = cron_schedule.split()
-        cron_trigger = CronTrigger(
-            minute=minute,
-            hour=hour,
-            day=day,
-            month=month,
-            day_of_week=day_of_week,
-        )
+
+        cron_trigger = CronTrigger.from_crontab(cron_schedule)
         scheduler.add_job(
             func=func,  # Pass func as a keyword argument
             trigger=cron_trigger,
             id=job_id,
             replace_existing=True,
-            kwargs=kwargs
+            kwargs=kwargs,
         )
         logger.info(
             f"Successfully added job '{job_id}' with schedule: '{cron_schedule}'"

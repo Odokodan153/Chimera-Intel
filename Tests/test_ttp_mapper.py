@@ -96,7 +96,9 @@ class TestTtpMapper(unittest.TestCase):
 
         # Act
 
-        result = runner.invoke(ttp_app, ["map-cve", "CVE-2023-1234"])
+        result = runner.invoke(
+            ttp_app, ["map-cve", "CVE-2023-1234"], catch_exceptions=False
+        )
 
         # Assert
 

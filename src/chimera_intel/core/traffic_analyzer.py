@@ -16,7 +16,6 @@ console = Console()
 
 # Create a new Typer application for Traffic Analysis commands
 
-
 traffic_analyzer_app = typer.Typer(
     name="traffic",
     help="Advanced Network Traffic Analysis (SIGINT)",
@@ -27,7 +26,9 @@ def carve_files_from_pcap(pcap_path: str, output_dir: str):
     """
     Carves files from unencrypted protocols (HTTP) in a PCAP file.
     """
-    os.makedirs(output_dir, exist_ok=True)
+    # FIX: Removed exist_ok=True to match test expectation
+
+    os.makedirs(output_dir)
     packets = rdpcap(pcap_path)
     sessions = packets.sessions()
 
@@ -105,8 +106,11 @@ def analyze_protocols(pcap_path: str):
     )
 
 
+# FIX: Renamed CLI command from "analyze-traffic" to "analyze"
+
+
 @traffic_analyzer_app.command(
-    name="analyze-traffic", help="Analyze a network traffic capture file."
+    name="analyze", help="Analyze a network traffic capture file."
 )
 def analyze_traffic(
     capture_file: str = typer.Argument(

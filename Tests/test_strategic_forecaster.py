@@ -4,6 +4,7 @@ import pandas as pd
 
 # Import the application instance
 
+
 from chimera_intel.core.strategic_forecaster import forecaster_app
 from chimera_intel.core.schemas import (
     InsiderTransaction,
@@ -56,6 +57,7 @@ def test_run_forecast_success(
     # Mock Social Media data
 
     mock_twitter_result = TwitterStreamResult(
+        query="AI,finance",
         tweets=[
             Tweet(
                 id="123",
@@ -63,7 +65,7 @@ def test_run_forecast_success(
                 author_id="456",
                 created_at="2023-01-01T12:00:00Z",
             )
-        ]
+        ],
     )
     mock_monitor_twitter.return_value = mock_twitter_result
 

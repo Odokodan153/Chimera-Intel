@@ -2,6 +2,7 @@ import unittest
 import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+from rich.panel import Panel
 
 from chimera_intel.core.personnel_osint import find_employee_emails, personnel_osint_app
 from chimera_intel.core.schemas import (
@@ -25,8 +26,6 @@ class TestPersonnelOsint(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_response.status_code = 200
-        # CORRECTED: The API returns 'value' for the email, which is mapped to 'email' in the schema
-
         mock_response.json.return_value = {
             "data": {
                 "organization": "Example Corp",
@@ -82,14 +81,18 @@ class TestPersonnelOsint(unittest.TestCase):
 
     # --- CLI Tests ---
 
-    @patch("chimera_intel.core.personnel_osint.is_valid_domain", return_value=True)
+    @patch("chimera_intel.core.personnel_osint.console.print")
+    @patch("chimera_intel.core.personnel_osint.save_scan_to_db")
+    @patch("chimera_intel.core.personnel_osint.save_or_print_results")
     @patch("chimera_intel.core.personnel_osint.find_employee_emails")
-    def test_cli_emails_with_argument(self, mock_find_emails, mock_is_valid_domain):
+    def test_cli_emails_with_argument(
+        self, mock_find_emails, mock_save_results, mock_save_db, mock_console
+    ):
         """Tests the 'personnel-osint emails' command with a direct argument."""
         # Arrange
 
         mock_find_emails.return_value = PersonnelOSINTResult(
-            domain="example.com", total_emails_found=5
+            domain="example.com", total_emails_found=5, employee_profiles=[]
         )
 
         # Act
@@ -100,14 +103,21 @@ class TestPersonnelOsint(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         mock_find_emails.assert_called_with("example.com")
-        output = json.loads(result.stdout)
-        self.assertEqual(output["domain"], "example.com")
-        self.assertEqual(output["total_emails_found"], 5)
+        mock_save_results.assert_called_once()
 
-    @patch("chimera_intel.core.personnel_osint.is_valid_domain", return_value=True)
-    @patch("chimera_intel.core.personnel_osint.get_active_project")
+    @patch("chimera_intel.core.personnel_osint.console.print")
+    @patch("chimera_intel.core.personnel_osint.save_scan_to_db")
+    @patch("chimera_intel.core.personnel_osint.save_or_print_results")
     @patch("chimera_intel.core.personnel_osint.find_employee_emails")
-    def test_cli_emails_with_project(self, mock_find_emails, mock_get_project, mock_is_valid_domain):
+    @patch("chimera_intel.core.personnel_osint.get_active_project")
+    def test_cli_emails_with_project(
+        self,
+        mock_get_project,
+        mock_find_emails,
+        mock_save_results,
+        mock_save_db,
+        mock_console,
+    ):
         """Tests the CLI command using an active project's domain."""
         # Arrange
 
@@ -124,14 +134,23 @@ class TestPersonnelOsint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using domain 'project.com' from active project", result.stdout)
         mock_find_emails.assert_called_with("project.com")
+        mock_console.assert_any_call(
+            "[bold cyan]Using domain 'project.com' from active project 'Test'.[/bold cyan]"
+        )
 
-    def test_cli_emails_invalid_domain(self):
+    @patch("chimera_intel.core.personnel_osint.console.print")
+    def test_cli_emails_invalid_domain(self, mock_console_print):
         """Tests the CLI command with an invalid domain."""
         result = runner.invoke(personnel_osint_app, ["emails", "invalid-domain"])
-        self.assertEqual(result.exit_code, 2)
-        self.assertIn("is not a valid domain format", result.stdout)
+        self.assertEqual(result.exit_code, 1)
+        mock_console_print.assert_any_call(
+            Panel(
+                "[bold red]Invalid Input:[/] 'invalid-domain' is not a valid domain format.",
+                title="Error",
+                border_style="red",
+            )
+        )
 
 
 if __name__ == "__main__":

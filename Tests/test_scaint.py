@@ -1,6 +1,7 @@
 import pytest
 from typer.testing import CliRunner
 import json
+import git
 
 # The application instance to be tested
 
@@ -80,3 +81,23 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     assert (
         "Analysis Error: requirements.txt not found in the repository." in result.stdout
     )
+
+
+def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
+    """
+    Tests the analyze-repo command when git clone fails.
+    """
+    # GitCommandError requires cmd, status, and stderr
+
+    mock_git_clone.side_effect = git.exc.GitCommandError(
+        "clone", 1, stderr="mock error"
+    )
+    result = runner.invoke(
+        scaint_app,
+        ["analyze-repo", "--repo-url", "https://github.com/some/repo"],
+    )
+    assert result.exit_code == 1
+    # The actual error message from GitCommandError includes the command and exit code.
+    # We'll check for the stderr part we provided.
+
+    assert "mock error" in result.stdout

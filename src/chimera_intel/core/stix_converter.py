@@ -282,7 +282,7 @@ def create_stix_bundle(target: str, all_scans: List[Dict[str, Any]]) -> str:
 
     for scan in all_scans:
         module = scan.get("module")
-        data = json.loads(scan.get("scan_data", "{}"))
+        data = json.loads(scan.get("result", "{}"))
         stix_objects = []
 
         if module == "footprint":

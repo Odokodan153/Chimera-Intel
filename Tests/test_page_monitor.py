@@ -13,7 +13,8 @@ class TestPageMonitor(unittest.TestCase):
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.page_monitor.add_job")
-    def test_add_page_monitor_command(self, mock_add_job):
+    @patch("chimera_intel.core.page_monitor.console.print")
+    def test_add_page_monitor_command(self, mock_console, mock_add_job):
         """Tests the 'add' command for adding a new page to monitor."""
         # Arrange
 
@@ -29,8 +30,10 @@ class TestPageMonitor(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0, result.stdout)
-        self.assertIn("Successfully scheduled web page monitor", result.stdout)
         mock_add_job.assert_called_once()
+        mock_console.assert_any_call(
+            "[bold green]✅ Successfully scheduled web page monitor.[/bold green]"
+        )
 
     @patch("chimera_intel.core.page_monitor.save_page_snapshot")
     @patch("chimera_intel.core.page_monitor.get_async_http_client")

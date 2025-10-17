@@ -9,68 +9,72 @@ from chimera_intel.core.schemas import SWOTAnalysisResult
 runner = CliRunner()
 
 
-@patch("chimera_intel.core.red_team.get_aggregated_data_for_target")
-@patch("chimera_intel.core.red_team.generate_swot_from_data")
-@patch("chimera_intel.core.red_team.API_KEYS")
-def test_generate_scenario_success(mock_api_keys, mock_generate_swot, mock_get_data):
+def test_generate_scenario_success():
     """
     Tests the successful generation of a red team scenario.
     """
-    # --- Setup Mocks ---
+    with patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys, patch(
+        "chimera_intel.core.red_team.get_aggregated_data_for_target"
+    ) as mock_get_data, patch(
+        "chimera_intel.core.red_team.generate_swot_from_data"
+    ) as mock_generate_swot:
 
-    mock_api_keys.google_api_key = "test_key"
-    mock_get_data.return_value = {"vulnerabilities": ["CVE-2023-1234"]}
-    mock_generate_swot.return_value = SWOTAnalysisResult(
-        analysis_text="Scenario: Phishing campaign targeting employees.", error=None
-    )
+        # --- Setup Mocks ---
 
-    # --- Run Command ---
+        mock_api_keys.google_api_key = "test_key"
+        mock_get_data.return_value = {"vulnerabilities": ["CVE-2023-1234"]}
+        mock_generate_swot.return_value = SWOTAnalysisResult(
+            analysis_text="Scenario: Phishing campaign targeting employees.", error=None
+        )
 
-    result = runner.invoke(red_team_app, ["generate", "TestCorp"])
+        # --- Run Command ---
 
-    # --- Assertions ---
+        result = runner.invoke(red_team_app, ["generate", "TestCorp"])
 
-    assert result.exit_code == 0
-    assert "Generating Red Team scenario for TestCorp..." in result.stdout
-    assert "Red Team Scenario for TestCorp" in result.stdout
-    assert "Scenario: Phishing campaign targeting employees." in result.stdout
+        # --- Assertions ---
+
+        assert result.exit_code == 0
+        assert "Generating potential attack vectors for TestCorp..." in result.stdout
+        assert "Red Team Analysis for TestCorp" in result.stdout
+        assert "Scenario: Phishing campaign targeting employees." in result.stdout
 
 
-@patch("chimera_intel.core.red_team.get_aggregated_data_for_target")
-@patch("chimera_intel.core.red_team.API_KEYS")
-def test_generate_scenario_no_data(mock_api_keys, mock_get_data):
+def test_generate_scenario_no_data():
     """
     Tests the command's behavior when no aggregated data is found for the target.
     """
-    # --- Setup Mocks ---
+    with patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys, patch(
+        "chimera_intel.core.red_team.get_aggregated_data_for_target"
+    ) as mock_get_data:
+        # --- Setup Mocks ---
 
-    mock_api_keys.google_api_key = "test_key"
-    mock_get_data.return_value = None  # Simulate no data found
+        mock_api_keys.google_api_key = "test_key"
+        mock_get_data.return_value = None  # Simulate no data found
 
-    # --- Run Command ---
+        # --- Run Command ---
 
-    result = runner.invoke(red_team_app, ["generate", "nonexistent-target"])
+        result = runner.invoke(red_team_app, ["generate", "nonexistent-target"])
 
-    # --- Assertions ---
+        # --- Assertions ---
 
-    assert result.exit_code == 0
-    assert "No data found for target 'nonexistent-target'" in result.stdout
+        assert result.exit_code == 0
+        assert "No data found for target 'nonexistent-target'" in result.stdout
 
 
-@patch("chimera_intel.core.red_team.API_KEYS")
-def test_generate_scenario_no_api_key(mock_api_keys):
+def test_generate_scenario_no_api_key():
     """
     Tests that the command fails gracefully if the Google API key is not configured.
     """
-    # --- Setup Mock ---
+    with patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys:
+        # --- Setup Mock ---
 
-    mock_api_keys.google_api_key = None  # Simulate missing API key
+        mock_api_keys.google_api_key = None  # Simulate missing API key
 
-    # --- Run Command ---
+        # --- Run Command ---
 
-    result = runner.invoke(red_team_app, ["generate", "any-target"])
+        result = runner.invoke(red_team_app, ["generate", "any-target"])
 
-    # --- Assertions ---
+        # --- Assertions ---
 
-    assert result.exit_code == 1
-    assert "Error: Google API key not configured." in result.stdout
+        assert result.exit_code == 1
+        assert "Error: Google API key not configured." in result.stdout

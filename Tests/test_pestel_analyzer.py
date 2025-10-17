@@ -38,11 +38,11 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_gen_swot.assert_called_once()
         prompt_arg = mock_gen_swot.call_args[0][0]
         self.assertIn("PESTEL", prompt_arg)
-        # Corrected assertion to include parentheses
+        # Corrected assertion to be whitespace-insensitive
 
         self.assertIn(
             "(Political, Economic, Social, Technological, Environmental, Legal)",
-            prompt_arg,
+            " ".join(prompt_arg.split()),
         )
 
     def test_generate_pestel_analysis_no_api_key(self):
@@ -56,26 +56,23 @@ class TestPestelAnalyzer(unittest.TestCase):
     @patch("chimera_intel.core.pestel_analyzer.generate_pestel_analysis")
     @patch("chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.pestel_analyzer.resolve_target")
+    @patch("chimera_intel.core.pestel_analyzer.API_KEYS")
     def test_cli_run_pestel_analysis_success(
-        self, mock_resolve, mock_get_data, mock_generate
+        self, mock_api_keys, mock_resolve, mock_get_data, mock_generate
     ):
         """Tests a successful run of the 'pestel-analyzer run' command."""
         # Arrange
 
+        mock_api_keys.google_api_key = "fake_key"
         mock_resolve.return_value = "example.com"
         mock_get_data.return_value = {"target": "example.com"}
         mock_generate.return_value = PESTELAnalysisResult(
             analysis_text="### PESTEL Analysis"
         )
 
-        with patch(
-            "chimera_intel.core.pestel_analyzer.API_KEYS.google_api_key", "fake_key"
-        ):
-            # Act
+        # Act
 
-            result = runner.invoke(
-                pestel_analyzer_app, ["run", "--target", "example.com"]
-            )
+        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
         # Assert
 
         self.assertEqual(result.exit_code, 0, result.stdout)
@@ -88,10 +85,14 @@ class TestPestelAnalyzer(unittest.TestCase):
         "chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target",
         return_value=None,
     )
-    def test_cli_run_no_historical_data(self, mock_resolve, mock_get_data):
+    @patch("chimera_intel.core.pestel_analyzer.API_KEYS")
+    def test_cli_run_no_historical_data(
+        self, mock_api_keys, mock_get_data, mock_resolve
+    ):
         """Tests the CLI command when no historical data is found."""
         # Arrange
 
+        mock_api_keys.google_api_key = "fake_key"
         mock_resolve.return_value = "example.com"
 
         # Act

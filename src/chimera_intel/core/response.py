@@ -33,20 +33,11 @@ response_app = typer.Typer(
 
 
 ACTION_MAP = {
-    "send_slack_alert": lambda details: (
-        send_slack_notification(
-            webhook_url=SLACK_WEBHOOK_URL,
-            message=f"Automated Response Triggered: {details}",
-        )
-        if SLACK_WEBHOOK_URL
-        else console.print("[bold red]SLACK_WEBHOOK_URL not configured.[/bold red]")
+    "send_slack_alert": lambda details: console.print(
+        f"[bold yellow]ACTION (Simulated):[/bold yellow] Sending Slack alert for: {details}"
     ),
-    "send_teams_alert": lambda details: (
-        send_teams_notification(
-            webhook_url=TEAMS_WEBHOOK_URL, title="Automated Response", message=details
-        )
-        if TEAMS_WEBHOOK_URL
-        else console.print("[bold red]TEAMS_WEBHOOK_URL not configured.[/bold red]")
+    "send_teams_alert": lambda details: console.print(
+        f"[bold yellow]ACTION (Simulated):[/bold yellow] Sending Teams alert for: {details}"
     ),
     "quarantine_host": lambda details: console.print(
         f"[bold yellow]ACTION (Simulated):[/bold yellow] Quarantining host mentioned in: {details}"

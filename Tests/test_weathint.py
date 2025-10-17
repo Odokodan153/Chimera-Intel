@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import httpx
 
 # The application instance to be tested
@@ -74,7 +74,7 @@ def test_get_weather_success(mocker, mock_geolocator, mock_httpx_client):
     assert "Wind Speed: 5.1 m/s" in result.stdout
 
 
-def test_get_weather_no_api_key(mocker, mock_geolocator):
+def test_get_weather_no_api_key(mocker):
     """
     Tests that the 'get' command fails gracefully if the OpenWeatherMap API key is missing.
     """
@@ -88,10 +88,35 @@ def test_get_weather_no_api_key(mocker, mock_geolocator):
     result = runner.invoke(weathint_app, ["get", "London, UK"])
 
     # --- Assertions ---
-    # The command should still exit cleanly (code 0) but print the error message.
+    # FIX: A missing API key should be an error, so the exit code should be 1
 
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "OpenWeatherMap API key not configured." in result.stdout
     # Ensure no weather report is printed
 
     assert "Current Weather in London, UK" not in result.stdout
+
+
+# It's good practice to also test the case where the location is not found
+
+
+def test_get_weather_location_not_found(mocker):
+    """
+    Tests the CLI's behavior when the geolocator returns no coordinates.
+    """
+    # --- Setup Mock ---
+    # This time, we mock the function that calls the geolocator
+
+    mocker.patch("chimera_intel.core.weathint.get_coordinates", return_value=None)
+    mocker.patch(
+        "chimera_intel.core.weathint.API_KEYS.openweathermap_api_key", "fake_api_key"
+    )
+
+    # --- Run Command ---
+
+    result = runner.invoke(weathint_app, ["get", "Atlantis"])
+
+    # --- Assertions ---
+
+    assert result.exit_code == 1
+    assert "Could not find coordinates for" in result.stdout

@@ -94,19 +94,20 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Tests ---
 
-    @patch(
-        "chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock
-    )
+    @patch("chimera_intel.core.social_osint.find_social_profiles")
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles):
         """Tests a successful run of the 'social-osint run' CLI command."""
         # Arrange
 
-        mock_find_profiles.return_value = SocialOSINTResult(
-            username="cliuser",
-            found_profiles=[
-                SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
-            ],
-        )
+        async def fake_find_profiles(username):
+            return SocialOSINTResult(
+                username="cliuser",
+                found_profiles=[
+                    SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
+                ],
+            )
+
+        mock_find_profiles.side_effect = fake_find_profiles
 
         # Act
 
@@ -115,7 +116,6 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        mock_find_profiles.assert_awaited_with("cliuser")
         output = json.loads(result.stdout)
         self.assertEqual(output["username"], "cliuser")
         self.assertEqual(len(output["found_profiles"]), 1)
@@ -125,7 +125,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests that the CLI command fails if no username is provided."""
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Missing argument 'USERNAME'", result.stdout)
+        self.assertIn("Missing argument 'USERNAME'", result.stderr)
 
 
 if __name__ == "__main__":

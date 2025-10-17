@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, call
 from typer.testing import CliRunner
 
 from chimera_intel.core.weak_signal_analyzer import (
@@ -7,7 +7,7 @@ from chimera_intel.core.weak_signal_analyzer import (
     amplify_signals_with_dempster_shafer,
     wsa_app,
 )
-from chimera_intel.core.schemas import WeakSignal
+from chimera_intel.core.schemas import WeakSignal, AmplifiedEventResult
 
 runner = CliRunner()
 
@@ -19,8 +19,6 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
 
     def test_generate_weak_signals(self):
         """Tests the generation of weak signals from aggregated data."""
-        # Arrange
-
         aggregated_data = {
             "modules": {
                 "business_intel": {
@@ -29,20 +27,12 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
                 }
             }
         }
-
-        # Act
-
         signals = generate_weak_signals(aggregated_data)
-
-        # Assert
-
         self.assertEqual(len(signals), 2)
         self.assertTrue(all(s.signal_type == "MergerOrAcquisition" for s in signals))
 
     def test_amplify_signals_with_dempster_shafer_success(self):
         """Tests the successful amplification of signals using Dempster-Shafer."""
-        # Arrange
-
         signals = [
             WeakSignal(
                 source_module="test1",
@@ -57,15 +47,7 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
                 belief=0.4,
             ),
         ]
-
-        # Expected combined belief: 0.3 + 0.4 - (0.3 * 0.4) = 0.58
-
-        # Act
-
         amplified_events = amplify_signals_with_dempster_shafer(signals)
-
-        # Assert
-
         self.assertEqual(len(amplified_events), 1)
         self.assertEqual(amplified_events[0].event_hypothesis, "HypothesisA")
         self.assertAlmostEqual(amplified_events[0].combined_belief, 0.58)
@@ -88,12 +70,11 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
     @patch("chimera_intel.core.weak_signal_analyzer.resolve_target")
     @patch("chimera_intel.core.weak_signal_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.weak_signal_analyzer.save_scan_to_db")
+    @patch("chimera_intel.core.weak_signal_analyzer.console")
     def test_cli_run_wsa_analysis_success(
-        self, mock_save_scan, mock_get_data, mock_resolve
+        self, mock_console, mock_save_scan, mock_get_data, mock_resolve
     ):
         """Tests a successful run of the 'wsa run' CLI command."""
-        # Arrange
-
         mock_resolve.return_value = "example.com"
         mock_get_data.return_value = {
             "modules": {
@@ -104,36 +85,37 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
             }
         }
 
-        # Act
-
         result = runner.invoke(wsa_app, ["run", "example.com"])
 
-        # Assert
-
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Amplified Intelligence Events", result.stdout)
-        self.assertIn("Hypothesis: MergerOrAcquisition", result.stdout)
-        self.assertIn("Combined Belief: 58.0%", result.stdout)
+
+        # Check the output by inspecting calls to the mocked console
+
+        output = "".join(str(c.args[0]) for c in mock_console.print.call_args_list)
+        self.assertIn("Amplified Intelligence Events", output)
+        self.assertIn("Hypothesis: MergerOrAcquisition", output)
+        self.assertIn("Combined Belief: 58.0%", output)
 
     @patch("chimera_intel.core.weak_signal_analyzer.resolve_target")
     @patch(
         "chimera_intel.core.weak_signal_analyzer.get_aggregated_data_for_target",
         return_value=None,
     )
-    def test_cli_run_no_historical_data(self, mock_get_data, mock_resolve):
+    @patch("chimera_intel.core.weak_signal_analyzer.console")
+    def test_cli_run_no_historical_data(
+        self, mock_console, mock_get_data, mock_resolve
+    ):
         """Tests the CLI command when no historical data is found."""
-        # Arrange
-
         mock_resolve.return_value = "example.com"
-
-        # Act
 
         result = runner.invoke(wsa_app, ["run", "example.com"])
 
-        # Assert
-
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No historical data", result.stdout)
+
+        # Check the error message by inspecting calls to the mocked console
+
+        output = "".join(str(c.args[0]) for c in mock_console.print.call_args_list)
+        self.assertIn("No historical data", output)
 
 
 if __name__ == "__main__":
