@@ -3342,7 +3342,7 @@
     <span class="n">details</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ThreatIntelResult</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Threat intelligence details.&quot;</span>
     <span class="p">)</span>
-    <span class="n">vulnerabilities</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CVE</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>  <span class="c1"># Changed from Vulnerability to CVE</span>
+    <span class="n">vulnerabilities</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Vulnerability</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>  <span class="c1"># Changed from Vulnerability to CVE</span>
         <span class="p">[],</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Vulnerabilities associated with the asset.&quot;</span>
     <span class="p">)</span>
     <span class="n">threat_actors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ThreatActor</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
