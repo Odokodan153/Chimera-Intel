@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import MagicMock
 from chimera_intel.core.cognitive_warfare_engine import CognitiveWarfareEngine
 from chimera_intel.core.schemas import TwitterMonitoringResult, Tweet
 
