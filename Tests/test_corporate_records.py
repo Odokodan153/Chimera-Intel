@@ -7,6 +7,7 @@ import typer
 
 # Import the specific Typer app for this module
 
+
 from chimera_intel.core.corporate_records import corporate_records_app
 from chimera_intel.core.corporate_records import (
     get_company_records,
@@ -19,7 +20,7 @@ from chimera_intel.core.corporate_records import (
 from chimera_intel.core.schemas import (
     CorporateRegistryResult,
     SanctionsScreeningResult,
-    PEPScreeningResult
+    PEPScreeningResult,
 )
 
 runner = CliRunner()
@@ -123,7 +124,7 @@ class TestCorporateRecords(unittest.TestCase):
         with patch("builtins.open") as mock_open_call:
             pep_list = load_pep_list()
             mock_open_call.assert_not_called()
-            self.assertIn("CACHed NAME", pep_list)
+            self.assertIn("CACHED NAME", pep_list)
 
     # --- CLI Tests ---
 
@@ -149,8 +150,9 @@ class TestCorporateRecords(unittest.TestCase):
         result = runner.invoke(corporate_records_app, ["sanctions"])
         self.assertEqual(result.exit_code, 1)
 
+    @patch("chimera_intel.core.corporate_records.save_scan_to_db")
     @patch("chimera_intel.core.corporate_records.screen_pep_list")
-    def test_cli_pep_with_argument(self, mock_screen_pep):
+    def test_cli_pep_with_argument(self, mock_screen_pep, mock_save_db):
         """: Tests the 'pep' command with a direct argument."""
         mock_screen_pep.return_value = PEPScreeningResult(query="John Doe", is_pep=True)
 
@@ -158,8 +160,7 @@ class TestCorporateRecords(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         mock_screen_pep.assert_called_with("John Doe")
-        self.assertIn("is_pep", result.stdout)
-        self.assertIn("True", result.stdout)
+        self.assertIn('"is_pep": true', result.stdout)
 
 
 if __name__ == "__main__":

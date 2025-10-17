@@ -2,13 +2,12 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock
 
-# Import the main app from the cli module to ensure full context
+# Import the specific app instance for the command being tested
 
-from chimera_intel.cli import app
-
-# Import the function to be tested directly
-
-from chimera_intel.core.dark_web_monitor import run_dark_web_monitor
+from chimera_intel.core.dark_web_monitor import (
+    dark_web_monitor_app,
+    run_dark_web_monitor,
+)
 
 runner = CliRunner()
 
@@ -20,12 +19,11 @@ def test_add_dark_web_monitor_command(mock_add_job):
     """
     Tests that the 'add' command correctly calls the scheduler.
     """
-    # Invoke the command through the main 'app' instance
+    # Invoke the command directly on its own app instance
 
     result = runner.invoke(
-        app,
+        dark_web_monitor_app,
         [
-            "dark-monitor",
             "add",
             "--keywords",
             "mycompany.com, secret-project",
@@ -53,7 +51,13 @@ def test_add_dark_web_monitor_command(mock_add_job):
 @pytest.mark.asyncio
 @patch("chimera_intel.core.dark_web_monitor.send_slack_notification")
 @patch("chimera_intel.core.dark_web_monitor.send_teams_notification")
-async def test_run_dark_web_monitor_keyword_found(mock_teams, mock_slack, mocker):
+@patch(
+    "chimera_intel.core.dark_web_monitor.get_dark_web_targets",
+    return_value=["http://test-onion-site.onion"],
+)
+async def test_run_dark_web_monitor_keyword_found(
+    mock_get_targets, mock_teams, mock_slack, mocker
+):
     """
     Tests the core monitor function when a keyword is found.
     """
@@ -71,17 +75,23 @@ async def test_run_dark_web_monitor_keyword_found(mock_teams, mock_slack, mocker
     mock_response.text = "<html><body><h1>Leaked Data</h1><p>We have data from mycompany.com for sale.</p></body></html>"
     mock_response.raise_for_status.return_value = None
 
+    # Properly mock the async context manager for the HTTP client
+
     mock_async_client = AsyncMock()
     mock_async_client.get.return_value = mock_response
 
+    mock_context_manager = AsyncMock()
+    mock_context_manager.__aenter__.return_value = mock_async_client
+
     mocker.patch(
         "chimera_intel.core.dark_web_monitor.get_async_http_client",
-        return_value=mock_async_client,
+        return_value=mock_context_manager,
     )
 
     # Mock file system operations to prevent actual file creation
 
     mocker.patch("os.path.exists", return_value=True)
+    mocker.patch("os.makedirs")
     mocker.patch("builtins.open", mocker.mock_open())
 
     # Execute the monitor function

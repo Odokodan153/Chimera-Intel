@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 # The application instance to be tested
 
+
 from chimera_intel.core.cultint import cultint_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
@@ -24,8 +25,11 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     # 2. Mock the aggregated data returned from the database.
 
     mock_get_data.return_value = {
-        "key_personnel": ["John Doe"],
-        "locations": ["Springfield"],
+        "modules": {
+            "social_analyzer": {"sentiment": "positive"},
+            "business_intel": {"news": ["Some news article"]},
+            "corporate_hr_intel": {"reviews": ["A review"]},
+        }
     }
 
     # 3. Mock the AI analysis result.
@@ -43,8 +47,8 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     # --- Assertions ---
 
     assert result.exit_code == 0
-    assert "Analyzing cultural landscape for TestCorp..." in result.stdout
-    assert "Cultural Intelligence Analysis for TestCorp" in result.stdout
+    assert "Analyzing cultural narrative for TestCorp..." in result.stdout
+    assert "Cultural Narrative Analysis for TestCorp" in result.stdout
     assert "Analysis shows a hierarchical culture" in result.stdout
 
     # Verify the AI prompt was generated correctly
@@ -52,11 +56,10 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     mock_generate_swot.assert_called_once()
     prompt_arg = mock_generate_swot.call_args[0][0]
     assert (
-        "As a cultural intelligence analyst, examine the following OSINT data"
+        "As a cultural intelligence analyst, analyze the following data collected on TestCorp"
         in prompt_arg
     )
-    assert "TestCorp" in prompt_arg
-    assert "'key_personnel': ['John Doe']" in prompt_arg
+    assert "'social_media': {'sentiment': 'positive'}" in prompt_arg
 
 
 @patch("chimera_intel.core.cultint.get_aggregated_data_for_target")
@@ -97,6 +100,6 @@ def test_analyze_target_no_api_key(mock_api_keys):
 
     # --- Assertions ---
 
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "Error:" in result.stdout
     assert "Google API key not configured." in result.stdout

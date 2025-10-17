@@ -30,12 +30,12 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print("[bold red]Error:[/bold red] Google API key not configured.")
-        return None
+        raise typer.Exit(code=1)
     # Fetch aggregated data from modules that are relevant to cultural analysis
 
     aggregated_data = get_aggregated_data_for_target(target)
     if not aggregated_data:
-        return None  # The warning is already printed in the called function
+        raise typer.Exit()
     # Filter for modules that provide cultural context
 
     cultural_data_sources = {
@@ -56,7 +56,7 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
         console.print(
             f"[yellow]Warning:[/] No relevant data sources (social media, news, HR intel) found for '{target}' to analyze cultural narrative."
         )
-        return None
+        raise typer.Exit()
     prompt = f"""
     As a cultural intelligence analyst, analyze the following data collected on {target}.
     Based on this information, provide a summary of the dominant cultural narratives, sentiments, and values expressed.
@@ -70,7 +70,7 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
 
     if ai_result.error:
         console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
-        return None
+        raise typer.Exit(code=1)
     return {"cultural_narrative_analysis": ai_result.analysis_text}
 
 
@@ -83,9 +83,18 @@ def run_cultint_analysis(
     """
     Performs cultural intelligence analysis on a given target.
     """
-    result = analyze_cultural_narrative(target)
-    if result:
-        console.print(
-            f"\n[bold green]Cultural Narrative Analysis for {target}:[/bold green]"
-        )
-        console.print(result["cultural_narrative_analysis"])
+    try:
+        result = analyze_cultural_narrative(target)
+        if result:
+            console.print(
+                f"\n[bold green]Cultural Narrative Analysis for {target}:[/bold green]"
+            )
+            console.print(result["cultural_narrative_analysis"])
+    except typer.Exit as e:
+        if e.code == 0:
+            # This is a clean exit, so we don't need to do anything.
+
+            return
+        # This is an error exit, so we re-raise the exception.
+
+        raise

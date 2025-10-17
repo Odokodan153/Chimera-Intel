@@ -215,9 +215,14 @@ class TestCorporateIntel(unittest.TestCase):
         result = runner.invoke(corporate_intel_app, ["ip-deep"])
 
         self.assertEqual(result.exit_code, 1)
+
+        # Clean the output by removing leading/trailing whitespace and collapsing all internal whitespace to single spaces.
+        # This makes the test resilient to formatting changes in the error message.
+        cleaned_output = " ".join(result.stdout.strip().split())
+
         self.assertIn(
             "No company name provided and no active project with a company name is set.",
-            result.stdout,
+            cleaned_output,
         )
 
 

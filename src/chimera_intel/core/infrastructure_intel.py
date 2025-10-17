@@ -11,7 +11,6 @@ import requests
 
 # Create a new Typer application for Infrastructure Intelligence commands
 
-
 infrastructure_intel_app = typer.Typer(
     name="infrastructure-dependency",
     help="Public Infrastructure & Utilities Intelligence",
@@ -54,8 +53,9 @@ def find_nearby_cell_towers(lat: float, lon: float) -> list:
     """
     api_key = os.getenv("OPENCELLID_API_KEY")
     if not api_key:
-        print(
-            "[yellow]Warning: OPENCELLID_API_KEY environment variable not set. Skipping cell tower search.[/yellow]"
+        typer.secho(
+            "Warning: OPENCELLID_API_KEY environment variable not set. Skipping cell tower search.",
+            fg=typer.colors.YELLOW,
         )
         return []
     url = "https://opencellid.org/cell/getInArea"
@@ -69,7 +69,7 @@ def find_nearby_cell_towers(lat: float, lon: float) -> list:
         response.raise_for_status()
         return response.json().get("cells", [])
     except requests.exceptions.RequestException as e:
-        print(f"[red]Error fetching cell tower data: {e}[/red]")
+        typer.secho(f"Error fetching cell tower data: {e}", fg=typer.colors.RED)
         return []
 
 
@@ -117,11 +117,8 @@ def find_nearby_water_sources(lat: float, lon: float, radius: int = 5000) -> lis
 def infrastructure_dependency(
     address: Annotated[
         str,
-        typer.Option(
-            "--address",
-            "-a",
+        typer.Argument(
             help="The physical address to analyze for infrastructure dependencies.",
-            # The prompt has been removed from here to make the option testable
         ),
     ],
 ):
@@ -129,7 +126,7 @@ def infrastructure_dependency(
     Identifies and assesses the public and semi-public infrastructure that a
     target company relies on, such as power grids and utility networks.
     """
-    print(f"Analyzing infrastructure dependencies for: {address}")
+    typer.echo(f"Analyzing infrastructure dependencies for: {address}")
 
     try:
         # 1. Geocode the address to get its coordinates
@@ -137,45 +134,49 @@ def infrastructure_dependency(
         geolocator = Nominatim(user_agent="chimera-intel")
         location = geolocator.geocode(address)
         if not location:
-            print(f"Error: Could not geocode the address '{address}'.")
+            typer.secho(
+                f"Error: Could not geocode the address '{address}'.",
+                fg=typer.colors.RED,
+            )
             raise typer.Exit(code=1)
         lat, lon = location.latitude, location.longitude
-        print(f"Coordinates found: Latitude={lat:.4f}, Longitude={lon:.4f}")
+        typer.echo(f"Coordinates found: Latitude={lat:.4f}, Longitude={lon:.4f}")
 
         # 2. Find nearby electrical substations
 
         substations = find_nearby_substations(lat, lon)
-
         if substations:
-            print("\n--- Nearby Electrical Substations ---")
+            typer.echo("\n--- Nearby Electrical Substations ---")
             for sub in substations:
-                print(f"- Name: {sub['name']}, Operator: {sub['operator']}")
-                print(f"  Coordinates: {sub['lat']:.4f}, {sub['lon']:.4f}")
-            print("-------------------------------------")
+                typer.echo(f"- Name: {sub['name']}, Operator: {sub['operator']}")
+                typer.echo(f"  Coordinates: {sub['lat']:.4f}, {sub['lon']:.4f}")
+            typer.echo("-------------------------------------")
         else:
-            print("\nNo electrical substations found within the search radius.")
+            typer.echo("\nNo electrical substations found within the search radius.")
         # 3. Find nearby cell towers
 
         cell_towers = find_nearby_cell_towers(lat, lon)
         if cell_towers:
-            print("\n--- Nearby Cell Towers ---")
+            typer.echo("\n--- Nearby Cell Towers ---")
             for tower in cell_towers[:5]:  # Limit to 5 for brevity
-                print(
+                typer.echo(
                     f"- MCC: {tower.get('mcc')}, MNC: {tower.get('mnc')}, LAC: {tower.get('lac')}, Cell ID: {tower.get('cellid')}"
                 )
-                print(f"  Coordinates: {tower.get('lat'):.4f}, {tower.get('lon'):.4f}")
-            print("--------------------------")
+                typer.echo(
+                    f"  Coordinates: {tower.get('lat'):.4f}, {tower.get('lon'):.4f}"
+                )
+            typer.echo("--------------------------")
         # 4. Find nearby water sources
 
         water_sources = find_nearby_water_sources(lat, lon)
         if water_sources:
-            print("\n--- Nearby Water Sources ---")
+            typer.echo("\n--- Nearby Water Sources ---")
             for source in water_sources:
-                print(f"- Type: {source['type']}, Name: {source['name']}")
-                print(f"  Coordinates: {source['lat']:.4f}, {source['lon']:.4f}")
-            print("----------------------------")
+                typer.echo(f"- Type: {source['type']}, Name: {source['name']}")
+                typer.echo(f"  Coordinates: {source['lat']:.4f}, {source['lon']:.4f}")
+            typer.echo("----------------------------")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        typer.secho(f"An unexpected error occurred: {e}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
 
