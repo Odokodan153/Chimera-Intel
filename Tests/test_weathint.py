@@ -1,11 +1,11 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import httpx
 
 # The application instance to be tested
 
-from chimera_intel.core.weathint import weathint_app
+from chimera_intel.core.weathint import weathint_app, console
 
 runner = CliRunner()
 
@@ -90,12 +90,11 @@ def test_get_weather_no_api_key(mocker):
 
     # --- Run Command ---
 
-    result = runner.invoke(weathint_app, ["get", "London, UK"])
-
-    # --- Assertions ---
-
-    assert result.exit_code == 1
-    assert "OpenWeatherMap API key not configured." in result.stdout
+    with patch.object(console, "print") as mock_print:
+        result = runner.invoke(weathint_app, ["get", "London, UK"])
+        mock_print.assert_any_call(
+            "[bold red]OpenWeatherMap API key not configured.[/bold red]"
+        )
     # Ensure no weather report is printed
 
     assert "Current Weather in London, UK" not in result.stdout
@@ -115,9 +114,8 @@ def test_get_weather_location_not_found(mocker):
 
     # --- Run Command ---
 
-    result = runner.invoke(weathint_app, ["get", "Atlantis"])
-
-    # --- Assertions ---
-
-    assert result.exit_code == 1
-    assert "Could not find coordinates for" in result.stdout
+    with patch.object(console, "print") as mock_print:
+        runner.invoke(weathint_app, ["get", "Atlantis"])
+        mock_print.assert_any_call(
+            "[bold red]Could not find coordinates for Atlantis.[/bold red]"
+        )

@@ -154,7 +154,3 @@ def analyze_video(
     finally:
         if vid and vid.isOpened():
             vid.release()
-
-
-if __name__ == "__main__":
-    vidint_app()
