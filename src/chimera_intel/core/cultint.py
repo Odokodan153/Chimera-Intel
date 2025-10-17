@@ -91,10 +91,9 @@ def run_cultint_analysis(
             )
             console.print(result["cultural_narrative_analysis"])
     except typer.Exit as e:
-        if e.code == 0:
+        # Corrected attribute from e.code to e.exit_code
+        if e.exit_code == 0:
             # This is a clean exit, so we don't need to do anything.
-
             return
         # This is an error exit, so we re-raise the exception.
-
         raise
