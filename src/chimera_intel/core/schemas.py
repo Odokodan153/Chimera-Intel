@@ -2486,7 +2486,7 @@ class RiskAssessmentResult(BaseModel):
     details: Optional[ThreatIntelResult] = Field(
         None, description="Threat intelligence details."
     )
-    vulnerabilities: List[CVE] = Field(  # Changed from Vulnerability to CVE
+    vulnerabilities: List[Vulnerability] = Field(  # Changed from Vulnerability to CVE
         [], description="Vulnerabilities associated with the asset."
     )
     threat_actors: List[ThreatActor] = Field(
