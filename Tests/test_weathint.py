@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import httpx
 
 # The application instance to be tested
