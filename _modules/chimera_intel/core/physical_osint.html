@@ -69,13 +69,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for chimera_intel.core.physical_osint</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Module for Physical Security OSINT.</span>
-
-<span class="sd">Identifies and gathers intelligence on a target&#39;s physical locations.</span>
-<span class="sd">&quot;&quot;&quot;</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">typer</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">googlemaps</span>  <span class="c1"># type: ignore</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
@@ -155,11 +149,6 @@
     <span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Finds physical office locations related to a target.&quot;&quot;&quot;</span>
-    <span class="c1"># When no argument is given, Typer&#39;s runner passes the command name.</span>
-    <span class="c1"># We explicitly check for this and set target to None to use the project context.</span>
-
-    <span class="k">if</span> <span class="n">target</span> <span class="o">==</span> <span class="s2">&quot;locations&quot;</span><span class="p">:</span>
-        <span class="n">target</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">target_query</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;company_name&quot;</span><span class="p">,</span> <span class="s2">&quot;domain&quot;</span><span class="p">])</span>
 
     <span class="n">results_model</span> <span class="o">=</span> <span class="n">find_physical_locations</span><span class="p">(</span><span class="n">target_query</span><span class="p">)</span>
