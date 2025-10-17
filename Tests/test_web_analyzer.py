@@ -389,7 +389,7 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Act
         # FIX: Invoke 'run' and let the patched resolver handle the domain
 
-        result = runner.invoke(web_app, ["run"])
+        result = runner.invoke(web_app, [])
 
         # Assert
 
@@ -408,7 +408,7 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Act
         # FIX: Invoke 'run' and let the patched resolver provide the invalid domain
 
-        result = runner.invoke(web_app, ["run"])
+        result = runner.invoke(web_app, ["run", "invalid-domain"])
 
         # Assert
 

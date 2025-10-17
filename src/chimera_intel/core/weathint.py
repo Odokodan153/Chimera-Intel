@@ -78,24 +78,25 @@ def get_weather(
         raise typer.Exit(code=1)
     weather_data = get_weather_forecast(coords["latitude"], coords["longitude"])
 
-    if weather_data:
-        # Format and display the weather data
+    if not weather_data:
+        raise typer.Exit(code=1)
+    # Format and display the weather data
 
-        main_weather = weather_data.get("weather", [{}])[0].get("main", "N/A")
-        description = weather_data.get("weather", [{}])[0].get("description", "N/A")
-        temp = weather_data.get("main", {}).get("temp", "N/A")
-        feels_like = weather_data.get("main", {}).get("feels_like", "N/A")
-        wind_speed = weather_data.get("wind", {}).get("speed", "N/A")
+    main_weather = weather_data.get("weather", [{}])[0].get("main", "N/A")
+    description = weather_data.get("weather", [{}])[0].get("description", "N/A")
+    temp = weather_data.get("main", {}).get("temp", "N/A")
+    feels_like = weather_data.get("main", {}).get("feels_like", "N/A")
+    wind_speed = weather_data.get("wind", {}).get("speed", "N/A")
 
-        report = (
-            f"Weather: {main_weather} ({description})\n"
-            f"Temperature: {temp}°C (Feels like: {feels_like}°C)\n"
-            f"Wind Speed: {wind_speed} m/s"
+    report = (
+        f"Weather: {main_weather} ({description})\n"
+        f"Temperature: {temp}°C (Feels like: {feels_like}°C)\n"
+        f"Wind Speed: {wind_speed} m/s"
+    )
+    console.print(
+        Panel(
+            report,
+            title=f"[bold green]Current Weather in {location}[/bold green]",
+            border_style="green",
         )
-        console.print(
-            Panel(
-                report,
-                title=f"[bold green]Current Weather in {location}[/bold green]",
-                border_style="green",
-            )
-        )
+    )

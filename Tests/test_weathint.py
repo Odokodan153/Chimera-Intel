@@ -41,7 +41,6 @@ def mock_httpx_client(mocker):
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value.get.return_value = mock_response
-
     mocker.patch("httpx.Client", return_value=mock_client)
 
 
@@ -82,22 +81,24 @@ def test_get_weather_no_api_key(mocker):
     # Simulate the API key being absent
 
     mocker.patch("chimera_intel.core.weathint.API_KEYS.openweathermap_api_key", None)
+    # Since get_coordinates is called before the API key check, we need to mock it.
+
+    mocker.patch(
+        "chimera_intel.core.weathint.get_coordinates",
+        return_value={"latitude": 0, "longitude": 0},
+    )
 
     # --- Run Command ---
 
     result = runner.invoke(weathint_app, ["get", "London, UK"])
 
     # --- Assertions ---
-    # FIX: A missing API key should be an error, so the exit code should be 1
 
     assert result.exit_code == 1
     assert "OpenWeatherMap API key not configured." in result.stdout
     # Ensure no weather report is printed
 
     assert "Current Weather in London, UK" not in result.stdout
-
-
-# It's good practice to also test the case where the location is not found
 
 
 def test_get_weather_location_not_found(mocker):
