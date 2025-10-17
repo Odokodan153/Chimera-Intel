@@ -37,12 +37,21 @@ def mock_video_capture():
         mock_vid.get.side_effect = _mock_get_property
 
         dummy_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
+        # Ensure the mock `read` provides enough frames for all tests
+
         mock_vid.read.side_effect = [
             (True, dummy_frame),
             (True, dummy_frame),
             (True, dummy_frame),
-            (False, None),  # Simulate end of video
-        ]
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (True, dummy_frame),
+            (False, None),
+        ] * 30  # provide plenty of frames
         mock_video.return_value = mock_vid
         yield mock_vid
 
@@ -76,7 +85,9 @@ def test_cli_analyze_video_with_frame_extraction(
 
     assert result.exit_code == 0, result.output
     mock_makedirs.assert_called_once_with("video_frames")
-    # Calculation: 300 frames / (30 fps * 5s interval) = 2 frames should be saved
+    # Calculation: At 30 fps, a 5-second interval means we extract a frame at 0s and 5s.
+    # Total frames: 300. Interval: 30fps * 5s = 150 frames.
+    # Frames at index 0 and 150 will be extracted.
 
     assert mock_imwrite.call_count == 2
     assert "Successfully extracted 2 frames" in result.stdout

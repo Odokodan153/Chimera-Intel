@@ -26,35 +26,39 @@ def run_motion_detection(file_path: str, threshold: int = 30):
     console.print(f"Detecting motion in {file_path}...")
     vid = cv2.VideoCapture(file_path)
     if not vid.isOpened():
-        return
-    _, frame1 = vid.read()
-    if frame1 is None:
-        vid.release()
-        return
-    gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
-    gray1 = cv2.GaussianBlur(gray1, (21, 21), 0)
-
-    motion_events = 0
-    kernel = np.ones((5, 5), np.uint8)
-    while True:
-        ret, frame2 = vid.read()
-        if not ret:
-            break
-        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
-        gray2 = cv2.GaussianBlur(gray2, (21, 21), 0)
-
-        frame_delta = cv2.absdiff(gray1, gray2)
-        thresh = cv2.threshold(frame_delta, threshold, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.dilate(thresh, kernel, iterations=2)
-
-        contours, _ = cv2.findContours(
-            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        console.print(
+            "[bold red]Error:[/bold red] Could not open video file for motion detection."
         )
+        return
+    try:
+        _, frame1 = vid.read()
+        if frame1 is None:
+            return
+        gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+        gray1 = cv2.GaussianBlur(gray1, (21, 21), 0)
 
-        if contours:
-            motion_events += 1
-        gray1 = gray2  # Move to the next frame
-    vid.release()
+        motion_events = 0
+        kernel = np.ones((5, 5), np.uint8)
+        while True:
+            ret, frame2 = vid.read()
+            if not ret:
+                break
+            gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+            gray2 = cv2.GaussianBlur(gray2, (21, 21), 0)
+
+            frame_delta = cv2.absdiff(gray1, gray2)
+            thresh = cv2.threshold(frame_delta, threshold, 255, cv2.THRESH_BINARY)[1]
+            thresh = cv2.dilate(thresh, kernel, iterations=2)
+
+            contours, _ = cv2.findContours(
+                thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
+
+            if contours:
+                motion_events += 1
+            gray1 = gray2  # Move to the next frame
+    finally:
+        vid.release()
     if motion_events > 5:  # Simple threshold to reduce noise
         console.print(
             f"[bold yellow]Significant motion detected in {motion_events} frames.[/bold yellow]"
@@ -121,6 +125,9 @@ def analyze_video(
                 os.makedirs(output_dir)
             frame_interval = int(fps * extract_frames)
             saved_count = 0
+            # Reset video to the beginning for frame extraction
+
+            vid.set(cv2.CAP_PROP_POS_FRAMES, 0)
             for i in range(0, frame_count, frame_interval):
                 vid.set(cv2.CAP_PROP_POS_FRAMES, i)
                 success, image = vid.read()
@@ -134,6 +141,10 @@ def analyze_video(
                 f"\nSuccessfully extracted {saved_count} frames to '{output_dir}'."
             )
         if detect_motion:
+            # For motion detection, we need a fresh video capture object
+            # or to reset the current one.
+
+            vid.release()  # Release before calling motion detection
             run_motion_detection(file_path)
     except Exception as e:
         console.print(
@@ -141,7 +152,7 @@ def analyze_video(
         )
         raise typer.Exit(code=1)
     finally:
-        if vid:
+        if vid and vid.isOpened():
             vid.release()
 
 
