@@ -5,7 +5,6 @@ from unittest.mock import patch, MagicMock
 # Import the application instance and the SWOTAnalysisResult schema
 
 from chimera_intel.core.attack_path_simulator import attack_path_app
-from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
 
