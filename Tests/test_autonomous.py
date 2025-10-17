@@ -41,10 +41,15 @@ def mock_db_connection_no_data(mocker):
 
 
 @patch("chimera_intel.core.autonomous.generate_swot_from_data")
-def test_optimize_models_success(mock_ai_task, mock_db_connection):
+@patch("chimera_intel.core.config_loader.API_KEYS")  # Added patch
+def test_optimize_models_success(mock_api_keys, mock_ai_task, mock_db_connection):
     """
     Tests the successful run of the optimize-models command.
     """
+    # --- Setup Mocks ---
+
+    mock_api_keys.google_api_key = "fake_api_key"  # Mock the API key
+
     # Mock the return object from the AI function to have the .analysis_text attribute
 
     ai_return_object = MagicMock()

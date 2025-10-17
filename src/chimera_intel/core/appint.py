@@ -109,6 +109,10 @@ def run_static_apk_analysis(
     """
     try:
         results_model = analyze_apk_static(file_path)
+        if results_model.error:
+            console.print(f"[red]Static analysis failed: {results_model.error}[/red]")
+            raise typer.Exit(code=1)
+
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
         save_scan_to_db(
@@ -117,5 +121,5 @@ def run_static_apk_analysis(
             data=results_dict,
         )
     except Exception as e:
-        console.print(f"[red]Static analysis failed: {e}[/red]")
-        raise typer.Exit(code=0)
+        console.print(f"[red]An unexpected error occurred: {e}[/red]")
+        raise typer.Exit(code=1)

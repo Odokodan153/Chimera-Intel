@@ -77,7 +77,7 @@ def monitor_sequences(
         results = search_genbank(target, email)
         if not results:
             console.print("[yellow]No matching sequences found.[/yellow]")
-            raise typer.Exit()
+            raise typer.Exit(code=0)
         console.print(
             f"\n--- [bold green]Found {len(results)} Matching Sequences[/bold green] ---"
         )

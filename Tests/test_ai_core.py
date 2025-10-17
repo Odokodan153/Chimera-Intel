@@ -1,18 +1,10 @@
-"""
-Unit tests for the 'ai_core' module.
-
-This test suite verifies the functionality of the AI analysis functions
-in 'chimera_intel.core.ai_core.py'. It uses 'unittest.mock' to simulate
-the behavior of the AI models, ensuring that the tests are fast and do not
-require loading large models or making external API calls.
-"""
-
 import unittest
 import json
 from unittest.mock import patch, MagicMock, mock_open
 from typer.testing import CliRunner
 
 # Import the specific Typer app for this module's CLI tests
+
 
 from chimera_intel.core.ai_core import (
     analyze_sentiment,
@@ -215,8 +207,12 @@ class TestAiCore(unittest.TestCase):
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    @patch("os.path.exists", return_value=True)
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data='{"domain": "example.com"}'
+    )
     def test_generate_narrative_from_graph_success(
-        self, mock_build_graph, mock_gen_swot
+        self, mock_file, mock_exists, mock_build_graph, mock_gen_swot
     ):
         """Tests successful graph narrative generation."""
         mock_build_graph.return_value = EntityGraphResult(
@@ -243,10 +239,14 @@ class TestAiCore(unittest.TestCase):
         self.assertIn("DB error", result.error)
         self.assertEqual(result.narrative_text, "")
 
-    @patch("chimera_intel.core.ai_core.build_and_save_graph")
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
+    @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    @patch("os.path.exists", return_value=True)
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data='{"domain": "example.com"}'
+    )
     def test_generate_narrative_from_graph_swot_error(
-        self, mock_gen_swot, mock_build_graph
+        self, mock_file, mock_exists, mock_build_graph, mock_gen_swot
     ):
         """Tests graph narrative generation when the SWOT analysis fails."""
         mock_build_graph.return_value = EntityGraphResult(

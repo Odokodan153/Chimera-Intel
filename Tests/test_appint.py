@@ -12,28 +12,34 @@ runner = CliRunner()
 class TestAppint(unittest.TestCase):
     """Test cases for the Appint module."""
 
-    @patch("chimera_intel.core.appint.subprocess.run")
-    def test_analyze_apk_static_success(self, mock_subprocess_run):
-        """Tests successful static analysis of an APK file."""
+    @patch("chimera_intel.core.appint.save_scan_to_db")
+    @patch("chimera_intel.core.utils.save_or_print_results")
+    @patch("chimera_intel.core.appint.analyze_apk_static")
+    def test_cli_static_analysis_success(
+        self, mock_analyze_apk, mock_save_print, mock_save_db
+    ):
+        """Tests a successful run of the 'static' CLI command."""
         # Arrange
+        mock_analyze_apk.return_value = StaticAppAnalysisResult(
+            file_path="test.apk", secrets_found=[]
+        )
+        mock_save_print.return_value = None
+        mock_save_db.return_value = None
 
-        mock_subprocess_run.return_value = MagicMock(check=True, stdout="", stderr="")
-        # Create a dummy file for the test
-
-        dummy_filepath = "dummy.apk"
+        dummy_filepath = "test.apk"
         with open(dummy_filepath, "w") as f:
-            f.write("dummy content")
+            f.write("dummy apk content")
         # Act
-
-        result = analyze_apk_static(dummy_filepath)
+        result = runner.invoke(appint_app, ["static", dummy_filepath])
 
         # Assert
+        self.assertEqual(
+            result.exit_code, 0, f"CLI command failed with output: {result.stdout}"
+        )
+        mock_analyze_apk.assert_called_with(dummy_filepath)
+        mock_save_print.assert_called_once()
 
-        self.assertIsInstance(result, StaticAppAnalysisResult)
-        self.assertIsNone(result.error)
-
-        # Clean up the dummy file
-
+        # Clean up
         os.remove(dummy_filepath)
 
     def test_analyze_apk_static_file_not_found(self):
@@ -95,30 +101,21 @@ class TestAppint(unittest.TestCase):
     ):
         """Tests the 'static' CLI command when the file is not found."""
         # Arrange
-
         mock_analyze_apk.return_value = StaticAppAnalysisResult(
             file_path="nonexistent.apk", error="APK file not found."
         )
-        # Ensure mocked functions don't raise exceptions
-
         mock_save_print.return_value = None
         mock_save_db.return_value = None
 
         # Act
-
         result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
 
         # Assert
-
         self.assertEqual(
-            result.exit_code, 0, f"CLI command failed with output: {result.stdout}"
+            result.exit_code, 1, f"CLI command failed with output: {result.stdout}"
         )
         mock_analyze_apk.assert_called_with("nonexistent.apk")
-        mock_save_print.assert_called_once()
-
-        # The CLI command prints the result, which contains the error message.
-        # So we check the result's stdout.
-
+        # This will now be called because the error is handled gracefully
         self.assertIn("APK file not found.", result.stdout)
 
 
