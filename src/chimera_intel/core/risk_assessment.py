@@ -120,7 +120,7 @@ async def assess_risk_from_indicator(
     )
     threat_actors_task = search_threat_actors(indicator)
 
-    threat_intel, vulnerabilities, threat_actors = await asyncio.gather(
+    threat_intel, cve_vulnerabilities, threat_actors = await asyncio.gather(
         threat_intel_task, vulnerabilities_task, threat_actors_task
     )
 
@@ -167,6 +167,11 @@ async def assess_risk_from_indicator(
             if family:
                 impact = max(impact, 8.0)
     threat = "Malicious Activity" if threat_intel.is_malicious else "Benign"
+    
+    vulnerabilities = [
+        Vulnerability(cve=v.id, cvss_score=v.cvss_score, description=v.title)
+        for v in cve_vulnerabilities
+    ]
 
     return calculate_risk(
         asset=indicator,
