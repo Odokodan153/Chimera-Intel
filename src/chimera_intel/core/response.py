@@ -11,7 +11,6 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 
-from .utils import console, send_slack_notification, send_teams_notification
 from .database import get_db_connection
 
 # Load environment variables from .env file

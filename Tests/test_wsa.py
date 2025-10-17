@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, call
+from unittest.mock import patch
 from typer.testing import CliRunner
 
 from chimera_intel.core.weak_signal_analyzer import (
@@ -7,7 +7,7 @@ from chimera_intel.core.weak_signal_analyzer import (
     amplify_signals_with_dempster_shafer,
     wsa_app,
 )
-from chimera_intel.core.schemas import WeakSignal, AmplifiedEventResult
+from chimera_intel.core.schemas import WeakSignal
 
 runner = CliRunner()
 
