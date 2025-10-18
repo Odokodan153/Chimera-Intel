@@ -2256,6 +2256,7 @@ class Vulnerability(BaseModel):
     cve: str = Field(..., description="The CVE ID or equivalent identifier.")
     cvss_score: Optional[float] = None
     description: Optional[str] = None
+    severity: Optional[str] = None
 
 # --- Systemic Intelligence ---
 class OTAsset(BaseModel):
