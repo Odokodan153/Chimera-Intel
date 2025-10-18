@@ -141,13 +141,17 @@
 <span class="n">temporal_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="run_snapshot_search">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.temporal_analyzer.run_snapshot_search">[docs]</a>
-<span class="nd">@temporal_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;snapshots&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">run_snapshot_search</span><span class="p">(</span>
+<span class="c1"># --- FIX: Renamed function &#39;run_snapshot_search&#39; to &#39;snapshots&#39; ---</span>
+<span class="c1"># --- and removed explicit name from decorator ---</span>
+
+
+<div class="viewcode-block" id="snapshots">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.temporal_analyzer.snapshots">[docs]</a>
+<span class="nd">@temporal_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">snapshots</span><span class="p">(</span>
     <span class="n">domain</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span>
-        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DOMAIN&quot;</span><span class="p">,</span>  <span class="c1"># FIX: Added metavar to clarify argument</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;DOMAIN&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optional domain to search for. Uses active project if not provided.&quot;</span><span class="p">,</span>
     <span class="p">),</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
@@ -157,7 +161,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fetches historical web snapshots to analyze a company&#39;s &quot;Shifting Identity&quot;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># FIX: Correctly resolve the target domain whether it&#39;s provided or not</span>
+    <span class="c1"># This logic now works because &#39;domain&#39; will be None if not provided</span>
 
     <span class="n">target_domain</span> <span class="o">=</span> <span class="n">resolve_target</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">required_assets</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">])</span>
 

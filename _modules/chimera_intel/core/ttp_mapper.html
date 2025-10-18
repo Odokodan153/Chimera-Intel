@@ -153,10 +153,13 @@
 <span class="n">ttp_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="run_cve_mapping">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.ttp_mapper.run_cve_mapping">[docs]</a>
-<span class="nd">@ttp_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;map-cve&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">run_cve_mapping</span><span class="p">(</span>
+<span class="c1"># --- FIX: Renamed function to &#39;map_cve&#39; and removed explicit name from decorator ---</span>
+
+
+<div class="viewcode-block" id="map_cve">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.ttp_mapper.map_cve">[docs]</a>
+<span class="nd">@ttp_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">map_cve</span><span class="p">(</span>
     <span class="n">cve_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;One or more CVE IDs to map (e.g., CVE-2021-44228).&quot;</span>
     <span class="p">),</span>

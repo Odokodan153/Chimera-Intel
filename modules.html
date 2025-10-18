@@ -71,7 +71,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.strategist.generate_strategic_profile"><code class="docutils literal notranslate"><span class="pre">generate_strategic_profile()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.strategist.run_strategy_analysis"><code class="docutils literal notranslate"><span class="pre">run_strategy_analysis()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.temporal_analyzer.get_historical_snapshots"><code class="docutils literal notranslate"><span class="pre">get_historical_snapshots()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.temporal_analyzer.run_snapshot_search"><code class="docutils literal notranslate"><span class="pre">run_snapshot_search()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.temporal_analyzer.snapshots"><code class="docutils literal notranslate"><span class="pre">snapshots()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.weak_signal_analyzer.amplify_signals_with_dempster_shafer"><code class="docutils literal notranslate"><span class="pre">amplify_signals_with_dempster_shafer()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.weak_signal_analyzer.generate_weak_signals"><code class="docutils literal notranslate"><span class="pre">generate_weak_signals()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.weak_signal_analyzer.run_wsa_analysis"><code class="docutils literal notranslate"><span class="pre">run_wsa_analysis()</span></code></a></li>
@@ -198,8 +198,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_hunter.hunt_for_iocs_in_log"><code class="docutils literal notranslate"><span class="pre">hunt_for_iocs_in_log()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_hunter.run_threat_hunt"><code class="docutils literal notranslate"><span class="pre">run_threat_hunt()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.threat_intel.get_threat_intel_otx"><code class="docutils literal notranslate"><span class="pre">get_threat_intel_otx()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.ttp_mapper.map_cve"><code class="docutils literal notranslate"><span class="pre">map_cve()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.ttp_mapper.map_cves_to_ttp"><code class="docutils literal notranslate"><span class="pre">map_cves_to_ttp()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.ttp_mapper.run_cve_mapping"><code class="docutils literal notranslate"><span class="pre">run_cve_mapping()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.get_vulnerabilities_vulners"><code class="docutils literal notranslate"><span class="pre">get_vulnerabilities_vulners()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.run_port_scan"><code class="docutils literal notranslate"><span class="pre">run_port_scan()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#chimera_intel.core.vulnerability_scanner.run_vulnerability_scan"><code class="docutils literal notranslate"><span class="pre">run_vulnerability_scan()</span></code></a></li>
@@ -1841,8 +1841,8 @@ transformation, rebranding, or strategic shifts.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="chimera_intel.core.temporal_analyzer.run_snapshot_search">
-<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.temporal_analyzer.</span></span><span class="sig-name descname"><span class="pre">run_snapshot_search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/temporal_analyzer.html#run_snapshot_search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.temporal_analyzer.run_snapshot_search" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="chimera_intel.core.temporal_analyzer.snapshots">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.temporal_analyzer.</span></span><span class="sig-name descname"><span class="pre">snapshots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/temporal_analyzer.html#snapshots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.temporal_analyzer.snapshots" title="Link to this definition"></a></dt>
 <dd><p>Fetches historical web snapshots to analyze a company’s “Shifting Identity”.</p>
 </dd></dl>
 
@@ -3240,14 +3240,6 @@ looks for public datasets associated with the company name on Kaggle.</p>
 <dt class="sig sig-object py" id="chimera_intel.core.social_osint.run_social_osint_scan">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.social_osint.</span></span><span class="sig-name descname"><span class="pre">run_social_osint_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/social_osint.html#run_social_osint_scan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.social_osint.run_social_osint_scan" title="Link to this definition"></a></dt>
 <dd><p>Searches for a username across hundreds of social networks.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>username</strong> (<em>str</em>) – The username to search for.</p></li>
-<li><p><strong>output_file</strong> (<em>str</em>) – Optional path to save the results to a JSON file.</p></li>
-</ul>
-</dd>
-</dl>
 </dd></dl>
 
 <p id="module-chimera_intel.core.threat_actor_intel">Module for Threat Actor Intelligence.</p>
@@ -3339,6 +3331,12 @@ indicators of compromise (IOCs) within local log files.</p>
 <p>Maps known vulnerabilities (CVEs) to the MITRE ATT&amp;CK framework to understand
 how they might be exploited by real-world adversaries.</p>
 <dl class="py function">
+<dt class="sig sig-object py" id="chimera_intel.core.ttp_mapper.map_cve">
+<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.ttp_mapper.</span></span><span class="sig-name descname"><span class="pre">map_cve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cve_ids:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/ttp_mapper.html#map_cve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.ttp_mapper.map_cve" title="Link to this definition"></a></dt>
+<dd><p>Maps CVE vulnerabilities to MITRE ATT&amp;CK techniques.</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="chimera_intel.core.ttp_mapper.map_cves_to_ttp">
 <span class="sig-prename descclassname"><span class="pre">chimera_intel.core.ttp_mapper.</span></span><span class="sig-name descname"><span class="pre">map_cves_to_ttp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cve_ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#chimera_intel.core.schemas.TTPMappingResult" title="chimera_intel.core.schemas.TTPMappingResult"><span class="pre">TTPMappingResult</span></a></span></span><a class="reference internal" href="_modules/chimera_intel/core/ttp_mapper.html#map_cves_to_ttp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.ttp_mapper.map_cves_to_ttp" title="Link to this definition"></a></dt>
 <dd><p>Maps a list of CVE IDs to their corresponding MITRE ATT&amp;CK techniques.</p>
@@ -3353,12 +3351,6 @@ how they might be exploited by real-world adversaries.</p>
 <dd class="field-odd"><p><a class="reference internal" href="#chimera_intel.core.schemas.TTPMappingResult" title="chimera_intel.core.schemas.TTPMappingResult">TTPMappingResult</a></p>
 </dd>
 </dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="chimera_intel.core.ttp_mapper.run_cve_mapping">
-<span class="sig-prename descclassname"><span class="pre">chimera_intel.core.ttp_mapper.</span></span><span class="sig-name descname"><span class="pre">run_cve_mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cve_ids:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.ArgumentInfo</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;typer.models.OptionInfo</span> <span class="pre">object&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/chimera_intel/core/ttp_mapper.html#run_cve_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#chimera_intel.core.ttp_mapper.run_cve_mapping" title="Link to this definition"></a></dt>
-<dd><p>Maps CVE vulnerabilities to MITRE ATT&amp;CK techniques.</p>
 </dd></dl>
 
 <dl class="py function" id="module-chimera_intel.core.vulnerability_scanner">
