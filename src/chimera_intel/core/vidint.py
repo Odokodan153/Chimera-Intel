@@ -67,10 +67,11 @@ def run_motion_detection(file_path: str, threshold: int = 30):
         console.print("[green]No significant motion detected.[/green]")
 
 
-@vidint_app.command(
-    "analyze", help="Analyze a video file and extract metadata or frames."
-)
-def analyze_video(
+# --- FIX: Renamed function to 'analyze' and removed explicit name from decorator ---
+
+
+@vidint_app.command(help="Analyze a video file and extract metadata or frames.")
+def analyze(
     file_path: str = typer.Argument(..., help="Path to the video file to analyze."),
     extract_frames: int = typer.Option(
         None,

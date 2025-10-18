@@ -67,11 +67,15 @@ def get_historical_snapshots(domain: str) -> ShiftingIdentityResult:
 temporal_app = typer.Typer()
 
 
-@temporal_app.command("snapshots")
-def run_snapshot_search(
+# --- FIX: Renamed function 'run_snapshot_search' to 'snapshots' ---
+# --- and removed explicit name from decorator ---
+
+
+@temporal_app.command()
+def snapshots(
     domain: Optional[str] = typer.Argument(
         None,
-        metavar="DOMAIN",  # FIX: Added metavar to clarify argument
+        metavar="DOMAIN",
         help="Optional domain to search for. Uses active project if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
@@ -81,7 +85,7 @@ def run_snapshot_search(
     """
     Fetches historical web snapshots to analyze a company's "Shifting Identity".
     """
-    # FIX: Correctly resolve the target domain whether it's provided or not
+    # This logic now works because 'domain' will be None if not provided
 
     target_domain = resolve_target(domain, required_assets=["domain"])
 

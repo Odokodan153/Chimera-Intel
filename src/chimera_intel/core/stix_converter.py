@@ -172,12 +172,15 @@ def convert_footprint_to_stix(
                 Relationship(domain_obj, "has-subdomain", subdomain_obj)
             )
     for ip_intel in footprint.footprint.ip_threat_intelligence:
-        if ip_intel.is_malicious:
+        # FIX: Use dictionary .get() access because the pydantic schema
+        # is passing ip_intel as a dict, not an object.
+
+        if ip_intel.get("is_malicious"):
             indicator = Indicator(
                 pattern_type="stix",
-                pattern=f"[ipv4-addr:value = '{ip_intel.indicator}']",
+                pattern=f"[ipv4-addr:value = '{ip_intel.get('indicator')}']",
                 valid_from=datetime.utcnow(),
-                description=f"Malicious IP. Pulses: {ip_intel.pulse_count}",
+                description=f"Malicious IP. Pulses: {ip_intel.get('pulse_count')}",
             )
             stix_objects.append(indicator)
     return stix_objects

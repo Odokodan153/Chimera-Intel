@@ -3,6 +3,7 @@ from typer.testing import CliRunner
 from unittest.mock import MagicMock, patch
 import cv2
 import numpy as np
+import typer  # Import typer to catch the exception
 
 # The application instance to be tested
 
@@ -115,9 +116,16 @@ def test_cli_analyze_video_file_not_found(mock_exists, mocker):
     Tests that the command fails correctly when the input video file does not exist.
     """
     mock_console_print = mocker.patch("chimera_intel.core.vidint.console.print")
-    result = runner.invoke(vidint_app, ["analyze", "nonexistent.mp4"])
 
-    assert result.exit_code == 1
+    # --- FIX: Catch the typer.Exit exception to test the print call ---
+
+    with pytest.raises(typer.Exit) as e:
+        runner.invoke(
+            vidint_app, ["analyze", "nonexistent.mp4"], catch_exceptions=False
+        )
+    # --- Assertions ---
+
+    assert e.value.exit_code == 1
     mock_console_print.assert_any_call(
         "[bold red]Error:[/bold red] Video file not found at 'nonexistent.mp4'"
     )

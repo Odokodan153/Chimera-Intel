@@ -1,4 +1,5 @@
 import pytest
+import typer
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, ANY
 import httpx
@@ -21,7 +22,10 @@ def mock_httpx_client(mocker):
     mock_response = httpx.Response(200, json=mock_weather_data)
     mock_client = MagicMock()
     mock_client.__enter__.return_value.get.return_value = mock_response
-    mocker.patch("httpx.Client", return_value=mock_client)
+
+    # --- FIX: Patch the httpx.Client imported by the weathint module ---
+
+    mocker.patch("chimera_intel.core.weathint.httpx.Client", return_value=mock_client)
 
 
 def test_get_weather_success(mocker, mock_httpx_client):
@@ -44,6 +48,8 @@ def test_get_weather_success(mocker, mock_httpx_client):
     result = runner.invoke(weathint_app, ["get", "New York, USA"])
 
     # --- Assertions ---
+
+    # --- FIX: With the correct httpx mock, the command will succeed (exit_code 0) ---
 
     assert result.exit_code == 0
     mock_console_print.assert_any_call(
@@ -69,11 +75,13 @@ def test_get_weather_no_api_key(mocker):
 
     # --- Run Command ---
 
-    result = runner.invoke(weathint_app, ["get", "London, UK"])
+    # --- FIX: Catch the typer.Exit exception to test the print call ---
 
+    with pytest.raises(typer.Exit) as e:
+        runner.invoke(weathint_app, ["get", "London, UK"], catch_exceptions=False)
     # --- Assertions ---
 
-    assert result.exit_code != 0
+    assert e.value.exit_code != 0
     mock_console_print.assert_any_call(
         "[bold red]OpenWeatherMap API key not configured.[/bold red]"
     )
@@ -93,11 +101,13 @@ def test_get_weather_location_not_found(mocker):
 
     # --- Run Command ---
 
-    result = runner.invoke(weathint_app, ["get", "Atlantis"])
+    # --- FIX: Catch the typer.Exit exception to test the print call ---
 
+    with pytest.raises(typer.Exit) as e:
+        runner.invoke(weathint_app, ["get", "Atlantis"], catch_exceptions=False)
     # --- Assertions ---
 
-    assert result.exit_code != 0
+    assert e.value.exit_code != 0
     mock_console_print.assert_any_call(
         "[bold red]Could not find coordinates for Atlantis.[/bold red]"
     )

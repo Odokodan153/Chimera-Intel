@@ -41,6 +41,7 @@ class StrategicForecaster:
         data = {}
 
         # FININT Data
+
         if self.ticker:
             insider_result = get_insider_transactions(self.ticker)
             if not insider_result.error and insider_result.transactions:
@@ -52,36 +53,45 @@ class StrategicForecaster:
                 )
                 df_insider.set_index("transactionDate", inplace=True)
                 # Aggregate transaction values by day
+
                 daily_transactions = df_insider["value"].resample("D").sum()
                 data["insider_trading_volume"] = daily_transactions
                 console.print(
                     f"  - [green]Loaded {len(df_insider)} insider transactions for {self.ticker}.[/green]"
                 )
         # Narrative Analyzer Data
+
         if self.narrative_query:
             narrative_data = track_narrative(self.narrative_query)
             if narrative_data:
                 df_narrative = pd.DataFrame(narrative_data)
                 # Convert sentiment to a numerical score
+
                 sentiment_map = {"positive": 1, "neutral": 0, "negative": -1}
                 df_narrative["sentiment_score"] = (
                     df_narrative["sentiment"].str.lower().map(sentiment_map).fillna(0)
                 )
                 # For simplicity, we'll just take the mean sentiment for now.
+
                 mean_sentiment = df_narrative["sentiment_score"].mean()
-                
+
                 # Align the new sentiment data with existing data streams by reusing their index.
                 # This prevents misalignment issues when creating the DataFrame.
+
                 if data:
                     align_index = next(iter(data.values())).index
-                    data["narrative_sentiment"] = pd.Series(mean_sentiment, index=align_index)
+                    data["narrative_sentiment"] = pd.Series(
+                        mean_sentiment, index=align_index
+                    )
                 else:
                     # If no other data streams exist, create a new Series with a single value.
+
                     data["narrative_sentiment"] = pd.Series([mean_sentiment])
                 console.print(
                     f"  - [green]Analyzed narrative for '{self.narrative_query}'.[/green]"
                 )
         # Social Media Monitor Data
+
         if self.twitter_keywords:
             twitter_result = monitor_twitter_stream(self.twitter_keywords, limit=20)
             if not twitter_result.error and twitter_result.tweets:
@@ -148,6 +158,7 @@ class StrategicForecaster:
         for indicator in indicators:
             console.print(f"    - {indicator}")
         # Save the forecast to the database
+
         save_forecast_to_db(scenario, likelihood, impact, indicators)
 
     def analyze_trends(self):
@@ -178,11 +189,13 @@ class StrategicForecaster:
 forecaster_app = typer.Typer()
 
 
-@forecaster_app.command(name="run")
-def run_forecast(
-    scenario: str = typer.Argument(
-        ..., help="The 'what-if' scenario to model."
-    ),
+# --- FIX: Renamed function 'run_forecast' to 'run' ---
+# --- and removed explicit 'name="run"' from the decorator ---
+
+
+@forecaster_app.command()
+def run(
+    scenario: str = typer.Argument(..., help="The 'what-if' scenario to model."),
     ticker: Optional[str] = typer.Option(
         None, "--ticker", help="Stock ticker for FININT data."
     ),

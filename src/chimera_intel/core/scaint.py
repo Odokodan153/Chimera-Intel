@@ -49,6 +49,7 @@ def analyze_repo(
     repo_url: Annotated[
         str,
         typer.Option(
+            ...,  
             "--repo-url",
             "-r",
             help="The URL of the public Git repository to analyze.",

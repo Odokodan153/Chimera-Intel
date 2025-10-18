@@ -1,10 +1,13 @@
 from typer.testing import CliRunner
 from unittest.mock import patch
+import typer  # Import typer
 
 # Import the application instance and the SWOTAnalysisResult schema
-
 from chimera_intel.core.red_team import red_team_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
+
+app = typer.Typer()
+app.add_typer(red_team_app)
 
 runner = CliRunner()
 
@@ -28,8 +31,7 @@ def test_generate_scenario_success():
         )
 
         # --- Run Command ---
-
-        result = runner.invoke(red_team_app, ["generate", "TestCorp"])
+        result = runner.invoke(app, ["red-team", "generate", "TestCorp"])
 
         # --- Assertions ---
 
@@ -52,8 +54,7 @@ def test_generate_scenario_no_data():
         mock_get_data.return_value = None  # Simulate no data found
 
         # --- Run Command ---
-
-        result = runner.invoke(red_team_app, ["generate", "nonexistent-target"])
+        result = runner.invoke(app, ["red-team", "generate", "nonexistent-target"])
 
         # --- Assertions ---
 
@@ -71,8 +72,7 @@ def test_generate_scenario_no_api_key():
         mock_api_keys.google_api_key = None  # Simulate missing API key
 
         # --- Run Command ---
-
-        result = runner.invoke(red_team_app, ["generate", "any-target"])
+        result = runner.invoke(app, ["red-team", "generate", "any-target"])
 
         # --- Assertions ---
 

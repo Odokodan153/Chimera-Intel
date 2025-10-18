@@ -79,8 +79,11 @@ def map_cves_to_ttp(cve_ids: List[str]) -> TTPMappingResult:
 ttp_app = typer.Typer()
 
 
-@ttp_app.command("map-cve")
-def run_cve_mapping(
+# --- FIX: Renamed function to 'map_cve' and removed explicit name from decorator ---
+
+
+@ttp_app.command()
+def map_cve(
     cve_ids: List[str] = typer.Argument(
         ..., help="One or more CVE IDs to map (e.g., CVE-2021-44228)."
     ),

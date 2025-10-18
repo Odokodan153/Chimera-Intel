@@ -9,6 +9,7 @@ from .utils import save_or_print_results
 from .database import save_scan_to_db
 import typer
 import logging
+import json
 from typing import List
 import asyncio
 import os
@@ -67,20 +68,16 @@ social_osint_app = typer.Typer()
 
 @social_osint_app.command("run")
 def run_social_osint_scan(
-    username: str = typer.Argument(..., help="The username to search for."),
+    username: str = typer.Argument(
+        ..., metavar="USERNAME", help="The username to search for."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """
     Searches for a username across hundreds of social networks.
-
-    Args:
-        username (str): The username to search for.
-        output_file (str): Optional path to save the results to a JSON file.
     """
-    # Fix for running in an environment with an existing event loop (like pytest-asyncio)
-
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -88,6 +85,10 @@ def run_social_osint_scan(
         asyncio.set_event_loop(loop)
     results_model = loop.run_until_complete(find_social_profiles(username))
     results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)
+
+    if output_file:
+        save_or_print_results(results_dict, output_file)
+    else:
+        typer.echo(json.dumps(results_dict, indent=2))
     save_scan_to_db(target=username, module="social_osint", data=results_dict)
     logger.info("Social media OSINT scan complete for %s", username)

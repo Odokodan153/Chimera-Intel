@@ -4,6 +4,7 @@ import logging
 import socket
 import csv
 from typing import Dict, Any, Optional
+import json  # Import json here or inside each function
 
 # ADS-B and Mode-S decoding
 
@@ -227,7 +228,11 @@ def run_live_scan(
     """Monitors and decodes a live stream of aircraft signals (Mode-S/ADS-B)."""
     results = run_sigint_analysis(ref_lat, ref_lon, host, port, duration)
     final_results = {icao: data for icao, data in results.items() if data}
-    save_or_print_results(final_results, output_file)
+
+    if output_file:
+        save_or_print_results(final_results, output_file)
+    else:
+        typer.echo(json.dumps(final_results, indent=2))
     if final_results:
         save_scan_to_db(
             target="live_aircraft_signals", module="sigint", data=final_results
@@ -254,7 +259,11 @@ def decode_adsb_file(
     if not results:
         raise typer.Exit(code=1)
     final_results = {icao: data for icao, data in results.items() if data}
-    save_or_print_results(final_results, output_file)
+
+    if output_file:
+        save_or_print_results(final_results, output_file)
+    else:
+        typer.echo(json.dumps(final_results, indent=2))
     if final_results:
         save_scan_to_db(
             target=capture_file, module="sigint_adsb_capture", data=final_results
@@ -274,7 +283,10 @@ def decode_ais_file(
     results = decode_ais_from_capture(capture_file)
     if not results:
         raise typer.Exit(code=1)
-    save_or_print_results(results, output_file)
+    if output_file:
+        save_or_print_results(results, output_file)
+    else:
+        typer.echo(json.dumps(results, indent=2))
     if results:
         save_scan_to_db(target=capture_file, module="sigint_ais_capture", data=results)
 

@@ -1,12 +1,18 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
+import typer 
 
 from chimera_intel.core.physical_osint import (
     find_physical_locations,
     physical_osint_app,
 )
 from chimera_intel.core.schemas import PhysicalSecurityResult, PhysicalLocation
+
+# We assume the main CLI adds it with the name "physical"
+
+app = typer.Typer()
+app.add_typer(physical_osint_app, name="physical")
 
 runner = CliRunner()
 
@@ -100,9 +106,7 @@ class TestPhysicalOsint(unittest.TestCase):
             ],
         )
 
-        # Act
-
-        result = runner.invoke(physical_osint_app, ["locations", "Test Corp"])
+        result = runner.invoke(app, ["physical", "locations", "Test Corp"])
 
         # Assert
 
@@ -137,9 +141,7 @@ class TestPhysicalOsint(unittest.TestCase):
             query="ProjectCorp", locations_found=[]
         )
 
-        # Act
-
-        result = runner.invoke(physical_osint_app, ["locations"])
+        result = runner.invoke(app, ["physical", "locations"])
 
         # Assert
 

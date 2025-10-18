@@ -86,9 +86,7 @@ def test_add_rule_success(mock_db_connection):
     mock_conn.commit.assert_called_once()
 
 
-@patch("chimera_intel.core.response.SLACK_WEBHOOK_URL", "https://dummy-webhook")
-@patch("chimera_intel.core.response.send_slack_notification")
-def test_simulate_event_rule_found(mock_send_slack, mock_db_connection):
+def test_simulate_event_rule_found(mock_db_connection):
     """
     Tests the 'simulate-event' command for a trigger that has a matching rule.
     """

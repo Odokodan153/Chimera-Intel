@@ -37,8 +37,10 @@ def calculate_risk(
             for vuln in vulnerabilities:
                 # Check for severity and add to impact
 
-                if hasattr(vuln, "severity"):
-                    severity = str(getattr(vuln, "severity")).lower()
+                # Check for severity (and handle None)
+
+                if hasattr(vuln, "severity") and vuln.severity:
+                    severity = str(vuln.severity).lower()
                     if severity == "critical":
                         severity_impact += 1.5  # Boost for critical
                     elif severity == "high":
@@ -48,7 +50,9 @@ def calculate_risk(
 
         if threat_actors:
             probability = min(1.0, probability + len(threat_actors) * 0.1)
-        risk_score = probability * impact
+        # Round the risk score to avoid floating-point precision errors
+
+        risk_score = round(probability * impact, 2)
 
         if risk_score >= 7.0:
             risk_level = "Critical"
@@ -167,9 +171,14 @@ async def assess_risk_from_indicator(
             if family:
                 impact = max(impact, 8.0)
     threat = "Malicious Activity" if threat_intel.is_malicious else "Benign"
-    
+
     vulnerabilities = [
-        Vulnerability(cve=v.id, cvss_score=v.cvss_score, description=v.title)
+        Vulnerability(
+            cve=v.id,
+            cvss_score=v.cvss_score,
+            description=v.title,
+            severity=getattr(v, "severity", None),
+        )
         for v in cve_vulnerabilities
     ]
 
@@ -234,7 +243,7 @@ def run_indicator_assessment(
         vuln_table.add_column("CVE ID", style="yellow")
         vuln_table.add_column("CVSS Score", style="red")
         for v in result.vulnerabilities:
-            vuln_table.add_row(v.id, str(v.cvss_score))
+            vuln_table.add_row(v.cve, str(v.cvss_score))
         console.print(vuln_table)
     if result.threat_actors:
         actor_table = Table(title="Associated Threat Actors")
