@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from chimera_intel.core.response import response_app
 
 # Create a CliRunner instance to invoke the Typer app
