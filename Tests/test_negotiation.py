@@ -1,6 +1,6 @@
 import pytest
-import httpx
 import asyncio  # Import asyncio
+from fastapi.testclient import TestClient  # <-- CORRECTED IMPORT
 from chimera_intel.core.negotiation import NegotiationEngine
 from webapp.main import app
 
@@ -40,8 +40,9 @@ def test_recommend_tactic_with_history(engine):
 
 
 # Updated httpx client setup
+# FIX: Use TestClient from fastapi.testclient, not httpx.Client
 
-client = httpx.Client(app=app, base_url="http://test")
+client = TestClient(app=app, base_url="http://test")
 
 
 def test_create_negotiation():
@@ -66,6 +67,7 @@ def test_analyze_message_for_negotiation():
     neg_response = client.post(
         "/api/v1/negotiations", json={"subject": "Message Test", "participants": []}
     )
+    assert neg_response.status_code == 200  # Ensure creation was successful
     negotiation_id = neg_response.json()["id"]
 
     # Now, post a message to it
@@ -150,7 +152,7 @@ def test_recommend_tactic_with_negative_history(engine):
     ]
     # Updated to call async method
 
-    recommendation = asyncio.run(engine.recommend_tactic_async(history))
+    recommendation = asyncio.run(engine.recommend_ttactic_async(history))
     assert "De-escalate" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
 
