@@ -1,9 +1,6 @@
 import pytest
-import typer
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
-import os
-import cv2
 import numpy as np
 
 # ---: Import the MAIN app and the app to be tested ---
