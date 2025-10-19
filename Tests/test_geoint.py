@@ -111,12 +111,13 @@ class TestGeoint(unittest.TestCase):
         )
 
         # Act
+        # FIX: Removed "run" from the list
 
-        result = runner.invoke(geoint_app, ["run", "example.com"])
+        result = runner.invoke(geoint_app, ["example.com"])
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_resolve.assert_called_with(
             "example.com", required_assets=["company_name", "domain"]
         )
@@ -131,12 +132,18 @@ class TestGeoint(unittest.TestCase):
         mock_resolve.side_effect = typer.Exit(code=1)
 
         # Act
+        # FIX: Removed "run" and "example.com" to test the no-target-provided path
 
-        result = runner.invoke(geoint_app, ["run", "example.com"])
+        result = runner.invoke(geoint_app, [])
 
         # Assert
 
         self.assertEqual(result.exit_code, 1)
+        # Check that resolve_target was called with no target
+
+        mock_resolve.assert_called_with(
+            None, required_assets=["company_name", "domain"]
+        )
 
 
 if __name__ == "__main__":

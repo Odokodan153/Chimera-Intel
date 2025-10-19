@@ -73,13 +73,12 @@ class TestGrapher(unittest.TestCase):
 
         with patch("builtins.open", mock_open(read_data=json_content)):
             # Act
+            # FIX: Removed "create" from the list
 
-            result = runner.invoke(
-                graph_app, ["create", "test.json", "--output", "output.html"]
-            )
+            result = runner.invoke(graph_app, ["test.json", "--output", "output.html"])
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_generate.assert_called_once()
         # Check that the function was called with the parsed data and the correct output path
 
@@ -95,11 +94,12 @@ class TestGrapher(unittest.TestCase):
 
         with patch("builtins.open", mock_open(read_data=json_content)):
             # Act
+            # FIX: Removed "create" from the list
 
-            result = runner.invoke(graph_app, ["create", "test.json"])
+            result = runner.invoke(graph_app, ["test.json"])
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_generate.assert_called_once()
         # Verify the default output path is based on the domain name
 
@@ -108,8 +108,9 @@ class TestGrapher(unittest.TestCase):
     def test_cli_create_graph_file_not_found(self):
         """Tests the CLI command when the input JSON file does not exist."""
         # Act
+        # FIX: Removed "create" from the list
 
-        result = runner.invoke(graph_app, ["create", "nonexistent.json"])
+        result = runner.invoke(graph_app, ["nonexistent.json"])
 
         # Assert
 
@@ -124,8 +125,9 @@ class TestGrapher(unittest.TestCase):
 
         with patch("builtins.open", mock_open(read_data=invalid_json_content)):
             # Act
+            # FIX: Removed "create" from the list
 
-            result = runner.invoke(graph_app, ["create", "test.json"])
+            result = runner.invoke(graph_app, ["test.json"])
         # Assert
 
         self.assertEqual(result.exit_code, 1)

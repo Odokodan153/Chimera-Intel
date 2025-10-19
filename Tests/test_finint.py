@@ -86,12 +86,13 @@ class TestFinint(unittest.TestCase):
         )
 
         # Act
+        # FIX: Removed "track-insiders" from the list
 
-        result = runner.invoke(finint_app, ["track-insiders", "--stock-symbol", "MSFT"])
+        result = runner.invoke(finint_app, ["--stock-symbol", "MSFT"])
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_get_insider.assert_called_with("MSFT")
         self.assertIn("No insider trading data found for this symbol.", result.stdout)
 
@@ -121,12 +122,13 @@ class TestFinint(unittest.TestCase):
         )
 
         # Act
+        # FIX: Removed "track-insiders" from the list
 
-        result = runner.invoke(finint_app, ["track-insiders"])
+        result = runner.invoke(finint_app, [])
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         mock_resolve_target.assert_called_with(None, required_assets=["stock_symbol"])
         mock_get_insider.assert_called_with("GOOGL")
         self.assertIn("Sundar Pichai", result.stdout)
@@ -139,8 +141,9 @@ class TestFinint(unittest.TestCase):
         mock_resolve_target.side_effect = typer.Exit(code=1)
 
         # Act
+        # FIX: Removed "track-insiders" from the list
 
-        result = runner.invoke(finint_app, ["track-insiders"])
+        result = runner.invoke(finint_app, [])
 
         # Assert
 
