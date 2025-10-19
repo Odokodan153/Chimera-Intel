@@ -2,6 +2,7 @@ import unittest
 from chimera_intel.core.negotiation import NegotiationEngine
 from chimera_intel.core.llm_interface import MockLLMInterface
 
+
 class TestNegotiationRL(unittest.TestCase):
 
     def setUp(self):
@@ -20,6 +21,9 @@ class TestNegotiationRL(unittest.TestCase):
         """
         Tests the get_reward function to ensure it calculates rewards as expected.
         """
+        # Added the required 'history' argument
+
+        history = []
         positive_state = {"last_message_sentiment": "positive"}
         negative_state = {"last_message_sentiment": "negative"}
         neutral_state = {"last_message_sentiment": "neutral"}
@@ -27,12 +31,13 @@ class TestNegotiationRL(unittest.TestCase):
         accept_state = {"last_message_content": "I accept your offer."}
         reject_state = {"last_message_content": "I must reject that offer."}
 
-        self.assertEqual(self.engine.get_reward(positive_state), 0.2)
-        self.assertEqual(self.engine.get_reward(negative_state), -0.2)
-        self.assertEqual(self.engine.get_reward(neutral_state), 0)
-        self.assertGreater(self.engine.get_reward(offer_state), 0)
-        self.assertGreater(self.engine.get_reward(accept_state), 0)
-        self.assertLess(self.engine.get_reward(reject_state), 0)
+        self.assertEqual(self.engine.get_reward(positive_state, history), 0.2)
+        self.assertEqual(self.engine.get_reward(negative_state, history), -0.2)
+        self.assertEqual(self.engine.get_reward(neutral_state, history), 0)
+        self.assertGreater(self.engine.get_reward(offer_state, history), 0)
+        self.assertGreater(self.engine.get_reward(accept_state, history), 0)
+        self.assertLess(self.engine.get_reward(reject_state, history), 0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

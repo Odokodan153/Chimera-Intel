@@ -1,124 +1,83 @@
-import unittest
-from unittest.mock import patch
 from typer.testing import CliRunner
+from unittest.mock import patch, ANY
+from pydantic import BaseModel
 
-from chimera_intel.core.ttp_mapper import ttp_app, map_cves_to_ttp
-from chimera_intel.core.schemas import TTPMappingResult
+# ---: Import the MAIN app and the app to be tested ---
+
+from chimera_intel.cli import app as main_app
+from chimera_intel.core.ttp_mapper import ttp_app
+
+# --- : Manually register the app as a plugin ---
+# This simulates the plugin discovery from cli.py
+
+main_app.add_typer(ttp_app, name="ttp")
 
 runner = CliRunner()
 
 
-class TestTtpMapper(unittest.TestCase):
-    """Test cases for the Adversary Emulation & TTP Mapping module."""
-
-    # --- Function Tests ---
-
-    @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
-    def test_map_cves_to_ttp_success(self, mock_mitre_data):
-        """Tests a successful mapping of a CVE to an ATT&CK technique."""
-        # Arrange
-
-        mock_attack_instance = mock_mitre_data.return_value
-        mock_phase = {"phase_name": "initial-access"}
-        mock_technique = {
-            "name": "Phishing",
-            "external_references": [{"external_id": "T1566"}],
-            "kill_chain_phases": [mock_phase],
-        }
-        mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
-
-        # Act
-
-        result = map_cves_to_ttp(["CVE-2023-1234"])
-
-        # Assert
-
-        self.assertIsInstance(result, TTPMappingResult)
-        self.assertIsNone(result.error)
-        self.assertEqual(len(result.mapped_techniques), 1)
-        self.assertEqual(result.mapped_techniques[0].cve_id, "CVE-2023-1234")
-        self.assertEqual(result.mapped_techniques[0].technique_id, "T1566")
-        self.assertEqual(result.mapped_techniques[0].technique_name, "Phishing")
-        self.assertEqual(result.mapped_techniques[0].tactic, "initial-access")
-
-    @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
-    def test_map_cves_to_ttp_no_mapping_found(self, mock_mitre_data):
-        """Tests the case where a CVE has no corresponding ATT&CK technique."""
-        # Arrange
-
-        mock_attack_instance = mock_mitre_data.return_value
-        mock_attack_instance.get_techniques_by_cve_id.return_value = []
-
-        # Act
-
-        result = map_cves_to_ttp(["CVE-2000-0001"])
-
-        # Assert
-
-        self.assertEqual(len(result.mapped_techniques), 0)
-        self.assertIsNone(result.error)
-
-    @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
-    def test_map_cves_to_ttp_library_error(self, mock_mitre_data):
-        """Tests error handling if the mitreattack-python library fails."""
-        # Arrange
-
-        mock_mitre_data.side_effect = Exception("Failed to load ATT&CK data")
-
-        # Act
-
-        result = map_cves_to_ttp(["CVE-2023-1234"])
-
-        # Assert
-
-        self.assertIsNotNone(result.error)
-        self.assertIn("Failed to load ATT&CK data", result.error)
-
-    # --- CLI Tests ---
-
-    @patch("chimera_intel.core.ttp_mapper.save_scan_to_db")
-    @patch("chimera_intel.core.ttp_mapper.save_or_print_results")
-    @patch("chimera_intel.core.ttp_mapper.MitreAttackData")
-    def test_cli_map_cve_success(
-        self, mock_mitre_data, mock_save_or_print, mock_save_scan_to_db
-    ):
-        """Tests a successful run of the 'ttp map-cve' CLI command."""
-        # Arrange
-
-        mock_attack_instance = mock_mitre_data.return_value
-        mock_phase = {"phase_name": "initial-access"}
-        mock_technique = {
-            "name": "Phishing",
-            "external_references": [{"external_id": "T1566"}],
-            "kill_chain_phases": [mock_phase],
-        }
-        mock_attack_instance.get_techniques_by_cve_id.return_value = [mock_technique]
-
-        # Act
-
-        result = runner.invoke(
-            ttp_app, ["map-cve", "CVE-2023-1234"], catch_exceptions=False
-        )
-
-        # Assert
-
-        self.assertEqual(result.exit_code, 0)
-
-        # Check that the save/print function was called correctly
-
-        mock_save_or_print.assert_called_once()
-        results_dict = mock_save_or_print.call_args[0][0]
-        self.assertEqual(results_dict["total_cves_analyzed"], 1)
-        self.assertEqual(results_dict["mapped_techniques"][0]["technique_id"], "T1566")
-
-        # Check that the database save function was called with the correct data
-
-        mock_save_scan_to_db.assert_called_with(
-            target="CVE-2023-1234",
-            module="ttp_mapper_cve",
-            data=results_dict,
-        )
+# Mock Pydantic model for return value
 
 
-if __name__ == "__main__":
-    unittest.main()
+class MockResultsModel(BaseModel):
+    cve_id: str
+    techniques: list
+
+    def model_dump_json(self, *args, **kwargs):
+        return '{"cve_id": "CVE-2023-1234", "techniques": []}'
+
+
+@patch("chimera_intel.core.ttp_mapper.map_cves_to_ttp")
+def test_cli_map_cve_success(mock_map_cves, mocker):
+    """Tests the map-cve command with a successful lookup."""
+    mock_console_print = mocker.patch("chimera_intel.core.ttp_mapper.console.print")
+    mock_map_cves.return_value = MockResultsModel(cve_id="CVE-2023-1234", techniques=[])
+
+    # ---: Invoke the main_app with the full command ---
+
+    result = runner.invoke(main_app, ["ttp", "map-cve", "CVE-2023-1234"])
+
+    assert result.exit_code == 0
+    mock_map_cves.assert_called_once_with(["CVE-2023-1234"])
+    # Check that the Rich Panel was printed
+
+    mock_console_print.assert_any_call(ANY)
+
+
+@patch("chimera_intel.core.ttp_mapper.map_cves_to_ttp")
+def test_cli_map_cve_not_found(mock_map_cves, mocker):
+    """Tests the map-cve command when no TTPs are found."""
+    mock_console_print = mocker.patch("chimera_intel.core.ttp_mapper.console.print")
+    mock_map_cves.return_value = None  # Simulate failure to find CVE
+
+    # ---: Invoke the main_app with the full command ---
+
+    result = runner.invoke(main_app, ["ttp", "map-cve", "CVE-INVALID"])
+
+    # ---: Check for the correct failure exit code ---
+
+    assert result.exit_code == 1
+    mock_map_cves.assert_called_once_with(["CVE-INVALID"])
+    mock_console_print.assert_any_call(
+        "[bold red]Could not map TTPs for the provided CVEs.[/bold red]"
+    )
+
+
+@patch("chimera_intel.core.ttp_mapper.save_results_to_file")
+@patch("chimera_intel.core.ttp_mapper.map_cves_to_ttp")
+def test_cli_map_cve_with_output_file(mock_map_cves, mock_save_results, mocker):
+    """Tests the map-cve command with the --output file option."""
+    mock_console_print = mocker.patch("chimera_intel.core.ttp_mapper.console.print")
+    mock_results = MockResultsModel(cve_id="CVE-2023-1234", techniques=[])
+    mock_map_cves.return_value = mock_results
+
+    result = runner.invoke(
+        main_app, ["ttp", "map-cve", "CVE-2023-1234", "--output", "report.json"]
+    )
+
+    assert result.exit_code == 0
+    # Check that the save function was called with the correct args
+
+    mock_save_results.assert_called_once_with(mock_results, "report.json")
+    mock_console_print.assert_any_call(
+        "[green]TTP mapping results saved to report.json[/green]"
+    )

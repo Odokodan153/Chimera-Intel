@@ -104,7 +104,3 @@ def analyze_wifi(
         console.print(f"An error occurred during Wi-Fi analysis: {e}")
         raise typer.Exit(code=1)
     console.print("\nWireless network analysis complete.")
-
-
-if __name__ == "__main__":
-    wifi_analyzer_app()

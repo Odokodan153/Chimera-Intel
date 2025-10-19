@@ -1,12 +1,15 @@
 import pytest
 from typer.testing import CliRunner
 
-# The application instance to be tested
+# ---: Import the MAIN app and the app to be tested ---
 
+from chimera_intel.cli import app as main_app
 from chimera_intel.core.temporal_analyzer import temporal_app
 from chimera_intel.core.schemas import ShiftingIdentityResult
 
-# Create a CliRunner for invoking the app in tests
+# ---: Manually register the app as a plugin ---
+
+main_app.add_typer(temporal_app, name="temporal")
 
 runner = CliRunner()
 
@@ -26,8 +29,6 @@ def mock_get_historical_snapshots(mocker):
     A pytest fixture that mocks the core data gathering function,
     preventing actual network calls.
     """
-    # Create a mock result object that the application expects
-
     mock_result = ShiftingIdentityResult(
         domain="example.com",
         total_snapshots_found=1,
@@ -39,12 +40,17 @@ def mock_get_historical_snapshots(mocker):
             }
         ],
     )
-    # Patch the function and make it return our mock result
-
     return mocker.patch(
         "chimera_intel.core.temporal_analyzer.get_historical_snapshots",
         return_value=mock_result,
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_output_functions(mocker):
+    """Mocks functions that print, save files, or write to the DB."""
+    mocker.patch("chimera_intel.core.temporal_analyzer.save_or_print_results")
+    mocker.patch("chimera_intel.core.temporal_analyzer.save_scan_to_db")
 
 
 def test_cli_snapshots_with_argument(
@@ -54,22 +60,18 @@ def test_cli_snapshots_with_argument(
     Tests the 'snapshots' command when a domain is provided as a direct argument.
     """
     # --- Execute ---
-    # The command is 'snapshots', and 'example.com' is the argument
+    # ---: Invoke the main_app with the full command ---
 
-    result = runner.invoke(temporal_app, ["snapshots", "example.com"])
+    result = runner.invoke(main_app, ["temporal", "snapshots", "example.com"])
 
     # --- Assert ---
 
     assert result.exit_code == 0
-    # Verify that the target resolver was called with the provided domain
-
     mock_resolve_target.assert_called_once_with(
         "example.com", required_assets=["domain"]
     )
-    # Verify that the main logic was called with the resolved domain
-
     mock_get_historical_snapshots.assert_called_with("example.com")
-    # Check for expected output
+    # Original assertions of absence are fine, as we mock the print function
 
     assert "Fetching 1 snapshots" not in result.stdout
     assert "http://example.com" not in result.stdout
@@ -81,31 +83,42 @@ def test_cli_snapshots_with_project(mock_resolve_target, mock_get_historical_sna
     active project context.
     """
     # --- Execute ---
-    # We call the 'snapshots' command without a domain argument
+    # ---: Invoke the main_app with the full command ---
 
-    result = runner.invoke(temporal_app, ["snapshots"])
+    result = runner.invoke(main_app, ["temporal", "snapshots"])
 
     # --- Assert ---
 
     assert result.exit_code == 0
-    # Verify the resolver was called to get the domain from the project
+    # --- : The mock assertion is now correct ---
 
     mock_resolve_target.assert_called_once_with(None, required_assets=["domain"])
-    # Verify the main logic was called with the domain returned by the resolver
-
     mock_get_historical_snapshots.assert_called_with("example.com")
     assert "Fetching 1 snapshots" not in result.stdout
 
 
-def test_cli_snapshots_invalid_domain():
+def test_cli_snapshots_invalid_domain(mocker, mock_output_functions):
     """
     Tests that the 'snapshots' command fails correctly when given an invalid domain format.
     """
-    # --- Execute ---
+    # --- Setup ---
+    # Mock resolve_target to return the invalid domain for validation
 
-    result = runner.invoke(temporal_app, ["snapshots", "invalid-domain"])
+    mock_resolve = mocker.patch(
+        "chimera_intel.core.temporal_analyzer.resolve_target",
+        return_value="invalid-domain",
+    )
+
+    # --- Execute ---
+    # ---: Invoke the main_app with the full command ---
+
+    result = runner.invoke(main_app, ["temporal", "snapshots", "invalid-domain"])
 
     # --- Assert ---
+    # ---: The exit code is 1 (logic) not 2 (parsing) ---
 
     assert result.exit_code == 1
     assert "is not a valid domain format" in result.stdout
+    # Verify the resolver was called correctly
+
+    mock_resolve.assert_called_once_with("invalid-domain", required_assets=["domain"])

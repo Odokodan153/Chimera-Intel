@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
+import typer  
 
 from chimera_intel.core.weak_signal_analyzer import (
     generate_weak_signals,
@@ -8,6 +9,9 @@ from chimera_intel.core.weak_signal_analyzer import (
     wsa_app,
 )
 from chimera_intel.core.schemas import WeakSignal
+
+app = typer.Typer()
+app.add_typer(wsa_app, name="wsa")
 
 runner = CliRunner()
 
@@ -85,7 +89,7 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
             }
         }
 
-        result = runner.invoke(wsa_app, ["run", "example.com"])
+        result = runner.invoke(app, ["wsa", "run", "example.com"])
 
         self.assertEqual(result.exit_code, 0)
 
@@ -108,7 +112,7 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
         """Tests the CLI command when no historical data is found."""
         mock_resolve.return_value = "example.com"
 
-        result = runner.invoke(wsa_app, ["run", "example.com"])
+        result = runner.invoke(app, ["wsa", "run", "example.com"])
 
         self.assertEqual(result.exit_code, 1)
 
