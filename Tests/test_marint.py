@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock
 
 # The application instance to be tested
+
 from chimera_intel.core.marint import marint_app
 
 runner = CliRunner()
@@ -15,6 +16,7 @@ def mock_websockets(mocker):
     mock_websocket = AsyncMock()
 
     # Simulate receiving a valid JSON message
+
     message = {
         "MessageType": "PositionReport",
         "Message": {
@@ -29,6 +31,7 @@ def mock_websockets(mocker):
     }
 
     # Create an async iterator for the mock
+
     async def message_generator():
         yield json.dumps(message)
 
@@ -42,11 +45,12 @@ def test_track_vessel_success(mocker, mock_websockets):
     Tests the track-vessel command with a successful API response.
     """
     # Mock the API_KEYS to provide a fake API key
+
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", "fake_api_key")
 
-    # We run the command with the --test flag to prevent an infinite loop
-    # and provide the IMO number as input to the prompt.
-    result = runner.invoke(marint_app, ["track-vessel", "--test"], input="9450635")
+    # Pass the '--imo' option explicitly to avoid the prompt
+
+    result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635", "--test"])
 
     assert result.exit_code == 0
     assert "Starting live tracking for vessel with IMO: 9450635..." in result.output
@@ -59,10 +63,12 @@ def test_track_vessel_no_api_key(mocker):
     Tests the track-vessel command when the API key is missing.
     """
     # Mock the API_KEYS to return None for the API key
+
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", None)
 
-    # Provide the IMO number as input to the prompt.
-    result = runner.invoke(marint_app, ["track-vessel"], input="9450635")
+    # Pass the '--imo' option explicitly here as well
+
+    result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635"])
 
     assert result.exit_code == 1
     assert "Error: AISSTREAM_API_KEY not found in .env file." in result.output

@@ -101,15 +101,14 @@ class TestLegint(unittest.TestCase):
         expected_dict = report.model_dump(exclude_none=True, by_alias=True)
 
         # Act
+        # Corrected: Pass options directly, not the command name
 
-        result = runner.invoke(
-            legint_app, ["docket-search", "--company-name", "TestCorp"]
-        )
+        result = runner.invoke(legint_app, ["--company-name", "TestCorp"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIsNone(result.exception)
+        self.assertIsNone(result.exception)  # Added this check
         mock_search.assert_called_with("TestCorp")
         mock_save_print.assert_called_with(expected_dict, None)
         mock_save_db.assert_called_with(
@@ -132,13 +131,14 @@ class TestLegint(unittest.TestCase):
         )
 
         # Act
+        # Corrected: Pass no company_name to use active project
 
-        result = runner.invoke(legint_app, ["docket-search"])
+        result = runner.invoke(legint_app, [])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIsNone(result.exception)
+        self.assertIsNone(result.exception)  # Added this check
         mock_resolve_target.assert_called_with(None, required_assets=["company_name"])
         mock_search.assert_called_with("ProjectCorp")
 
