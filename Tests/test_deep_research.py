@@ -8,7 +8,6 @@ from chimera_intel.core.deep_research import conduct_deep_research, deep_researc
 from chimera_intel.core.schemas import (
     DeepResearchResult,
     KnowledgeGraph,
-    TargetProfile,
     PESTAnalysis,
 )
 
@@ -86,7 +85,7 @@ class TestDeepResearch(unittest.TestCase):
         # --- Assert ---
 
         self.assertIsInstance(result, DeepResearchResult)
-        self.assertEqual(result.target_profile.name, "Quantum Computing")
+        self.assertEqual(result.target_profile.get("name"), "Quantum Computing")
         self.assertEqual(len(result.intelligence_findings), 1)
         self.assertEqual(
             result.intelligence_findings[0].summary,
@@ -165,9 +164,10 @@ class TestDeepResearch(unittest.TestCase):
         mock_future = asyncio.Future()
         mock_future.set_result(
             DeepResearchResult(
-                target_profile=TargetProfile(name="Test Topic", description="A test."),
+                topic="Test Topic",
+                target_profile={"name": "Test Topic", "description": "A test."},
                 strategic_summary="Summary",
-                pest_analysis=PESTAnalysis(),
+                pest_analysis=PESTAnalysis(political=[], economic=[], social=[], technological=[]),
                 intelligence_gaps=[],
                 recommended_actions=[],
                 intelligence_findings=[],
