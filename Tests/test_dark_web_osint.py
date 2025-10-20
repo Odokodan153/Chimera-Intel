@@ -8,7 +8,7 @@ import typer  # Import typer for typer.Exit
 import sys  # Import sys for stderr
 
 from chimera_intel.core.dark_web_osint import search_dark_web_engine, dark_web_app
-from chimera_intel.core.schemas import DarkWebScanResult, DarkWebResult, ProjectConfig
+from chimera_intel.core.schemas import DarkWebScanResult, DarkWebResult
 
 runner = CliRunner()
 

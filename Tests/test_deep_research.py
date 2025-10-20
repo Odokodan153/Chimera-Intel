@@ -7,7 +7,6 @@ from typer.testing import CliRunner
 from chimera_intel.core.deep_research import conduct_deep_research, deep_research_app
 from chimera_intel.core.schemas import (
     DeepResearchReport,
-    IntelFinding,
     KnowledgeGraph,
     TargetProfile,
     PESTAnalysis,
