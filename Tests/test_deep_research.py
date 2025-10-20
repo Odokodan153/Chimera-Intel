@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from chimera_intel.core.deep_research import conduct_deep_research, deep_research_app
 from chimera_intel.core.schemas import (
-    DeepResearchReport,
+    DeepResearchResult,
     KnowledgeGraph,
     TargetProfile,
     PESTAnalysis,
@@ -85,7 +85,7 @@ class TestDeepResearch(unittest.TestCase):
 
         # --- Assert ---
 
-        self.assertIsInstance(result, DeepResearchReport)
+        self.assertIsInstance(result, DeepResearchResult)
         self.assertEqual(result.target_profile.name, "Quantum Computing")
         self.assertEqual(len(result.intelligence_findings), 1)
         self.assertEqual(
@@ -164,7 +164,7 @@ class TestDeepResearch(unittest.TestCase):
         # Must use asyncio.Future for async mocks called by sync CLI
         mock_future = asyncio.Future()
         mock_future.set_result(
-            DeepResearchReport(
+            DeepResearchResult(
                 target_profile=TargetProfile(name="Test Topic", description="A test."),
                 strategic_summary="Summary",
                 pest_analysis=PESTAnalysis(),
