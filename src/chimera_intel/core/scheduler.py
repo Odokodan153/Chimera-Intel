@@ -31,15 +31,7 @@ def add_job(
 ):
     """Adds a job to the APScheduler."""
     if trigger == "cron":
-        # Parse the schedule manually to preserve the correct argument order
-        minute, hour, day, month, day_of_week = cron_schedule.split()
-        cron_trigger = CronTrigger(
-            minute=minute,
-            hour=hour,
-            day=day,
-            month=month,
-            day_of_week=day_of_week,
-        )
+        cron_trigger = CronTrigger.from_crontab(cron_schedule)
 
         scheduler.add_job(
             func=func,

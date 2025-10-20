@@ -35,7 +35,7 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
 
     aggregated_data = get_aggregated_data_for_target(target)
     if not aggregated_data:
-        raise typer.Exit()
+        raise typer.Exit(code=0)
     # Filter for modules that provide cultural context
 
     cultural_data_sources = {
@@ -56,7 +56,7 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
         console.print(
             f"[yellow]Warning:[/] No relevant data sources (social media, news, HR intel) found for '{target}' to analyze cultural narrative."
         )
-        raise typer.Exit()
+        raise typer.Exit(code=0)
     prompt = f"""
     As a cultural intelligence analyst, analyze the following data collected on {target}.
     Based on this information, provide a summary of the dominant cultural narratives, sentiments, and values expressed.
@@ -91,7 +91,8 @@ def run_cultint_analysis(
             )
             console.print(result["cultural_narrative_analysis"])
     except typer.Exit as e:
-        # Corrected attribute from e.code to e.exit_code
+        # This logic is correct: it allows clean exits (code=0) to pass silently
+        # and re-raises error exits (like code=1).
         if e.exit_code == 0:
             # This is a clean exit, so we don't need to do anything.
             return

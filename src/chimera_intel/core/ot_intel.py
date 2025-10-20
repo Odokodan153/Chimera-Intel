@@ -65,14 +65,12 @@ class OTAsset:
     name="recon", help="Perform reconnaissance on an IP address for OT systems."
 )
 def ot_recon(
-    ip_address: Annotated[
-        str,
-        typer.Option(
-            "--ip",
-            "-i",
-            help="The IP address to scan for OT protocols.",
-        ),
-    ],
+    ip_address: str = typer.Option(
+        ...,  # This makes the option required
+        "--ip",
+        "-i",
+        help="The IP address to scan for OT protocols.",
+    ),
 ):
     """
     Uses Shodan to find exposed industrial protocols and other OT-related

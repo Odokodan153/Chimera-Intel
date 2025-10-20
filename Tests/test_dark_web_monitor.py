@@ -102,4 +102,7 @@ async def test_run_dark_web_monitor_keyword_found(
 
     mock_slack.assert_called_once()
     mock_teams.assert_called_once()
-    assert "Keyword 'mycompany.com' detected" in mock_slack.call_args[0][0]
+    
+    # <--- FIX: Check the second argument (index 1), which is the message,
+    # not the first argument (index 0), which is the URL.
+    assert "Keyword 'mycompany.com' detected" in mock_slack.call_args[0][1]

@@ -48,10 +48,8 @@ def analyze_dependencies(repo_path: str) -> dict:
 def analyze_repo(
     repo_url: Annotated[
         str,
-        typer.Option(
-            ...,  
-            "--repo-url",
-            "-r",
+        typer.Argument(
+            ...,
             help="The URL of the public Git repository to analyze.",
         ),
     ],

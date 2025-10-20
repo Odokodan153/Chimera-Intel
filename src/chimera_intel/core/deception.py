@@ -3,7 +3,8 @@ Deception & Honeypot Operations Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
+# Import Annotated from typing instead of typing_extensions for modern Python
+from typing import Annotated 
 import docker
 from rich.console import Console
 
@@ -15,8 +16,6 @@ deception_app = typer.Typer(
 )
 
 # A map of supported honeypot types to their Docker images
-
-
 HONEYPOT_IMAGES = {
     "ssh": "cowrie/cowrie",
     "telnet": "cowrie/cowrie",
@@ -25,22 +24,18 @@ HONEYPOT_IMAGES = {
 
 @deception_app.command("deploy-honeypot", help="Deploy a containerized honeypot.")
 def deploy_honeypot(
-    honeypot_type: Annotated[
-        str,
-        typer.Option(
-            "--type",
-            "-t",
-            help="The type of honeypot to deploy (e.g., 'ssh', 'telnet').",
-        ),
-    ],
-    port: Annotated[
-        int,
-        typer.Option(
-            "--port",
-            "-p",
-            help="The external host port to expose the honeypot on.",
-        ),
-    ],
+    honeypot_type: str = typer.Option(
+        ...,
+        "--type",
+        "-t",
+        help="The type of honeypot to deploy (e.g., 'ssh', 'telnet').",
+    ),
+    port: int = typer.Option(
+        ...,
+        "--port",
+        "-p",
+        help="The external host port to expose the honeypot on.",
+    ),
 ):
     """
     Deploys a low-interaction, containerized honeypot to lure and identify
@@ -63,7 +58,6 @@ def deploy_honeypot(
     try:
         client = docker.from_env()
         # Test if Docker daemon is running
-
         client.ping()
 
         console.print(f"Pulling image '{image_name}'... (This may take a moment)")

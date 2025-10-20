@@ -18,10 +18,9 @@ from .config_loader import API_KEYS
 from .schemas import (
     SentimentAnalysisResult,
     SWOTAnalysisResult,
-    AnomalyDetectionResult,
-    GraphNarrativeResult,
+    AnomalyDetectionResult
 )
-from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult
+from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult,GraphNarrativeResult
 from .graph_db import build_and_save_graph
 import json
 import os

@@ -87,3 +87,6 @@ def run_opsec_analysis(
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)
+
+if __name__ == "__main__":
+    opsec_app()

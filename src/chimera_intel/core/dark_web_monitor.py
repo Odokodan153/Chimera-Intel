@@ -3,7 +3,7 @@ Continuous Dark Web Monitoring Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
+from typing import Annotated  
 import httpx
 from bs4 import BeautifulSoup
 import datetime
@@ -147,6 +147,7 @@ def add_dark_web_monitor(
     keywords: Annotated[
         str,
         typer.Option(
+            ..., 
             "--keywords",
             "-k",
             help="Comma-separated list of keywords to monitor (e.g., 'mycompany.com,internal-api').",
@@ -155,6 +156,7 @@ def add_dark_web_monitor(
     schedule: Annotated[
         str,
         typer.Option(
+            ...,  
             "--schedule",
             "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",

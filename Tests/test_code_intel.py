@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch 
 
 # The application instance to be tested
 from chimera_intel.core.code_intel import code_intel_app
@@ -29,6 +29,9 @@ def mock_git_repo(mocker):
     return mocker.patch("git.Repo.clone_from", return_value=mock_repo_instance)
 
 
+# Patch external dependencies to prevent unhandled exceptions
+@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
 def test_analyze_repo_command_success(mock_git_repo):
     """
     Tests a successful run of the 'code-intel analyze-repo' command.
@@ -40,6 +43,7 @@ def test_analyze_repo_command_success(mock_git_repo):
     )
 
     # --- Assert ---
+    # With patches, exit_code should be 0 (success) as expected
     assert result.exit_code == 0
     # Check for the initial status message
     assert "Analyzing repository: https://github.com/user/repo" in result.stdout
@@ -55,12 +59,15 @@ def test_analyze_repo_command_success(mock_git_repo):
     assert mock_git_repo.call_args[0][0] == "https://github.com/user/repo"
 
 
+# Patch external dependencies to prevent unhandled exceptions
+@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
 def test_analyze_repo_command_clone_error(mocker):
     """
     Tests how the command handles an error during the git clone process.
     """
     # --- Arrange ---
-    # Configure the mock to raise a GitCommandError, simulating a failed clone
+    # Configure the mock to raise an Exception, simulating a failed clone
     mocker.patch(
         "git.Repo.clone_from",
         side_effect=Exception("fatal: repository not found"),
@@ -72,6 +79,7 @@ def test_analyze_repo_command_clone_error(mocker):
     )
 
     # --- Assert ---
+    # With patches, the CLI should now correctly raise typer.Exit(1)
     assert result.exit_code == 1
     # Check for the specific error message in the output
     assert "Failed to clone or analyze repository" in result.stdout

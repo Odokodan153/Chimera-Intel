@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from unittest.mock import patch
 from typer.testing import CliRunner
 
@@ -37,7 +38,7 @@ class TestPageMonitor(unittest.TestCase):
 
     @patch("chimera_intel.core.page_monitor.save_page_snapshot")
     @patch("chimera_intel.core.page_monitor.get_async_http_client")
-    async def test_check_for_changes_with_changes(
+    def test_check_for_changes_with_changes(
         self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when changes are detected."""
@@ -49,7 +50,7 @@ class TestPageMonitor(unittest.TestCase):
 
         from chimera_intel.core.page_monitor import check_for_changes
 
-        await check_for_changes("https://example.com", "test_job")
+        asyncio.run(check_for_changes("https://example.com", "test_job"))
 
         # Assert
 
@@ -57,7 +58,7 @@ class TestPageMonitor(unittest.TestCase):
 
     @patch("chimera_intel.core.page_monitor.save_page_snapshot")
     @patch("chimera_intel.core.page_monitor.get_async_http_client")
-    async def test_check_for_changes_no_changes(
+    def test_check_for_changes_no_changes(
         self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when no changes are detected."""
@@ -69,7 +70,7 @@ class TestPageMonitor(unittest.TestCase):
 
         from chimera_intel.core.page_monitor import check_for_changes
 
-        await check_for_changes("https://example.com", "test_job")
+        asyncio.run(check_for_changes("https://example.com", "test_job"))
 
         # Assert
 

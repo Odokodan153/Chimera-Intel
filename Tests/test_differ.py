@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+from jsondiff import insert
 from chimera_intel.core.differ import diff_app
 
 
@@ -82,7 +83,8 @@ class TestDiffer(unittest.TestCase):
         """Tests the signal analysis from a raw diff."""
         # Arrange
 
-        raw_diff = {"footprint": {"dns_records": {"A": {"insert": ["1.2.3.4"]}}}}
+        # FIX 1: Use the 'insert' object from jsondiff, not the string "insert"
+        raw_diff = {"footprint": {"dns_records": {"A": {insert: ["1.2.3.4"]}}}}
         from chimera_intel.core.differ import analyze_diff_for_signals
 
         # Act
@@ -97,9 +99,11 @@ class TestDiffer(unittest.TestCase):
 
     # --- CLI Tests ---
 
+    # FIX 2: Mock 'resolve_target' to prevent Typer from exiting with code 2
+    @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
     @patch("chimera_intel.core.differ.send_slack_notification")
-    def test_cli_diff_run_with_changes(self, mock_slack, mock_get_scans):
+    def test_cli_diff_run_with_changes(self, mock_slack, mock_get_scans, mock_resolve):
         """Tests the 'diff run' command when changes are detected."""
         # Arrange
 
@@ -115,15 +119,17 @@ class TestDiffer(unittest.TestCase):
             )
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Comparison Results", result.stdout)
         self.assertIn(
             "footprint.dns_records.A.1", result.stdout
         )  # Simple path for list item
         mock_slack.assert_called_once()
 
+    # FIX 2: Mock 'resolve_target'
+    @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
-    def test_cli_diff_run_no_changes(self, mock_get_scans):
+    def test_cli_diff_run_no_changes(self, mock_get_scans, mock_resolve):
         """Tests the 'diff run' command when no changes are detected."""
         # Arrange
 
@@ -137,11 +143,13 @@ class TestDiffer(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("No changes detected", result.stdout)
 
+    # FIX 2: Mock 'resolve_target'
+    @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
-    def test_cli_diff_run_not_enough_data(self, mock_get_scans):
+    def test_cli_diff_run_not_enough_data(self, mock_get_scans, mock_resolve):
         """Tests the 'diff run' command when there aren't enough scans to compare."""
         # Arrange
 
@@ -155,7 +163,7 @@ class TestDiffer(unittest.TestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Not enough historical data", result.stdout)
 
 

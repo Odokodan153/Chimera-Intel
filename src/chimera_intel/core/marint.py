@@ -18,13 +18,11 @@ marint_app = typer.Typer(
 )
 
 
-async def get_vessel_data(imo: str, test_mode: bool = False):
+async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):  # MODIFIED: Added api_key param
     """
     Connects to the aisstream.io websocket and retrieves data for the specified vessel.
     """
-    api_key = API_KEYS.aisstream_api_key
-    if not api_key:
-        raise ValueError("AISSTREAM_API_KEY not found in .env file.")
+    # MODIFIED: Removed API key check, as it's now done in the CLI function
     async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
         subscribe_message = {
             "APIKey": api_key,
@@ -68,10 +66,19 @@ def track_vessel(
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
     """
+    # --- MODIFIED: API key check moved here ---
+    api_key = API_KEYS.aisstream_api_key
+    if not api_key:
+        typer.echo("Error: AISSTREAM_API_KEY not found in .env file.", err=True)
+        raise typer.Exit(code=1)
+    # --- End modification ---
+
     typer.echo(f"Starting live tracking for vessel with IMO: {imo}...")
     try:
-        asyncio.run(get_vessel_data(imo, test_mode=test))
+        # MODIFIED: Pass api_key to the async function
+        asyncio.run(get_vessel_data(imo, api_key=api_key, test_mode=test))
     except ValueError as e:
+        # This will now catch other ValueErrors, but not the API key one.
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
     except KeyboardInterrupt:

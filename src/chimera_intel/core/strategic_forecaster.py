@@ -50,7 +50,7 @@ class StrategicForecaster:
                 )
                 df_insider["transactionDate"] = pd.to_datetime(
                     df_insider["transactionDate"]
-                )
+                ).dt.tz_localize("UTC")
                 df_insider.set_index("transactionDate", inplace=True)
                 # Aggregate transaction values by day
 
@@ -98,7 +98,9 @@ class StrategicForecaster:
                 df_tweets = pd.DataFrame(
                     [t.model_dump() for t in twitter_result.tweets]
                 )
-                df_tweets["created_at"] = pd.to_datetime(df_tweets["created_at"])
+                df_tweets["created_at"] = pd.to_datetime(
+                    df_tweets["created_at"]
+                ).dt.tz_convert("UTC")
                 df_tweets.set_index("created_at", inplace=True)
                 tweet_frequency = df_tweets.resample("h").size()
                 data["tweet_frequency"] = tweet_frequency
@@ -187,10 +189,6 @@ class StrategicForecaster:
 
 
 forecaster_app = typer.Typer()
-
-
-# --- FIX: Renamed function 'run_forecast' to 'run' ---
-# --- and removed explicit 'name="run"' from the decorator ---
 
 
 @forecaster_app.command()

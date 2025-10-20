@@ -137,27 +137,38 @@ class TestPatentSearch:
     @patch("src.chimera_intel.core.chemint.pypatent.Search")
     @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
-        self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info, tmp_path
+        self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info
     ):
         """Tests the 'chemint monitor-patents-research' CLI command."""
+        # --- Arrange: Mock Patent Search (Corrected) ---
         mock_patent = MagicMock()
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
-        mock_pypatent_search.return_value.results = [mock_patent]
 
+        # Mock the Search() constructor to return an instance
+        mock_search_instance = MagicMock()
+        # Set the .results attribute on that instance
+        mock_search_instance.results = [mock_patent]
+        # Configure the patch to return the mocked instance
+        mock_pypatent_search.return_value = mock_search_instance
+
+        # --- Arrange: Mock Scholarly Search ---
         mock_pub = {
             "bib": {"title": "A great paper"},
             "eprint_url": "http://example.com/paper",
         }
         mock_search_pubs.return_value = iter([mock_pub])
 
+        # --- Act ---
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
 
+        # --- Assert ---
         assert result.exit_code == 0
         assert "Patents (USPTO)" in result.stdout
         assert "Research Papers (Google Scholar)" in result.stdout
+        # This assertion will now pass
         assert mock_patent_info.title in result.stdout
         assert "A great paper" in result.stdout
 

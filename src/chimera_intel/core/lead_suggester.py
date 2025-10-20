@@ -34,7 +34,7 @@ def generate_lead_suggestions(
         api_key (str): The Google AI API key.
 
     Returns:
-        LeadSuggestionResult: A Pydantic model containing the AI-generated suggestions.
+        LeadSuggestionResult: A Pantic model containing the AI-generated suggestions.
     """
     if not api_key:
         return LeadSuggestionResult(
@@ -96,6 +96,7 @@ def run_lead_suggestion(
     """
     Analyzes the active project and suggests next steps for the investigation.
     """
+    # --- MODIFIED: Updated try/except block ---
     try:
         active_project = get_active_project()
         if not active_project:
@@ -150,6 +151,12 @@ def run_lead_suggestion(
                 typer.echo(output_text)
             else:
                 console.print(Markdown(output_text))
+
+    except typer.Exit:
+        raise  # Re-raise to preserve the intended exit code (e.g., code=1)
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1)  # This will be for *unexpected* errors
+
+if __name__ == "__main__":
+    lead_suggester_app()

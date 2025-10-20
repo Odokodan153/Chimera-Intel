@@ -2145,10 +2145,6 @@ class GraphResult(BaseModel):
     edges: List[Edge] = []
     error: Optional[str] = None
 
-class GraphNarrativeResult(BaseModel):
-    narrative_text: str
-    error: Optional[str] = None
-
 # --- Deep Research ---
 class IntelFinding(BaseModel):
     """Represents a single piece of structured intelligence."""

@@ -2,6 +2,8 @@ import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
 
+# Import the module itself to patch its objects
+from chimera_intel.core import competitive_analyzer
 from chimera_intel.core.competitive_analyzer import (
     generate_competitive_analysis,
     competitive_analyzer_app,
@@ -75,6 +77,7 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         """Tests the 'competitive' CLI command with a successful run."""
         # Arrange
 
+        # FIX: Use side_effect to provide a return value for each of the 2 calls
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},
             {"target": "companyB", "modules": {}},
@@ -82,17 +85,17 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         mock_generate.return_value = CompetitiveAnalysisResult(
             analysis_text="**Test Analysis**"
         )
-        with patch(
-            "chimera_intel.core.competitive_analyzer.API_KEYS.google_api_key",
-            "fake_key",
+        
+        # FIX: Use patch.object to reliably set the attribute
+        with patch.object(
+            competitive_analyzer.API_KEYS, "google_api_key", "fake_key"
         ):
             # Act
-
             result = runner.invoke(
                 competitive_analyzer_app, ["run", "companyA", "companyB"]
             )
+            
         # Assert
-
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Test Analysis", result.stdout)
         mock_get_data.assert_any_call("companyA")
@@ -100,20 +103,26 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         self.assertEqual(mock_get_data.call_count, 2)
         mock_generate.assert_called_once()
 
-    @patch(
-        "chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target",
-        return_value=None,
-    )
+    @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
     def test_cli_competitive_analysis_no_data(self, mock_get_data):
         """Tests the CLI command when data for one of the targets is missing."""
-        # Act
-
-        result = runner.invoke(
-            competitive_analyzer_app, ["run", "companyA", "companyB"]
-        )
+        # Arrange
+        # FIX: Use side_effect to simulate one success and one failure
+        mock_get_data.side_effect = [
+            {"target": "companyA", "modules": {}}, # First call (companyA) succeeds
+            None                                 # Second call (companyB) fails
+        ]
+        
+        # We still need a valid API key so the command doesn't fail early
+        with patch.object(
+            competitive_analyzer.API_KEYS, "google_api_key", "fake_key"
+        ):
+            # Act
+            result = runner.invoke(
+                competitive_analyzer_app, ["run", "companyA", "companyB"]
+            )
 
         # Assert
-
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Could not retrieve historical data", result.stdout)
 
@@ -121,12 +130,16 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     def test_cli_competitive_analysis_no_api_key(self, mock_get_data):
         """NEW: Tests the CLI command when the Google API key is not configured."""
         # Arrange
+        # This function is called before the API key check, so it needs to succeed.
         mock_get_data.return_value = {"target": "companyA", "modules": {}}
-        with patch("chimera_intel.core.competitive_analyzer.API_KEYS.google_api_key", None):
+        
+        # FIX: Use patch.object to reliably set the attribute to None
+        with patch.object(competitive_analyzer.API_KEYS, "google_api_key", None):
             # Act
             result = runner.invoke(
                 competitive_analyzer_app, ["run", "companyA", "companyB"]
             )
+            
         # Assert
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Google API key (GOOGLE_API_KEY) not found", result.stdout)

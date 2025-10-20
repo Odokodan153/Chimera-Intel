@@ -64,13 +64,16 @@ class TestStixConverter(unittest.TestCase):
             "scanned_hosts": [
                 {
                     "host": "192.0.2.1",
+                    "state": "up",
                     "open_ports": [
                         {
                             "port": 443,
+                            "state": "open",
+                            "service": "https",
                             "vulnerabilities": [
                                 {
                                     "id": "CVE-2023-0001",
-                                    "cvss_score": 9.8,
+                                    "cvss": 9.8,
                                     "title": "Critical RCE",
                                 }
                             ],

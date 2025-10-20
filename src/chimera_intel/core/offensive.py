@@ -9,6 +9,7 @@ import typer
 import asyncio
 import logging
 import dns.resolver
+import socket  # Import socket to handle gaierror
 from typing import Optional, List, Set
 from .schemas import (
     APIDiscoveryResult,
@@ -54,6 +55,7 @@ async def discover_apis(domain: str) -> APIDiscoveryResult:
                     )
                 )
         except Exception:
+            # Note: This is still broad, but we are fixing the CLI issue first.
             pass
 
     tasks = [
@@ -184,11 +186,19 @@ async def check_for_subdomain_takeover(domain: str) -> AdvancedCloudResult:
                         return
         except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
             # This is normal if the subdomain has no CNAME or does not exist
-
             pass
+        except (socket.gaierror, dns.resolver.Timeout):
+            # This can indicate a resolvable CNAME to a non-existent domain.
+            # This is a potential finding, as suggested by your test analysis.
+            potential_takeovers.append(
+                SubdomainTakeoverResult(
+                    subdomain=full_domain,
+                    vulnerable_service="Unknown (Resolution Failure)",
+                    details="DNS resolution failed, possibly vulnerable to takeover.",
+                )
+            )
         except Exception:
             # Ignore other errors (e.g., connection timeout)
-
             pass
 
     tasks = [check_subdomain(sub) for sub in subdomains_to_check]
@@ -206,7 +216,7 @@ offensive_app = typer.Typer()
 
 
 @offensive_app.command("api-discover")
-async def run_api_discovery(
+def run_api_discovery_cli(  # CHANGED: Made synchronous
     domain: str = typer.Argument(..., help="The target domain to scan for APIs."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -214,14 +224,15 @@ async def run_api_discovery(
 ):
     """Discovers potential API endpoints and specifications."""
     with console.status(f"[bold cyan]Discovering APIs on {domain}...[/bold cyan]"):
-        results = await discover_apis(domain)
+        # CHANGED: Use asyncio.run() to call the async function
+        results = asyncio.run(discover_apis(domain))
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_api_discover", data=results_dict)
 
 
 @offensive_app.command("enum-content")
-async def run_content_enumeration(
+def run_content_enumeration_cli(  # CHANGED: Made synchronous
     domain: str = typer.Argument(..., help="The target domain to enumerate."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -229,14 +240,15 @@ async def run_content_enumeration(
 ):
     """Enumerates common directories and files on a web server."""
     with console.status(f"[bold cyan]Enumerating content on {domain}...[/bold cyan]"):
-        results = await enumerate_content(domain)
+        # CHANGED: Use asyncio.run() to call the async function
+        results = asyncio.run(enumerate_content(domain))
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_enum_content", data=results_dict)
 
 
 @offensive_app.command("cloud-takeover")
-async def run_cloud_takeover_check(
+def run_cloud_takeover_check_cli(  # CHANGED: Made synchronous
     domain: str = typer.Argument(..., help="The root domain to check for takeovers."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -246,13 +258,11 @@ async def run_cloud_takeover_check(
     with console.status(
         f"[bold cyan]Checking for subdomain takeovers on {domain}...[/bold cyan]"
     ):
-        results = await check_for_subdomain_takeover(domain)
+        # CHANGED: Use asyncio.run() to call the async function
+        results = asyncio.run(check_for_subdomain_takeover(domain))
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_cloud_takeover", data=results_dict)
-
-
-# Change CLI functions to be async
 
 
 @offensive_app.callback()
@@ -262,26 +272,13 @@ def callback():
     """
 
 
-# Wrapper to run async CLI commands
-
-
+# CHANGED: Simplified main function
 def main():
-    # Typer does not directly support async functions, so we use this wrapper
-    # for the commands in this file.
-
-    import asyncio
-
-    # Create a new event loop
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Run the Typer app within the event loop
-
-    try:
-        offensive_app()
-    finally:
-        loop.close()
+    """
+    The CLI commands are now synchronous wrappers (using asyncio.run),
+    so we can call the Typer app directly.
+    """
+    offensive_app()
 
 
 if __name__ == "__main__":

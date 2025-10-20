@@ -20,17 +20,22 @@ runner = CliRunner()
 def mock_video_capture(mocker):
     """Fixture to mock cv2.VideoCapture."""
     mock_cap = MagicMock()
-    # Mock return values for video properties
+
+    # ---: Reordered side_effect to match code's call order ---
+    # The code calls: FRAME_COUNT, FPS, FRAME_WIDTH, FRAME_HEIGHT
+    # Then extra calls for metadata: FRAME_WIDTH, FRAME_HEIGHT
 
     mock_cap.get.side_effect = [
+        150,  # CAP_PROP_FRAME_COUNT
         30.0,  # CAP_PROP_FPS
         1920,  # CAP_PROP_FRAME_WIDTH
         1080,  # CAP_PROP_FRAME_HEIGHT
-        150,  # CAP_PROP_FRAME_COUNT
         # Extra gets for metadata print
         1920,  # CAP_PROP_FRAME_WIDTH
         1080,  # CAP_PROP_FRAME_HEIGHT
     ]
+    # -----------------------------------------------------------------
+
     # Mock read() to return a couple of frames and then False
 
     mock_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
@@ -89,11 +94,14 @@ def test_cli_analyze_video_with_frame_extraction(
 
     assert result.exit_code == 0, result.output
 
-    # ---: Corrected assertion to match vidint.py output ---
+    # ---: Changed assertion to expect '1 frames' based on logic ---
+    # (fps * interval) = 30 * 5 = 150.
+    # range(0, frame_count, 150) with frame_count=150 only runs once.
 
     mock_console_print.assert_any_call(
-        "\nSuccessfully extracted 2 frames to 'test_frames'."
+        "\nSuccessfully extracted 1 frames to 'test_frames'."
     )
+    # ---------------------------------------------------------------------
 
 
 @patch("chimera_intel.core.vidint.os.path.exists", return_value=True)

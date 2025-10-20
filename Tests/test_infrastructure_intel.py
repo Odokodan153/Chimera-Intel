@@ -32,7 +32,7 @@ def test_infrastructure_dependency_success(mocker, mock_geolocator, mock_overpas
     """
     result = runner.invoke(
         infrastructure_intel_app,
-        ["analyze", "--address", "123 Main St, Anytown, USA"],
+        ["analyze", "123 Main St, Anytown, USA"],  
     )
 
     assert result.exit_code == 0
@@ -49,7 +49,7 @@ def test_infrastructure_dependency_no_geocode(mocker):
 
     result = runner.invoke(
         infrastructure_intel_app,
-        ["analyze", "--address", "unknown address"],
+        ["analyze", "unknown address"],  
     )
 
     assert result.exit_code == 1

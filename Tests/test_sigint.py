@@ -1,5 +1,6 @@
 import pytest
 from typer.testing import CliRunner
+from unittest.mock import patch
 
 # The application instance to be tested
 
@@ -31,7 +32,8 @@ def mock_ais_capture_file(tmp_path):
     return str(capture_path)
 
 
-def test_decode_adsb_success(mock_adsb_capture_file):
+@patch("chimera_intel.core.sigint.save_scan_to_db")
+def test_decode_adsb_success(mock_save_db, mock_adsb_capture_file):
     """
     Tests the decode-adsb command with a valid capture file.
     """
@@ -50,12 +52,17 @@ def test_decode_adsb_success(mock_adsb_capture_file):
     assert result.exit_code == 0
     assert f"Decoding ADS-B data from {mock_adsb_capture_file}" in result.stdout
     assert "ADS-B capture file decoding complete." in result.stdout
-    # Check for a known ICAO from the sample data
+    # Check for a known ICAO from the sample data (must be uppercase)
 
-    assert "4840d6" in result.stdout
+    assert '"4840D6"' in result.stdout
+    # Ensure database error is not in the output
+
+    assert "Database Error" not in result.stdout
+    mock_save_db.assert_called_once()
 
 
-def test_decode_ais_success(mock_ais_capture_file):
+@patch("chimera_intel.core.sigint.save_scan_to_db")
+def test_decode_ais_success(mock_save_db, mock_ais_capture_file):
     """
     Tests the decode-ais command with a valid capture file.
     """
@@ -67,9 +74,12 @@ def test_decode_ais_success(mock_ais_capture_file):
     assert result.exit_code == 0
     assert f"Decoding AIS data from {mock_ais_capture_file}" in result.stdout
     assert "AIS capture file decoding complete." in result.stdout
+    assert "Database Error" not in result.stdout
+    mock_save_db.assert_called_once()
 
 
-def test_decode_adsb_file_not_found():
+@patch("chimera_intel.core.sigint.console.print")
+def test_decode_adsb_file_not_found(mock_console_print):
     """
     Tests the decode-adsb command when the capture file does not exist.
     """
@@ -78,13 +88,18 @@ def test_decode_adsb_file_not_found():
         ["decode-adsb", "non_existent_adsb.csv", "--lat", "0", "--lon", "0"],
     )
 
-    # Typer/Click can return different non-zero exit codes for errors
+    # The app should exit with code 1 as defined in sigint.py
 
-    assert result.exit_code != 0
-    assert "Error: File not found at 'non_existent_adsb.csv'" in result.stdout
+    assert result.exit_code == 1
+    # Check that the rich console was called with the error message
+
+    mock_console_print.assert_any_call(
+        "[bold red]Error: File not found at 'non_existent_adsb.csv'[/bold red]"
+    )
 
 
-def test_decode_ais_file_not_found():
+@patch("chimera_intel.core.sigint.console.print")
+def test_decode_ais_file_not_found(mock_console_print):
     """
     Tests the decode-ais command when the capture file does not exist.
     """
@@ -92,5 +107,9 @@ def test_decode_ais_file_not_found():
         sigint_app,
         ["decode-ais", "non_existent_ais.txt"],
     )
-    assert result.exit_code != 0
-    assert "Error: File not found at 'non_existent_ais.txt'" in result.stdout
+    # The app should exit with code 1
+
+    assert result.exit_code == 1
+    mock_console_print.assert_any_call(
+        "[bold red]Error: File not found at 'non_existent_ais.txt'[/bold red]"
+    )

@@ -55,7 +55,10 @@ class TestPestelAnalyzer(unittest.TestCase):
 
     @patch("chimera_intel.core.pestel_analyzer.generate_pestel_analysis")
     @patch("chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.pestel_analyzer.resolve_target")
+    @patch(
+        "chimera_intel.core.pestel_analyzer.resolve_target",
+        return_value="example.com",
+    )
     @patch("chimera_intel.core.pestel_analyzer.API_KEYS")
     def test_cli_run_pestel_analysis_success(
         self, mock_api_keys, mock_resolve, mock_get_data, mock_generate
@@ -64,7 +67,6 @@ class TestPestelAnalyzer(unittest.TestCase):
         # Arrange
 
         mock_api_keys.google_api_key = "fake_key"
-        mock_resolve.return_value = "example.com"
         mock_get_data.return_value = {"target": "example.com"}
         mock_generate.return_value = PESTELAnalysisResult(
             analysis_text="### PESTEL Analysis"
@@ -80,7 +82,10 @@ class TestPestelAnalyzer(unittest.TestCase):
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
 
-    @patch("chimera_intel.core.pestel_analyzer.resolve_target")
+    @patch(
+        "chimera_intel.core.pestel_analyzer.resolve_target",
+        return_value="example.com",
+    )
     @patch(
         "chimera_intel.core.pestel_analyzer.get_aggregated_data_for_target",
         return_value=None,
@@ -93,7 +98,6 @@ class TestPestelAnalyzer(unittest.TestCase):
         # Arrange
 
         mock_api_keys.google_api_key = "fake_key"
-        mock_resolve.return_value = "example.com"
 
         # Act
 

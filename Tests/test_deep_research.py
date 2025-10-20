@@ -14,10 +14,12 @@ class TestDeepResearch(unittest.TestCase):
     """Test cases for the sophisticated Deep Research module."""
 
     @patch("chimera_intel.core.deep_research.API_KEYS")
-    @patch("chimera_intel.core.deep_research.genai.GenerativeModel")
+    # FIX: Patch the entire 'genai' module object as it's imported in deep_research.py
+    @patch("chimera_intel.core.deep_research.genai")
     @patch("chimera_intel.core.deep_research.search")
     def test_conduct_deep_research_success(
-        self, mock_search, mock_genai_model, mock_api_keys
+        # FIX: Argument name changed to reflect the new patch
+        self, mock_search, mock_genai, mock_api_keys
     ):
         """
         Tests the successful execution of the entire deep research workflow.
@@ -65,7 +67,11 @@ class TestDeepResearch(unittest.TestCase):
         )
         mock_model_instance = MagicMock()
         mock_model_instance.generate_content.return_value = mock_ai_response
-        mock_genai_model.return_value = mock_model_instance
+        
+        # FIX: Set the 'GenerativeModel' attribute on the mock 'genai' module
+        mock_genai.GenerativeModel.return_value = mock_model_instance
+        # FIX: Also mock the 'configure' function so it doesn't raise an error
+        mock_genai.configure = MagicMock()
 
         # --- Act ---
 
@@ -88,7 +94,10 @@ class TestDeepResearch(unittest.TestCase):
         # 7 gather functions, each calling search once
 
         self.assertEqual(mock_search.call_count, 7)
-        mock_genai_model.return_value.generate_content.assert_called_once()
+        # FIX: Update assertion to use the mock module path
+        mock_genai.GenerativeModel.return_value.generate_content.assert_called_once()
+        # Verify configure was also called
+        mock_genai.configure.assert_called_once_with(api_key="fake_api_key")
 
     @patch("chimera_intel.core.deep_research.API_KEYS")
     def test_conduct_deep_research_no_api_key(self, mock_api_keys):

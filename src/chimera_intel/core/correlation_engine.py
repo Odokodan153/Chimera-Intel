@@ -13,14 +13,9 @@ class CorrelationEngine:
 
     def __init__(self, plugin_manager: PluginManager, config: Dict[str, Any]):
         self.plugin_manager = plugin_manager
-        self.config = config.get("correlation_rules", [])
-        self.ttp_knowledge_base = self._load_ttp_knowledge_base()
-
-    def _load_ttp_knowledge_base(self) -> Dict[str, Any]:
-        """Loads TTP knowledge base from configuration."""
-        # In a real system, this would load from a comprehensive, up-to-date source.
-
-        return self.config.get("ttp_knowledge_base", {})
+        # FIX: Correctly parse rules and TTP base from the main config dict
+        self.rules = config.get("correlation_rules", {}).get("rules", [])
+        self.ttp_knowledge_base = config.get("ttp_knowledge_base", {})
 
     def process_event(self, event: Event) -> None:
         """
@@ -30,7 +25,8 @@ class CorrelationEngine:
             event: The event to be processed.
         """
         logger.info(f"Processing event: {event.event_type} from {event.source}")
-        for rule in self.config.get("rules", []):
+        # FIX: Iterate over self.rules (the list)
+        for rule in self.rules:
             if self._rule_matches(event, rule):
                 self._handle_match(event, rule)
 
@@ -56,12 +52,14 @@ class CorrelationEngine:
             action_type = action.get("type")
             if action_type == "trigger_scan":
                 self._trigger_scan(
-                    action.get("params", []), rule.get("description", "")
+                    action.get("params", []),
+                    rule.get("description", ""),
+                    event  # FIX: Pass the event for templating
                 )
             elif action_type == "ttp_lookup":
                 self._ttp_lookup(event, action)
 
-    def _trigger_scan(self, params: List[str], description: str) -> None:
+    def _trigger_scan(self, params: List[str], description: str, event: Event) -> None: # FIX: Accept event
         """
         Triggers a plugin command.
         """
@@ -72,15 +70,33 @@ class CorrelationEngine:
             return
         plugin_name = params[0]
         command = params[1]
-        args = params[2:]
+        args_template = params[2:]
+
+        # FIX: Add template replacement logic
+        args = []
+        for arg in args_template:
+            if arg.startswith("{") and arg.endswith("}"):
+                key = arg[1:-1]  # e.g., "details.new_ip" or "cve_id"
+                value = None
+                if key.startswith("details."):
+                    detail_key = key.split("details.", 1)[1]
+                    value = event.details.get(detail_key)
+                else:
+                    # Check details first, then root event object
+                    value = event.details.get(key) or getattr(event, key, None)
+
+                if value:
+                    args.append(str(value))
+                else:
+                    logger.warning(f"Template key {arg} not found in event.")
+                    args.append(arg)  # Keep template if no value
+            else:
+                args.append(arg)
 
         logger.info(
             f"Triggering scan '{command}' from plugin '{plugin_name}' with args {args}. Reason: {description}"
         )
         try:
-            # This is a simplified call. A real implementation would handle plugin execution
-            # context, state, and potential return values more robustly.
-
             self.plugin_manager.run_command(plugin_name, command, *args)
             logger.info(f"Successfully triggered scan '{command}' on '{plugin_name}'.")
         except Exception as e:
@@ -93,21 +109,17 @@ class CorrelationEngine:
         cve_id = event.details.get("cve_id")
         if not cve_id:
             return
-        ttp_info = self.ttp_knowledge_base.get(cve_id)
+        ttp_info = self.ttp_knowledge_base.get(cve_id) # This will now work
         if ttp_info:
             message = (
                 f"TTP found for {cve_id}: {ttp_info['name']} ({ttp_info['attack_id']})."
             )
             logger.info(message)
 
-            # Example of chaining actions: trigger a scan based on TTP lookup
-
             if action.get("trigger_on_find"):
                 params = action["trigger_on_find"].get("params", [])
-                # Customize params with event data, e.g., mapping CVE to a specific scan
-
-                custom_params = [p.replace("{cve_id}", cve_id) for p in params]
                 description = (
                     f"Critical CVE {cve_id} found on {event.details.get('source_ip')}"
                 )
-                self._trigger_scan(custom_params, description)
+                # FIX: Call the main trigger_scan function, which now handles templating
+                self._trigger_scan(params, description, event)

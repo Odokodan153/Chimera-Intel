@@ -1,4 +1,5 @@
 import unittest
+import re  
 from unittest.mock import patch, AsyncMock
 from typer.testing import CliRunner
 from chimera_intel.core.cybint import generate_attack_surface_report, cybint_app
@@ -18,8 +19,7 @@ from chimera_intel.core.schemas import (
     BreachInfo,
     WebTechInfo,
     PersonnelInfo,
-    KnowledgeGraph,
-    WhoisInfo,
+    KnowledgeGraph
 )
 
 runner = CliRunner()
@@ -50,7 +50,7 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         mock_footprint.return_value = FootprintResult(
             domain="example.com",
             footprint=FootprintData(
-                whois_info=WhoisInfo(domain_name="example.com"),
+                whois_info={"domain_name": "example.com"},
                 dns_records={},
                 subdomains=SubdomainReport(total_unique=0, results=[]),
                 ip_threat_intelligence=[],
@@ -303,12 +303,19 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         # Act
 
         result = runner.invoke(cybint_app, ["attack-surface"])
+        
+        # <--- FIX: Strip ANSI codes from rich output
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        clean_stdout = ansi_escape.sub('', result.stdout)
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using domain 'project.com' from active project", result.stdout)
-        self.assertIn("Risk Level: LOW", result.stdout)
+        # <--- FIX: Assert against cleaned stdout and check for full string
+        self.assertIn(
+            "Using domain 'project.com' from active project 'TestProject'.", clean_stdout
+        )
+        self.assertIn("Risk Level: LOW", clean_stdout)
         mock_generate_report.assert_awaited_with("project.com")
 
     @patch("chimera_intel.core.cybint.get_active_project")
@@ -322,10 +329,13 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
 
         result = runner.invoke(cybint_app, ["attack-surface"])
 
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        clean_output = ansi_escape.sub('', result.stdout) + ansi_escape.sub('', result.stderr)
+
         # Assert
 
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No domain provided and no active project set", result.stdout)
+        self.assertIn("No domain provided and no active project set", clean_output)
 
 
 if __name__ == "__main__":

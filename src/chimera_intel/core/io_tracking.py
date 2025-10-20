@@ -76,8 +76,7 @@ def track_influence(
         typer.Option(
             "--narrative",
             "-n",
-            help="The narrative or topic to track for influence operations.",
-            prompt="Enter the narrative to track",
+            help="The narrative or topic to track for influence operations."
         ),
     ],
 ):

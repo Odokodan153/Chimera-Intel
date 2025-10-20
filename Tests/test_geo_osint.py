@@ -196,7 +196,8 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
         result = runner.invoke(geo_osint_app, [])
 
         self.assertEqual(result.exit_code, 2)
-        self.assertIn("Missing argument", result.stdout)
+        # MODIFIED LINE: Check stderr instead of stdout
+        self.assertIn("Missing argument", result.stderr)
 
 
 if __name__ == "__main__":

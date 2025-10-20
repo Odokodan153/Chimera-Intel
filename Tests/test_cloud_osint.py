@@ -188,8 +188,10 @@ class TestCloudOsint(unittest.TestCase):
     @patch("chimera_intel.core.cloud_osint.get_active_project")
     @patch("chimera_intel.core.cloud_osint.find_cloud_assets", new_callable=AsyncMock)
     @patch("chimera_intel.core.cloud_osint.save_scan_to_db")
+    # Add patch for save_or_print_results
+    @patch("chimera_intel.core.cloud_osint.save_or_print_results")
     def test_cli_cloud_run_with_project(
-        self, mock_save_db, mock_find_assets, mock_get_project
+        self, mock_save_print, mock_save_db, mock_find_assets, mock_get_project
     ):
         """Tests the CLI command using an active project's company name."""
         # Arrange
@@ -211,14 +213,22 @@ class TestCloudOsint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        # Check stderr for Rich Console output
         self.assertIn(
-            "Using keyword 'projectcloudinc' from active project", result.stdout
+            "Using keyword 'projectcloudinc' from active project", result.stderr
         )
         mock_find_assets.assert_awaited_with("projectcloudinc")
         mock_save_db.assert_called_once()
+        mock_save_print.assert_called_once() # Verify this is also called
 
     @patch("chimera_intel.core.cloud_osint.get_active_project")
-    def test_cli_cloud_run_no_keyword_no_project(self, mock_get_project):
+    # Add patches for all side-effects, even if they aren't expected to run
+    @patch("chimera_intel.core.cloud_osint.find_cloud_assets", new_callable=AsyncMock)
+    @patch("chimera_intel.core.cloud_osint.save_scan_to_db")
+    @patch("chimera_intel.core.cloud_osint.save_or_print_results")
+    def test_cli_cloud_run_no_keyword_no_project(
+        self, mock_save_print, mock_save_db, mock_find_assets, mock_get_project
+    ):
         """Tests CLI failure when no keyword is given and no project is active."""
         # Arrange
 
@@ -230,8 +240,14 @@ class TestCloudOsint(unittest.TestCase):
 
         # Assert
 
+        # The exit code should now be 1 as expected
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("No keyword provided and no active project", result.stdout)
+        # Check stderr for the Rich Console error message
+        self.assertIn("No keyword provided and no active project", result.stderr)
+        # Ensure the other functions were not called
+        mock_find_assets.assert_not_called()
+        mock_save_db.assert_not_called()
+        mock_save_print.assert_not_called()
 
 
 if __name__ == "__main__":

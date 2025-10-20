@@ -41,17 +41,15 @@ def mock_db_connection_no_data(mocker):
 
 
 @patch("chimera_intel.core.autonomous.generate_swot_from_data")
-@patch("chimera_intel.core.config_loader.API_KEYS")  # Added patch
-def test_optimize_models_success(mock_api_keys, mock_ai_task, mock_db_connection):
+@patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_api_key")
+def test_optimize_models_success(mock_ai_task, mock_db_connection):
     """
     Tests the successful run of the optimize-models command.
     """
     # --- Setup Mocks ---
-
-    mock_api_keys.google_api_key = "fake_api_key"  # Mock the API key
+    # No need to mock mock_api_keys.google_api_key here anymore
 
     # Mock the return object from the AI function to have the .analysis_text attribute
-
     ai_return_object = MagicMock()
     ai_return_object.analysis_text = "Recommendation: The model failed to predict an acquisition. Suggestion: Incorporate M&A data from FININT."
     ai_return_object.error = None
@@ -72,6 +70,7 @@ def test_optimize_models_success(mock_api_keys, mock_ai_task, mock_db_connection
     assert "acquired a startup instead" in prompt_arg
 
 
+@patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_api_key")
 def test_optimize_models_no_data(mock_db_connection_no_data):
     """
     Tests the command's behavior when no performance data is found.

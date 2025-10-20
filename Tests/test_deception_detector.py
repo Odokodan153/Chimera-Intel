@@ -32,8 +32,7 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests that a link is found between domains with a shared WHOIS email."""
         # Arrange
-        # The first call to gather_footprint_data is for the initial footprint.
-
+        # Base mock data for a footprint
         mock_footprint_data = FootprintData(
             whois_info={},
             dns_records={"A": ["1.1.1.1"]},
@@ -56,20 +55,15 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
             knowledge_graph=KnowledgeGraph(nodes=[], edges=[]),
         )
 
-        mock_gather_footprint.return_value = FootprintResult(
-            domain="company-a.com",
-            footprint=mock_footprint_data,
-        )
-
-        # Mock the return value of asyncio.gather to simulate having found and
-        # scanned multiple related domains.
-
+        # Mock footprint for the initial target, "company-a.com"
         footprint_a = FootprintResult(
             domain="company-a.com",
             footprint=mock_footprint_data.model_copy(
                 update={"whois_info": {"emails": ["contact@shared.com"]}}
             ),
         )
+        
+        # Mock footprint for the related target, "company-b.com"
         footprint_b = FootprintResult(
             domain="company-b.com",
             footprint=mock_footprint_data.model_copy(
@@ -79,20 +73,37 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
                 }
             ),
         )
-        mock_asyncio_gather.return_value = [footprint_a, footprint_b]
+
+        # Mock the *first* call to gather_footprint_data (for the initial_footprint)
+        mock_gather_footprint.return_value = footprint_a
+
+        # Mock the two separate calls to asyncio.gather
+        mock_asyncio_gather.side_effect = [
+            # 1. Return for reverse_ip_tasks: a list of lists of domain strings
+            [["company-b.com"]],
+            
+            # 2. Return for footprint tasks: a list of FootprintResult objects
+            [footprint_b]
+        ]
 
         # Act
-
         result = await analyze_for_deception("company-a.com")
 
         # Assert
-
         self.assertIsInstance(result, DeceptionAnalysisResult)
         self.assertIsNone(result.error)
         self.assertEqual(len(result.detected_links), 1)
         self.assertEqual(result.detected_links[0].link_type, "Shared Whois Email")
         self.assertEqual(result.detected_links[0].confidence, "High")
         self.assertIn("contact@shared.com", result.detected_links[0].details)
+        
+        # Check that the entities are correct (order might vary)
+        entities = {
+            result.detected_links[0].entity_a,
+            result.detected_links[0].entity_b,
+        }
+        self.assertIn("company-a.com", entities)
+        self.assertIn("company-b.com", entities)
 
 
 if __name__ == "__main__":
