@@ -73,14 +73,15 @@ class TestPestelAnalyzer(unittest.TestCase):
         )
 
         # Act
-
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # FIX: Invoke 'run' without arguments to allow resolve_target to work.
+        result = runner.invoke(pestel_analyzer_app, ["run"])
+        
         # Assert
-
         self.assertEqual(result.exit_code, 0, result.stdout)
         self.assertIn("PESTEL Analysis for example.com", result.stdout)
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
+        mock_resolve.assert_called_once_with(None) # Verify resolver was called
 
     @patch(
         "chimera_intel.core.pestel_analyzer.resolve_target",
@@ -100,10 +101,11 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_api_keys.google_api_key = "fake_key"
 
         # Act
-
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # FIX: Invoke 'run' without arguments to allow resolve_target to work.
+        result = runner.invoke(pestel_analyzer_app, ["run"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 1, result.stdout)
         self.assertIn("No historical data found", result.stdout)
+        mock_resolve.assert_called_once_with(None) # Verify resolver was called

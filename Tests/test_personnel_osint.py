@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from rich.panel import Panel
+import typer  
 
 from chimera_intel.core.personnel_osint import find_employee_emails, personnel_osint_app
 from chimera_intel.core.schemas import (
@@ -10,6 +11,11 @@ from chimera_intel.core.schemas import (
 )
 
 runner = CliRunner()
+
+# FIX: Create a top-level app and add the app-under-test as a subcommand
+# This ensures Typer parses "personnel-osint" as the app and "emails" as the command.
+app = typer.Typer()
+app.add_typer(personnel_osint_app, name="personnel-osint")
 
 
 class TestPersonnelOsint(unittest.TestCase):
@@ -101,8 +107,8 @@ class TestPersonnelOsint(unittest.TestCase):
         )
 
         # Act
-
-        result = runner.invoke(personnel_osint_app, ["emails", "example.com"])
+        # FIX: Invoke the wrapped 'app' with the full command path
+        result = runner.invoke(app, ["personnel-osint", "emails", "example.com"])
 
         # Assert
 
@@ -135,12 +141,13 @@ class TestPersonnelOsint(unittest.TestCase):
         mock_find_emails.return_value = PersonnelOSINTResult(domain="project.com")
 
         # Act
-
-        result = runner.invoke(personnel_osint_app, ["emails"])
+        # FIX: Invoke the wrapped 'app' with the full command path
+        result = runner.invoke(app, ["personnel-osint", "emails"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0, result.stdout)
+        # This assertion will now pass, as 'domain' will be None
         mock_find_emails.assert_called_with("project.com")
         mock_console.assert_any_call(
             "[bold cyan]Using domain 'project.com' from active project 'Test'.[/bold cyan]"
@@ -153,7 +160,8 @@ class TestPersonnelOsint(unittest.TestCase):
         self, mock_console_print, mock_get_project, mock_is_valid
     ):
         """Tests the CLI command with an invalid domain."""
-        result = runner.invoke(personnel_osint_app, ["emails", "invalid-domain"])
+        # FIX: Invoke the wrapped 'app' with the full command path
+        result = runner.invoke(app, ["personnel-osint", "emails", "invalid-domain"])
         self.assertEqual(result.exit_code, 1, result.stdout)
         mock_console_print.assert_any_call(
             Panel(

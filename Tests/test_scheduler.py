@@ -92,10 +92,14 @@ class TestScheduler(unittest.TestCase):
         self.assertEqual(call_args.kwargs["id"], job_id)
         self.assertEqual(call_args.kwargs["func"], dummy_func)
         self.assertEqual(call_args.kwargs["trigger"].__class__.__name__, "CronTrigger")
-        self.assertEqual(
-            str(call_args.kwargs["trigger"]),
-            "cron[minute='0', hour='*', day='*', month='*', day_of_week='*']",
-        )
+
+        # FIX: Check trigger fields individually instead of str() representation
+        trigger = call_args.kwargs["trigger"]
+        self.assertEqual(str(trigger.minute), "0")
+        self.assertEqual(str(trigger.hour), "*")
+        self.assertEqual(str(trigger.day), "*")
+        self.assertEqual(str(trigger.month), "*")
+        self.assertEqual(str(trigger.day_of_week), "*")
 
 
 if __name__ == "__main__":
