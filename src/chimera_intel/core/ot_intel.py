@@ -3,7 +3,6 @@ Operational Technology (OT) & ICS/SCADA Intelligence Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
 import shodan
 from typing import Optional, List
 

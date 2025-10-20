@@ -3,8 +3,6 @@ Deception & Honeypot Operations Module for Chimera Intel.
 """
 
 import typer
-# Import Annotated from typing instead of typing_extensions for modern Python
-from typing import Annotated 
 import docker
 from rich.console import Console
 

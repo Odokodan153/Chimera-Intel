@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock  # Import MagicMock
+from unittest.mock import patch
 from typer.testing import CliRunner
 import os
 

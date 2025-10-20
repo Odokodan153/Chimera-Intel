@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock
 from chimera_intel.core.correlation_engine import CorrelationEngine
 from chimera_intel.core.schemas import Event
 
