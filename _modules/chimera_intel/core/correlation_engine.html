@@ -86,14 +86,9 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plugin_manager</span><span class="p">:</span> <span class="n">PluginManager</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">plugin_manager</span> <span class="o">=</span> <span class="n">plugin_manager</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correlation_rules&quot;</span><span class="p">,</span> <span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ttp_knowledge_base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_ttp_knowledge_base</span><span class="p">()</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_load_ttp_knowledge_base</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Loads TTP knowledge base from configuration.&quot;&quot;&quot;</span>
-        <span class="c1"># In a real system, this would load from a comprehensive, up-to-date source.</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ttp_knowledge_base&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="c1"># FIX: Correctly parse rules and TTP base from the main config dict</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rules</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correlation_rules&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rules&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ttp_knowledge_base</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ttp_knowledge_base&quot;</span><span class="p">,</span> <span class="p">{})</span>
 
 <div class="viewcode-block" id="CorrelationEngine.process_event">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.correlation_engine.CorrelationEngine.process_event">[docs]</a>
@@ -105,7 +100,8 @@
 <span class="sd">            event: The event to be processed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing event: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">event_type</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rules&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+        <span class="c1"># FIX: Iterate over self.rules (the list)</span>
+        <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rules</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rule_matches</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">rule</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_handle_match</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">rule</span><span class="p">)</span></div>
 
@@ -132,12 +128,14 @@
             <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;trigger_scan&quot;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_scan</span><span class="p">(</span>
-                    <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">[]),</span> <span class="n">rule</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">[]),</span>
+                    <span class="n">rule</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+                    <span class="n">event</span>  <span class="c1"># FIX: Pass the event for templating</span>
                 <span class="p">)</span>
             <span class="k">elif</span> <span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;ttp_lookup&quot;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_ttp_lookup</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">action</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># FIX: Accept event</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Triggers a plugin command.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -148,15 +146,33 @@
             <span class="k">return</span>
         <span class="n">plugin_name</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">command</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">args</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="n">args_template</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+
+        <span class="c1"># FIX: Add template replacement logic</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">args_template</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">arg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">arg</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;}&quot;</span><span class="p">):</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">arg</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># e.g., &quot;details.new_ip&quot; or &quot;cve_id&quot;</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;details.&quot;</span><span class="p">):</span>
+                    <span class="n">detail_key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;details.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">detail_key</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Check details first, then root event object</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+                    <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Template key </span><span class="si">{</span><span class="n">arg</span><span class="si">}</span><span class="s2"> not found in event.&quot;</span><span class="p">)</span>
+                    <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>  <span class="c1"># Keep template if no value</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span>
 
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Triggering scan &#39;</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&#39; from plugin &#39;</span><span class="si">{</span><span class="n">plugin_name</span><span class="si">}</span><span class="s2">&#39; with args </span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2">. Reason: </span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="c1"># This is a simplified call. A real implementation would handle plugin execution</span>
-            <span class="c1"># context, state, and potential return values more robustly.</span>
-
             <span class="bp">self</span><span class="o">.</span><span class="n">plugin_manager</span><span class="o">.</span><span class="n">run_command</span><span class="p">(</span><span class="n">plugin_name</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully triggered scan &#39;</span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">&#39; on &#39;</span><span class="si">{</span><span class="n">plugin_name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
@@ -169,24 +185,20 @@
         <span class="n">cve_id</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cve_id&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">cve_id</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="n">ttp_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ttp_knowledge_base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cve_id</span><span class="p">)</span>
+        <span class="n">ttp_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ttp_knowledge_base</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cve_id</span><span class="p">)</span> <span class="c1"># This will now work</span>
         <span class="k">if</span> <span class="n">ttp_info</span><span class="p">:</span>
             <span class="n">message</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;TTP found for </span><span class="si">{</span><span class="n">cve_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">ttp_info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">ttp_info</span><span class="p">[</span><span class="s1">&#39;attack_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">).&quot;</span>
             <span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
 
-            <span class="c1"># Example of chaining actions: trigger a scan based on TTP lookup</span>
-
             <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trigger_on_find&quot;</span><span class="p">):</span>
                 <span class="n">params</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="s2">&quot;trigger_on_find&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;params&quot;</span><span class="p">,</span> <span class="p">[])</span>
-                <span class="c1"># Customize params with event data, e.g., mapping CVE to a specific scan</span>
-
-                <span class="n">custom_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{cve_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">cve_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
                 <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Critical CVE </span><span class="si">{</span><span class="n">cve_id</span><span class="si">}</span><span class="s2"> found on </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;source_ip&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_scan</span><span class="p">(</span><span class="n">custom_params</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span></div>
+                <span class="c1"># FIX: Call the main trigger_scan function, which now handles templating</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_scan</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span></div>
 
 </pre></div>
 

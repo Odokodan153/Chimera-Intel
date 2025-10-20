@@ -80,6 +80,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">dns.resolver</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>  <span class="c1"># Import socket to handle gaierror</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Set</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">APIDiscoveryResult</span><span class="p">,</span>
@@ -127,6 +128,7 @@
                     <span class="p">)</span>
                 <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="c1"># Note: This is still broad, but we are fixing the CLI issue first.</span>
             <span class="k">pass</span>
 
     <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
@@ -263,11 +265,19 @@
                         <span class="k">return</span>
         <span class="k">except</span> <span class="p">(</span><span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NoAnswer</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">NXDOMAIN</span><span class="p">):</span>
             <span class="c1"># This is normal if the subdomain has no CNAME or does not exist</span>
-
             <span class="k">pass</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gaierror</span><span class="p">,</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">Timeout</span><span class="p">):</span>
+            <span class="c1"># This can indicate a resolvable CNAME to a non-existent domain.</span>
+            <span class="c1"># This is a potential finding, as suggested by your test analysis.</span>
+            <span class="n">potential_takeovers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">SubdomainTakeoverResult</span><span class="p">(</span>
+                    <span class="n">subdomain</span><span class="o">=</span><span class="n">full_domain</span><span class="p">,</span>
+                    <span class="n">vulnerable_service</span><span class="o">=</span><span class="s2">&quot;Unknown (Resolution Failure)&quot;</span><span class="p">,</span>
+                    <span class="n">details</span><span class="o">=</span><span class="s2">&quot;DNS resolution failed, possibly vulnerable to takeover.&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="c1"># Ignore other errors (e.g., connection timeout)</span>
-
             <span class="k">pass</span>
 
     <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">check_subdomain</span><span class="p">(</span><span class="n">sub</span><span class="p">)</span> <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">subdomains_to_check</span><span class="p">]</span>
@@ -285,10 +295,10 @@
 <span class="n">offensive_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="run_api_discovery">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_api_discovery">[docs]</a>
+<div class="viewcode-block" id="run_api_discovery_cli">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_api_discovery_cli">[docs]</a>
 <span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;api-discover&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_api_discovery</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_api_discovery_cli</span><span class="p">(</span>  <span class="c1"># CHANGED: Made synchronous</span>
     <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain to scan for APIs.&quot;</span><span class="p">),</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
@@ -296,17 +306,18 @@
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Discovers potential API endpoints and specifications.&quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold cyan]Discovering APIs on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span><span class="p">):</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">discover_apis</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="c1"># CHANGED: Use asyncio.run() to call the async function</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">discover_apis</span><span class="p">(</span><span class="n">domain</span><span class="p">))</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_api_discover&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="run_content_enumeration">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_content_enumeration">[docs]</a>
+<div class="viewcode-block" id="run_content_enumeration_cli">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_content_enumeration_cli">[docs]</a>
 <span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;enum-content&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_content_enumeration</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_content_enumeration_cli</span><span class="p">(</span>  <span class="c1"># CHANGED: Made synchronous</span>
     <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The target domain to enumerate.&quot;</span><span class="p">),</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
@@ -314,17 +325,18 @@
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumerates common directories and files on a web server.&quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[bold cyan]Enumerating content on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span><span class="p">):</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">enumerate_content</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="c1"># CHANGED: Use asyncio.run() to call the async function</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">enumerate_content</span><span class="p">(</span><span class="n">domain</span><span class="p">))</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_enum_content&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
 
 
 
-<div class="viewcode-block" id="run_cloud_takeover_check">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_cloud_takeover_check">[docs]</a>
+<div class="viewcode-block" id="run_cloud_takeover_check_cli">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.run_cloud_takeover_check_cli">[docs]</a>
 <span class="nd">@offensive_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;cloud-takeover&quot;</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_cloud_takeover_check</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_cloud_takeover_check_cli</span><span class="p">(</span>  <span class="c1"># CHANGED: Made synchronous</span>
     <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The root domain to check for takeovers.&quot;</span><span class="p">),</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
@@ -334,14 +346,12 @@
     <span class="k">with</span> <span class="n">console</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;[bold cyan]Checking for subdomain takeovers on </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">...[/bold cyan]&quot;</span>
     <span class="p">):</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">check_for_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+        <span class="c1"># CHANGED: Use asyncio.run() to call the async function</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">check_for_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">))</span>
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;offensive_cloud_takeover&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
 
-
-
-<span class="c1"># Change CLI functions to be async</span>
 
 
 <div class="viewcode-block" id="callback">
@@ -354,26 +364,16 @@
 
 
 
-<span class="c1"># Wrapper to run async CLI commands</span>
-
-
+<span class="c1"># CHANGED: Simplified main function</span>
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="c1"># Typer does not directly support async functions, so we use this wrapper</span>
-    <span class="c1"># for the commands in this file.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The CLI commands are now synchronous wrappers (using asyncio.run),</span>
+<span class="sd">    so we can call the Typer app directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">offensive_app</span><span class="p">()</span></div>
 
-    <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-
-    <span class="c1"># Create a new event loop</span>
-
-    <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
-    <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
-
-    <span class="c1"># Run the Typer app within the event loop</span>
-
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">offensive_app</span><span class="p">()</span>
-    <span class="k">finally</span><span class="p">:</span>
-        <span class="n">loop</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
