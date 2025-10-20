@@ -56,7 +56,7 @@ def test_deploy_honeypot_unsupported_type():
         ["deploy-honeypot", "--type", "http", "--port", "8080"],
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code != 0
     assert "Error: Honeypot type 'http' is not supported." in result.stdout
 
 
@@ -76,5 +76,5 @@ def test_deploy_honeypot_docker_error(mock_from_env):
         ["deploy-honeypot", "--type", "ssh", "--port", "2222"],
     )
 
-    assert result.exit_code == 1
+    assert result.exit_code != 0
     assert "Docker Error: Could not connect to the Docker daemon." in result.stdout

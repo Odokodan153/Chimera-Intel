@@ -83,7 +83,6 @@ class TestDiffer(unittest.TestCase):
         """Tests the signal analysis from a raw diff."""
         # Arrange
 
-        # FIX 1: Use the 'insert' object from jsondiff, not the string "insert"
         raw_diff = {"footprint": {"dns_records": {"A": {insert: ["1.2.3.4"]}}}}
         from chimera_intel.core.differ import analyze_diff_for_signals
 
@@ -99,7 +98,6 @@ class TestDiffer(unittest.TestCase):
 
     # --- CLI Tests ---
 
-    # FIX 2: Mock 'resolve_target' to prevent Typer from exiting with code 2
     @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
     @patch("chimera_intel.core.differ.send_slack_notification")
@@ -126,7 +124,6 @@ class TestDiffer(unittest.TestCase):
         )  # Simple path for list item
         mock_slack.assert_called_once()
 
-    # FIX 2: Mock 'resolve_target'
     @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
     def test_cli_diff_run_no_changes(self, mock_get_scans, mock_resolve):
@@ -146,7 +143,6 @@ class TestDiffer(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("No changes detected", result.stdout)
 
-    # FIX 2: Mock 'resolve_target'
     @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.differ.get_last_two_scans")
     def test_cli_diff_run_not_enough_data(self, mock_get_scans, mock_resolve):

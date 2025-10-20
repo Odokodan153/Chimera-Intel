@@ -1,4 +1,5 @@
 import pytest
+import typer
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, patch 
 
@@ -79,8 +80,12 @@ def test_analyze_repo_command_clone_error(mocker):
     )
 
     # --- Assert ---
-    # With patches, the CLI should now correctly raise typer.Exit(1)
-    assert result.exit_code == 1
+    # Check the exception for the correct exit code
+    exit_code = result.exit_code
+    if isinstance(result.exception, typer.Exit):
+        exit_code = result.exception.exit_code
+
+    assert exit_code == 1
     # Check for the specific error message in the output
     assert "Failed to clone or analyze repository" in result.stdout
     assert "fatal: repository not found" in result.stdout

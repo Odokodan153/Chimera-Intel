@@ -1,4 +1,5 @@
 import unittest
+import asyncio  # <-- FIX 1: Import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 
@@ -148,6 +149,13 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
     )
     def test_cli_run_success_with_args(self, mock_async_run):
         """Tests a successful run of the 'ecosystem run' command with direct arguments."""
+        
+        # --- FIX 2: Arrange mock to return an awaitable Future ---
+        mock_return_future = asyncio.Future()
+        mock_return_future.set_result(None)  # Set return value for the async function
+        mock_async_run.return_value = mock_return_future
+        # --- End Fix 2 ---
+
         # Act
 
         result = runner.invoke(ecosystem_app, ["run", "MyCompany", "mycompany.com"])
@@ -166,6 +174,12 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         """NEW: Tests the CLI command using an active project's context."""
         # Arrange
 
+        # --- ALSO FIX THIS TEST: It has the same AsyncMock issue ---
+        mock_return_future = asyncio.Future()
+        mock_return_future.set_result(None)
+        mock_async_run.return_value = mock_return_future
+        # --- End Fix ---
+
         mock_project = ProjectConfig(
             project_name="Test",
             created_at="",
@@ -181,6 +195,8 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
+        # --- Revert previous incorrect fix ---
+        # The correct call should not have "run" as an argument
         mock_async_run.assert_awaited_with(None, None, None)
 
     @patch("chimera_intel.core.ecosystem_intel.get_active_project", return_value=None)

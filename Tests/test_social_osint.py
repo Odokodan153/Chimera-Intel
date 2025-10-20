@@ -1,5 +1,6 @@
 import unittest
 import json
+import asyncio  
 from unittest.mock import patch, AsyncMock
 from typer.testing import CliRunner
 
@@ -101,13 +102,16 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests a successful run of the 'social-osint run' CLI command."""
         # Arrange
 
-        mock_find_profiles.return_value = SocialOSINTResult(
-            username="cliuser",
-            found_profiles=[
-                SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
-            ],
+        mock_find_profiles.return_value = asyncio.Future()
+        mock_find_profiles.return_value.set_result(
+            SocialOSINTResult(
+                username="cliuser",
+                found_profiles=[
+                    SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
+                ],
+            )
         )
-
+       
         # Act
 
         result = runner.invoke(social_osint_app, ["run", "cliuser"])
@@ -124,7 +128,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests that the CLI command fails if no username is provided."""
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Missing argument 'USERNAME'", result.stdout)
+        self.assertIn("Missing argument 'USERNAME'", result.stderr)
+        
 
 
 if __name__ == "__main__":

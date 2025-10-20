@@ -1,5 +1,6 @@
 from typer.testing import CliRunner
 from unittest.mock import patch
+import typer
 
 # The application instance to be tested
 
@@ -62,9 +63,10 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     assert "'social_media': {'sentiment': 'positive'}" in prompt_arg
 
 
+@patch("chimera_intel.core.cultint.console.print")
 @patch("chimera_intel.core.cultint.get_aggregated_data_for_target")
 @patch("chimera_intel.core.cultint.API_KEYS")
-def test_analyze_target_no_data(mock_api_keys, mock_get_data):
+def test_analyze_target_no_data(mock_console, mock_api_keys, mock_get_data):
     """
     Tests the command's behavior when no aggregated data is found for the target.
     """
@@ -78,15 +80,21 @@ def test_analyze_target_no_data(mock_api_keys, mock_get_data):
     result = runner.invoke(cultint_app, ["analyze", "nonexistent-target"])
 
     # --- Assertions ---
-    # The warning for no data is handled in the mocked function,
-    # so we just check that the command exits cleanly without printing a report.
+    # Check that the intended exit code was 0
+    exit_code = result.exit_code
+    if isinstance(result.exception, typer.Exit):
+        exit_code = result.exception.exit_code
 
-    assert result.exit_code == 0
-    assert "Cultural Intelligence Analysis" not in result.stdout
+    assert exit_code == 0
+    # Check that the correct warning was printed to the console
+    mock_console.assert_any_call(
+        "[yellow]Warning:[/] No relevant data sources (social media, news, HR intel) found for 'nonexistent-target' to analyze cultural narrative."
+    )
 
 
+@patch("chimera_intel.core.cultint.console.print")
 @patch("chimera_intel.core.cultint.API_KEYS")
-def test_analyze_target_no_api_key(mock_api_keys):
+def test_analyze_target_no_api_key(mock_console, mock_api_keys):
     """
     Tests that the command fails gracefully if the Google API key is not configured.
     """
@@ -99,7 +107,13 @@ def test_analyze_target_no_api_key(mock_api_keys):
     result = runner.invoke(cultint_app, ["analyze", "any-target"])
 
     # --- Assertions ---
+    # Check that the intended exit code was 1
+    exit_code = result.exit_code
+    if isinstance(result.exception, typer.Exit):
+        exit_code = result.exception.exit_code
 
-    assert result.exit_code == 1
-    assert "Error:" in result.stdout
-    assert "Google API key not configured." in result.stdout
+    assert exit_code == 1
+    # Check that the correct error was printed to the console
+    mock_console.assert_any_call(
+        "[bold red]Error:[/bold red] Google API key not configured."
+    )
