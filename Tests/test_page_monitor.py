@@ -1,14 +1,14 @@
 import unittest
 import asyncio
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 
-from chimera_intel.core.page_monitor import page_monitor_app
+from chimera_intel.core.page_monitor import page_monitor_app, check_for_changes
 
 runner = CliRunner()
 
 
-class TestPageMonitor(unittest.TestCase):
+class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Page Monitor module."""
 
     # --- CLI Tests ---
@@ -38,42 +38,68 @@ class TestPageMonitor(unittest.TestCase):
 
     @patch("chimera_intel.core.page_monitor.save_page_snapshot")
     @patch("chimera_intel.core.page_monitor.get_async_http_client")
-    def test_check_for_changes_with_changes(
+    async def test_check_for_changes_with_changes(
         self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when changes are detected."""
         # Arrange
-
         mock_save_snapshot.return_value = (True, "old_hash")
 
+        # --- FIX: Configure the async client mock ---
+        # 1. Mock the response object
+        mock_response = MagicMock()
+        mock_response.text = "<html><body>Mock content</body></html>"
+        mock_response.raise_for_status.return_value = None
+
+        # 2. Mock the client object
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        # 3. Mock the async context manager
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_client
+        
+        # 4. Set the return value of the patched get_async_http_client
+        mock_get_client.return_value = mock_context_manager
+        # --- End of Fix ---
+
         # Act
-
-        from chimera_intel.core.page_monitor import check_for_changes
-
-        asyncio.run(check_for_changes("https://example.com", "test_job"))
+        await check_for_changes("https://example.com", "test_job")
 
         # Assert
-
         mock_save_snapshot.assert_called_once()
 
     @patch("chimera_intel.core.page_monitor.save_page_snapshot")
     @patch("chimera_intel.core.page_monitor.get_async_http_client")
-    def test_check_for_changes_no_changes(
+    async def test_check_for_changes_no_changes(
         self, mock_get_client, mock_save_snapshot
     ):
         """Tests the 'check' command when no changes are detected."""
         # Arrange
-
         mock_save_snapshot.return_value = (False, "same_hash")
 
+        # --- FIX: Configure the async client mock ---
+        # 1. Mock the response object
+        mock_response = MagicMock()
+        mock_response.text = "<html><body>Mock content</body></html>"
+        mock_response.raise_for_status.return_value = None
+
+        # 2. Mock the client object
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        # 3. Mock the async context manager
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_client
+        
+        # 4. Set the return value of the patched get_async_http_client
+        mock_get_client.return_value = mock_context_manager
+        # --- End of Fix ---
+
         # Act
-
-        from chimera_intel.core.page_monitor import check_for_changes
-
-        asyncio.run(check_for_changes("https://example.com", "test_job"))
+        await check_for_changes("https://example.com", "test_job")
 
         # Assert
-
         mock_save_snapshot.assert_called_once()
 
 

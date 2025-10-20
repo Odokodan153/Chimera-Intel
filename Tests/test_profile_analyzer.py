@@ -6,7 +6,7 @@ from chimera_intel.core.profile_analyzer import profile_analyzer_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
 app = typer.Typer()
-app.add_typer(profile_analyzer_app)
+app.add_typer(profile_analyzer_app, name="profile")
 
 runner = CliRunner()
 

@@ -109,10 +109,15 @@ def test_simulate_event_rule_found(mock_db_connection):
     assert "test:trigger" in result.stdout
 
     # 3. Check that the predefined actions for the trigger were executed (order-agnostic).
-
-    expected_actions = ["send_slack_alert", "quarantine_host"]
-    for action in expected_actions:
-        assert f"Running action: [bold green]{action}[/bold green]" in result.stdout
+    # FIX: Check for the actual output of the simulated action functions,
+    # as recommended by the failure analysis.
+    
+    expected_outputs = [
+        "ACTION (Simulated): Sending Slack alert for: Simulated event details",
+        "ACTION (Simulated): Quarantining host mentioned in: Simulated event details"
+    ]
+    for output in expected_outputs:
+        assert output in result.stdout
 
 
 def test_simulate_event_no_rule(mock_db_connection):

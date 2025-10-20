@@ -293,19 +293,15 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.exit_code, 1)
 
-@patch("chimera_intel.core.web_analyzer.console.print")
-def test_cli_web_run_invalid_domain(self, mock_print):
-    """Tests the 'scan web run' CLI command with an invalid domain, expecting an error."""
-    # Act
-    result = runner.invoke(web_app, ["run", "invalid-domain"])
+    @patch("chimera_intel.core.web_analyzer.console.print")
+    def test_cli_web_run_invalid_domain(self, mock_print):
+        """Tests the 'scan web run' CLI command with an invalid domain, expecting an error."""
+        # Act
+        result = runner.invoke(web_app, ["run", "invalid-domain"])
 
-    # Assert
-    self.assertNotEqual(result.exit_code, 0)
-    mock_print.assert_called_once()
-
-    # Assert
-    self.assertNotEqual(result.exit_code, 0)
-    mock_print.assert_called_once()
+        # Assert
+        self.assertNotEqual(result.exit_code, 0)
+        mock_print.assert_called_once()
 
     # --- Function Tests ---
 
