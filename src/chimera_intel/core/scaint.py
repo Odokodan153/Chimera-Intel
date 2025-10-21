@@ -3,7 +3,6 @@ Software Supply Chain Security (SCAINT) Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
 import git
 import os
 import tempfile

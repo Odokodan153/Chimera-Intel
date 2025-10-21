@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
-import json
 import socket
 
 from chimera_intel.core.offensive import (
