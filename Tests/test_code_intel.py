@@ -1,4 +1,3 @@
-import pytest
 import typer
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, patch 

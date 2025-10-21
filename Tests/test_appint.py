@@ -1,10 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock  # Added MagicMock
 from typer.testing import CliRunner
-import os
 
 from chimera_intel.core.appint import analyze_apk_static, appint_app
-from chimera_intel.core.schemas import StaticAppAnalysisResult
 
 runner = CliRunner()
 

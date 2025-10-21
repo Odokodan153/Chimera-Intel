@@ -1,6 +1,5 @@
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, patch
-import pytest
 from chimera_intel.core.attack_path_simulator import attack_path_app
 
 runner = CliRunner()

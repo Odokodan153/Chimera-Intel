@@ -1,7 +1,6 @@
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, ANY
-import httpx
 
 # --- FIX: Import the MAIN app from cli.py ---
 from chimera_intel.cli import app as main_app
