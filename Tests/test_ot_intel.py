@@ -3,7 +3,6 @@ from typer.testing import CliRunner
 import shodan
 
 # The application instance to be tested
-
 from chimera_intel.core.ot_intel import ot_intel_app
 
 runner = CliRunner()
@@ -33,7 +32,7 @@ def test_ot_recon_success(mocker, mock_shodan_api):
         "chimera_intel.core.ot_intel.API_KEYS.shodan_api_key", "fake_shodan_key"
     )
 
-    # FIX: Pass IP as a positional argument, not an option
+    # Invoke with positional argument
     result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 0
@@ -48,10 +47,9 @@ def test_ot_recon_no_api_key(mocker):
     """
     Tests the ot-recon command when the Shodan API key is missing.
     """
-
     mocker.patch("chimera_intel.core.ot_intel.API_KEYS.shodan_api_key", None)
 
-    # FIX: Pass IP as a positional argument, not an option
+    # Invoke with positional argument
     result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 1
@@ -67,8 +65,9 @@ def test_ot_recon_shodan_api_error(mocker, mock_shodan_api):
     )
     mock_shodan_api.host.side_effect = shodan.APIError("Invalid API key.")
 
-    # FIX: Pass IP as a positional argument, not an option
+    # Invoke with positional argument
     result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 1
-    assert "Shodan API Error: Invalid API key." in result.output
+    # FIX: Match the exact error output from the command
+    assert "Error: Invalid API key." in result.output

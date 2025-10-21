@@ -73,7 +73,6 @@ class TestPestelAnalyzer(unittest.TestCase):
         )
 
         # Act
-        # --- FIX: Explicitly pass the --target option ---
         result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
         
         # Assert
@@ -81,8 +80,11 @@ class TestPestelAnalyzer(unittest.TestCase):
         self.assertIn("PESTEL Analysis for example.com", result.stdout)
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
-        # --- FIX: Verify resolver was called with the explicit target ---
-        mock_resolve.assert_called_once_with("example.com") 
+        
+        # --- FIX: Verify resolver was called with the explicit target AND kwargs ---
+        mock_resolve.assert_called_once_with(
+            "example.com", required_assets=["domain", "company_name"]
+        )
 
     @patch(
         "chimera_intel.core.pestel_analyzer.resolve_target",
@@ -102,12 +104,14 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_api_keys.google_api_key = "fake_key"
 
         # Act
-        # --- FIX: Explicitly pass the --target option ---
         result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 1, result.stdout)
         self.assertIn("No historical data found", result.stdout)
-        # --- FIX: Verify resolver was called with the explicit target ---
-        mock_resolve.assert_called_once_with("example.com")
+        
+        # --- FIX: Verify resolver was called with the explicit target AND kwargs ---
+        mock_resolve.assert_called_once_with(
+            "example.com", required_assets=["domain", "company_name"]
+        )

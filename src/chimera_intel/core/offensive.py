@@ -126,7 +126,9 @@ async def enumerate_content(domain: str) -> ContentEnumerationResult:
 # --- Advanced Cloud Recon ---
 
 
-async def check_for_subdomain_takeover(domain: str) -> AdvancedCloudResult:
+async def check_for_subdomain_takeover(
+    domain: str, subdomains_to_check: Optional[List[str]] = None
+) -> AdvancedCloudResult:
     """
     Checks for dangling DNS records pointing to de-provisioned cloud services.
     """
@@ -143,17 +145,18 @@ async def check_for_subdomain_takeover(domain: str) -> AdvancedCloudResult:
     }
 
     # Common subdomains to check
-
-    subdomains_to_check = [
-        "www",
-        "assets",
-        "blog",
-        "dev",
-        "staging",
-        "api",
-        "files",
-        "images",
-    ]
+    # CHANGED: Use parameter or fall back to default list
+    if subdomains_to_check is None:
+        subdomains_to_check = [
+            "www",
+            "assets",
+            "blog",
+            "dev",
+            "staging",
+            "api",
+            "files",
+            "images",
+        ]
 
     potential_takeovers: List[SubdomainTakeoverResult] = []
 

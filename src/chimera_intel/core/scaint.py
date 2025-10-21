@@ -46,13 +46,10 @@ def analyze_dependencies(repo_path: str) -> dict:
     help="Analyze a public code repository for supply chain vulnerabilities.",
 )
 def analyze_repo(
-    repo_url: Annotated[
-        str,
-        typer.Argument(
-            ...,
-            help="The URL of the public Git repository to analyze.",
-        ),
-    ],
+    repo_url: str = typer.Argument(
+        ...,
+        help="The URL of the public Git repository to analyze.",
+    ),
 ):
     """
     Clones a public Git repository, identifies its dependencies, and scans

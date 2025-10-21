@@ -226,11 +226,13 @@ class TestDeepResearch(unittest.TestCase):
         # FIX (Typer Error): Invoke the wrapped 'app'
         result = runner.invoke(app, ["deep-research", "run"])
         
-        # This will now be 2 (Typer usage error)
-        self.assertNotEqual(result.exit_code, 0)
+        # --- FIX APPLIED ---
+        # Exit code for missing argument is 2
+        self.assertEqual(result.exit_code, 2)
         
-        # FIX: Typer prints usage errors to stdout, not stderr
-        self.assertIn("Missing argument 'TOPIC'", result.stdout)
+        # Check stderr for the missing argument message
+        self.assertIn("Missing argument 'TOPIC'", result.stderr)
+        # --- END FIX ---
 
 
 if __name__ == "__main__":

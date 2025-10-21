@@ -4,7 +4,6 @@ from scapy.all import wrpcap, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 from unittest.mock import patch
 
 # The application instance to be tested
-
 from chimera_intel.core.wifi_analyzer import wifi_analyzer_app
 
 runner = CliRunner()
@@ -16,7 +15,6 @@ def mock_wifi_pcap(tmp_path):
     pcap_path = tmp_path / "wifi_test.pcap"
 
     # Create a beacon frame for an open network
-
     open_net = (
         RadioTap()
         / Dot11(
@@ -31,7 +29,6 @@ def mock_wifi_pcap(tmp_path):
     )
 
     # Create a beacon frame for a WPA2 network
-
     wpa2_net = (
         RadioTap()
         / Dot11(
@@ -57,27 +54,40 @@ def mock_wifi_pcap(tmp_path):
 
 @patch("chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
 @patch("os.path.exists", return_value=True)
-def test_analyze_wifi_success(mock_exists, mock_analyze_capture, mock_wifi_pcap):
+def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     """
     Tests the analyze-wifi command with a successful analysis.
     """
+    # Arrange: Create a dummy file at the temp path.
+    # The content doesn't matter since analyze_wifi_capture is mocked.
+    pcap_path = tmp_path / "wifi_test.pcap"
+    pcap_path.write_text("dummy pcap content")
+    
+    # Act
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", mock_wifi_pcap],
+        ["analyze", str(pcap_path)],  # Pass the path as a string
     )
 
+    # Assert
     assert result.exit_code == 0
-    mock_analyze_capture.assert_called_once_with(mock_wifi_pcap)
+    mock_analyze_capture.assert_called_once_with(str(pcap_path))
 
 
-def test_analyze_wifi_file_not_found():
+def test_analyze_wifi_file_not_found(tmp_path):
     """
     Tests the command when the capture file does not exist.
     """
-    with patch("os.path.exists", return_value=False):
-        result = runner.invoke(
-            wifi_analyzer_app,
-            ["analyze", "non_existent.pcapng"],
-        )
+    # Arrange: Get a path to a file that is guaranteed not to exist
+    non_existent_file = tmp_path / "non_existent.pcapng"
+
+    # Act: No need to patch os.path.exists, the app's internal
+    # check will handle this.
+    result = runner.invoke(
+        wifi_analyzer_app,
+        ["analyze", str(non_existent_file)], # Pass the path as a string
+    )
+
+    # Assert
     assert result.exit_code == 1
-    assert "Error: Capture file not found at 'non_existent.pcapng'" in result.stdout
+    assert f"Error: Capture file not found at '{str(non_existent_file)}'" in result.stdout

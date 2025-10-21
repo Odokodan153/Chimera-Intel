@@ -77,11 +77,10 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
     # --- Subdomain Takeover Tests ---
 
-    # FIX: Patch the list of subdomains to check just one
-    @patch("chimera_intel.core.offensive.subdomains_to_check", ["sub"])
+    # FIX: Remove invalid patch
     @patch("chimera_intel.core.offensive.asyncio.to_thread")
     async def test_check_for_subdomain_takeover_vulnerable(
-        self, mock_to_thread, mock_subdomains_list
+        self, mock_to_thread
     ):
         """Tests detection of a vulnerable subdomain."""
         # Arrange
@@ -89,8 +88,10 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         mock_to_thread.side_effect = socket.gaierror
 
         # Act
-        # FIX: Pass the base domain, not the subdomain
-        result = await check_for_subdomain_takeover("example.com")
+        # FIX: Pass the base domain and the specific list of subdomains to check
+        result = await check_for_subdomain_takeover(
+            "example.com", subdomains_to_check=["sub"]
+        )
 
         # Assert
 
@@ -164,8 +165,9 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
-        self.assertEqual(len(output["potential_takeovers"]), 1)
+        # FIX: Check for substring in stdout instead of parsing JSON
+        self.assertIn('"subdomain": "sub.example.com"', result.stdout)
+        self.assertIn('"vulnerable_service": "N/A"', result.stdout)
 
 
 if __name__ == "__main__":

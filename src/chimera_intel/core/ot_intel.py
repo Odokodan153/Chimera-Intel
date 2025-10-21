@@ -9,8 +9,6 @@ from typing import Optional, List
 from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for OT Intelligence commands
-
-
 ot_intel_app = typer.Typer(
     name="ot-intel",
     help="Operational Technology (OT) & ICS/SCADA Intelligence",
@@ -56,7 +54,6 @@ class OTAsset:
             return host_info
         except shodan.APIError as e:
             # Re-raise to be caught by the command handler
-
             raise e
 
 
@@ -64,11 +61,8 @@ class OTAsset:
     name="recon", help="Perform reconnaissance on an IP address for OT systems."
 )
 def ot_recon(
-    ip_address: str = typer.Option(
-        ...,  # This makes the option required
-        "--ip",
-        "-i",
-        help="The IP address to scan for OT protocols.",
+    ip_address: str = typer.Argument(
+        ..., help="The IP address to scan for OT protocols."
     ),
 ):
     """
@@ -90,7 +84,6 @@ def ot_recon(
         typer.echo(f"Open Ports: {', '.join(map(str, host_info.get('ports', [])))}")
 
         # Filter for common ICS/SCADA protocols
-
         ics_protocols = {"modbus", "s7", "bacnet", "dnp3", "ethernet/ip"}
         found_protocols = set()
 

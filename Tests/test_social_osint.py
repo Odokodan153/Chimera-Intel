@@ -7,14 +7,10 @@ from chimera_intel.core.social_osint import find_social_profiles, social_osint_a
 from chimera_intel.core.schemas import SocialOSINTResult, SocialProfile
 
 # Mock the Sherlock result status enum
-
-
 class MockClaimedStatus:
     name = "CLAIMED"
 
-
 runner = CliRunner()
-
 
 class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Social Media OSINT (Sherlock) module."""
@@ -26,7 +22,6 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     async def test_find_social_profiles_success(self, mock_sherlock, mock_sites_info):
         """Tests a successful social media profile search."""
         # Arrange
-
         mock_sites_info.return_value = {}  # Mock away the file access
         mock_sherlock.return_value = {
             "GitHub": {
@@ -40,11 +35,9 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         }
 
         # Act
-
         result = await find_social_profiles("testuser")
 
         # Assert
-
         self.assertIsInstance(result, SocialOSINTResult)
         self.assertIsNone(result.error)
         self.assertEqual(len(result.found_profiles), 2)
@@ -59,16 +52,13 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests a search that yields no results."""
         # Arrange
-
         mock_sites_info.return_value = {}
         mock_sherlock.return_value = {}
 
         # Act
-
         result = await find_social_profiles("nonexistentuser")
 
         # Assert
-
         self.assertEqual(len(result.found_profiles), 0)
         self.assertIsNone(result.error)
 
@@ -79,31 +69,25 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests error handling when the Sherlock library raises an exception."""
         # Arrange
-
         mock_sites_info.return_value = {}
         mock_sherlock.side_effect = Exception("Network timeout")
 
         # Act
-
         result = await find_social_profiles("testuser")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("Network timeout", result.error)
 
     # --- CLI Tests ---
 
+    @patch("chimera_intel.core.social_osint.typer.echo")
     @patch(
         "chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock
     )
-    def test_cli_run_social_osint_scan_success(self, mock_find_profiles):
+    def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
         # Arrange
-
-        # FIX: Return the SocialOSINTResult directly.
-        # The AsyncMock is awaitable, and loop.run_until_complete will
-        # get this as the direct result, avoiding event loop issues.
         mock_find_profiles.return_value = SocialOSINTResult(
             username="cliuser",
             found_profiles=[
@@ -112,13 +96,19 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         )
        
         # Act
-
         result = runner.invoke(social_osint_app, ["run", "cliuser"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
+        
+        # Check that the async function was called correctly
+        mock_find_profiles.assert_called_once_with("cliuser")
+        
+        # Check that typer.echo was called with the correct JSON
+        mock_echo.assert_called_once()
+        json_output_str = mock_echo.call_args[0][0]
+        output = json.loads(json_output_str)
+
         self.assertEqual(output["username"], "cliuser")
         self.assertEqual(len(output["found_profiles"]), 1)
         self.assertEqual(output["found_profiles"][0]["name"], "GitLab")
@@ -128,11 +118,9 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
         
-        # FIX: Check stdout as well as stderr, as modern Typer prints to stdout.
-        output = result.stderr or result.stdout
+        # FIX: Concatenate stdout and stderr to reliably find the error message
+        output = (result.stdout or "") + (result.stderr or "")
         self.assertIn("Missing argument 'USERNAME'", output)
-        
-
 
 if __name__ == "__main__":
     unittest.main()
