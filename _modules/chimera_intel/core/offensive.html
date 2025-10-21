@@ -205,7 +205,9 @@
 
 <div class="viewcode-block" id="check_for_subdomain_takeover">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.offensive.check_for_subdomain_takeover">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_for_subdomain_takeover</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdvancedCloudResult</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">check_for_subdomain_takeover</span><span class="p">(</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">subdomains_to_check</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdvancedCloudResult</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Checks for dangling DNS records pointing to de-provisioned cloud services.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -222,17 +224,18 @@
     <span class="p">}</span>
 
     <span class="c1"># Common subdomains to check</span>
-
-    <span class="n">subdomains_to_check</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">&quot;www&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;assets&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;blog&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;dev&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;staging&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;api&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;files&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;images&quot;</span><span class="p">,</span>
-    <span class="p">]</span>
+    <span class="c1"># CHANGED: Use parameter or fall back to default list</span>
+    <span class="k">if</span> <span class="n">subdomains_to_check</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">subdomains_to_check</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;www&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;assets&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blog&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dev&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;staging&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;api&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;files&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;images&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
 
     <span class="n">potential_takeovers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SubdomainTakeoverResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
