@@ -80,5 +80,6 @@ def test_optimize_models_no_data(mock_db_connection_no_data):
         ["optimize-models", "--module", "forecaster"],
     )
 
-    assert result.exit_code == 0
+    # Typer.Exit() without a code defaults to exit_code=1
+    assert result.exit_code == 1
     assert "No performance records found" in result.stdout

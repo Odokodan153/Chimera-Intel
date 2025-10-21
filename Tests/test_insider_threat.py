@@ -1,9 +1,18 @@
 import pytest
 from typer.testing import CliRunner
 import pandas as pd
+import typer  # Import typer
+
 from chimera_intel.core.insider_threat import insider_threat_app
 
 runner = CliRunner()
+
+# --- FIX APPLIED ---
+# Wrap the insider_threat_app in a parent Typer app
+# to correctly test the subcommand invocation.
+app = typer.Typer()
+app.add_typer(insider_threat_app, name="insider")
+# --- END FIX ---
 
 
 @pytest.fixture
@@ -29,10 +38,13 @@ def test_analyze_vpn_logs_flag_anomalies(mock_vpn_log):
     """
     Tests the analyze-vpn-logs command with the --flag-anomalies option.
     """
+    # --- FIX APPLIED ---
+    # Call the parent 'app' and use the full subcommand path "insider analyze-vpn-logs"
     result = runner.invoke(
-        insider_threat_app,
-        ["analyze-vpn-logs", mock_vpn_log, "--flag-anomalies"],
+        app,
+        ["insider", "analyze-vpn-logs", mock_vpn_log, "--flag-anomalies"],
     )
+    # --- END FIX ---
 
     assert (
         result.exit_code == 0
@@ -48,10 +60,13 @@ def test_analyze_vpn_logs_file_not_found():
     """
     Tests the command when the specified log file does not exist.
     """
+    # --- FIX APPLIED ---
+    # Call the parent 'app' and use the full subcommand path "insider analyze-vpn-logs"
     result = runner.invoke(
-        insider_threat_app,
-        ["analyze-vpn-logs", "non_existent.log"],
+        app,
+        ["insider", "analyze-vpn-logs", "non_existent.log"],
     )
+    # --- END FIX ---
 
     assert (
         result.exit_code == 1

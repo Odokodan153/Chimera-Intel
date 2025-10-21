@@ -307,3 +307,5 @@ def run_deep_research_cli(
         console.print(
             "[bold red]Strategic analysis failed. Check logs for details.[/bold red]"
         )
+        # FIX: Ensure the CLI exits with an error code on failure
+        raise typer.Exit(code=1)

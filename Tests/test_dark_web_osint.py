@@ -4,13 +4,17 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Response, AsyncClient
 from typer.testing import CliRunner
 import json
-import typer  # Import typer for typer.Exit
+import typer  # Import typer for typer.Exit and the app wrapper
 import sys  # Import sys for stderr
 
 from chimera_intel.core.dark_web_osint import search_dark_web_engine, dark_web_app
 from chimera_intel.core.schemas import DarkWebScanResult, DarkWebResult
 
 runner = CliRunner()
+
+# FIX: Wrap the sub-app in a parent Typer for correct test invocation
+app = typer.Typer()
+app.add_typer(dark_web_app, name="dark-web")
 
 
 class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
@@ -106,10 +110,11 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         mock_async_run.side_effect = mock_coro
 
         # Act
-        result = runner.invoke(dark_web_app, ["search", "testcorp"])
+        # FIX: Invoke the parent 'app' with the full command 'dark-web search'
+        result = runner.invoke(app, ["dark-web", "search", "testcorp"])
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         output = json.loads(result.stdout)
         self.assertEqual(output["query"], "testcorp")
         self.assertEqual(len(output["found_results"]), 1)
@@ -120,9 +125,16 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         "chimera_intel.core.dark_web_osint.async_run_dark_web_search",
         new_callable=AsyncMock,
     )
-    def test_cli_dark_web_search_with_project(self, mock_async_run):
+    @patch("chimera_intel.core.dark_web_osint.get_active_project") # Need to mock this
+    def test_cli_dark_web_search_with_project(self, mock_get_project, mock_async_run):
         """NEW: Tests the CLI command using an active project's company name."""
         # Arrange
+        
+        # Mock the project that get_active_project() will return
+        mock_project = MagicMock()
+        mock_project.company_name = "ProjectCorp"
+        mock_get_project.return_value = mock_project
+        
         mock_scan_result = DarkWebScanResult(
             query="ProjectCorp", found_results=[]
         )
@@ -137,20 +149,22 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         mock_async_run.side_effect = mock_coro
 
         # Act
-        result = runner.invoke(dark_web_app, ["search"])
+        # FIX: Invoke the parent 'app' with the full command 'dark-web search'
+        result = runner.invoke(app, ["dark-web", "search"])
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Using query 'ProjectCorp' from active project", result.stdout)
         self.assertIn('"query": "ProjectCorp"', result.stdout)
-        # Check that the async function was called with None query
+        # Check that the async function was called with None query (correct now)
         mock_async_run.assert_called_once_with(None, "ahmia", None)
 
     @patch(
         "chimera_intel.core.dark_web_osint.async_run_dark_web_search",
         new_callable=AsyncMock,
     )
-    def test_cli_dark_web_search_no_query_or_project(self, mock_async_run):
+    @patch("chimera_intel.core.dark_web_osint.get_active_project", return_value=None) # No project
+    def test_cli_dark_web_search_no_query_or_project(self, mock_get_project, mock_async_run):
         """NEW: Tests CLI failure when no query is given and no project is active."""
         # Arrange
         # Define an async side_effect function to simulate the failure
@@ -165,7 +179,8 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         mock_async_run.side_effect = mock_coro
 
         # Act
-        result = runner.invoke(dark_web_app, ["search"])
+        # FIX: Invoke the parent 'app' with the full command 'dark-web search'
+        result = runner.invoke(app, ["dark-web", "search"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)

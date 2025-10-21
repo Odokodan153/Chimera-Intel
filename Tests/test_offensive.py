@@ -25,8 +25,9 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
     # --- API Discovery Tests ---
 
-    @patch("chimera_intel.core.offensive.async_client.get", new_callable=AsyncMock)
-    async def test_discover_apis_success(self, mock_get):
+    # FIX: Patch 'async_client.head', not '.get'
+    @patch("chimera_intel.core.offensive.async_client.head", new_callable=AsyncMock)
+    async def test_discover_apis_success(self, mock_head):
         """Tests successful API discovery."""
         # Arrange
 
@@ -34,7 +35,7 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         mock_response_200.status_code = 200
         mock_response_404 = MagicMock()
         mock_response_404.status_code = 404
-        mock_get.side_effect = [mock_response_200, mock_response_404]
+        mock_head.side_effect = [mock_response_200, mock_response_404]
 
         # Act
 
@@ -50,8 +51,9 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
     # --- Content Enumeration Tests ---
 
-    @patch("chimera_intel.core.offensive.async_client.get", new_callable=AsyncMock)
-    async def test_enumerate_content_success(self, mock_get):
+    # FIX: Patch 'async_client.head', not '.get'
+    @patch("chimera_intel.core.offensive.async_client.head", new_callable=AsyncMock)
+    async def test_enumerate_content_success(self, mock_head):
         """Tests successful content enumeration."""
         # Arrange
 
@@ -60,7 +62,7 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         mock_response_200.headers = {"content-length": "1024"}
         mock_response_404 = MagicMock()
         mock_response_404.status_code = 404
-        mock_get.side_effect = [mock_response_200, mock_response_404]
+        mock_head.side_effect = [mock_response_200, mock_response_404]
 
         # Act
 
@@ -75,23 +77,25 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
     # --- Subdomain Takeover Tests ---
 
+    # FIX: Patch the list of subdomains to check just one
+    @patch("chimera_intel.core.offensive.subdomains_to_check", ["sub"])
     @patch("chimera_intel.core.offensive.asyncio.to_thread")
-    async def test_check_for_subdomain_takeover_vulnerable(self, mock_to_thread):
+    async def test_check_for_subdomain_takeover_vulnerable(
+        self, mock_to_thread, mock_subdomains_list
+    ):
         """Tests detection of a vulnerable subdomain."""
         # Arrange
         # Simulate 'socket.gethostbyname' raising an error, indicating a dangling CNAME
-
         mock_to_thread.side_effect = socket.gaierror
 
-        # This import is needed for the side_effect
-
         # Act
-
-        result = await check_for_subdomain_takeover("sub.example.com")
+        # FIX: Pass the base domain, not the subdomain
+        result = await check_for_subdomain_takeover("example.com")
 
         # Assert
 
         self.assertIsInstance(result, AdvancedCloudResult)
+        # FIX: Now the length will be 1 as expected
         self.assertEqual(len(result.potential_takeovers), 1)
         self.assertEqual(result.potential_takeovers[0].subdomain, "sub.example.com")
 
@@ -107,8 +111,8 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
-        result = runner.invoke(offensive_app, ["discover-apis", "example.com"])
+        # FIX: Correct command name is 'api-discover'
+        result = runner.invoke(offensive_app, ["api-discover", "example.com"])
 
         # Assert
 
@@ -126,9 +130,9 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
+        # FIX: Correct command name is 'enum-content'
         result = runner.invoke(
-            offensive_app, ["enumerate-content", "http://example.com"]
+            offensive_app, ["enum-content", "http://example.com"]
         )
 
         # Assert
@@ -145,7 +149,7 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         # Arrange
 
         mock_check.return_value = AdvancedCloudResult(
-            target_domain="sub.example.com",
+            target_domain="example.com",  # Base domain
             potential_takeovers=[
                 SubdomainTakeoverResult(
                     subdomain="sub.example.com", vulnerable_service="N/A", details=""
@@ -154,8 +158,8 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-
-        result = runner.invoke(offensive_app, ["subdomain-takeover", "sub.example.com"])
+        # FIX: Correct command name is 'cloud-takeover'
+        result = runner.invoke(offensive_app, ["cloud-takeover", "example.com"])
 
         # Assert
 

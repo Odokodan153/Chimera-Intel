@@ -2,9 +2,12 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from rich.panel import Panel
-import typer  
+import typer
 
-from chimera_intel.core.personnel_osint import find_employee_emails, personnel_osint_app
+from chimera_intel.core.personnel_osint import (
+    find_employee_emails,
+    personnel_osint_app,
+)
 from chimera_intel.core.schemas import (
     PersonnelOSINTResult,
     ProjectConfig,
@@ -163,13 +166,17 @@ class TestPersonnelOsint(unittest.TestCase):
         # FIX: Invoke the wrapped 'app' with the full command path
         result = runner.invoke(app, ["personnel-osint", "emails", "invalid-domain"])
         self.assertEqual(result.exit_code, 1, result.stdout)
-        mock_console_print.assert_any_call(
-            Panel(
-                "[bold red]Invalid Input:[/] 'invalid-domain' is not a valid domain format.",
-                title="Error",
-                border_style="red",
-            )
-        )
+
+        # Instead of comparing Panel objects directly:
+        found = False
+        for call in mock_console_print.call_args_list:
+            printed_arg = call.args[0]
+            if isinstance(printed_arg, Panel) and "invalid-domain" in str(
+                printed_arg.renderable
+            ):
+                found = True
+                break
+        self.assertTrue(found, "Expected error Panel with domain info not printed.")
 
 
 if __name__ == "__main__":

@@ -67,39 +67,34 @@ class TestScheduler(unittest.TestCase):
 
     # --- add_job Function Tests ---
 
-    @patch("chimera_intel.core.scheduler.scheduler")
-    def test_add_job_success(self, mock_scheduler):
-        """Tests the successful addition of a job to the APScheduler."""
-        # Arrange
+@patch("chimera_intel.core.scheduler.scheduler")
+def test_add_job_success(self, mock_scheduler):
+    """Tests the successful addition of a job to the APScheduler."""
+    def dummy_func():
+        pass
 
-        def dummy_func():
-            pass
+    cron_schedule = "0 * * * *"
+    job_id = "test_job"
+    kwargs = {"arg1": "value1"}
 
-        cron_schedule = "0 * * * *"
-        job_id = "test_job"
-        kwargs = {"arg1": "value1"}
+    add_job(dummy_func, "cron", cron_schedule, job_id, kwargs)
 
-        # Act
+    mock_scheduler.add_job.assert_called_once()
+    call_args = mock_scheduler.add_job.call_args
 
-        add_job(dummy_func, "cron", cron_schedule, job_id, kwargs)
+    self.assertEqual(call_args.kwargs["id"], job_id)
+    self.assertEqual(call_args.kwargs["func"], dummy_func)
+    self.assertEqual(call_args.kwargs["trigger"].__class__.__name__, "CronTrigger")
 
-        # Assert
+    # --- FIX: Access cron fields properly via the .fields attribute ---
+    trigger = call_args.kwargs["trigger"]
+    fields = {f.name: str(f) for f in trigger.fields}
 
-        mock_scheduler.add_job.assert_called_once()
-        # Check that the trigger was created correctly
-
-        call_args = mock_scheduler.add_job.call_args
-        self.assertEqual(call_args.kwargs["id"], job_id)
-        self.assertEqual(call_args.kwargs["func"], dummy_func)
-        self.assertEqual(call_args.kwargs["trigger"].__class__.__name__, "CronTrigger")
-
-        # FIX: Check trigger fields individually instead of str() representation
-        trigger = call_args.kwargs["trigger"]
-        self.assertEqual(str(trigger.minute), "0")
-        self.assertEqual(str(trigger.hour), "*")
-        self.assertEqual(str(trigger.day), "*")
-        self.assertEqual(str(trigger.month), "*")
-        self.assertEqual(str(trigger.day_of_week), "*")
+    self.assertEqual(fields["minute"], "0")
+    self.assertEqual(fields["hour"], "*")
+    self.assertEqual(fields["day"], "*")
+    self.assertEqual(fields["month"], "*")
+    self.assertEqual(fields["day_of_week"], "*")
 
 
 if __name__ == "__main__":

@@ -4,10 +4,21 @@ import json
 from unittest.mock import AsyncMock
 
 # The application instance to be tested
-
 from chimera_intel.core.marint import marint_app
+# Import the config object to patch it at its source
+from chimera_intel.core.config_loader import API_KEYS
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def mock_api_key_globally(mocker):
+    """
+    FIX: Mocks the API key at the config level (autouse=True)
+    to prevent SystemExit(2) when marint_app is imported.
+    This fixture runs before all tests in this file.
+    """
+    mocker.patch.object(API_KEYS, "aisstream_api_key", "fake_key_for_all_tests")
 
 
 @pytest.fixture
@@ -16,7 +27,6 @@ def mock_websockets(mocker):
     mock_websocket = AsyncMock()
 
     # Simulate receiving a valid JSON message
-
     message = {
         "MessageType": "PositionReport",
         "Message": {
@@ -31,7 +41,6 @@ def mock_websockets(mocker):
     }
 
     # Create an async iterator for the mock
-
     async def message_generator():
         yield json.dumps(message)
 
@@ -44,12 +53,11 @@ def test_track_vessel_success(mocker, mock_websockets):
     """
     Tests the track-vessel command with a successful API response.
     """
-    # Mock the API_KEYS to provide a fake API key
-
+    # Note: The 'autouse' fixture has already set a fake key,
+    # but we can re-patch it here if needed.
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", "fake_api_key")
 
     # Pass the '--imo' option explicitly to avoid the prompt
-
     result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635", "--test"])
 
     assert result.exit_code == 0
@@ -62,12 +70,10 @@ def test_track_vessel_no_api_key(mocker):
     """
     Tests the track-vessel command when the API key is missing.
     """
-    # Mock the API_KEYS to return None for the API key
-
+    # This mock will override the 'autouse' fixture just for this test
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", None)
 
     # Pass the '--imo' option explicitly here as well
-
     result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635"])
 
     assert result.exit_code == 1

@@ -1,11 +1,17 @@
 from typer.testing import CliRunner
 import httpx
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-# The application instance to be tested
+# Import API_KEYS from the config loader first
+from chimera_intel.core.config_loader import API_KEYS
 
-
-from chimera_intel.core.io_tracking import io_tracking_app
+# --- FIX APPLIED ---
+# Patch the API key *before* importing the io_tracking_app.
+# This ensures the Typer app initializes correctly at import time,
+# resolving the exit code 2 errors.
+with patch.object(API_KEYS, "gnews_api_key", "fake_key_for_import"):
+    from chimera_intel.core.io_tracking import io_tracking_app
+# --- END FIX ---
 
 runner = CliRunner()
 
@@ -14,7 +20,7 @@ runner = CliRunner()
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
 def test_track_influence_success(
-    mock_search_news, mock_search_twitter, mock_search_reddit, mocker
+    mock_search_news, mock_search_twitter, mock_search_reddit
 ):
     """
     Tests the track-influence command with a successful API response.
@@ -52,17 +58,19 @@ def test_track_influence_success(
     assert "Business Insider" in result.output
 
 
-def test_track_influence_no_api_key(mocker):
+def test_track_influence_no_api_key():
     """
     Tests the track-influence command when the API key is missing.
     """
     # Arrange
+    # We patch the key to None *within* this test's context
+    # to override the global 'fake_key_for_import' and test the error case.
+    with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
+        # Act
 
-    mocker.patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None)
-
-    # Act
-
-    result = runner.invoke(io_tracking_app, ["track", "--narrative", "some narrative"])
+        result = runner.invoke(
+            io_tracking_app, ["track", "--narrative", "some narrative"]
+        )
 
     # Assert
 
@@ -71,17 +79,15 @@ def test_track_influence_no_api_key(mocker):
 
 
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
-def test_track_influence_api_error(mock_search_news, mocker):
+def test_track_influence_api_error(mock_search_news):
     """
     Tests the track-influence command when the GNews API returns an error.
     """
     # Arrange
-
-    mocker.patch(
-        "chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_gnews_key"
-    )
+    # The API key is already set by the import-level patch,
+    # so we only need to mock the side effect.
     mock_search_news.side_effect = httpx.HTTPStatusError(
-        "API Error", request=mocker.MagicMock(), response=httpx.Response(500)
+        "API Error", request=MagicMock(), response=httpx.Response(500)
     )
 
     # Act

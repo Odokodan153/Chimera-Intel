@@ -190,7 +190,16 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
+        
+        # FIX: Find the JSON line in stdout instead of assuming it's the only line
+        json_output_str = None
+        for line in result.stdout.splitlines():
+            if line.strip().startswith("{") and line.strip().endswith("}"):
+                json_output_str = line
+                break
+        
+        self.assertIsNotNone(json_output_str, "No JSON output found in stdout")
+        output = json.loads(json_output_str)
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
@@ -203,7 +212,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         )
 
         # Assert
-
+        
+        # FIX: Typer validation errors (like invalid domain) return exit code 2
         self.assertEqual(result.exit_code, 2)
         self.assertIn("Invalid value", result.stdout)
 
@@ -225,9 +235,15 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # Extract the JSON part of the output for validation
+        
+        # FIX: Find the JSON line in stdout instead of assuming it's the last line
+        json_output_str = None
+        for line in result.stdout.splitlines():
+            if line.strip().startswith("{") and line.strip().endswith("}"):
+                json_output_str = line
+                break
 
-        json_output_str = result.stdout.splitlines()[-1]
+        self.assertIsNotNone(json_output_str, "No JSON output found in stdout")
         output = json.loads(json_output_str)
         self.assertEqual(output["breaches"], [])
 
@@ -241,7 +257,9 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         )
 
         # Assert
-
+        
+        # This test now correctly expects exit code 1.
+        # It will pass once the source code is updated to raise typer.Exit(code=1).
         self.assertEqual(result.exit_code, 1)
         self.assertIn("HIBP_API_KEY not found in environment variables", result.stdout)
 

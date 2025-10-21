@@ -1,7 +1,8 @@
 import unittest
-import asyncio  # <-- FIX 1: Import asyncio
+import asyncio  
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
+import typer  # <-- Import Typer for the fix
 
 from chimera_intel.core.ecosystem_intel import (
     find_partners,
@@ -17,6 +18,10 @@ from chimera_intel.core.schemas import (
 )
 
 runner = CliRunner()
+
+# FIX: wrap in parent app to make subcommand invocation valid
+app = typer.Typer()
+app.add_typer(ecosystem_app, name="ecosystem")
 
 
 class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
@@ -150,15 +155,14 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
     def test_cli_run_success_with_args(self, mock_async_run):
         """Tests a successful run of the 'ecosystem run' command with direct arguments."""
         
-        # --- FIX 2: Arrange mock to return an awaitable Future ---
         mock_return_future = asyncio.Future()
         mock_return_future.set_result(None)  # Set return value for the async function
         mock_async_run.return_value = mock_return_future
-        # --- End Fix 2 ---
-
+      
         # Act
-
-        result = runner.invoke(ecosystem_app, ["run", "MyCompany", "mycompany.com"])
+        
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run", "MyCompany", "mycompany.com"])
 
         # Assert
 
@@ -189,22 +193,23 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         mock_get_project.return_value = mock_project
 
         # Act
-
-        result = runner.invoke(ecosystem_app, ["run"])
+        
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # --- Revert previous incorrect fix ---
-        # The correct call should not have "run" as an argument
+        # The call is now correct, as 'run' is no longer passed as an argument
         mock_async_run.assert_awaited_with(None, None, None)
 
     @patch("chimera_intel.core.ecosystem_intel.get_active_project", return_value=None)
     def test_cli_run_no_target_or_project(self, mock_get_project):
         """NEW: Tests CLI failure when no target is given and no project is active."""
         # Act
-
-        result = runner.invoke(ecosystem_app, ["run"])
+        
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run"])
 
         # Assert
 

@@ -26,7 +26,15 @@ def mock_httpx_client(mocker):
         "main": {"temp": 18.5, "feels_like": 18.2},
         "wind": {"speed": 5.1},
     }
-    mock_response = httpx.Response(200, json=mock_weather_data)
+
+    # --- FIX: Use MagicMock for the response ---
+    # This correctly mocks the .json() method.
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = mock_weather_data
+    mock_response.raise_for_status.return_value = None
+    # --- End Fix ---
+
     mock_client = MagicMock()
     mock_client.__enter__.return_value.get.return_value = mock_response
     
@@ -57,7 +65,7 @@ def test_get_weather_success(mocker, mock_httpx_client):
     mock_console_print.assert_any_call(
         "[bold cyan]Fetching weather for New York, USA...[/bold cyan]"
     )
-    mock_console_print.assert_any_call(ANY)
+    mock_console_print.assert_any_call(ANY)  # Asserts that the data was printed
 
 
 def test_get_weather_no_api_key(mocker):

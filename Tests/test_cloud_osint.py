@@ -213,9 +213,9 @@ class TestCloudOsint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # Check stderr for Rich Console output
+        # FIX: Check stdout for Rich Console output
         self.assertIn(
-            "Using keyword 'projectcloudinc' from active project", result.stderr
+            "Using keyword 'projectcloudinc' from active project", result.stdout
         )
         mock_find_assets.assert_awaited_with("projectcloudinc")
         mock_save_db.assert_called_once()
@@ -242,8 +242,8 @@ class TestCloudOsint(unittest.TestCase):
 
         # The exit code should now be 1 as expected
         self.assertEqual(result.exit_code, 1)
-        # Check stderr for the Rich Console error message
-        self.assertIn("No keyword provided and no active project", result.stderr)
+        # FIX: Check stdout for the Rich Console error message
+        self.assertIn("No keyword provided and no active project", result.stdout)
         # Ensure the other functions were not called
         mock_find_assets.assert_not_called()
         mock_save_db.assert_not_called()

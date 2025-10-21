@@ -53,9 +53,10 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
 
     mocker.patch("os.path.exists", return_value=True)
 
+    # --- FIX: Pass 'repo_url' as a positional argument ---
     result = runner.invoke(
         scaint_app,
-        ["analyze-repo", "--repo-url", "https://github.com/some/repo"],
+        ["analyze-repo", "https://github.com/some/repo"],
     )
 
     assert result.exit_code == 0
@@ -72,9 +73,10 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     """
     mocker.patch("os.path.exists", return_value=False)
 
+    # --- FIX: Pass 'repo_url' as a positional argument ---
     result = runner.invoke(
         scaint_app,
-        ["analyze-repo", "--repo-url", "https://github.com/some/repo"],
+        ["analyze-repo", "https://github.com/some/repo"],
     )
 
     assert result.exit_code == 1
@@ -92,12 +94,15 @@ def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
     mock_git_clone.side_effect = git.exc.GitCommandError(
         "clone", 1, stderr="mock error"
     )
+    
+    # --- FIX: Pass 'repo_url' as a positional argument ---
     result = runner.invoke(
         scaint_app,
-        ["analyze-repo", "--repo-url", "https://github.com/some/repo"],
+        ["analyze-repo", "https://github.com/some/repo"],
     )
     assert result.exit_code == 1
     # The actual error message from GitCommandError includes the command and exit code.
     # We'll check for the stderr part we provided.
 
     assert "mock error" in result.stdout
+

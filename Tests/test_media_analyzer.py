@@ -117,7 +117,9 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
+        # FIX: Split output by lines and parse only the last line (the JSON)
+        output_json_str = result.stdout.strip().splitlines()[-1]
+        output = json.loads(output_json_str)
         self.assertEqual(output["source_image_path"], "test.jpg")
         self.assertEqual(output["matches_found"], 1)
 
@@ -126,8 +128,10 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         """Tests the 'media transcribe' CLI command."""
         # Arrange
 
+        # FIX: Add the required 'media_type' field to the mock
         mock_transcribe.return_value = MediaAnalysisResult(
             file_path="test.mp3",
+            media_type="Audio",  # <-- This was the missing field
             transcript=MediaTranscript(
                 text="hello world", language="english", confidence=1.0
             ),
@@ -140,7 +144,9 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        output = json.loads(result.stdout)
+        # FIX: Split output by lines and parse only the last line (the JSON)
+        output_json_str = result.stdout.strip().splitlines()[-1]
+        output = json.loads(output_json_str)
         self.assertEqual(output["file_path"], "test.mp3")
         self.assertEqual(output["transcript"]["text"], "hello world")
 

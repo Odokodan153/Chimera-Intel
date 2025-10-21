@@ -10,12 +10,17 @@ from chimera_intel.core.code_intel import code_intel_app
 runner = CliRunner()
 
 
-@pytest.fixture
-def mock_git_repo(mocker):
+# The mock_git_repo fixture is no longer needed, as we will patch directly.
+
+# Patch external dependencies to prevent unhandled exceptions
+@patch("git.Repo.clone_from")
+@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
+def test_analyze_repo_command_success(mock_clone):
     """
-    A pytest fixture to mock the git.Repo object, preventing actual
-    git operations during tests.
+    Tests a successful run of the 'code-intel analyze-repo' command.
     """
+    # --- Arrange ---
     # Mock the commit object
     mock_commit = MagicMock()
     mock_commit.author.name = "John Doe"
@@ -26,17 +31,9 @@ def mock_git_repo(mocker):
     mock_repo_instance = MagicMock()
     mock_repo_instance.iter_commits.return_value = [mock_commit]
     
-    # Patch the Repo.clone_from class method to return our mock repo instance
-    return mocker.patch("git.Repo.clone_from", return_value=mock_repo_instance)
+    # Configure the mock passed in by the decorator
+    mock_clone.return_value = mock_repo_instance
 
-
-# Patch external dependencies to prevent unhandled exceptions
-@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
-@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
-def test_analyze_repo_command_success(mock_git_repo):
-    """
-    Tests a successful run of the 'code-intel analyze-repo' command.
-    """
     # --- Execute ---
     # The command is 'analyze-repo', with the repository URL as an argument
     result = runner.invoke(
@@ -56,23 +53,20 @@ def test_analyze_repo_command_success(mock_git_repo):
     assert "'feat': 1" in result.stdout
     
     # Verify that the clone was attempted with the correct URL
-    mock_git_repo.assert_called_once()
-    assert mock_git_repo.call_args[0][0] == "https://github.com/user/repo"
+    mock_clone.assert_called_once()
+    assert mock_clone.call_args[0][0] == "https://github.com/user/repo"
 
 
-# Patch external dependencies to prevent unhandled exceptions
+# Patch external dependencies and the clone_from method to raise an error
+@patch("git.Repo.clone_from", side_effect=Exception("fatal: repository not found"))
 @patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
 @patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
-def test_analyze_repo_command_clone_error(mocker):
+def test_analyze_repo_command_clone_error(mock_clone):
     """
     Tests how the command handles an error during the git clone process.
     """
     # --- Arrange ---
-    # Configure the mock to raise an Exception, simulating a failed clone
-    mocker.patch(
-        "git.Repo.clone_from",
-        side_effect=Exception("fatal: repository not found"),
-    )
+    # The mock_clone decorator is already configured to raise the exception.
 
     # --- Execute ---
     result = runner.invoke(

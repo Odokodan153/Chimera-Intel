@@ -72,19 +72,15 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
 
     # --- CLI Command Tests ---
 
-    @patch("chimera_intel.core.competitive_analyzer.resolve_target")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.competitive_analyzer.generate_competitive_analysis")
     def test_cli_competitive_analysis_success(
-        self, mock_generate, mock_get_data, mock_console, mock_resolve
+        self, mock_generate, mock_get_data, mock_console
     ):
         """Tests the 'competitive' CLI command with a successful run."""
         # Arrange
         
-        # FIX: Mock resolve_target to return the targets
-        mock_resolve.side_effect = ["companyA", "companyB"]
-
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},
             {"target": "companyB", "modules": {}},
@@ -102,15 +98,11 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         # Assert
         self.assertEqual(result.exit_code, 0) # This should now pass
 
-    @patch("chimera_intel.core.competitive_analyzer.resolve_target")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_data(self, mock_get_data, mock_console, mock_resolve):
+    def test_cli_competitive_analysis_no_data(self, mock_get_data, mock_console):
         """Tests the CLI command when data for one of the targets is missing."""
         # Arrange
-        
-        # FIX: Mock resolve_target to return the targets
-        mock_resolve.side_effect = ["companyA", "companyB"]
         
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},  # First call (companyA) succeeds
@@ -130,15 +122,11 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     
         self.assertEqual(exit_code, 1) # This should now pass
 
-    @patch("chimera_intel.core.competitive_analyzer.resolve_target")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_api_key(self, mock_get_data, mock_console, mock_resolve):
+    def test_cli_competitive_analysis_no_api_key(self, mock_get_data, mock_console):
         """NEW: Tests the CLI command when the Google API key is not configured."""
         # Arrange
-        
-        # FIX: Mock resolve_target to return the targets
-        mock_resolve.side_effect = ["companyA", "companyB"]
         
         mock_get_data.return_value = {"target": "companyA", "modules": {}}
     

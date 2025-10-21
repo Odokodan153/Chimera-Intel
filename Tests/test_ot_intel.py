@@ -33,7 +33,8 @@ def test_ot_recon_success(mocker, mock_shodan_api):
         "chimera_intel.core.ot_intel.API_KEYS.shodan_api_key", "fake_shodan_key"
     )
 
-    result = runner.invoke(ot_intel_app, ["recon", "--ip", "192.168.1.1"])
+    # FIX: Pass IP as a positional argument, not an option
+    result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 0
     assert "Performing OT reconnaissance on: 192.168.1.1" in result.output
@@ -50,7 +51,8 @@ def test_ot_recon_no_api_key(mocker):
 
     mocker.patch("chimera_intel.core.ot_intel.API_KEYS.shodan_api_key", None)
 
-    result = runner.invoke(ot_intel_app, ["recon", "--ip", "192.168.1.1"])
+    # FIX: Pass IP as a positional argument, not an option
+    result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 1
     assert "Error: SHODAN_API_KEY not found in .env file." in result.output
@@ -65,7 +67,8 @@ def test_ot_recon_shodan_api_error(mocker, mock_shodan_api):
     )
     mock_shodan_api.host.side_effect = shodan.APIError("Invalid API key.")
 
-    result = runner.invoke(ot_intel_app, ["recon", "--ip", "192.168.1.1"])
+    # FIX: Pass IP as a positional argument, not an option
+    result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
 
     assert result.exit_code == 1
     assert "Shodan API Error: Invalid API key." in result.output

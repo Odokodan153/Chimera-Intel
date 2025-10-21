@@ -134,22 +134,20 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
-    @patch("src.chimera_intel.core.chemint.pypatent.Search")
+    @patch("src.chimera_intel.core.chemint.Search")  # <- corrected patch path
     @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info
     ):
         """Tests the 'chemint monitor-patents-research' CLI command."""
-        # --- Arrange: Mock Patent Search (Corrected) ---
+
+        # --- Arrange: Mock Patent Search ---
         mock_patent = MagicMock()
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
 
-        # Mock the Search() constructor to return an instance
         mock_search_instance = MagicMock()
-        # Set the .results attribute on that instance
         mock_search_instance.results = [mock_patent]
-        # Configure the patch to return the mocked instance
         mock_pypatent_search.return_value = mock_search_instance
 
         # --- Arrange: Mock Scholarly Search ---
@@ -166,11 +164,15 @@ class TestPatentSearch:
 
         # --- Assert ---
         assert result.exit_code == 0
+        # Check that both patents and research sections appear
         assert "Patents (USPTO)" in result.stdout
         assert "Research Papers (Google Scholar)" in result.stdout
-        # This assertion will now pass
+        # Check that mocked patent title and URL are in the output
         assert mock_patent_info.title in result.stdout
+        assert "http://example.com/patent" in result.stdout
+        # Check that mocked research paper title is in the output
         assert "A great paper" in result.stdout
+        assert "http://example.com/paper" in result.stdout
 
 
 class TestSdsAnalysis:

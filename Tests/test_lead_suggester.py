@@ -2,10 +2,20 @@ import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
 
-from chimera_intel.core.lead_suggester import (
-    generate_lead_suggestions,
-    lead_suggester_app,
-)
+# Import API_KEYS from the config loader first
+from chimera_intel.core.config_loader import API_KEYS
+
+# --- FIX APPLIED ---
+# Patch the API key *before* importing the lead_suggester_app.
+# This ensures the Typer app initializes correctly at import time,
+# resolving the exit code 2 errors.
+with patch.object(API_KEYS, "google_api_key", "fake_key_for_import"):
+    from chimera_intel.core.lead_suggester import (
+        generate_lead_suggestions,
+        lead_suggester_app,
+    )
+# --- END FIX ---
+
 from chimera_intel.core.schemas import (
     LeadSuggestionResult,
     SWOTAnalysisResult,
@@ -26,6 +36,7 @@ class TestLeadSuggester(unittest.TestCase):
         """Tests successful lead suggestion generation."""
         # Arrange
 
+        # Note: This test patches API_KEYS independently, which is fine.
         mock_api_keys.google_api_key = "fake_key"
         mock_gen_swot.return_value = SWOTAnalysisResult(
             analysis_text="### Lead 1: Investigate Competitor"
@@ -47,6 +58,8 @@ class TestLeadSuggester(unittest.TestCase):
 
     def test_generate_lead_suggestions_no_api_key(self):
         """Tests lead suggestion generation when the API key is missing."""
+        # This test passes an empty string explicitly, so the global
+        # patch doesn't affect its logic.
         result = generate_lead_suggestions({}, "")
         self.assertIsNotNone(result.error)
         self.assertIn("GOOGLE_API_KEY not found", result.error)
@@ -90,21 +103,26 @@ class TestLeadSuggester(unittest.TestCase):
             suggestions_text="### Suggested Lead"
         )
 
-        with patch(
-            "chimera_intel.core.lead_suggester.API_KEYS.google_api_key", "fake_key"
-        ):
-            # Act
+        # --- FIX APPLIED ---
+        # The 'with patch(...)' context manager is removed from here
+        # because the API key is now set globally by the import-level patch.
+        # --- END FIX ---
 
-            result = runner.invoke(lead_suggester_app, ["run", "--no-rich"])
+        # Act
+
+        result = runner.invoke(lead_suggester_app, ["run", "--no-rich"])
+        
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Suggested Lead", result.output)
-        mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
+        # The CLI handler should read the key set at import time
+        mock_generate.assert_called_with({"target": "example.com"}, "fake_key_for_import")
 
     @patch("chimera_intel.core.lead_suggester.get_active_project", return_value=None)
     def test_cli_run_no_active_project(self, mock_get_project):
         """Tests the CLI command when no active project is set."""
+        # This test should now fail with exit code 1 instead of 2
         result = runner.invoke(lead_suggester_app, ["run"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No active project set", result.output)
@@ -125,7 +143,8 @@ class TestLeadSuggester(unittest.TestCase):
         )
 
         # Act
-
+        
+        # This test should now fail with exit code 1 instead of 2
         result = runner.invoke(lead_suggester_app, ["run"])
 
         # Assert

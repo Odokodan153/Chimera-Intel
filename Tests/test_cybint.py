@@ -26,6 +26,10 @@ import typer
 
 runner = CliRunner()
 
+# FIX: Wrap the sub-app in a parent Typer for correct test invocation
+app = typer.Typer()
+app.add_typer(cybint_app, name="cybint")
+
 
 class TestCybint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Cyber Intelligence (CYBINT) module."""
@@ -304,16 +308,18 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         )
 
         # Act
-        result = runner.invoke(cybint_app, ["attack-surface"])
+        # FIX: Invoke the parent 'app' with the full command 'cybint attack-surface'
+        result = runner.invoke(app, ["cybint", "attack-surface"])
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output)
 
         # Check what was printed to the mock console
         printed_messages = " ".join(
             str(call.args[0]) for call in mock_console.call_args_list
         )
-
+        
+        # This assertion will now pass as the correct domain is used
         self.assertIn(
             "Using domain 'project.com' from active project 'TestProject'",
             printed_messages,
@@ -344,19 +350,22 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
                         file=sys.stderr,
                     )
                     raise typer.Exit(code=1)
+            # This logic might be in the CLI function, but the mock simulates the *effect*
             if not domain and not (active_project and active_project.domain):
-                # This second check is in the original code, so we simulate it
                 raise typer.Exit(code=1)
 
         mock_async_run.side_effect = mock_coro
 
         # Act
-        result = runner.invoke(cybint_app, ["attack-surface"])
+        # FIX: Invoke the parent 'app' with the full command 'cybint attack-surface'
+        result = runner.invoke(app, ["cybint", "attack-surface"])
 
         ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0?]*[ -/]*[@-~])")
-        clean_output = ansi_escape.sub("", result.stderr)
+        # Note: Typer 1.x may print errors to stderr or stdout
+        clean_output = ansi_escape.sub("", result.stderr or result.stdout)
 
         # Assert
+        # This will now be 1, as the 'domain' argument is correctly None
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No domain provided and no active project set", clean_output)
         # Verify the async function was called with domain=None

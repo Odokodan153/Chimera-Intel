@@ -102,14 +102,14 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests a successful run of the 'social-osint run' CLI command."""
         # Arrange
 
-        mock_find_profiles.return_value = asyncio.Future()
-        mock_find_profiles.return_value.set_result(
-            SocialOSINTResult(
-                username="cliuser",
-                found_profiles=[
-                    SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
-                ],
-            )
+        # FIX: Return the SocialOSINTResult directly.
+        # The AsyncMock is awaitable, and loop.run_until_complete will
+        # get this as the direct result, avoiding event loop issues.
+        mock_find_profiles.return_value = SocialOSINTResult(
+            username="cliuser",
+            found_profiles=[
+                SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
+            ],
         )
        
         # Act
@@ -128,7 +128,10 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests that the CLI command fails if no username is provided."""
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Missing argument 'USERNAME'", result.stderr)
+        
+        # FIX: Check stdout as well as stderr, as modern Typer prints to stdout.
+        output = result.stderr or result.stdout
+        self.assertIn("Missing argument 'USERNAME'", output)
         
 
 

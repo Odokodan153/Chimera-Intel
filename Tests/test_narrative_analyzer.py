@@ -4,6 +4,7 @@ from chimera_intel.core.narrative_analyzer import (
     narrative_analyzer_app,
 )
 from typer.testing import CliRunner
+from chimera_intel.core.config_loader import API_KEYS  # Import for patching
 
 runner = CliRunner()
 
@@ -38,6 +39,30 @@ def mock_ai_sentiment():
     with patch("chimera_intel.core.narrative_analyzer.analyze_sentiment") as mock:
         mock.return_value.label = "Positive"
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_api_keys(monkeypatch):
+    """
+    FIX: Mocks API keys at the config level to prevent SystemExit(2)
+    during module import.
+    """
+    monkeypatch.setattr(API_KEYS, "gnews_api_key", "fake_key")
+    monkeypatch.setattr(API_KEYS, "twitter_bearer_token", "fake_token")
+
+
+@pytest.fixture(autouse=True)
+def mock_sync_client(monkeypatch):
+    """
+    FIX: Mocks the global sync_client context manager used in fetch_news.
+    """
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.__exit__.return_value = None
+    # Patch the client where it is used
+    monkeypatch.setattr(
+        "chimera_intel.core.narrative_analyzer.sync_client", mock_client
+    )
 
 
 # Removed the broken 'test_track_narrative_returns_analyzed_data' test.

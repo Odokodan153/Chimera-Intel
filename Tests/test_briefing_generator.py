@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, mock_open, MagicMock  # Import MagicMock
+from unittest.mock import patch, mock_open, MagicMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.briefing_generator import (
@@ -82,17 +82,23 @@ class TestBriefingGenerator(unittest.TestCase):
 
     # --- CLI Command Tests (FIXED) ---
 
+    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
     @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
-    # Patch console.status to prevent rich from interfering
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     def test_cli_briefing_generate_success(
-        self, mock_status, mock_generate, mock_get_data, mock_get_project
+        self,
+        mock_generate,
+        mock_get_data,
+        mock_get_project,
+        mock_status,
+        mock_print,
+        mock_api_key,
     ):
         """Tests the 'briefing generate' CLI command with a successful run."""
         # Arrange
-        # Configure the dummy status context manager
         mock_status.return_value.__enter__.return_value = None
         mock_status.return_value.__exit__.return_value = None
 
@@ -107,13 +113,11 @@ class TestBriefingGenerator(unittest.TestCase):
             briefing_text="**Test Briefing**", title="Test Title"
         )
 
-        with patch(
-            "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key"
-        ):
-            # Act
-            result = runner.invoke(
-                briefing_app, ["generate", "--template", "ciso_daily"]
-            )
+        # Act
+        result = runner.invoke(
+            briefing_app, ["generate", "--template", "ciso_daily"]
+        )
+
         # Assert
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Test Briefing", result.stdout)
@@ -121,17 +125,23 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_data.assert_called_with("TestCorp")
         mock_generate.assert_called_with(unittest.mock.ANY, "fake_key", "ciso_daily")
 
+    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
     @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
-    # Patch console.status to prevent rich from interfering
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     def test_cli_briefing_generate_with_output_file(
-        self, mock_status, mock_generate, mock_get_data, mock_get_project
+        self,
+        mock_generate,
+        mock_get_data,
+        mock_get_project,
+        mock_status,
+        mock_print,
+        mock_api_key,
     ):
         """FIXED: Tests the CLI command with the --output option and verifies file content."""
         # Arrange
-        # Configure the dummy status context manager
         mock_status.return_value.__enter__.return_value = None
         mock_status.return_value.__exit__.return_value = None
 
@@ -143,14 +153,12 @@ class TestBriefingGenerator(unittest.TestCase):
             briefing_text="File content", title="File Title"
         )
 
-        with patch(
-            "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key"
-        ):
-            with patch("builtins.open", mock_open()) as mock_file:
-                # Act
-                result = runner.invoke(
-                    briefing_app, ["generate", "--output", "test_briefing.pdf"]
-                )
+        with patch("builtins.open", mock_open()) as mock_file:
+            # Act
+            result = runner.invoke(
+                briefing_app, ["generate", "--output", "test_briefing.pdf"]
+            )
+
         # Assert
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
@@ -160,41 +168,55 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_file().write.assert_any_call("# File Title\n\n")
         mock_file().write.assert_any_call("File content")
 
+    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch(
         "chimera_intel.core.briefing_generator.get_active_project", return_value=None
     )
-    # Patch console.print to prevent rich from interfering
-    @patch("chimera_intel.core.briefing_generator.console.print")
-    def test_cli_briefing_no_active_project(self, mock_print, mock_get_project):
+    def test_cli_briefing_no_active_project(
+        self, mock_get_project, mock_status, mock_print, mock_api_key
+    ):
         """Tests the CLI command when no active project is set."""
+        # Arrange
+        mock_status.return_value.__enter__.return_value = None
+        mock_status.return_value.__exit__.return_value = None
+
         # Act
         result = runner.invoke(briefing_app, ["generate"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
-        # Check that the error message was printed (to the mocked print)
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project select' first."
         )
 
+    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch(
         "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
         return_value=None,
     )
-    # Patch console.print and console.status
-    @patch("chimera_intel.core.briefing_generator.console.print")
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     def test_cli_briefing_no_historical_data(
-        self, mock_status, mock_print, mock_get_data, mock_get_project
+        self,
+        mock_get_data,
+        mock_get_project,
+        mock_status,
+        mock_print,
+        mock_api_key,
     ):
         """FIXED: Tests the CLI command when no historical data is found for the target."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
         mock_status.return_value.__exit__.return_value = None
-        
+
         mock_get_project.return_value = ProjectConfig(
-            project_name="Test", domain="test.com", created_at="2023-01-01", company_name="Test Inc"
+            project_name="Test",
+            domain="test.com",
+            created_at="2023-01-01",
+            company_name="Test Inc",
         )
 
         # Act
@@ -202,17 +224,15 @@ class TestBriefingGenerator(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.exit_code, 1)
-        # Check that the error message was printed (to the mocked print)
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No historical data found for 'Test Inc'. Run scans first."
         )
 
-    @patch("chimera_intel.core.briefing_generator.get_active_project")
-    # Patch console.print and console.status
-    @patch("chimera_intel.core.briefing_generator.console.print")
+    @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.get_active_project")
     def test_cli_briefing_no_api_key(
-        self, mock_status, mock_print, mock_get_project
+        self, mock_get_project, mock_status, mock_print
     ):
         """FIXED: Tests the CLI command when the Google API key is not configured."""
         # Arrange
@@ -222,7 +242,7 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project.return_value = ProjectConfig(
             project_name="Test", domain="test.com", created_at="2023-01-01"
         )
-        
+
         with patch(
             "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
             return_value={"target": "test.com"},

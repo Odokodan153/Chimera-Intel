@@ -3,12 +3,14 @@ from unittest.mock import patch
 import typer
 
 # The application instance to be tested
-
-
 from chimera_intel.core.cultint import cultint_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
 runner = CliRunner()
+
+# FIX: Wrap the sub-app in a parent Typer for correct test invocation
+app = typer.Typer()
+app.add_typer(cultint_app, name="cultint")
 
 
 @patch("chimera_intel.core.cultint.get_aggregated_data_for_target")
@@ -20,11 +22,9 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     """
     # --- Setup Mocks ---
     # 1. Mock the API key to ensure the check passes.
-
     mock_api_keys.google_api_key = "test_key"
 
     # 2. Mock the aggregated data returned from the database.
-
     mock_get_data.return_value = {
         "modules": {
             "social_analyzer": {"sentiment": "positive"},
@@ -34,7 +34,6 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     }
 
     # 3. Mock the AI analysis result.
-
     mock_ai_result = SWOTAnalysisResult(
         analysis_text="Analysis shows a hierarchical culture focused on tradition.",
         error=None,
@@ -42,18 +41,16 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
     mock_generate_swot.return_value = mock_ai_result
 
     # --- Run Command ---
-
-    result = runner.invoke(cultint_app, ["analyze", "TestCorp"])
+    # FIX: Invoke the parent 'app' with the full command 'cultint analyze'
+    result = runner.invoke(app, ["cultint", "analyze", "TestCorp"])
 
     # --- Assertions ---
-
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "Analyzing cultural narrative for TestCorp..." in result.stdout
     assert "Cultural Narrative Analysis for TestCorp" in result.stdout
     assert "Analysis shows a hierarchical culture" in result.stdout
 
     # Verify the AI prompt was generated correctly
-
     mock_generate_swot.assert_called_once()
     prompt_arg = mock_generate_swot.call_args[0][0]
     assert (
@@ -66,18 +63,17 @@ def test_analyze_target_success(mock_api_keys, mock_generate_swot, mock_get_data
 @patch("chimera_intel.core.cultint.console.print")
 @patch("chimera_intel.core.cultint.get_aggregated_data_for_target")
 @patch("chimera_intel.core.cultint.API_KEYS")
-def test_analyze_target_no_data(mock_console, mock_api_keys, mock_get_data):
+def test_analyze_target_no_data(mock_api_keys, mock_get_data, mock_console):
     """
     Tests the command's behavior when no aggregated data is found for the target.
     """
     # --- Setup Mocks ---
-
     mock_api_keys.google_api_key = "test_key"
     mock_get_data.return_value = None  # Simulate no data found
 
     # --- Run Command ---
-
-    result = runner.invoke(cultint_app, ["analyze", "nonexistent-target"])
+    # FIX: Invoke the parent 'app' with the full command 'cultint analyze'
+    result = runner.invoke(app, ["cultint", "analyze", "nonexistent-target"])
 
     # --- Assertions ---
     # Check that the intended exit code was 0
@@ -94,17 +90,16 @@ def test_analyze_target_no_data(mock_console, mock_api_keys, mock_get_data):
 
 @patch("chimera_intel.core.cultint.console.print")
 @patch("chimera_intel.core.cultint.API_KEYS")
-def test_analyze_target_no_api_key(mock_console, mock_api_keys):
+def test_analyze_target_no_api_key(mock_api_keys, mock_console):
     """
     Tests that the command fails gracefully if the Google API key is not configured.
     """
     # --- Setup Mock ---
-
     mock_api_keys.google_api_key = None  # Simulate missing API key
 
     # --- Run Command ---
-
-    result = runner.invoke(cultint_app, ["analyze", "any-target"])
+    # FIX: Invoke the parent 'app' with the full command 'cultint analyze'
+    result = runner.invoke(app, ["cultint", "analyze", "any-target"])
 
     # --- Assertions ---
     # Check that the intended exit code was 1

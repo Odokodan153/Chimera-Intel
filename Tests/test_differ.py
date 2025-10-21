@@ -1,11 +1,15 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+import typer  
 from jsondiff import insert
 from chimera_intel.core.differ import diff_app
 
 
 runner = CliRunner()
+
+app = typer.Typer()
+app.add_typer(diff_app, name="diff")
 
 
 class TestDiffer(unittest.TestCase):
@@ -111,9 +115,10 @@ class TestDiffer(unittest.TestCase):
         )
         with patch("chimera_intel.core.differ.API_KEYS.slack_webhook_url", "fake_url"):
             # Act
-
+            
+            # FIX: Invoke the parent 'app' with the full command 'diff run'
             result = runner.invoke(
-                diff_app, ["run", "footprint", "--target", "example.com"]
+                app, ["diff", "run", "footprint", "--target", "example.com"]
             )
         # Assert
 
@@ -133,9 +138,10 @@ class TestDiffer(unittest.TestCase):
         mock_get_scans.return_value = ({"a": 1}, {"a": 1})
 
         # Act
-
+        
+        # FIX: Invoke the parent 'app' with the full command 'diff run'
         result = runner.invoke(
-            diff_app, ["run", "footprint", "--target", "example.com"]
+            app, ["diff", "run", "footprint", "--target", "example.com"]
         )
 
         # Assert
@@ -152,9 +158,10 @@ class TestDiffer(unittest.TestCase):
         mock_get_scans.return_value = (None, None)
 
         # Act
-
+        
+        # FIX: Invoke the parent 'app' with the full command 'diff run'
         result = runner.invoke(
-            diff_app, ["run", "footprint", "--target", "example.com"]
+            app, ["diff", "run", "footprint", "--target", "example.com"]
         )
 
         # Assert

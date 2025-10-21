@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import RequestError, HTTPStatusError, Response
 from typer.testing import CliRunner
@@ -27,6 +28,11 @@ from chimera_intel.core.schemas import (
 # CliRunner to simulate CLI commands
 
 runner = CliRunner()
+
+
+def run_coroutine(coro):
+    """Helper function to run a coroutine in tests."""
+    return asyncio.get_event_loop().run_until_complete(coro)
 
 
 class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
@@ -216,17 +222,19 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     # Add patches for external side-effects to prevent exit code 2
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run")
+    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_run_success(
-        self, mock_asyncio_run, mock_save_db, mock_save_print
+        self, mock_api_keys, mock_asyncio_run, mock_save_db, mock_save_print
     ):
         """Tests a successful run of the 'scan business run' command."""
-        # Act
+        # Arrange
+        mock_api_keys.gnews_api_key = "dummy_key"
 
+        # Act
         result = runner.invoke(business_app, ["run", "Apple", "--ticker", "AAPL"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 0)
         mock_asyncio_run.assert_called_once()
         mock_save_print.assert_called_once()
@@ -235,19 +243,22 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     # Add patches for external side-effects to prevent exit code 2
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run")
+    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_with_filings(
-        self, mock_asyncio_run, mock_save_db, mock_save_print
+        self, mock_api_keys, mock_asyncio_run, mock_save_db, mock_save_print
     ):
         """Tests the CLI command with the --filings flag."""
-        # Act
+        # Arrange
+        mock_api_keys.gnews_api_key = "dummy_key"
+        mock_api_keys.sec_api_io_key = "dummy_key"
 
+        # Act
         result = runner.invoke(
             business_app, ["run", "Microsoft", "--ticker", "MSFT", "--filings"]
         )
 
         # Assert
-
         self.assertEqual(result.exit_code, 0)
         # Check that the async main function was called, implying the command was parsed correctly
         mock_asyncio_run.assert_called_once()
@@ -257,7 +268,7 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     # Add all necessary patches to isolate the warning logic
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run")
+    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
     @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -273,8 +284,11 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_print,
     ):
         """Tests that a warning is logged if --filings is used without --ticker."""
-        # Act
+        # Arrange
+        mock_api_keys.gnews_api_key = "dummy_key"
+        # No sec_api_io_key, so the SEC task will be skipped, but the warning should still log.
 
+        # Act
         result = runner.invoke(business_app, ["run", "SomeCompany", "--filings"])
 
         # Assert
@@ -296,9 +310,11 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.resolve_target")
     @patch("chimera_intel.core.business_intel.get_active_project")
-    @patch("chimera_intel.core.business_intel.asyncio.run")
+    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_with_project_context(
         self,
+        mock_api_keys,
         mock_asyncio_run,
         mock_get_project,
         mock_resolve_target,
@@ -307,7 +323,7 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests the CLI command using the centralized resolver with an active project."""
         # Arrange
-
+        mock_api_keys.gnews_api_key = "dummy_key"
         mock_resolve_target.return_value = "ProjectCorp"
         mock_project = ProjectConfig(
             project_name="Test",
@@ -318,11 +334,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_get_project.return_value = mock_project
 
         # Act
-
         result = runner.invoke(business_app, ["run"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 0)
         # Fix: Expect 'run' as the arg, not None
         mock_resolve_target.assert_called_once_with(
@@ -336,15 +350,12 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     def test_cli_business_intel_resolver_fails(self, mock_resolve_target):
         """Tests the CLI command when the resolver raises an exit exception."""
         # Arrange
-
         mock_resolve_target.side_effect = typer.Exit(code=1)
 
         # Act
-
         result = runner.invoke(business_app, ["run"])
 
         # Assert
-
         self.assertEqual(result.exit_code, 1)
 
 

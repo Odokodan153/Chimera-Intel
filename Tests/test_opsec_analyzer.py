@@ -1,11 +1,16 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
+import typer  # Import typer
 
 from chimera_intel.core.opsec_analyzer import generate_opsec_report, opsec_app
 from chimera_intel.core.schemas import OpsecReport, CompromisedCommitter
 
 runner = CliRunner()
+
+# FIX: Create a top-level app and add the app-under-test as a subcommand
+app = typer.Typer()
+app.add_typer(opsec_app, name="opsec")
 
 
 class TestOpsecAnalyzer(unittest.TestCase):
@@ -14,7 +19,9 @@ class TestOpsecAnalyzer(unittest.TestCase):
     # --- Function Tests ---
 
     @patch("chimera_intel.core.opsec_analyzer.get_aggregated_data_for_target")
-    def test_generate_opsec_report_compromised_committer_found(self, mock_get_agg_data):
+    def test_generate_opsec_report_compromised_committer_found(
+        self, mock_get_agg_data
+    ):
         """Tests the detection of a compromised committer."""
         # Arrange
 
@@ -113,8 +120,8 @@ class TestOpsecAnalyzer(unittest.TestCase):
         expected_dict = report.model_dump(exclude_none=True)
 
         # Act
-
-        result = runner.invoke(opsec_app, ["run", "--target", "example.com"])
+        # FIX: Invoke the wrapped 'app' with the full command path
+        result = runner.invoke(app, ["opsec", "run", "--target", "example.com"])
 
         # Assert
 
@@ -142,8 +149,8 @@ class TestOpsecAnalyzer(unittest.TestCase):
         )
 
         # Act
-
-        result = runner.invoke(opsec_app, ["run"])
+        # FIX: Invoke the wrapped 'app' with the full command path
+        result = runner.invoke(app, ["opsec", "run"])
 
         # Assert
 

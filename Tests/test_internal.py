@@ -1,6 +1,6 @@
 import unittest
 import json
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.internal import (
@@ -65,12 +65,21 @@ class TestInternal(unittest.TestCase):
 
     # --- MFT Analysis Tests ---
 
-    @patch("chimera_intel.core.internal.analyzeMFT.main")
+    # --- FIX APPLIED ---
+    # Patch the entire 'analyzeMFT' module instead of 'analyzeMFT.main'
+    # Use autospec=True to create a mock that mirrors the module spec
+    @patch("chimera_intel.core.internal.analyzeMFT", autospec=True)
+    # --- END FIX ---
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.os.remove")
-    def test_parse_mft_success(self, mock_remove, mock_exists, mock_analyze_main):
+    def test_parse_mft_success(self, mock_remove, mock_exists, mock_analyzeMFT):
         """Tests a successful MFT parsing."""
         # Arrange
+
+        # --- FIX APPLIED ---
+        # Ensure the mocked module has a 'main' attribute
+        mock_analyzeMFT.main = MagicMock(return_value=None)
+        # --- END FIX ---
 
         mft_csv_output = (
             "Record Number,Filename,Created,Last Modified,is_directory\n"
