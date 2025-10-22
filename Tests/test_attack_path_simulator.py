@@ -6,13 +6,14 @@ from chimera_intel.core.attack_path_simulator import attack_path_app
 runner = CliRunner()
 
 
-# Add the patches for nx.has_path and nx.all_shortest_paths as you suggested
+# --- FIX: Add patch for the module's logger ---
+@patch("chimera_intel.core.attack_path_simulator.logger")
 @patch("chimera_intel.core.attack_path_simulator.nx.has_path", return_value=True)
 @patch("chimera_intel.core.attack_path_simulator.nx.all_shortest_paths")
 @patch("chimera_intel.core.attack_path_simulator.console.print", new_callable=MagicMock)
 @patch("chimera_intel.core.attack_path_simulator.get_db_connection")
 def test_simulate_attack_success(
-    mock_get_db_conn, mock_console_print, mock_all_paths, mock_has_path
+    mock_get_db_conn, mock_console_print, mock_all_paths, mock_has_path, mock_logger
 ):
     """
     Tests the 'simulate' command with mocked database calls returning a simple
@@ -84,9 +85,11 @@ def test_simulate_attack_success(
     mock_cursor.execute.assert_any_call("SELECT source, target FROM asset_connections")
 
 
+# --- FIX: Add patch for the module's logger ---
+@patch("chimera_intel.core.attack_path_simulator.logger")
 @patch("chimera_intel.core.attack_path_simulator.console.print", new_callable=MagicMock)
 @patch("chimera_intel.core.attack_path_simulator.get_db_connection")
-def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print):
+def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print, mock_logger):
     """
     Tests that the command exits with code 1 and prints a warning when no assets exist.
     """

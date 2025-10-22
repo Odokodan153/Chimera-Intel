@@ -24,6 +24,8 @@ class TestAppint(unittest.TestCase):
     # --- CLI Command Tests ---
 
     # Patches are applied from bottom-up, matching the argument order
+    @patch("chimera_intel.core.appint.logger")  # FIX 1: Patch the logger
+    @patch("chimera_intel.core.appint.os.walk", return_value=[])  # FIX 2: Mock os.walk
     @patch("chimera_intel.core.appint.save_scan_to_db")
     @patch("chimera_intel.core.appint.save_or_print_results")
     @patch("chimera_intel.core.appint.shutil.rmtree")
@@ -38,12 +40,14 @@ class TestAppint(unittest.TestCase):
         mock_rmtree,
         mock_save_print,
         mock_save_db,
+        mock_os_walk,  # Argument for new os.walk mock
+        mock_logger,   # Argument for new logger mock
     ):
         """Tests a successful run of the 'static' CLI command by mocking dependencies."""
         # Arrange
-        # Mock subprocess.run to simulate successful decompilation (as per your table)
+        # Mock subprocess.run to simulate successful decompilation
         mock_subprocess.return_value = MagicMock(stdout="Decompiled", returncode=0)
-        # Mock rmtree to prevent errors in the 'finally' block (as per your table)
+        # Mock rmtree to prevent errors in the 'finally' block
         mock_rmtree.return_value = None
 
         # Act
@@ -61,16 +65,22 @@ class TestAppint(unittest.TestCase):
         mock_save_db.assert_called_once()   # Check DB save was called
         mock_rmtree.assert_called_once()      # Check cleanup was called
 
+    @patch("chimera_intel.core.appint.logger")  # FIX: Patch the logger
     @patch("chimera_intel.core.appint.save_scan_to_db")
     @patch("chimera_intel.core.appint.save_or_print_results")
     @patch("chimera_intel.core.appint.os.path.exists", return_value=False)  # Mock os.path.exists
     @patch("chimera_intel.core.appint.console.print")
     def test_cli_static_analysis_file_not_found(
-        self, mock_console_print, mock_exists, mock_save_print, mock_save_db
+        self,
+        mock_console_print,
+        mock_exists,
+        mock_save_print,
+        mock_save_db,
+        mock_logger,  # Argument for new logger mock
     ):
         """Tests the 'static' CLI command when the file is not found (mocks os.path.exists)."""
         # Arrange
-        # os.path.exists is mocked via decorator to return False (as per your table)
+        # os.path.exists is mocked via decorator to return False
 
         # Act
         result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
@@ -86,7 +96,7 @@ class TestAppint(unittest.TestCase):
         mock_console_print.assert_called_with(
             "[red]Static analysis failed: APK file not found.[/red]"
         )
-        # The other functions should not be called on failure (as per your table)
+        # The other functions should not be called on failure
         mock_save_print.assert_not_called()
         mock_save_db.assert_not_called()
 

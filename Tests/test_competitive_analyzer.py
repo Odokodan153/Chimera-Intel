@@ -72,11 +72,12 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
 
     # --- CLI Command Tests ---
 
+    @patch("chimera_intel.core.competitive_analyzer.logger")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
     @patch("chimera_intel.core.competitive_analyzer.generate_competitive_analysis")
     def test_cli_competitive_analysis_success(
-        self, mock_generate, mock_get_data, mock_console
+        self, mock_generate, mock_get_data, mock_console, mock_logger
     ):
         """Tests the 'competitive' CLI command with a successful run."""
         # Arrange
@@ -98,9 +99,10 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         # Assert
         self.assertEqual(result.exit_code, 0) # This should now pass
 
+    @patch("chimera_intel.core.competitive_analyzer.logger")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_data(self, mock_get_data, mock_console):
+    def test_cli_competitive_analysis_no_data(self, mock_get_data, mock_console, mock_logger):
         """Tests the CLI command when data for one of the targets is missing."""
         # Arrange
         
@@ -116,15 +118,13 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
             )
     
         # Assert
-        exit_code = result.exit_code
-        if isinstance(result.exception, typer.Exit):
-            exit_code = result.exception.exit_code
-    
-        self.assertEqual(exit_code, 1) # This should now pass
+        # If typer.Exit(1) is raised, result.exit_code will be 1
+        self.assertEqual(result.exit_code, 1) # This should now pass
 
+    @patch("chimera_intel.core.competitive_analyzer.logger")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_api_key(self, mock_get_data, mock_console):
+    def test_cli_competitive_analysis_no_api_key(self, mock_get_data, mock_console, mock_logger):
         """NEW: Tests the CLI command when the Google API key is not configured."""
         # Arrange
         
@@ -137,11 +137,8 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
             )
     
         # Assert
-        exit_code = result.exit_code
-        if isinstance(result.exception, typer.Exit):
-            exit_code = result.exception.exit_code
-    
-        self.assertEqual(exit_code, 1) # This should now pass
+        # If typer.Exit(1) is raised, result.exit_code will be 1
+        self.assertEqual(result.exit_code, 1) # This should now pass
 
 
 if __name__ == "__main__":

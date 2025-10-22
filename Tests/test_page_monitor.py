@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
-
 from chimera_intel.core.page_monitor import page_monitor_app, check_for_changes
 
 runner = CliRunner()
@@ -12,9 +11,11 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Tests ---
 
+    # --- FIX: Add patch for the module's logger ---
+    @patch("chimera_intel.core.page_monitor.logger")
     @patch("chimera_intel.core.page_monitor.add_job")
     @patch("chimera_intel.core.page_monitor.console.print")
-    def test_add_page_monitor_command(self, mock_console, mock_add_job):
+    def test_add_page_monitor_command(self, mock_console, mock_add_job, mock_logger):
         """Tests the 'add' command for adding a new page to monitor."""
         # Arrange
         mock_add_job.return_value = None
@@ -26,11 +27,15 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         )
 
         # Debug info (helps diagnose CLI parsing or exit code issues)
-        if result.exit_code != 0:
+        if result.exit_code != 0 and result.exception:
             print(f"\n--- TEST FAILED: {self.id()} ---")
             print("STDOUT:\n", result.stdout)
             print("STDERR:\n", result.stderr)
-            print(f"Exception: {result.exception}\n")
+            # Print the full exception stack trace if it exists
+            import traceback
+            traceback.print_exception(type(result.exception), result.exception, result.exception.__traceback__)
+            print(f"\nException: {result.exception}\n")
+
 
         # Assert that it ran successfully (Typer can return 0 or None on success)
         self.assertIn(
@@ -56,7 +61,7 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_save_snapshot.return_value = (True, "old_hash")
 
-        # --- FIX: Configure the async client mock ---
+        # --- Configure the async client mock ---
         # 1. Mock the response object
         mock_response = MagicMock()
         mock_response.text = "<html><body>Mock content</body></html>"
@@ -89,7 +94,7 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_save_snapshot.return_value = (False, "same_hash")
 
-        # --- FIX: Configure the async client mock ---
+        # --- Configure the async client mock ---
         # 1. Mock the response object
         mock_response = MagicMock()
         mock_response.text = "<html><body>Mock content</body></html>"

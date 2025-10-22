@@ -8,10 +8,12 @@ from rich.console import Console
 from rich.panel import Panel
 import networkx as nx
 import psycopg2
+import logging  
 
 from .database import get_db_connection
 
 console = Console()
+logger = logging.getLogger(__name__)  # <-- FIX 2: Define the logger
 
 attack_path_app = typer.Typer(
     name="attack-path",
@@ -54,6 +56,7 @@ def simulate_attack(
     Simulates attack paths from an entry point to a target asset using data
     from the asset graph database.
     """
+    logger.info(f"Simulating attack path from {entry_point} to {target_asset}")
     console.print(
         f"Simulating attack path from '[bold cyan]{entry_point}[/bold cyan]' to '[bold red]{target_asset}[/bold red]'..."
     )

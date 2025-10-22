@@ -77,9 +77,7 @@ def analyze_repo(
                 print("---------------------------------")
             else:
                 print("\nNo known vulnerabilities found in the dependencies.")
-
-            # --- FIX 1: Explicitly raise success exit code ---
-            raise typer.Exit(code=0)
+            
         
         except git.exc.GitCommandError as e:
             print(f"Error cloning repository: {e}")

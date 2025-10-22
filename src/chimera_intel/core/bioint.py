@@ -7,8 +7,10 @@ from typing_extensions import Annotated
 from rich.console import Console
 from Bio import Entrez, SeqIO
 import io
+import logging  # <-- FIX 1: Import logging
 
 console = Console()
+logger = logging.getLogger(__name__)  # <-- FIX 2: Define the logger
 
 bioint_app = typer.Typer(
     name="bioint",
@@ -64,6 +66,7 @@ def monitor_sequences(
     Continuously scans public genetic sequence databases for specific gene fragments,
     synthetic markers, or sequences related to patented research or pathogens.
     """
+    logger.info(f"Monitoring {db} for target: {target}") # <-- FIX 3: Add logger call
     console.print(
         f"Monitoring [bold cyan]{db}[/bold cyan] for target: '[yellow]{target}[/yellow]'"
     )
