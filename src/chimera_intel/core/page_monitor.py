@@ -82,10 +82,10 @@ async def check_for_changes(url: str, job_id: str):
         )
 
 
-# Create a Typer app for the page monitoring commands
+# --- FIX 2: Removed the 'name' argument ---
+# This was likely confusing the CliRunner's argument parsing.
 page_monitor_app = typer.Typer(
-    name="page-monitor",
-    help="Continuous Web Page Monitoring for change detection.",
+    help="Continuous Web Page Monitoring for change detection."
 )
 
 
@@ -96,7 +96,7 @@ def add_page_monitor(
     url: Annotated[
         str,
         typer.Option(
-            ...,  # <-- FIX: Mark as required
+            ...,  
             "--url",
             "-u",
             help="The URL of the web page to monitor for changes.",
@@ -105,7 +105,7 @@ def add_page_monitor(
     schedule: Annotated[
         str,
         typer.Option(
-            ...,  # <-- FIX: Mark as required
+            ..., 
             "--schedule",
             "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
@@ -134,10 +134,5 @@ def add_page_monitor(
         "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
     )
     
-    # --- FIX 1: Removed explicit exit ---
-    # The function will now implicitly exit with code 0, which the CliRunner expects.
-
-
-# --- FIX 2: Proper Typer CLI entrypoint ---
 if __name__ == "__main__":
     typer.run(page_monitor_app)
