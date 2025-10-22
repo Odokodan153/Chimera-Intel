@@ -135,4 +135,4 @@ def add_page_monitor(
     )
     
 if __name__ == "__main__":
-    typer.run(page_monitor_app)
+    page_monitor_app()
