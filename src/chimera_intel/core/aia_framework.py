@@ -13,11 +13,6 @@ import re
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
-
-# pip install tldextract
-
-
-import tldextract
 from .schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
 from rich.console import Console
