@@ -33,13 +33,11 @@ async def check_for_changes(url: str, job_id: str):
 
     try:
         # Use a client from the context manager
-
         async with get_async_http_client() as client:
             response = await client.get(url, follow_redirects=True, timeout=20.0)
             response.raise_for_status()
 
             # Clean content: remove scripts, styles, and extra whitespace before hashing
-
             soup = BeautifulSoup(response.text, "html.parser")
             for script_or_style in soup(["script", "style"]):
                 script_or_style.decompose()
@@ -48,7 +46,6 @@ async def check_for_changes(url: str, job_id: str):
 
             # The logic relies on save_page_snapshot to handle the persistence and comparison.
             # Corrected: Removed the job_id argument
-
             change_detected, old_hash = save_page_snapshot(
                 url=url, current_hash=current_hash, content=response.text
             )
@@ -59,7 +56,6 @@ async def check_for_changes(url: str, job_id: str):
                 )
 
                 # Send notifications
-
                 message = f"🚨 Chimera Intel Alert: Significant change detected on monitored URL: {url}. Snapshot taken."
 
                 if CONFIG.notifications and CONFIG.notifications.slack_webhook_url:
@@ -87,8 +83,6 @@ async def check_for_changes(url: str, job_id: str):
 
 
 # Create a Typer app for the page monitoring commands
-
-
 page_monitor_app = typer.Typer(
     name="page-monitor",
     help="Continuous Web Page Monitoring for change detection.",
@@ -137,3 +131,11 @@ def add_page_monitor(
     console.print(
         "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
     )
+    
+    # --- FIX 1: Explicit success exit code ---
+    raise typer.Exit(code=0)
+
+
+# --- FIX 2: Proper Typer CLI entrypoint ---
+if __name__ == "__main__":
+    typer.run(page_monitor_app)

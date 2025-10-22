@@ -61,12 +61,12 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
 
 # --- Typer CLI Application ---
+social_osint_app = typer.Typer(
+    help="Search for a username across multiple social media platforms using Sherlock."
+)
 
 
-social_osint_app = typer.Typer()
-
-
-@social_osint_app.command("run")
+@social_osint_app.command(name="run")
 def run_social_osint_scan(
     username: str = typer.Argument(
         ..., metavar="USERNAME", help="The username to search for."
@@ -75,14 +75,13 @@ def run_social_osint_scan(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """
-    Searches for a username across hundreds of social networks.
-    """
+    """Searches for a username across hundreds of social networks."""
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+
     results_model = loop.run_until_complete(find_social_profiles(username))
     results_dict = results_model.model_dump(exclude_none=True)
 
@@ -90,5 +89,6 @@ def run_social_osint_scan(
         save_or_print_results(results_dict, output_file)
     else:
         typer.echo(json.dumps(results_dict, indent=2))
+
     save_scan_to_db(target=username, module="social_osint", data=results_dict)
     logger.info("Social media OSINT scan complete for %s", username)

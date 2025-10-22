@@ -14,9 +14,8 @@ from rich.console import Console
 console = Console()
 
 # Create a new Typer application for Wi-Fi Analysis commands
-
+# FIX: Removed name="wifi" to align with test invocation
 wifi_analyzer_app = typer.Typer(
-    name="wifi",
     help="Wireless Network Analysis (SIGINT)",
 )
 

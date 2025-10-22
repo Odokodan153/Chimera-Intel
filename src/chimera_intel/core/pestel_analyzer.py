@@ -61,7 +61,6 @@ def generate_pestel_analysis(
 
     try:
         # Re-using the generic text generation function from ai_core
-
         result = generate_swot_from_data(prompt, api_key)
         if result.error:
             raise Exception(result.error)
@@ -117,3 +116,11 @@ def run_pestel_analysis(
         raise typer.Exit(code=1)
     else:
         console.print(Markdown(pestel_result.analysis_text or "No analysis generated."))
+
+    # --- FIX 1: Explicitly signal successful CLI exit ---
+    raise typer.Exit(code=0)
+
+
+# --- FIX 2: Proper Typer CLI entrypoint ---
+if __name__ == "__main__":
+    typer.run(pestel_analyzer_app)

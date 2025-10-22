@@ -10,8 +10,6 @@ import subprocess
 import json
 
 # Create a new Typer application for SCAINT commands
-
-
 scaint_app = typer.Typer(
     name="scaint",
     help="Software Supply Chain Security (SCAINT)",
@@ -26,7 +24,6 @@ def analyze_dependencies(repo_path: str) -> dict:
     if not os.path.exists(requirements_path):
         raise FileNotFoundError("requirements.txt not found in the repository.")
     # Run osv-scanner and capture the JSON output
-
     result = subprocess.run(
         ["osv-scanner", "-r", repo_path, "--json"],
         capture_output=True,
@@ -35,7 +32,6 @@ def analyze_dependencies(repo_path: str) -> dict:
     if result.returncode != 0 and result.stderr:
         # OSV-Scanner prints non-vulnerability related errors to stderr
         # and vulnerability findings to stdout, so we check stderr first
-
         raise Exception(f"OSV-Scanner error: {result.stderr}")
     return json.loads(result.stdout) if result.stdout else {"results": []}
 
@@ -59,17 +55,14 @@ def analyze_repo(
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             # 1. Clone the repository into a temporary directory
-
             print(f"Cloning repository into: {tmpdir}")
             git.Repo.clone_from(repo_url, tmpdir)
 
             # 2. Analyze the dependencies for vulnerabilities
-
             print("Scanning for known vulnerabilities...")
             vulnerabilities = analyze_dependencies(tmpdir)
 
             # 3. Display the results
-
             if vulnerabilities and vulnerabilities.get("results"):
                 print("\n--- Vulnerability Scan Results ---")
                 for result in vulnerabilities["results"]:
@@ -84,6 +77,10 @@ def analyze_repo(
                 print("---------------------------------")
             else:
                 print("\nNo known vulnerabilities found in the dependencies.")
+
+            # --- FIX 1: Explicitly raise success exit code ---
+            raise typer.Exit(code=0)
+        
         except git.exc.GitCommandError as e:
             print(f"Error cloning repository: {e}")
             raise typer.Exit(code=1)
@@ -96,4 +93,4 @@ def analyze_repo(
 
 
 if __name__ == "__main__":
-    scaint_app()
+    typer.run(scaint_app)
