@@ -46,7 +46,7 @@ def test_recommend_tactic_with_history(engine):
 
 # transport = httpx.ASGITransport(app=app) # REMOVED
 # client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
-client = TestClient(app) # ADDED
+client = TestClient() # ADDED
 
 
 def test_create_negotiation():
