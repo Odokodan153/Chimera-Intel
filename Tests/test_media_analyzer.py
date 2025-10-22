@@ -117,8 +117,15 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # FIX: Split output by lines and parse only the last line (the JSON)
-        output_json_str = result.stdout.strip().splitlines()[-1]
+        
+        # FIX: Find the JSON line, ignoring rich status/spinner output
+        output_json_str = None
+        for line in result.stdout.strip().splitlines():
+            if line.strip().startswith("{"):
+                output_json_str = line.strip()
+                break
+        
+        self.assertIsNotNone(output_json_str, f"No JSON output found in CLI response: {result.stdout}")
         output = json.loads(output_json_str)
         self.assertEqual(output["source_image_path"], "test.jpg")
         self.assertEqual(output["matches_found"], 1)
@@ -144,8 +151,15 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        # FIX: Split output by lines and parse only the last line (the JSON)
-        output_json_str = result.stdout.strip().splitlines()[-1]
+        
+        # FIX: Find the JSON line, ignoring rich status/spinner output
+        output_json_str = None
+        for line in result.stdout.strip().splitlines():
+            if line.strip().startswith("{"):
+                output_json_str = line.strip()
+                break
+        
+        self.assertIsNotNone(output_json_str, f"No JSON output found in CLI response: {result.stdout}")
         output = json.loads(output_json_str)
         self.assertEqual(output["file_path"], "test.mp3")
         self.assertEqual(output["transcript"]["text"], "hello world")

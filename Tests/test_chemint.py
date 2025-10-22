@@ -134,7 +134,7 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
-    @patch("src.chimera_intel.core.chemint.Search")  # <- corrected patch path
+    @patch("src.chimera_intel.core.chemint.pypatent.Search")
     @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info

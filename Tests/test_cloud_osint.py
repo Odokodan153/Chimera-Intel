@@ -207,8 +207,8 @@ class TestCloudOsint(unittest.TestCase):
         )
 
         # Act
-
-        result = runner.invoke(cloud_osint_app, ["run"])
+        # FIX: Invoke with [] to use the default 'run' command and trigger project logic
+        result = runner.invoke(cloud_osint_app, [])
 
         # Assert
 
@@ -220,6 +220,9 @@ class TestCloudOsint(unittest.TestCase):
         mock_find_assets.assert_awaited_with("projectcloudinc")
         mock_save_db.assert_called_once()
         mock_save_print.assert_called_once() # Verify this is also called
+        # Add assertion for the final "complete" message
+        self.assertIn("Cloud asset scan complete for keyword: projectcloudinc", result.stdout)
+
 
     @patch("chimera_intel.core.cloud_osint.get_active_project")
     # Add patches for all side-effects, even if they aren't expected to run
@@ -235,8 +238,8 @@ class TestCloudOsint(unittest.TestCase):
         mock_get_project.return_value = None
 
         # Act
-
-        result = runner.invoke(cloud_osint_app, ["run"])
+        # FIX: Invoke with [] to use the default 'run' command and trigger error logic
+        result = runner.invoke(cloud_osint_app, [])
 
         # Assert
 

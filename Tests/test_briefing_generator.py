@@ -95,7 +95,7 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        mock_api_key,
+        # <-- FIX: Removed mock_api_key from args
     ):
         """Tests the 'briefing generate' CLI command with a successful run."""
         # Arrange
@@ -138,7 +138,7 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        mock_api_key,
+        # <-- FIX: Removed mock_api_key from args
     ):
         """FIXED: Tests the CLI command with the --output option and verifies file content."""
         # Arrange
@@ -175,7 +175,8 @@ class TestBriefingGenerator(unittest.TestCase):
         "chimera_intel.core.briefing_generator.get_active_project", return_value=None
     )
     def test_cli_briefing_no_active_project(
-        self, mock_get_project, mock_status, mock_print, mock_api_key
+        self, mock_get_project, mock_status, mock_print
+        # <-- FIX: Removed mock_api_key from args
     ):
         """Tests the CLI command when no active project is set."""
         # Arrange
@@ -205,7 +206,7 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        mock_api_key,
+        # <-- No mock_api_key here, but it was in the decorator, so it was correct to check
     ):
         """FIXED: Tests the CLI command when no historical data is found for the target."""
         # Arrange

@@ -9,6 +9,7 @@ import os
 import importlib
 import pkgutil
 import time
+import re  
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
@@ -128,11 +129,11 @@ def create_initial_plans(objective: str, console: Console) -> List[Plan]:
             "[yellow]Warning: Reasoning engine returned no tasks. Trying fallback analysis...[/]"
         )
 
-        # Fallback: Extract domain using tldextract and create a footprint task.
+       
+        domain_match = re.search(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", objective, re.IGNORECASE)
 
-        extracted = tldextract.extract(objective)
-        if extracted.registered_domain:
-            domain = extracted.registered_domain
+        if domain_match:
+            domain = domain_match.group(0)
             logger.info(
                 f"Fallback initiated: Found domain '{domain}' and starting footprint."
             )
@@ -147,6 +148,8 @@ def create_initial_plans(objective: str, console: Console) -> List[Plan]:
                 "Fallback failed: No recognizable domain found in the objective."
             )
             return []
+        
+        
     # For simplicity, we'll create one plan with all initial tasks.
     # A more advanced implementation could group tasks into multiple plans.
 

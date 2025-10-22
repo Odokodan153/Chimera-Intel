@@ -128,10 +128,22 @@ class NegotiationEngine:
         detected_tactics = self.advanced_nlp_analyzer.detect_argument_tactics(
             message_content
         )
+
+        lower_content = message_content.lower()
+        if "offer" in lower_content:
+            intent = "offer"
+        elif "accept" in lower_content:
+            intent = "accept"
+        elif "reject" in lower_content:
+            intent = "reject"
+        else:
+            intent = "neutral"
+
         return {
             "tone_score": tone_score,
             "sentiment": sentiment,
             "argument_tactics": detected_tactics,
+            "intent": intent,  
         }
 
     async def recommend_tactic_async(
@@ -324,6 +336,7 @@ class NegotiationEngine:
             "settlement_point": settlement_point,
         }
 
+
     def recommend_tactic(self, history: List[Dict[str, Any]]) -> Dict[str, str]:
         """Synchronous wrapper for backward-compatible testing."""
         return self._generate_rule_based_recommendation(history)
@@ -342,6 +355,7 @@ class NegotiationEngine:
             return {"best_alternative": None}
         best = max(alternatives, key=lambda x: x["value"])
         return {"best_alternative": best}
+
 
 # --- CLI Commands ---
 
