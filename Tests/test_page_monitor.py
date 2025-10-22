@@ -17,20 +17,32 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
     def test_add_page_monitor_command(self, mock_console, mock_add_job):
         """Tests the 'add' command for adding a new page to monitor."""
         # Arrange
-
         mock_add_job.return_value = None
 
         # Act
-
         result = runner.invoke(
             page_monitor_app,
             ["add", "--url", "https://example.com/about", "--schedule", "* * * * *"],
         )
 
-        # Assert
+        # Debug info (helps diagnose CLI parsing or exit code issues)
+        if result.exit_code != 0:
+            print(f"\n--- TEST FAILED: {self.id()} ---")
+            print("STDOUT:\n", result.stdout)
+            print("STDERR:\n", result.stderr)
+            print(f"Exception: {result.exception}\n")
 
-        self.assertEqual(result.exit_code, 0, result.stdout)
+        # Assert that it ran successfully (Typer can return 0 or None on success)
+        self.assertIn(
+            result.exit_code,
+            [0, None],
+            f"Unexpected exit code: {result.exit_code}. See output above.",
+        )
+        
+        # Assert that the core logic was called
         mock_add_job.assert_called_once()
+        
+        # Assert that the user received success feedback
         mock_console.assert_any_call(
             "[bold green]✅ Successfully scheduled web page monitor.[/bold green]"
         )

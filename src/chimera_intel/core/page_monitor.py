@@ -134,8 +134,8 @@ def add_page_monitor(
         "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
     )
     
-    # --- FIX 1: Explicit success exit code ---
-    raise typer.Exit(code=0)
+    # --- FIX 1: Removed explicit exit ---
+    # The function will now implicitly exit with code 0, which the CliRunner expects.
 
 
 # --- FIX 2: Proper Typer CLI entrypoint ---
