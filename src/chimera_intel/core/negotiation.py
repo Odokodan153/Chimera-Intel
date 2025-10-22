@@ -324,6 +324,24 @@ class NegotiationEngine:
             "settlement_point": settlement_point,
         }
 
+    def recommend_tactic(self, history: List[Dict[str, Any]]) -> Dict[str, str]:
+        """Synchronous wrapper for backward-compatible testing."""
+        return self._generate_rule_based_recommendation(history)
+
+    def calculate_zopa(self, our_min, our_max, their_min, their_max):
+        """Calculates the Zone of Possible Agreement (ZOPA)."""
+        overlap_min = max(our_min, their_min)
+        overlap_max = min(our_max, their_max)
+        if overlap_min > overlap_max:
+            return None
+        return (overlap_min, overlap_max)
+
+    def assess_batna(self, alternatives: list) -> dict:
+        """Assesses the Best Alternative To a Negotiated Agreement (BATNA)."""
+        if not alternatives:
+            return {"best_alternative": None}
+        best = max(alternatives, key=lambda x: x["value"])
+        return {"best_alternative": best}
 
 # --- CLI Commands ---
 

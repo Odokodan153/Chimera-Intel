@@ -93,4 +93,4 @@ def analyze_repo(
 
 
 if __name__ == "__main__":
-    typer.run(scaint_app)
+    scaint_app

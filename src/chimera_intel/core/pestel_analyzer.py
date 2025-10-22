@@ -123,4 +123,4 @@ def run_pestel_analysis(
 
 # --- FIX 2: Proper Typer CLI entrypoint ---
 if __name__ == "__main__":
-    typer.run(pestel_analyzer_app)
+    pestel_analyzer_app
