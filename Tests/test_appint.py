@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock  # Added MagicMock
+from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.appint import analyze_apk_static, appint_app
@@ -10,7 +10,8 @@ runner = CliRunner()
 class TestAppint(unittest.TestCase):
     """Test cases for the Appint module."""
 
-    def test_analyze_apk_static_file_not_found(self):
+    @patch("chimera_intel.core.appint.os.path.exists", return_value=False)
+    def test_analyze_apk_static_file_not_found(self, mock_exists):
         """Tests the function's behavior when the APK file is not found."""
         # Act
         result = analyze_apk_static("nonexistent.apk")
@@ -18,14 +19,11 @@ class TestAppint(unittest.TestCase):
         # Assert
         self.assertIsNotNone(result.error)
         self.assertIn("APK file not found.", result.error)
+        mock_exists.assert_called_with("nonexistent.apk")
 
     # --- CLI Command Tests ---
 
-    # FIX: Mocks updated based on analysis.
-    # We now mock the *dependencies* (os, subprocess, shutil)
-    # instead of the function itself (analyze_apk_static)
-    # to correctly test the CLI integration and avoid Exit Code 2.
-    
+    # Patches are applied from bottom-up, matching the argument order
     @patch("chimera_intel.core.appint.save_scan_to_db")
     @patch("chimera_intel.core.appint.save_or_print_results")
     @patch("chimera_intel.core.appint.shutil.rmtree")
@@ -43,24 +41,26 @@ class TestAppint(unittest.TestCase):
     ):
         """Tests a successful run of the 'static' CLI command by mocking dependencies."""
         # Arrange
-        # Mock subprocess.run to simulate successful decompilation
+        # Mock subprocess.run to simulate successful decompilation (as per your table)
         mock_subprocess.return_value = MagicMock(stdout="Decompiled", returncode=0)
+        # Mock rmtree to prevent errors in the 'finally' block (as per your table)
+        mock_rmtree.return_value = None
 
         # Act
-        # We run the command. We don't create a dummy file because os.path.exists is mocked.
+        # We run the command. os.path.exists is mocked to return True.
         result = runner.invoke(appint_app, ["static", "dummy.apk"])
 
         # Assert
         self.assertEqual(
             result.exit_code, 0, f"CLI command failed with output: {result.stdout}"
         )
-        mock_exists.assert_called_with("dummy.apk")  # Check file path was checked
+        # Check that the file was checked
+        mock_exists.assert_called_with("dummy.apk")
         mock_subprocess.assert_called_once()  # Check that apktool was called
-        mock_save_print.assert_called_once()
-        mock_save_db.assert_called_once()
-        mock_rmtree.assert_called_once()  # Check cleanup
+        mock_save_print.assert_called_once()  # Check results were saved/printed
+        mock_save_db.assert_called_once()   # Check DB save was called
+        mock_rmtree.assert_called_once()      # Check cleanup was called
 
-    # FIX: Mocks updated to target os.path.exists.
     @patch("chimera_intel.core.appint.save_scan_to_db")
     @patch("chimera_intel.core.appint.save_or_print_results")
     @patch("chimera_intel.core.appint.os.path.exists", return_value=False)  # Mock os.path.exists
@@ -70,25 +70,23 @@ class TestAppint(unittest.TestCase):
     ):
         """Tests the 'static' CLI command when the file is not found (mocks os.path.exists)."""
         # Arrange
-        # os.path.exists is mocked via decorator to return False
+        # os.path.exists is mocked via decorator to return False (as per your table)
 
         # Act
         result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
 
         # Assert
+        # The command should catch the error and exit with code 1
         self.assertEqual(
             result.exit_code, 1, f"CLI command failed with output: {result.stdout}"
         )
         mock_exists.assert_called_with("nonexistent.apk")
 
         # Check that the correct error message was printed
-        # This assumes the CLI function catches the error from analyze_apk_static
-        # (which returns an error because mock_exists is False)
-        # and prints this specific message.
         mock_console_print.assert_called_with(
             "[red]Static analysis failed: APK file not found.[/red]"
         )
-        # The other functions should not be called on failure
+        # The other functions should not be called on failure (as per your table)
         mock_save_print.assert_not_called()
         mock_save_db.assert_not_called()
 

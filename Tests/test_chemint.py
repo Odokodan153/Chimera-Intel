@@ -167,9 +167,11 @@ class TestPatentSearch:
         # Check that both patents and research sections appear
         assert "Patents (USPTO)" in result.stdout
         assert "Research Papers (Google Scholar)" in result.stdout
+        
+        # --- FIX: Check assertions against the mock_patent object ---
         # Check that mocked patent title and URL are in the output
-        assert mock_patent_info.title in result.stdout
-        assert "http://example.com/patent" in result.stdout
+        assert mock_patent.title in result.stdout
+        assert mock_patent.url in result.stdout
         # Check that mocked research paper title is in the output
         assert "A great paper" in result.stdout
         assert "http://example.com/paper" in result.stdout

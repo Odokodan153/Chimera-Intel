@@ -5,19 +5,23 @@ from chimera_intel.core.bioint import bioint_app
 runner = CliRunner()
 
 
-@patch("chimera_intel.core.bioint.Entrez")
+@patch("chimera_intel.core.bioint.search_genbank")
 @patch("chimera_intel.core.bioint.console.print", new_callable=MagicMock)
-def test_monitor_sequences_success(mock_console_print, mock_entrez):
-    # Mock esearch and efetch
-    mock_esearch_handle = MagicMock()
-    mock_efetch_handle = MagicMock()
+def test_monitor_sequences_success(mock_console_print, mock_search_genbank):
+    """Tests the command when sequences are found."""
+    # Create fake records to be returned by the mocked function
+    mock_record_1 = MagicMock()
+    mock_record_1.id = "12345"
+    mock_record_1.description = "Synthetic sequence 1"
+    mock_record_1.seq = "ATGC"
 
-    mock_entrez.esearch.return_value = mock_esearch_handle
-    mock_entrez.read.return_value = {"IdList": ["12345", "67890"]}
-    mock_entrez.efetch.return_value = mock_efetch_handle
-    mock_efetch_handle.read.return_value = (
-        "LOCUS 12345\nDESCRIPTION Synthetic\nACCESSION 12345\n//" * 2
-    )
+    mock_record_2 = MagicMock()
+    mock_record_2.id = "67890"
+    mock_record_2.description = "Synthetic sequence 2"
+    mock_record_2.seq = "CGTA"
+
+    # Set the return value for the mocked search_genbank function
+    mock_search_genbank.return_value = [mock_record_1, mock_record_2]
 
     # CLI invocation
     result = runner.invoke(
@@ -33,8 +37,12 @@ def test_monitor_sequences_success(mock_console_print, mock_entrez):
         ],
     )
 
+    # Check that the command exited successfully
     assert result.exit_code == 0, result.stdout
-    
+
+    # Verify the mock search function was called correctly
+    mock_search_genbank.assert_called_with(target="CRISPR", email="test@example.com")
+
     # Check that console.print was called with the expected startup message
     mock_console_print.assert_any_call(
         "Monitoring [bold cyan]GenBank[/bold cyan] for target: '[yellow]CRISPR[/yellow]'"
@@ -44,23 +52,17 @@ def test_monitor_sequences_success(mock_console_print, mock_entrez):
         "\n--- [bold green]Found 2 Matching Sequences[/bold green] ---"
     )
     mock_console_print.assert_any_call("\n> [bold]Accession ID:[/] 12345")
+    mock_console_print.assert_any_call("  [bold]Description:[/] Synthetic sequence 1")
+    mock_console_print.assert_any_call("  [bold]Sequence Length:[/] 4 bp")
+    mock_console_print.assert_any_call("\n> [bold]Accession ID:[/] 67890")
 
 
-    # Verify Entrez calls
-    mock_entrez.esearch.assert_called_with(db="nucleotide", term="CRISPR", retmax=5)
-    mock_entrez.read.assert_called_with(mock_esearch_handle)
-    mock_entrez.efetch.assert_called_with(
-        db="nucleotide", id=["12345", "67890"], rettype="gb", retmode="text"
-    )
-
-
-@patch("chimera_intel.core.bioint.Entrez")
+@patch("chimera_intel.core.bioint.search_genbank")
 @patch("chimera_intel.core.bioint.console.print", new_callable=MagicMock)
-def test_monitor_sequences_no_results(mock_console_print, mock_entrez):
+def test_monitor_sequences_no_results(mock_console_print, mock_search_genbank):
+    """Tests the command when no sequences are found."""
     # No results returned
-    mock_esearch_handle = MagicMock()
-    mock_entrez.esearch.return_value = mock_esearch_handle
-    mock_entrez.read.return_value = {"IdList": []}
+    mock_search_genbank.return_value = []
 
     result = runner.invoke(
         bioint_app,
@@ -75,6 +77,13 @@ def test_monitor_sequences_no_results(mock_console_print, mock_entrez):
         ],
     )
 
-    assert result.exit_code == 0
+    # The command should still exit with 0, but raise typer.Exit(0)
+    assert result.exit_code == 0, result.stdout
+
+    # Verify the mock search function was called
+    mock_search_genbank.assert_called_with(
+        target="unknown_sequence", email="test@example.com"
+    )
+
+    # Check that the "no results" message was printed
     mock_console_print.assert_any_call("[yellow]No matching sequences found.[/yellow]")
-    mock_entrez.efetch.assert_not_called()
