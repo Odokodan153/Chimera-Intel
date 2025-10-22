@@ -1,10 +1,7 @@
 import pytest
 from typer.testing import CliRunner
-import json
 import git
-
-# The application instance to be tested
-
+import json
 from chimera_intel.core.scaint import scaint_app
 
 runner = CliRunner()
@@ -12,13 +9,13 @@ runner = CliRunner()
 
 @pytest.fixture
 def mock_git_clone(mocker):
-    """Mocks the git.Repo.clone_from call."""
+    """Mocks git.Repo.clone_from to avoid real cloning."""
     return mocker.patch("git.Repo.clone_from")
 
 
 @pytest.fixture
 def mock_subprocess_run(mocker):
-    """Mocks the subprocess.run call."""
+    """Mocks subprocess.run to simulate OSV-Scanner output."""
     mock_result = mocker.MagicMock()
     mock_result.returncode = 0
     mock_result.stdout = json.dumps(
@@ -46,18 +43,10 @@ def mock_subprocess_run(mocker):
 
 
 def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
-    """
-    Tests the analyze-repo command with a successful analysis.
-    """
-    # Mock os.path.exists to simulate the presence of requirements.txt
-
+    """Analyze repo successfully with vulnerabilities."""
     mocker.patch("os.path.exists", return_value=True)
 
-    # --- FIX: Pass 'repo_url' as a positional argument ---
-    result = runner.invoke(
-        scaint_app,
-        ["analyze-repo", "https://github.com/some/repo"],
-    )
+    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
 
     assert result.exit_code == 0
     assert "Analyzing repository: https://github.com/some/repo" in result.stdout
@@ -68,16 +57,10 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
 
 
 def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
-    """
-    Tests the analyze-repo command when requirements.txt is not found.
-    """
+    """Fails if requirements.txt is missing."""
     mocker.patch("os.path.exists", return_value=False)
 
-    # --- FIX: Pass 'repo_url' as a positional argument ---
-    result = runner.invoke(
-        scaint_app,
-        ["analyze-repo", "https://github.com/some/repo"],
-    )
+    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
 
     assert result.exit_code == 1
     assert (
@@ -86,23 +69,12 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
 
 
 def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
-    """
-    Tests the analyze-repo command when git clone fails.
-    """
-    # GitCommandError requires cmd, status, and stderr
-
+    """Fails if git clone fails."""
     mock_git_clone.side_effect = git.exc.GitCommandError(
         "clone", 1, stderr="mock error"
     )
-    
-    # --- FIX: Pass 'repo_url' as a positional argument ---
-    result = runner.invoke(
-        scaint_app,
-        ["analyze-repo", "https://github.com/some/repo"],
-    )
+
+    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
+
     assert result.exit_code == 1
-    # The actual error message from GitCommandError includes the command and exit code.
-    # We'll check for the stderr part we provided.
-
     assert "mock error" in result.stdout
-

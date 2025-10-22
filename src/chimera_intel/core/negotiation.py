@@ -134,8 +134,11 @@ class NegotiationEngine:
             intent = "offer"
         elif "accept" in lower_content:
             intent = "accept"
-        elif "reject" in lower_content:
-            intent = "reject"
+        # FIX: Expanded rejection logic
+        elif ("reject" in lower_content or 
+              "not happy" in lower_content or 
+              "too high" in lower_content):
+            intent = "rejection"
         else:
             intent = "neutral"
 

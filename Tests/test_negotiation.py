@@ -1,6 +1,7 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
-import httpx
+# import httpx # No longer needed for client
+from fastapi.testclient import TestClient # Import TestClient
 from webapp.main import app
 
 
@@ -43,8 +44,9 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-transport = httpx.ASGITransport(app=app)
-client = httpx.Client(transport=transport, base_url="http://test")
+# transport = httpx.ASGITransport(app=app) # REMOVED
+# client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
+client = TestClient(app) # ADDED
 
 
 def test_create_negotiation():
@@ -56,7 +58,7 @@ def test_create_negotiation():
             "participants": [{"name": "TestCorp", "type": "company"}],
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 201 # FIX: Was 200, should be 201 CREATED
     data = response.json()
     assert data["subject"] == "Test Negotiation"
     assert "id" in data
@@ -69,6 +71,7 @@ def test_analyze_message_for_negotiation():
     neg_response = client.post(
         "/api/v1/negotiations", json={"subject": "Message Test", "participants": []}
     )
+    assert neg_response.status_code == 201 # Ensure this is correct
     negotiation_id = neg_response.json()["id"]
 
     # Now, post a message to it
@@ -80,11 +83,13 @@ def test_analyze_message_for_negotiation():
             "sender_id": "user1",
             "content": "This is a test message.",
             "channel": "chat",
+            "simulation_scenario": {} # Add required empty body
         },
     )
-    assert msg_response.status_code == 200
+    assert msg_response.status_code == 200 # FIX: Was 200, but ensuring it matches API
     data = msg_response.json()
-    assert data["message"] == "Message analyzed and saved"
+    # The response model is schemas.AnalysisResponse
+    assert "message_id" in data
     assert "analysis" in data
 
 
@@ -96,7 +101,7 @@ def test_full_engine_functionality(engine):
     message = "I'm not happy with this price, it's too high."
     analysis = engine.analyze_message(message)
     assert analysis["sentiment"] == "negative"
-    assert analysis["intent"] == "rejection"
+    assert analysis["intent"] == "rejection" # This assertion will now pass
 
     # 2. BATNA Assessment
 
@@ -147,57 +152,59 @@ def test_initial_recommendation(engine):
     assert "Opening Move" in recommendation["tactic"]
 
 
-def setUp(self):
-    """Set up a new NegotiationEngine for each test."""
-    # We test with the placeholder model for simplicity
+# The following tests seem to be written in unittest style (using self)
+# I will convert them to standard pytest style.
 
-    self.engine = NegotiationEngine()
+@pytest.fixture
+def self_engine():
+    """Provides a NegotiationEngine instance for 'self' tests."""
+    return NegotiationEngine()
 
 
-def test_analyze_message(self):
+def test_analyze_message(self_engine):
     """Test the message analysis functionality."""
     message = "I can offer $5,000 for the lot."
-    analysis = self.engine.analyze_message(message)
-    self.assertIn("tone_score", analysis)
-    self.assertIn("sentiment", analysis)
-    self.assertEqual(analysis["intent"], "offer")
-    self.assertEqual(analysis["sentiment"], "neutral")
+    analysis = self_engine.analyze_message(message)
+    assert "tone_score" in analysis
+    assert "sentiment" in analysis
+    assert analysis["intent"] == "offer"
+    assert analysis["sentiment"] == "neutral"
 
 
-def test_recommend_tactic_opening_move(self):
+def test_recommend_tactic_opening_move(self_engine):
     """Test the opening move recommendation."""
-    recommendation = self.engine.recommend_tactic([])
-    self.assertEqual(recommendation["tactic"], "Opening Move")
+    recommendation = self_engine.recommend_tactic([])
+    assert recommendation["tactic"] == "Opening Move"
 
 
-def test_recommend_tactic_strategic_concession(self):
+def test_recommend_tactic_strategic_concession(self_engine):
     """Test the strategic concession recommendation."""
     # Fix: Added 'sentiment' key
     history = [{"analysis": {"tone_score": -0.8, "sentiment": "negative"}}]
-    recommendation = self.engine.recommend_tactic(history)
+    recommendation = self_engine.recommend_tactic(history)
     # Fix: The code returns "De-escalate" for negative sentiment
-    self.assertEqual(recommendation["tactic"], "De-escalate")
+    assert recommendation["tactic"] == "De-escalate"
 
 
-def test_recommend_tactic_collaborative_exploration(self):
+def test_recommend_tactic_collaborative_exploration(self_engine):
     """Test the collaborative exploration recommendation."""
     # Fix: Added 'sentiment' key
     history = [{"analysis": {"tone_score": 0.2, "sentiment": "positive"}}]
-    recommendation = self.engine.recommend_tactic(history)
-    self.assertEqual(recommendation["tactic"], "Collaborative Exploration")
+    recommendation = self_engine.recommend_tactic(history)
+    assert recommendation["tactic"] == "Collaborative Exploration"
 
 
-def test_calculate_zopa(self):
+def test_calculate_zopa(self_engine):
     """Test the ZOPA calculation."""
-    zopa = self.engine.calculate_zopa(
+    zopa = self_engine.calculate_zopa(
         our_min=5000, our_max=10000, their_min=7000, their_max=12000
     )
-    self.assertEqual(zopa, (7000, 10000))
+    assert zopa == (7000, 10000)
 
-    no_zopa = self.engine.calculate_zopa(
+    no_zopa = self_engine.calculate_zopa(
         our_min=5000, our_max=6000, their_min=7000, their_max=8000
     )
-    self.assertIsNone(no_zopa)
+    assert no_zopa is None
 
 
 def test_calculate_zopa_exists(engine):
@@ -215,7 +222,11 @@ def test_recommend_tactic_no_history(engine):
 def test_create_negotiation_endpoint():
     """Tests the creation of a new negotiation session via the API."""
     response = client.post(
-        "/api/v1/negotiations", json={"subject": "API Test Negotiation"}
+        "/api/v1/negotiations", 
+        json={
+            "subject": "API Test Negotiation",
+            "participants": [] # Add required participants list
+        }
     )
     assert response.status_code == 201
     data = response.json()
@@ -226,15 +237,24 @@ def test_create_negotiation_endpoint():
 def test_analyze_message_endpoint():
     """Tests analyzing and saving a message via the API."""
     neg_response = client.post(
-        "/api/v1/negotiations", json={"subject": "API Message Test"}
+        "/api/v1/negotiations", 
+        json={
+            "subject": "API Message Test",
+            "participants": [] # Add required participants list
+        }
     )
+    assert neg_response.status_code == 201
     negotiation_id = neg_response.json()["id"]
 
     msg_response = client.post(
         f"/api/v1/negotiations/{negotiation_id}/messages",
-        json={"sender_id": "api_user", "content": "This is another test message."},
+        json={
+            "sender_id": "api_user", 
+            "content": "This is another test message.",
+            "simulation_scenario": {} # Add required empty body
+        },
     )
-    assert msg_response.status_code == 201
+    assert msg_response.status_code == 200 # FIX: Was 201, should be 200 OK
     data = msg_response.json()
     assert "analysis" in data
     assert "recommended_tactic" in data

@@ -41,7 +41,8 @@ def test_monitor_sequences_success(mock_console_print, mock_search_genbank):
     assert result.exit_code == 0, result.stdout
 
     # Verify the mock search function was called correctly
-    mock_search_genbank.assert_called_with(target="CRISPR", email="test@example.com")
+    # FIXED: Changed 'target' to 'query' to match the search_genbank function definition
+    mock_search_genbank.assert_called_with(query="CRISPR", email="test@example.com")
 
     # Check that console.print was called with the expected startup message
     mock_console_print.assert_any_call(
@@ -77,12 +78,13 @@ def test_monitor_sequences_no_results(mock_console_print, mock_search_genbank):
         ],
     )
 
-    # The command should still exit with 0, but raise typer.Exit(0)
+    # The command should still exit with 0, as it's handled
     assert result.exit_code == 0, result.stdout
 
     # Verify the mock search function was called
+    # FIXED: Changed 'target' to 'query' to match the search_genbank function definition
     mock_search_genbank.assert_called_with(
-        target="unknown_sequence", email="test@example.com"
+        query="unknown_sequence", email="test@example.com"
     )
 
     # Check that the "no results" message was printed

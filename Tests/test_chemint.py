@@ -136,8 +136,14 @@ class TestPatentSearch:
 
     @patch("src.chimera_intel.core.chemint.pypatent.Search")
     @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
+    @patch("src.chimera_intel.core.chemint.print")  # <-- FIX: Mock print
     def test_cli_patent_search_success(
-        self, mock_search_pubs, mock_pypatent_search, runner, mock_patent_info
+        self,
+        mock_print,  # <-- FIX: Add mock_print argument
+        mock_search_pubs,
+        mock_pypatent_search,
+        runner,
+        mock_patent_info,
     ):
         """Tests the 'chemint monitor-patents-research' CLI command."""
 
@@ -164,17 +170,20 @@ class TestPatentSearch:
 
         # --- Assert ---
         assert result.exit_code == 0
-        # Check that both patents and research sections appear
-        assert "Patents (USPTO)" in result.stdout
-        assert "Research Papers (Google Scholar)" in result.stdout
         
-        # --- FIX: Check assertions against the mock_patent object ---
-        # Check that mocked patent title and URL are in the output
-        assert mock_patent.title in result.stdout
-        assert mock_patent.url in result.stdout
-        # Check that mocked research paper title is in the output
-        assert "A great paper" in result.stdout
-        assert "http://example.com/paper" in result.stdout
+        # --- FIX: Check assertions against the mock_print calls ---
+        printed_texts = [args[0] for args, kwargs in mock_print.call_args_list]
+        combined_text = " ".join(str(t) for t in printed_texts)
+        
+        # Check that mocked titles and URLs are in the combined printed text
+        assert mock_patent.title in combined_text
+        assert mock_patent.url in combined_text
+        assert "A great paper" in combined_text
+        assert "http://example.com/paper" in combined_text
+        
+        # Check that section titles were also printed
+        assert "Patents (USPTO)" in combined_text
+        assert "Research Papers (Google Scholar)" in combined_text
 
 
 class TestSdsAnalysis:
