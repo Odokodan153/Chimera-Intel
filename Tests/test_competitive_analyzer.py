@@ -1,9 +1,6 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
-import typer
-
-# Import the module itself to patch its objects
 from chimera_intel.core import competitive_analyzer
 from chimera_intel.core.competitive_analyzer import (
     generate_competitive_analysis,

@@ -188,8 +188,9 @@ class TestBriefingGenerator(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.exit_code, 1)
+        # --- FIX: Changed assertion to match the error message in briefing_generator.py ---
         mock_print.assert_called_with(
-            "[bold red]Error:[/bold red] No active project set. Use 'chimera project select' first."
+            "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
 
     @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
@@ -256,8 +257,9 @@ class TestBriefingGenerator(unittest.TestCase):
                 result = runner.invoke(briefing_app, ["generate"])
         # Assert
         self.assertEqual(result.exit_code, 1)
+        # --- FIX: Changed assertion to match the error message in briefing_generator.py ---
         mock_print.assert_called_with(
-            "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found in .env or config."
+            "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
 
 

@@ -8,7 +8,7 @@ import asyncio
 import websockets
 import json
 from chimera_intel.core.config_loader import API_KEYS
-
+from typing import Optional  
 # Create a new Typer application for MARINT commands
 
 
@@ -53,19 +53,24 @@ async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):  # M
 @marint_app.command(name="track-vessel", help="Track a vessel by its IMO number.")
 def track_vessel(
     imo: Annotated[
-        str,
+        Optional[str],  # <-- FIX: Changed to Optional[str]
         typer.Option(
             "--imo",
             "-i",
             help="The IMO number of the vessel to track.",
-            prompt="Enter the vessel's IMO number",
+            # prompt="Enter the vessel's IMO number", # <-- FIX: Removed prompt
         ),
-    ],
+    ] = None,  # <-- FIX: Default to None
     test: bool = typer.Option(False, "--test", help="Run in test mode.", hidden=True),
 ):
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
     """
+    # --- FIX: Manually prompt for IMO if not provided via --imo option ---
+    if imo is None:
+        imo = typer.prompt("Enter the vessel's IMO number")
+    # --- End fix ---
+
     # --- MODIFIED: API key check moved here ---
     api_key = API_KEYS.aisstream_api_key
     if not api_key:
