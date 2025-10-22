@@ -96,6 +96,7 @@ def add_page_monitor(
     url: Annotated[
         str,
         typer.Option(
+            ...,  # <-- FIX: Mark as required
             "--url",
             "-u",
             help="The URL of the web page to monitor for changes.",
@@ -104,6 +105,7 @@ def add_page_monitor(
     schedule: Annotated[
         str,
         typer.Option(
+            ...,  # <-- FIX: Mark as required
             "--schedule",
             "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
