@@ -1,6 +1,6 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
-# import httpx # No longer needed for client
+import httpx # No longer needed for client
 from fastapi.testclient import TestClient # Import TestClient
 from webapp.main import app
 
@@ -44,9 +44,8 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-# transport = httpx.ASGITransport(app=app) # REMOVED
-# client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
-client = TestClient() # ADDED
+transport = httpx.ASGITransport(app=app) # REMOVED
+client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
 
 
 def test_create_negotiation():
