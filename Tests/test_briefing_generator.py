@@ -116,8 +116,9 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
+        # PYTEST_FIX: Remove "generate" from the invocation.
         result = runner.invoke(
-            briefing_app, ["generate", "--template", "ciso_daily"]
+            briefing_app, ["--template", "ciso_daily"]
         )
 
         # Assert
@@ -163,8 +164,9 @@ class TestBriefingGenerator(unittest.TestCase):
 
         with patch("builtins.open", mock_open()) as mock_file:
             # Act
+            # PYTEST_FIX: Remove "generate" from the invocation.
             result = runner.invoke(
-                briefing_app, ["generate", "--output", "test_briefing.pdf"]
+                briefing_app, ["--output", "test_briefing.pdf"]
             )
 
         # Assert
@@ -196,7 +198,8 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_status.return_value.__exit__.return_value = (None, None, None)
 
         # Act
-        result = runner.invoke(briefing_app, ["generate"])
+        # PYTEST_FIX: Remove "generate" from the invocation.
+        result = runner.invoke(briefing_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
@@ -233,7 +236,8 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
-        result = runner.invoke(briefing_app, ["generate"])
+        # PYTEST_FIX: Remove "generate" from the invocation.
+        result = runner.invoke(briefing_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
@@ -265,7 +269,8 @@ class TestBriefingGenerator(unittest.TestCase):
                 API_KEYS, "google_api_key", None
             ):
                 # Act
-                result = runner.invoke(briefing_app, ["generate"])
+                # PYTEST_FIX: Remove "generate" from the invocation.
+                result = runner.invoke(briefing_app, [])
         # Assert
         self.assertEqual(result.exit_code, 1)
         mock_print.assert_called_with(

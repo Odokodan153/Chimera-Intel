@@ -213,7 +213,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        result = runner.invoke(business_app, ["run", "Apple", "--ticker", "AAPL"])
+        # PYTEST_FIX: Remove "run" from the invocation.
+        # The app is behaving as if business_app *is* the command.
+        result = runner.invoke(business_app, ["Apple", "--ticker", "AAPL"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -245,8 +247,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
+        # PYTEST_FIX: Remove "run" from the invocation.
         result = runner.invoke(
-            business_app, ["run", "Microsoft", "--ticker", "MSFT", "--filings"]
+            business_app, ["Microsoft", "--ticker", "MSFT", "--filings"]
         )
 
         # Assert
@@ -282,7 +285,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        result = runner.invoke(business_app, ["run", "SomeCompany", "--filings"])
+        # PYTEST_FIX: Remove "run" from the invocation.
+        result = runner.invoke(business_app, ["SomeCompany", "--filings"])
 
         # Assert
         
@@ -329,7 +333,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
         
         # Act
-        result = runner.invoke(business_app, ["run"])
+        # PYTEST_FIX: Remove "run" from invocation.
+        # This will pass `None` to company_name, triggering the resolver.
+        result = runner.invoke(business_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -348,7 +354,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_resolve_target.side_effect = typer.Exit(code=1)
 
         # Act
-        result = runner.invoke(business_app, ["run"])
+        # PYTEST_FIX: Remove "run" from invocation.
+        result = runner.invoke(business_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)

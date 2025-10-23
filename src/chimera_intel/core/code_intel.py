@@ -107,9 +107,13 @@ code_intel_app = typer.Typer()
 
 @code_intel_app.command("analyze-repo")
 def run_repo_analysis(
-    repo_url: str = typer.Argument(
-        ..., help="The full URL of the public Git repository."
+    # --- FIX: Changed from positional Argument to named Option ---
+    repo_url: str = typer.Option(
+        ..., 
+        "--repo-url",
+        help="The full URL of the public Git repository."
     ),
+    # --- End Fix ---
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
@@ -129,4 +133,3 @@ def run_repo_analysis(
     save_or_print_results(results_dict, output_file)  # Corrected line
     save_scan_to_db(target=repo_url, module="code_intel_repo", data=results_dict)
 
-    # --- FIX: Removed 'sys.exit(0)'. A normal return is exit code 0. ---

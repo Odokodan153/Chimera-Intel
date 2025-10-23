@@ -87,13 +87,22 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.social_osint.find_social_profiles")
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
-        # Arrange
-        mock_find_profiles.return_value = SocialOSINTResult(
+        
+        # --- FIX: The mock must return a coroutine, not the result object. ---
+        # Create a simple async function to return the mock data.
+        mock_data = SocialOSINTResult(
             username="cliuser",
             found_profiles=[
                 SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
             ],
         )
+        
+        async def mock_coro(*args, **kwargs):
+            return mock_data
+
+        # Set the return_value to be the coroutine object itself
+        mock_find_profiles.return_value = mock_coro()
+        # --- End Fix ---
        
         # Act
         result = runner.invoke(social_osint_app, ["run", "cliuser"])
@@ -118,10 +127,10 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
         
-        # FIX 1: Check combined stdout/stderr and match the exact error
-        # message from modern Typer/Click.
-        output = (result.stdout or "") + (result.stderr or "")
+        # --- FIX: Typer CLI runner mixes stderr into stdout by default. ---
+        output = result.stdout
         self.assertIn("Error: Missing argument 'USERNAME'.", output)
+        # --- End Fix ---
 
 if __name__ == "__main__":
     unittest.main()

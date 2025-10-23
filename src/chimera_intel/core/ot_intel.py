@@ -61,8 +61,11 @@ class OTAsset:
     name="recon", help="Perform reconnaissance on an IP address for OT systems."
 )
 def ot_recon(
-    ip_address: str = typer.Argument(
-        ..., help="The IP address to scan for OT protocols."
+    # --- FIX: Changed from typer.Argument to typer.Option ---
+    ip_address: str = typer.Option(
+        ..., 
+        "--ip-address",
+        help="The IP address to scan for OT protocols."
     ),
 ):
     """

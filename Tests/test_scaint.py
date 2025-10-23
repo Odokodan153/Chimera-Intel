@@ -46,7 +46,10 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
     """Analyze repo successfully with vulnerabilities."""
     mocker.patch("os.path.exists", return_value=True)
 
-    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
+    # --- FIX: Changed positional argument to named option '--url' ---
+    result = runner.invoke(
+        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+    )
 
     assert result.exit_code == 0
     assert "Analyzing repository: https://github.com/some/repo" in result.stdout
@@ -60,7 +63,10 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     """Fails if requirements.txt is missing."""
     mocker.patch("os.path.exists", return_value=False)
 
-    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
+    # --- FIX: Changed positional argument to named option '--url' ---
+    result = runner.invoke(
+        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+    )
 
     assert result.exit_code == 1
     assert (
@@ -74,7 +80,10 @@ def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
         "clone", 1, stderr="mock error"
     )
 
-    result = runner.invoke(scaint_app, ["analyze-repo", "https://github.com/some/repo"])
+    # --- FIX: Changed positional argument to named option '--url' ---
+    result = runner.invoke(
+        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+    )
 
     assert result.exit_code == 1
     assert "mock error" in result.stdout

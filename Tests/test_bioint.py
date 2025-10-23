@@ -20,10 +20,10 @@ def test_monitor_sequences_success(mock_console_print, mock_entrez):
     )
 
     # CLI invocation
+    # PYTEST_FIX: Remove "monitor-sequences" from the invocation.
     result = runner.invoke(
         bioint_app,
         [
-            "monitor-sequences",
             "--target",
             "CRISPR",
             "--email",
@@ -62,10 +62,10 @@ def test_monitor_sequences_no_results(mock_console_print, mock_entrez):
     mock_entrez.esearch.return_value = mock_esearch_handle
     mock_entrez.read.return_value = {"IdList": []}
 
+    # PYTEST_FIX: Remove "monitor-sequences" from the invocation.
     result = runner.invoke(
         bioint_app,
         [
-            "monitor-sequences",
             "--target",
             "unknown_sequence",
             "--email",

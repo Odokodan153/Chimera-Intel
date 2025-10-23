@@ -71,15 +71,14 @@ def search_reddit_narrative(narrative: str, client: httpx.Client) -> list:
     name="track", help="Track a narrative to identify influence campaigns."
 )
 def track_influence(
-    narrative: Annotated[
-        str,
-        typer.Option(
-            ...,  
-            "--narrative",
-            "-n",
-            help="The narrative or topic to track for influence operations."
-        ),
-    ],
+    # --- FIX: Changed from Annotated syntax to standard assignment syntax ---
+    narrative: str = typer.Option(
+        ...,
+        "--narrative",
+        "-n",
+        help="The narrative or topic to track for influence operations."
+    ),
+    # --- End Fix ---
 ):
     """
     Tracks a narrative across various platforms to identify coordinated

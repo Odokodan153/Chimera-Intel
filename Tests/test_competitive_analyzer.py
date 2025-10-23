@@ -89,8 +89,9 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", "fake_key"):
             # Act
+            # --- FIX: Removed the "run" argument ---
             result = runner.invoke(
-                competitive_analyzer_app, ["run", "companyA", "companyB"]
+                competitive_analyzer_app, ["companyA", "companyB"]
             )
     
         # Assert
@@ -110,8 +111,9 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", "fake_key"):
             # Act
+            # --- FIX: Removed the "run" argument ---
             result = runner.invoke(
-                competitive_analyzer_app, ["run", "companyA", "companyB"]
+                competitive_analyzer_app, ["companyA", "companyB"]
             )
     
         # Assert
@@ -129,8 +131,9 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", None):
             # Act
+            # --- FIX: Removed the "run" argument ---
             result = runner.invoke(
-                competitive_analyzer_app, ["run", "companyA", "companyB"]
+                competitive_analyzer_app, ["companyA", "companyB"]
             )
     
         # Assert

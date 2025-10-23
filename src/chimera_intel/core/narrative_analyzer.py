@@ -50,15 +50,13 @@ def fetch_tweets(query: str) -> list:
     name="track", help="Track a narrative across news and social media."
 )
 def track_narrative(
-    query: Annotated[
-        str,
-        typer.Option(
-            "--track",
-            "-t",
-            help="The keyword or phrase to track.",
-            prompt="Enter the narrative to track",
-        ),
-    ],
+    # --- FIX: Changed from Annotated/prompt to standard required Option ---
+    query: str = typer.Option(
+        ...,
+        "--track",
+        "-t",
+        help="The keyword or phrase to track.",
+    ),
 ) -> List[Dict[str, Any]]:
     """
     Monitors a specific topic across various media platforms to understand

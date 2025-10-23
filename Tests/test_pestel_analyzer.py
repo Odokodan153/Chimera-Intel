@@ -73,7 +73,8 @@ class TestPestelAnalyzer(unittest.TestCase):
         )
 
         # Act
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- FIX: Changed named option '--target' to a positional argument ---
+        result = runner.invoke(pestel_analyzer_app, ["run", "example.com"])
         
         # Assert
         self.assertEqual(result.exit_code, 0, result.stdout)
@@ -104,7 +105,8 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_api_keys.google_api_key = "fake_key"
 
         # Act
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- FIX: Changed named option '--target' to a positional argument ---
+        result = runner.invoke(pestel_analyzer_app, ["run", "example.com"])
 
         # Assert
 

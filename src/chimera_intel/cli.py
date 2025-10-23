@@ -19,8 +19,8 @@ BANNER = """
 
 def get_cli_app():
     """
-    Creates the core Typer application without loading plugins.
-    This allows plugins to be loaded dynamically at runtime.
+    Creates the core Typer application and loads all plugins.
+    This ensures the app object is fully populated for both runtime and testing.
     """
     app = typer.Typer(
         name="Chimera Intel",
@@ -38,6 +38,17 @@ def get_cli_app():
     def version():
         """Show Chimera Intel version."""
         typer.echo("Chimera Intel v1.0.0")
+
+    # --- FIX: Moved plugin loading from main() to get_cli_app() ---
+    # Discover and load plugins at runtime
+    try:
+        plugins = discover_plugins()
+        for plugin in plugins:
+            app.add_typer(plugin.app, name=plugin.name)
+    except Exception as e:
+        # This allows the app to load even if plugin discovery fails
+        typer.echo(f"[Warning] Failed to load plugins: {e}", err=True)
+    # --- END FIX ---
 
     return app
 
@@ -58,10 +69,8 @@ def main():
         # Allow the CLI to continue without a database connection for basic commands.
         pass
 
-    # Discover and load plugins at runtime
-    plugins = discover_plugins()
-    for plugin in plugins:
-        app.add_typer(plugin.app, name=plugin.name)
+    # --- FIX: Plugin loading is now handled in get_cli_app() ---
+    # The app object is already fully configured.
 
     # Run the fully configured app
     app()

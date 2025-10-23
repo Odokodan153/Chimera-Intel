@@ -109,8 +109,9 @@ class TestLeadSuggester(unittest.TestCase):
         # --- END FIX ---
 
         # Act
-
-        result = runner.invoke(lead_suggester_app, ["run", "--no-rich"])
+        
+        # --- FIX: Removed the "run" argument ---
+        result = runner.invoke(lead_suggester_app, ["--no-rich"])
         
         # Assert
 
@@ -123,7 +124,10 @@ class TestLeadSuggester(unittest.TestCase):
     def test_cli_run_no_active_project(self, mock_get_project):
         """Tests the CLI command when no active project is set."""
         # This test should now fail with exit code 1 instead of 2
-        result = runner.invoke(lead_suggester_app, ["run"])
+        
+        # --- FIX: Removed the "run" argument ---
+        result = runner.invoke(lead_suggester_app, [])
+        
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No active project set", result.output)
 
@@ -145,7 +149,9 @@ class TestLeadSuggester(unittest.TestCase):
         # Act
         
         # This test should now fail with exit code 1 instead of 2
-        result = runner.invoke(lead_suggester_app, ["run"])
+        
+        # --- FIX: Removed the "run" argument ---
+        result = runner.invoke(lead_suggester_app, [])
 
         # Assert
 

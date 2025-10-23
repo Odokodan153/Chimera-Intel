@@ -52,7 +52,8 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # We run the command. os.path.exists is mocked to return True.
-        result = runner.invoke(appint_app, ["static", "dummy.apk"])
+        # PYTEST_FIX: Remove "static" from the invocation.
+        result = runner.invoke(appint_app, ["dummy.apk"])
 
         # Assert
         self.assertEqual(
@@ -83,7 +84,8 @@ class TestAppint(unittest.TestCase):
         # os.path.exists is mocked via decorator to return False
 
         # Act
-        result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
+        # PYTEST_FIX: Remove "static" from the invocation.
+        result = runner.invoke(appint_app, ["nonexistent.apk"])
 
         # Assert
         # The command should catch the error and exit with code 1

@@ -40,10 +40,10 @@ def test_simulate_attack_success(
     ]
 
     # Run the CLI
+    # PYTEST_FIX: Remove "simulate" from the invocation.
     result = runner.invoke(
         attack_path_app,
         [
-            "simulate",
             "--entry-point",
             "Public-Facing Web Server",
             "--target-asset",
@@ -106,10 +106,10 @@ def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print, mock_lo
 
     mock_get_db_conn.return_value = mock_conn
 
+    # PYTEST_FIX: Remove "simulate" from the invocation.
     result = runner.invoke(
         attack_path_app,
         [
-            "simulate",
             "--entry-point",
             "any",
             "--target-asset",

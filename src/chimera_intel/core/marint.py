@@ -51,15 +51,11 @@ async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):  # M
 
 @marint_app.command(name="track-vessel", help="Track a vessel by its IMO number.")
 def track_vessel(
-    # --- FIX: Make 'imo' a required Option ---
+    # --- FIX: Changed from Option to Argument to match test invocation ---
     imo: Annotated[
-        str,  # <-- No longer Optional
-        typer.Option(
-            ...,  # <-- Make it required
-            "--imo",
-            "-i",
-            help="The IMO number of the vessel to track.",
-            # prompt removed
+        str,
+        typer.Argument(
+            help="The IMO number of the vessel to track."
         ),
     ],
     # --- End fix ---

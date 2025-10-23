@@ -208,13 +208,19 @@ class TestPatentSearch:
         # Check patent table (accessing internal row data is fragile, but works)
         assert len(patent_table.rows) == 1
         # Get cell data from the first (and only) row
-        patent_row_cells = [cell for cell in patent_table.rows[0].cells]
+        
+        # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
+        patent_row_cells = [cell for cell in patent_table.rows[0]]
+        
         assert mock_patent.title in patent_row_cells
         assert mock_patent.url in patent_row_cells
 
         # Check research table
         assert len(research_table.rows) == 1
-        research_row_cells = [cell for cell in research_table.rows[0].cells]
+        
+        # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
+        research_row_cells = [cell for cell in research_table.rows[0]]
+        
         assert "A great paper" in research_row_cells
         assert "http://example.com/paper" in research_row_cells
 
