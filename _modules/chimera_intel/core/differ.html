@@ -305,7 +305,11 @@
     <span class="p">)</span>
 
     <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[bold]Comparison Results:[/bold]&quot;</span><span class="p">)</span>
-    <span class="n">pprint</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+    <span class="c1"># --- FIX: Pass the console object to pprint ---</span>
+    <span class="c1"># This ensures that when &#39;console&#39; is mocked in a test,</span>
+    <span class="c1"># pprint&#39;s output is captured by the mock.</span>
+    <span class="n">pprint</span><span class="p">(</span><span class="n">full_result</span><span class="o">.</span><span class="n">comparison_summary</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">console</span><span class="o">=</span><span class="n">console</span><span class="p">)</span>
+    <span class="c1"># --- END FIX ---</span>
 
     <span class="k">if</span> <span class="n">full_result</span><span class="o">.</span><span class="n">detected_signals</span><span class="p">:</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">[bold yellow]💡 Interpreted Micro-Signals[/bold yellow]&quot;</span><span class="p">)</span>
