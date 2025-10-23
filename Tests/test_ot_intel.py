@@ -3,6 +3,8 @@ import shodan
 
 # The application instance to be tested
 from chimera_intel.core.ot_intel import ot_intel_app
+# FIX: Import the API_KEYS object to patch its attribute
+from chimera_intel.core.config_loader import API_KEYS
 
 runner = CliRunner()
 
@@ -11,9 +13,9 @@ def test_ot_recon_success(mocker):
     """
     Tests the ot-recon command with a successful Shodan API response.
     """
-    # FIX: Patch the API key using patch.dict *before* invoke
-    mocker.patch.dict(
-        "chimera_intel.core.ot_intel.API_KEYS", {"shodan_api_key": "fake_shodan_key"}
+    # FIX: Patch the API key attribute using patch.object
+    mocker.patch.object(
+        API_KEYS, "shodan_api_key", "fake_shodan_key"
     )
 
     # FIX: Inline the fixture logic
@@ -43,8 +45,8 @@ def test_ot_recon_no_api_key(mocker):
     """
     Tests the ot-recon command when the Shodan API key is missing.
     """
-    # FIX: Patch the API key to None using patch.dict
-    mocker.patch.dict("chimera_intel.core.ot_intel.API_KEYS", {"shodan_api_key": None})
+    # FIX: Patch the API key to None using patch.object
+    mocker.patch.object(API_KEYS, "shodan_api_key", None)
 
     # Invoke with positional argument
     result = runner.invoke(ot_intel_app, ["recon", "192.168.1.1"])
@@ -57,9 +59,9 @@ def test_ot_recon_shodan_api_error(mocker):
     """
     Tests the ot-recon command when the Shodan API returns an error.
     """
-    # FIX: Patch the API key using patch.dict
-    mocker.patch.dict(
-        "chimera_intel.core.ot_intel.API_KEYS", {"shodan_api_key": "fake_shodan_key"}
+    # FIX: Patch the API key using patch.object
+    mocker.patch.object(
+        API_KEYS, "shodan_api_key", "fake_shodan_key"
     )
 
     # FIX: Inline the mock setup and configure the side effect

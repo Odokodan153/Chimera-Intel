@@ -82,9 +82,9 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.social_osint.typer.echo")
-    @patch(
-        "chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock
-    )
+    # FIX 2: Use a normal Mock, not AsyncMock, because the CLI command 
+    # itself is synchronous and uses loop.run_until_complete.
+    @patch("chimera_intel.core.social_osint.find_social_profiles")
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
         # Arrange
@@ -101,7 +101,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         # Assert
         self.assertEqual(result.exit_code, 0)
         
-        # Check that the async function was called correctly
+        # Check that the function was called correctly
         mock_find_profiles.assert_called_once_with("cliuser")
         
         # Check that typer.echo was called with the correct JSON
@@ -118,9 +118,10 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         result = runner.invoke(social_osint_app, ["run"])
         self.assertNotEqual(result.exit_code, 0)
         
-        # FIX: Concatenate stdout and stderr to reliably find the error message
+        # FIX 1: Check combined stdout/stderr and match the exact error
+        # message from modern Typer/Click.
         output = (result.stdout or "") + (result.stderr or "")
-        self.assertIn("Missing argument 'USERNAME'", output)
+        self.assertIn("Error: Missing argument 'USERNAME'.", output)
 
 if __name__ == "__main__":
     unittest.main()

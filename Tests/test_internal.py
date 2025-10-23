@@ -65,34 +65,40 @@ class TestInternal(unittest.TestCase):
 
     # --- MFT Analysis Tests ---
 
-    # --- FIX APPLIED ---
-    # Patch the entire 'analyzeMFT' module instead of 'analyzeMFT.main'
-    # Use autospec=True to create a mock that mirrors the module spec
     @patch("chimera_intel.core.internal.analyzeMFT", autospec=True)
-    # --- END FIX ---
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.os.remove")
     def test_parse_mft_success(self, mock_remove, mock_exists, mock_analyzeMFT):
         """Tests a successful MFT parsing."""
         # Arrange
-
-        # --- FIX APPLIED ---
-        # Ensure the mocked module has a 'main' attribute
         mock_analyzeMFT.main = MagicMock(return_value=None)
-        # --- END FIX ---
 
         mft_csv_output = (
             "Record Number,Filename,Created,Last Modified,is_directory\n"
             "123,test.txt,2023-01-01,2023-01-02,false"
         )
-        with patch("builtins.open", mock_open(read_data=mft_csv_output)):
+
+        # --- FIX APPLIED ---
+        # The parse_mft function opens a specific hardcoded file
+        # ("mft_temp_output.csv") after its internal call.
+        # We must patch 'builtins.open' with a side_effect to intercept
+        # the call to that specific file and return our mock CSV data.
+
+        def open_side_effect(file, *args, **kwargs):
+            if file == "mft_temp_output.csv":
+                # Return a mock file handle with our CSV data
+                return mock_open(read_data=mft_csv_output).return_value
+            # For any other file, use the default (original) open behavior
+            return unittest.mock.DEFAULT
+        
+        with patch("builtins.open", side_effect=open_side_effect):
             # Act
-
             result = parse_mft("/fake/MFT")
-        # Assert
+        # --- END FIX ---
 
+        # Assert
         self.assertIsInstance(result, MFTAnalysisResult)
-        self.assertEqual(result.total_records, 1)
+        self.assertEqual(result.total_records, 1) # This should now be 1
         self.assertEqual(result.entries[0].filename, "test.txt")
         self.assertFalse(result.entries[0].is_directory)
         mock_remove.assert_called_once()  # Check that the temp file was cleaned up

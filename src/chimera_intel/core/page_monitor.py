@@ -8,6 +8,7 @@ import httpx
 from bs4 import BeautifulSoup
 import datetime
 from hashlib import sha256
+import logging 
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
@@ -19,6 +20,8 @@ from chimera_intel.core.utils import (
     send_teams_notification,
 )
 
+logger = logging.getLogger(__name__)
+
 # Note: 'datetime' should be imported directly or used as 'datetime.datetime'
 
 
@@ -27,6 +30,7 @@ async def check_for_changes(url: str, job_id: str):
     The core function that runs as a scheduled job. It fetches a page,
     calculates its hash, compares it to the last hash, and records changes.
     """
+    logger.info(f"Checking {url} for changes (Job: {job_id})")
     console.print(
         f"[{datetime.datetime.now()}] Checking {url} for changes (Job: {job_id})"
     )
@@ -54,6 +58,7 @@ async def check_for_changes(url: str, job_id: str):
                 console.print(
                     f"[bold red]!! Change Detected for {url}[/bold red] - Hash changed from {old_hash[:8]} to {current_hash[:8]}"
                 )
+                logger.warning(f"Change detected for {url}: {old_hash[:8]} -> {current_hash[:8]}")
 
                 # Send notifications
                 message = f"🚨 Chimera Intel Alert: Significant change detected on monitored URL: {url}. Snapshot taken."
@@ -72,14 +77,17 @@ async def check_for_changes(url: str, job_id: str):
                 console.print(
                     f"[bold green]No changes detected for {url}.[/bold green]"
                 )
+                logger.info(f"No changes detected for {url}.")
     except httpx.RequestError as e:
         console.print(
             f"[bold yellow]Warning:[/bold yellow] Could not reach {url}. Error: {e}"
         )
+        logger.warning(f"Could not reach {url}", exc_info=e)
     except Exception as e:
         console.print(
             f"[bold red]An unexpected error occurred for {url}:[/bold red] {e}"
         )
+        logger.error(f"Unexpected error checking {url}", exc_info=e)
 
 
 # --- FIX 2: Removed the 'name' argument ---
@@ -133,6 +141,7 @@ def add_page_monitor(
     console.print(
         "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
     )
+    logger.info(f"Successfully scheduled job {job_id} for {url} with schedule '{schedule}'")
     
 if __name__ == "__main__":
     page_monitor_app()

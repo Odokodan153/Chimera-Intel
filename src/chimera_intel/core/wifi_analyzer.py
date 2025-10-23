@@ -7,18 +7,13 @@ from typing_extensions import Annotated
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
+import sys  # <-- Import sys
 from rich.console import Console
 
 # Create a console object
-
 console = Console()
 
-# Create a new Typer application for Wi-Fi Analysis commands
-# FIX: Removed name="wifi" to align with test invocation
-wifi_analyzer_app = typer.Typer(
-    help="Wireless Network Analysis (SIGINT)",
-)
-
+# --- Logic Function ---
 
 def analyze_wifi_capture(pcap_path: str):
     """
@@ -79,27 +74,48 @@ def analyze_wifi_capture(pcap_path: str):
     console.print("---------------------------------")
 
 
-@wifi_analyzer_app.command(
-    name="analyze", help="Analyze a wireless network capture file."
-)
-def analyze_wifi(
-    capture_file: Annotated[
-        str,
-        typer.Argument(help="Path to the wireless capture file (.pcap or .pcapng)."),
-    ],
-):
-    """
-    Analyzes wireless network capture files to identify, profile, and assess
-    the security of Wi-Fi and Bluetooth devices.
-    """
-    console.print(f"Analyzing wireless networks from: {capture_file}")
+# --- App Factory ---
 
-    if not os.path.exists(capture_file):
-        console.print(f"Error: Capture file not found at '{capture_file}'")
-        raise typer.Exit(code=1)
-    try:
-        analyze_wifi_capture(capture_file)
-    except Exception as e:
-        console.print(f"An error occurred during Wi-Fi analysis: {e}")
-        raise typer.Exit(code=1)
-    console.print("\nWireless network analysis complete.")
+def get_wifi_app():
+    """
+    Factory function to create the Wi-Fi Typer app.
+    This prevents conflicts when testing or when using as a sub-app.
+    """
+    app = typer.Typer(
+        help="Wireless Network Analysis (SIGINT)",
+    )
+
+    @app.command(
+        name="analyze", help="Analyze a wireless network capture file."
+    )
+    def analyze_wifi(
+        capture_file: Annotated[
+            str,
+            typer.Argument(help="Path to the wireless capture file (.pcap or .pcapng)."),
+        ],
+    ):
+        """
+        Analyzes wireless network capture files to identify, profile, and assess
+        the security of Wi-Fi and Bluetooth devices.
+        """
+        console.print(f"Analyzing wireless networks from: {capture_file}")
+
+        if not os.path.exists(capture_file):
+            # FIX: Use console.print with rich markup and sys.exit(1)
+            console.print(f"[red]Error:[/red] Capture file not found at '{capture_file}'")
+            sys.exit(1)
+        try:
+            analyze_wifi_capture(capture_file)
+        except Exception as e:
+            # FIX: Use console.print with rich markup and sys.exit(1)
+            console.print(f"[red]An error occurred during Wi-Fi analysis:[/red] {e}")
+            sys.exit(1)
+            
+        # FIX: Added rich markup for success
+        console.print("\n[green]Wireless network analysis complete.[/green]")
+    
+    return app
+
+
+# Create a default instance for modules that import it (like a plugin)
+wifi_analyzer_app = get_wifi_app()

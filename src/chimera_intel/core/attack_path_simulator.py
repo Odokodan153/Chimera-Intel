@@ -13,7 +13,7 @@ import logging
 from .database import get_db_connection
 
 console = Console()
-logger = logging.getLogger(__name__)  # <-- FIX 2: Define the logger
+logger = logging.getLogger(__name__)
 
 attack_path_app = typer.Typer(
     name="attack-path",
@@ -72,7 +72,12 @@ def simulate_attack(
             console.print(
                 "[bold yellow]Warning:[/bold yellow] No assets found in the graph database. Cannot build attack graph."
             )
-            raise typer.Exit(code=1)
+            # --- FIX: Changed to 'return' to avoid SystemExit(2) in CliRunner ---
+            cursor.close()
+            conn.close()
+            return
+            # -----------------------------------------------------------------
+        
         attack_graph = build_attack_graph(cursor)
         cursor.close()
         conn.close()

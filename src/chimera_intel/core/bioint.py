@@ -7,10 +7,10 @@ from typing_extensions import Annotated
 from rich.console import Console
 from Bio import Entrez, SeqIO
 import io
-import logging  # <-- FIX 1: Import logging
+import logging
 
 console = Console()
-logger = logging.getLogger(__name__)  # <-- FIX 2: Define the logger
+logger = logging.getLogger(__name__)
 
 bioint_app = typer.Typer(
     name="bioint",
@@ -66,7 +66,7 @@ def monitor_sequences(
     Continuously scans public genetic sequence databases for specific gene fragments,
     synthetic markers, or sequences related to patented research or pathogens.
     """
-    logger.info(f"Monitoring {db} for target: {target}") # <-- FIX 3: Add logger call
+    logger.info(f"Monitoring {db} for target: {target}")
     console.print(
         f"Monitoring [bold cyan]{db}[/bold cyan] for target: '[yellow]{target}[/yellow]'"
     )
@@ -80,7 +80,9 @@ def monitor_sequences(
         results = search_genbank(target, email)
         if not results:
             console.print("[yellow]No matching sequences found.[/yellow]")
-            raise typer.Exit(code=0)
+            # --- FIX: Changed from typer.Exit(code=0) to prevent SystemExit exception ---
+            return
+            # -------------------------------------------------------------------------
         console.print(
             f"\n--- [bold green]Found {len(results)} Matching Sequences[/bold green] ---"
         )

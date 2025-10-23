@@ -6,7 +6,6 @@ from typer.testing import CliRunner
 import typer
 
 # Import the specific Typer app for this module
-
 from chimera_intel.core.business_intel import (
     get_financials_yfinance,
     get_news_gnews,
@@ -16,7 +15,6 @@ from chimera_intel.core.business_intel import (
 )
 
 # Import all necessary Pydantic models for testing
-
 from chimera_intel.core.schemas import (
     Financials,
     GNewsResult,
@@ -26,12 +24,12 @@ from chimera_intel.core.schemas import (
 )
 
 # CliRunner to simulate CLI commands
-
 runner = CliRunner()
 
 
 def run_coroutine(coro):
     """Helper function to run a coroutine in tests."""
+    # This helper is no longer needed for the CLI tests but kept for non-CLI async tests if any.
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
@@ -42,7 +40,6 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     def test_get_financials_yfinance_success(self, mock_ticker):
         """Tests a successful financial data lookup."""
         # Arrange
-
         mock_instance = mock_ticker.return_value
         mock_instance.info = {
             "longName": "Apple Inc.",
@@ -54,11 +51,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         }
 
         # Act
-
         result = get_financials_yfinance("AAPL")
 
         # Assert
-
         self.assertIsInstance(result, Financials)
         self.assertEqual(result.companyName, "Apple Inc.")
         self.assertIsNone(result.error)
@@ -67,18 +62,14 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     def test_get_financials_yfinance_incomplete_data(self, mock_ticker):
         """Tests yfinance lookup when the API returns incomplete data."""
         # Arrange
-
         mock_instance = mock_ticker.return_value
         # Simulate a response that is missing a key field like 'trailingPE'
-
         mock_instance.info = {"longName": "Incomplete Inc."}
 
         # Act
-
         result = get_financials_yfinance("INCOMPLETE")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("Could not fetch data", result.error)
 
@@ -86,15 +77,12 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     def test_get_financials_yfinance_unexpected_exception(self, mock_ticker):
         """Tests yfinance lookup when an unexpected exception occurs."""
         # Arrange
-
         mock_ticker.side_effect = Exception("A critical error occurred")
 
         # Act
-
         result = get_financials_yfinance("AAPL")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("An unexpected error occurred", result.error)
 
@@ -102,7 +90,6 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     async def test_get_news_gnews_success(self, mock_async_get):
         """Tests a successful news lookup from GNews."""
         # Arrange
-
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {
@@ -114,11 +101,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_async_get.return_value = mock_response
 
         # Act
-
         result = await get_news_gnews("Apple", "fake_api_key")
 
         # Assert
-
         self.assertIsInstance(result, GNewsResult)
         self.assertEqual(result.totalArticles, 1)
         self.assertIsNone(result.error)
@@ -127,29 +112,24 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     async def test_get_news_gnews_http_error(self, mock_async_get):
         """Tests the GNews lookup when an HTTP error occurs."""
         # Arrange
-
         http_error = HTTPStatusError(
             "Server Error", request=MagicMock(), response=Response(status_code=500)
         )
         mock_async_get.side_effect = http_error
 
         # Act
-
         result = await get_news_gnews("Apple", "fake_api_key")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("500", result.error)
 
     async def test_get_news_gnews_no_api_key(self):
         """Tests the GNews lookup when the API key is missing."""
         # Act
-
         result = await get_news_gnews("Apple", "")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("GNews API key not found", result.error)
 
@@ -157,7 +137,6 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     async def test_scrape_google_patents_success(self, mock_async_get):
         """Tests a successful scrape of Google Patents."""
         # Arrange
-
         mock_html = """
         <article class="search-result">
             <h4 class="title">Test Patent</h4>
@@ -170,11 +149,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_async_get.return_value = mock_response
 
         # Act
-
         result = await scrape_google_patents("Apple")
 
         # Assert
-
         self.assertIsInstance(result, PatentResult)
         self.assertEqual(len(result.patents), 1)
         self.assertEqual(result.patents[0].title, "Test Patent")
@@ -183,15 +160,12 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     async def test_scrape_google_patents_network_error(self, mock_async_get):
         """Tests the patent scraper when a network error occurs."""
         # Arrange
-
         mock_async_get.side_effect = RequestError("Network down")
 
         # Act
-
         result = await scrape_google_patents("Apple")
 
         # Assert
-
         self.assertIsNotNone(result.error)
         self.assertIn("Network error scraping patents", result.error)
 
@@ -203,29 +177,35 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests SEC filing analysis when the sec-api library raises an exception."""
         # Arrange
-
         mock_api_keys.sec_api_io_key = "fake_key"
         mock_query_api.side_effect = Exception("SEC API limit reached")
 
         # Act
-
         result = get_sec_filings_analysis("AAPL")
 
         # Assert
-
         self.assertIsInstance(result, SECFilingAnalysis)
         self.assertIsNotNone(result.error)
         self.assertIn("SEC API limit reached", result.error)
 
     # --- CLI Command Tests ---
 
-    # Add patches for external side-effects to prevent exit code 2
+    # FIX: Add all required mocks (resolve_target, get_active_project)
+    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
+    @patch("chimera_intel.core.business_intel.resolve_target", return_value="Apple")
     @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_run_success(
-        self, mock_api_keys, mock_asyncio_run, mock_save_db, mock_save_print
+        self,
+        mock_api_keys,
+        mock_resolve_target,
+        mock_get_project,
+        mock_asyncio_run,
+        mock_save_db,
+        mock_save_print,
     ):
         """Tests a successful run of the 'scan business run' command."""
         # Arrange
@@ -240,13 +220,22 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # Add patches for external side-effects to prevent exit code 2
+    # FIX: Add all required mocks (resolve_target, get_active_project)
+    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
+    @patch("chimera_intel.core.business_intel.resolve_target", return_value="Microsoft")
     @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_with_filings(
-        self, mock_api_keys, mock_asyncio_run, mock_save_db, mock_save_print
+        self,
+        mock_api_keys,
+        mock_resolve_target,
+        mock_get_project,
+        mock_asyncio_run,
+        mock_save_db,
+        mock_save_print,
     ):
         """Tests the CLI command with the --filings flag."""
         # Arrange
@@ -265,10 +254,10 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # Add all necessary patches to isolate the warning logic
+    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
     @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -305,12 +294,12 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_db.assert_called_once()
 
 
-    # Add patches for external side-effects to prevent exit code 2
+    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.resolve_target")
     @patch("chimera_intel.core.business_intel.get_active_project")
-    @patch("chimera_intel.core.business_intel.asyncio.run", side_effect=run_coroutine)
+    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
     @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_with_project_context(
         self,

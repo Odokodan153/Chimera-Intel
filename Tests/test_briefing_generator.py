@@ -2,6 +2,8 @@ import unittest
 from unittest.mock import patch, mock_open, MagicMock
 from typer.testing import CliRunner
 
+# --- FIX: Import API_KEYS to use with patch.object ---
+from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.briefing_generator import (
     generate_intelligence_briefing,
     briefing_app,
@@ -82,7 +84,8 @@ class TestBriefingGenerator(unittest.TestCase):
 
     # --- CLI Command Tests (FIXED) ---
 
-    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    # --- FIX: Changed patch to patch.object(API_KEYS, ...) ---
+    @patch.object(API_KEYS, "google_api_key", "fake_key")
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
@@ -95,7 +98,6 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        # <-- FIX: Removed mock_api_key from args
     ):
         """Tests the 'briefing generate' CLI command with a successful run."""
         # Arrange
@@ -119,13 +121,14 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0) # <-- Will now pass (no exception)
         self.assertIn("Test Briefing", result.stdout)
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
         mock_generate.assert_called_with(unittest.mock.ANY, "fake_key", "ciso_daily")
 
-    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    # --- FIX: Changed patch to patch.object(API_KEYS, ...) ---
+    @patch.object(API_KEYS, "google_api_key", "fake_key")
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
@@ -138,7 +141,6 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        # <-- FIX: Removed mock_api_key from args
     ):
         """FIXED: Tests the CLI command with the --output option and verifies file content."""
         # Arrange
@@ -160,7 +162,7 @@ class TestBriefingGenerator(unittest.TestCase):
             )
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0) # <-- Will now pass
         self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
         mock_file.assert_called_with("test_briefing.pdf", "w")
 
@@ -168,7 +170,7 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_file().write.assert_any_call("# File Title\n\n")
         mock_file().write.assert_any_call("File content")
 
-    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    # --- FIX: Removed the unnecessary and faulty API key patch decorator ---
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch(
@@ -176,7 +178,6 @@ class TestBriefingGenerator(unittest.TestCase):
     )
     def test_cli_briefing_no_active_project(
         self, mock_get_project, mock_status, mock_print
-        # <-- FIX: Removed mock_api_key from args
     ):
         """Tests the CLI command when no active project is set."""
         # Arrange
@@ -187,13 +188,13 @@ class TestBriefingGenerator(unittest.TestCase):
         result = runner.invoke(briefing_app, ["generate"])
 
         # Assert
-        self.assertEqual(result.exit_code, 1)
-        # --- FIX: Changed assertion to match the error message in briefing_generator.py ---
+        self.assertEqual(result.exit_code, 1) # <-- Will now pass
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
 
-    @patch("chimera_intel.core.briefing_generator.API_KEYS.google_api_key", "fake_key")
+    # --- FIX: Removed the unnecessary and faulty API key patch decorator ---
+    # (The code exits before the API key is checked, so no patch is needed)
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
     @patch("chimera_intel.core.briefing_generator.get_active_project")
@@ -207,7 +208,6 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_get_project,
         mock_status,
         mock_print,
-        # <-- No mock_api_key here, but it was in the decorator, so it was correct to check
     ):
         """FIXED: Tests the CLI command when no historical data is found for the target."""
         # Arrange
@@ -225,7 +225,7 @@ class TestBriefingGenerator(unittest.TestCase):
         result = runner.invoke(briefing_app, ["generate"])
 
         # Assert
-        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(result.exit_code, 1) # <-- Will now pass
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No historical data found for 'Test Inc'. Run scans first."
         )
@@ -249,15 +249,14 @@ class TestBriefingGenerator(unittest.TestCase):
             "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
             return_value={"target": "test.com"},
         ):
-            # Patch the API key to be None for this test
-            with patch(
-                "chimera_intel.core.briefing_generator.API_KEYS.google_api_key", None
+            # --- FIX: Changed patch(...) to patch.object(API_KEYS, ...) ---
+            with patch.object(
+                API_KEYS, "google_api_key", None
             ):
                 # Act
                 result = runner.invoke(briefing_app, ["generate"])
         # Assert
-        self.assertEqual(result.exit_code, 1)
-        # --- FIX: Changed assertion to match the error message in briefing_generator.py ---
+        self.assertEqual(result.exit_code, 1) # <-- Will now pass
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )

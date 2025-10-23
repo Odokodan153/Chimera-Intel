@@ -7,6 +7,7 @@ PESTEL framework, providing high-level insights into a target's operating enviro
 
 import typer
 import json
+import sys  # <-- FIX: Import sys
 from rich.markdown import Markdown
 import logging
 from typing import Optional
@@ -97,30 +98,35 @@ def run_pestel_analysis(
         console.print(
             f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
         )
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
+        
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
+        
     with console.status(
         "[bold cyan]Synthesizing data with AI for PESTEL analysis...[/bold cyan]"
     ):
         pestel_result = generate_pestel_analysis(aggregated_data, api_key)
+        
     console.print(f"\n--- [bold]PESTEL Analysis for {target_name}[/bold] ---\n")
     if pestel_result.error:
         console.print(
             f"[bold red]Error generating analysis:[/bold red] {pestel_result.error}"
         )
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     else:
         console.print(Markdown(pestel_result.analysis_text or "No analysis generated."))
 
-    # --- FIX 1: Explicitly signal successful CLI exit ---
-    raise typer.Exit(code=0)
+    # FIX: Use sys.exit(0) for explicit success
+    sys.exit(0)
 
 
-# --- FIX 2: Proper Typer CLI entrypoint ---
 if __name__ == "__main__":
-    pestel_analyzer_app
+    pestel_analyzer_app()

@@ -102,9 +102,10 @@ class TestDiffer(unittest.TestCase):
         )
         
         # --- FIX APPLIED ---
-        # Patch all external side-effects (Slack, Teams, console) to prevent
-        # unmocked calls from raising exceptions and causing exit_code=1.
-        with patch("chimera_intel.core.differ.API_KEYS.slack_webhook_url", "fake_url"), \
+        # Patch BOTH webhook URLs so the 'if' checks in the main code pass.
+        # Also patch the notification functions themselves and the console.
+        with patch("chimera_intel.core.differ.API_KEYS.slack_webhook_url", "fake_slack_url"), \
+             patch("chimera_intel.core.differ.API_KEYS.teams_webhook_url", "fake_teams_url"), \
              patch("chimera_intel.core.differ.send_teams_notification") as mock_teams, \
              patch("chimera_intel.core.differ.console.print") as mock_console:
             
@@ -116,16 +117,20 @@ class TestDiffer(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Comparison Results", result.stdout)
-        self.assertIn(
-            "footprint.dns_records.A.1", result.stdout
-        )  # Simple path for list item
+        
+        # Check console output via the mock's call arguments
+        console_output = " ".join([call.args[0] for call in mock_console.call_args_list if call.args])
+        self.assertIn("Comparison Results", console_output)
+        self.assertIn("footprint.dns_records.A.1", console_output)
+        self.assertIn("Added: 2.2.2.2", console_output)
+
+        # Verify notifications were called
         mock_slack.assert_called_once()
-        mock_teams.assert_called_once_with(
-            "Change Detected: footprint.dns_records.A.1",
-            "Added: 2.2.2.2"
-        ) # Example assertion, adjust to your needs
-        mock_console.assert_called()
+        mock_teams.assert_called_once()
+
+        # Optional: Check *what* they were called with
+        self.assertIn("Change Detected", mock_slack.call_args[0][1])
+        self.assertIn("Added: 2.2.2.2", mock_teams.call_args[0][2])
 
 
     @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")

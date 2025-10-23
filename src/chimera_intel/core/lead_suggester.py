@@ -8,6 +8,7 @@ logical steps for an intelligence analyst to take.
 import typer
 import json
 import logging
+import sys  # <-- FIX: Import sys
 
 from rich.markdown import Markdown
 
@@ -104,14 +105,16 @@ def run_lead_suggestion(
                 "Error: No active project set. Use 'chimera project use <name>' first.",
                 err=True,
             )
-            raise typer.Exit(code=1)
+            # FIX: Use sys.exit(1)
+            sys.exit(1)
         target_name = active_project.company_name or active_project.domain
         if not target_name:
             typer.echo(
                 "Error: Active project has no target (domain or company name) set.",
                 err=True,
             )
-            raise typer.Exit(code=1)
+            # FIX: Use sys.exit(1)
+            sys.exit(1)
         logger.info(
             f"Generating lead suggestions for project: {active_project.project_name}"
         )
@@ -122,11 +125,13 @@ def run_lead_suggestion(
                 f"Error: No historical data found for '{target_name}'. Run scans first.",
                 err=True,
             )
-            raise typer.Exit(code=1)
+            # FIX: Use sys.exit(1)
+            sys.exit(1)
         api_key = API_KEYS.google_api_key
         if not api_key:
             typer.echo("Error: Google API key (GOOGLE_API_KEY) not found.", err=True)
-            raise typer.Exit(code=1)
+            # FIX: Use sys.exit(1)
+            sys.exit(1)
         if no_rich:
             suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
         else:
@@ -142,7 +147,8 @@ def run_lead_suggestion(
             typer.echo(
                 f"Error generating suggestions: {suggestion_result.error}", err=True
             )
-            raise typer.Exit(code=1)
+            # FIX: Use sys.exit(1)
+            sys.exit(1)
         else:
             output_text = (
                 suggestion_result.suggestions_text or "No suggestions generated."
@@ -151,12 +157,18 @@ def run_lead_suggestion(
                 typer.echo(output_text)
             else:
                 console.print(Markdown(output_text))
+        
+        # FIX: Add explicit sys.exit(0) for success
+        sys.exit(0)
 
-    except typer.Exit:
+    # FIX: Catch SystemExit to allow sys.exit() to work
+    except SystemExit:
         raise  # Re-raise to preserve the intended exit code (e.g., code=1)
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1)  # This will be for *unexpected* errors
+        # FIX: Use sys.exit(1)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     lead_suggester_app()

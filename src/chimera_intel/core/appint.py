@@ -120,6 +120,12 @@ def run_static_apk_analysis(
             module="appint_static",
             data=results_dict,
         )
+    # --- FIX APPLIED ---
+    # Catch typer.Exit and re-raise it immediately so it's not
+    # caught by the generic 'except Exception' block.
+    except typer.Exit:
+        raise
+    # --- END FIX ---
     except Exception as e:
         console.print(f"[red]An unexpected error occurred: {e}[/red]")
         raise typer.Exit(code=1)

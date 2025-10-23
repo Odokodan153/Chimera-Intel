@@ -58,7 +58,11 @@ def test_track_influence_success(
     assert "Business Insider" in result.output
 
 
-def test_track_influence_no_api_key():
+# --- FIX APPLIED: Added mocks for twitter and reddit ---
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+def test_track_influence_no_api_key(mock_search_twitter, mock_search_reddit):
+# --- END FIX ---
     """
     Tests the track-influence command when the API key is missing.
     """
@@ -78,8 +82,14 @@ def test_track_influence_no_api_key():
     assert "Configuration Error: GNEWS_API_KEY not found in .env file." in result.output
 
 
+# --- FIX APPLIED: Added mocks for twitter and reddit ---
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
-def test_track_influence_api_error(mock_search_news):
+def test_track_influence_api_error(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+# --- END FIX ---
     """
     Tests the track-influence command when the GNews API returns an error.
     """

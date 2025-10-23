@@ -10,6 +10,7 @@ import logging
 import git  # type: ignore
 import tempfile
 import shutil
+import sys  # <-- FIX: Import sys
 from collections import Counter
 from typing import Optional, Counter as CounterType
 from rich.console import Console
@@ -121,7 +122,12 @@ def run_repo_analysis(
         console.print(
             f"[bold red]Error:[/bold red] Failed to clone or analyze repository: {results_model.error}"
         )
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
+        
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)  # Corrected line
     save_scan_to_db(target=repo_url, module="code_intel_repo", data=results_dict)
+
+    # FIX: Add explicit sys.exit(0) for success
+    sys.exit(0)

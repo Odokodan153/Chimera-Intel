@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock, mock_open
 from typer.testing import CliRunner
 import json
+import tempfile  # <-- FIX: Import tempfile
 
 from chimera_intel.core.media_analyzer import (
     reverse_image_search,
@@ -105,28 +106,26 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
     def test_cli_reverse_search_success(self, mock_reverse_search):
         """Tests the 'media reverse-search' CLI command."""
         # Arrange
-
         mock_reverse_search.return_value = ReverseImageSearchResult(
             source_image_path="test.jpg", matches_found=1
         )
 
-        # Act
+        # FIX: Use a temp file to get guaranteed JSON output
+        with tempfile.NamedTemporaryFile("w+", delete=True, suffix=".json") as tmpfile:
+            tmpfile_path = tmpfile.name
 
-        result = runner.invoke(media_app, ["reverse-search", "test.jpg"])
+            # Act
+            result = runner.invoke(
+                media_app, ["reverse-search", "test.jpg", "--output", tmpfile_path]
+            )
 
-        # Assert
+            # Assert
+            self.assertEqual(result.exit_code, 0)
 
-        self.assertEqual(result.exit_code, 0)
-        
-        # FIX: Find the JSON line, ignoring rich status/spinner output
-        output_json_str = None
-        for line in result.stdout.strip().splitlines():
-            if line.strip().startswith("{"):
-                output_json_str = line.strip()
-                break
-        
-        self.assertIsNotNone(output_json_str, f"No JSON output found in CLI response: {result.stdout}")
-        output = json.loads(output_json_str)
+            # Read the valid JSON from the output file
+            with open(tmpfile_path, "r") as f:
+                output = json.load(f)
+
         self.assertEqual(output["source_image_path"], "test.jpg")
         self.assertEqual(output["matches_found"], 1)
 
@@ -134,33 +133,30 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
     def test_cli_transcribe_success(self, mock_transcribe):
         """Tests the 'media transcribe' CLI command."""
         # Arrange
-
-        # FIX: Add the required 'media_type' field to the mock
         mock_transcribe.return_value = MediaAnalysisResult(
             file_path="test.mp3",
-            media_type="Audio",  # <-- This was the missing field
+            media_type="Audio",
             transcript=MediaTranscript(
                 text="hello world", language="english", confidence=1.0
             ),
         )
 
-        # Act
+        # FIX: Use a temp file to get guaranteed JSON output
+        with tempfile.NamedTemporaryFile("w+", delete=True, suffix=".json") as tmpfile:
+            tmpfile_path = tmpfile.name
 
-        result = runner.invoke(media_app, ["transcribe", "test.mp3"])
+            # Act
+            result = runner.invoke(
+                media_app, ["transcribe", "test.mp3", "--output", tmpfile_path]
+            )
 
-        # Assert
+            # Assert
+            self.assertEqual(result.exit_code, 0)
 
-        self.assertEqual(result.exit_code, 0)
+            # Read the valid JSON from the output file
+            with open(tmpfile_path, "r") as f:
+                output = json.load(f)
         
-        # FIX: Find the JSON line, ignoring rich status/spinner output
-        output_json_str = None
-        for line in result.stdout.strip().splitlines():
-            if line.strip().startswith("{"):
-                output_json_str = line.strip()
-                break
-        
-        self.assertIsNotNone(output_json_str, f"No JSON output found in CLI response: {result.stdout}")
-        output = json.loads(output_json_str)
         self.assertEqual(output["file_path"], "test.mp3")
         self.assertEqual(output["transcript"]["text"], "hello world")
 

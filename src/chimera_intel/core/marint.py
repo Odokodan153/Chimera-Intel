@@ -7,11 +7,10 @@ from typing_extensions import Annotated
 import asyncio
 import websockets
 import json
+import sys  
 from chimera_intel.core.config_loader import API_KEYS
-from typing import Optional  
+
 # Create a new Typer application for MARINT commands
-
-
 marint_app = typer.Typer(
     name="marint",
     help="Maritime & Shipping Intelligence (MARINT)",
@@ -52,45 +51,57 @@ async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):  # M
 
 @marint_app.command(name="track-vessel", help="Track a vessel by its IMO number.")
 def track_vessel(
+    # --- FIX: Make 'imo' a required Option ---
     imo: Annotated[
-        Optional[str],  # <-- FIX: Changed to Optional[str]
+        str,  # <-- No longer Optional
         typer.Option(
+            ...,  # <-- Make it required
             "--imo",
             "-i",
             help="The IMO number of the vessel to track.",
-            # prompt="Enter the vessel's IMO number", # <-- FIX: Removed prompt
+            # prompt removed
         ),
-    ] = None,  # <-- FIX: Default to None
+    ],
+    # --- End fix ---
     test: bool = typer.Option(False, "--test", help="Run in test mode.", hidden=True),
 ):
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
     """
-    # --- FIX: Manually prompt for IMO if not provided via --imo option ---
-    if imo is None:
-        imo = typer.prompt("Enter the vessel's IMO number")
+    # --- FIX: Removed the manual prompt block ---
+    # if imo is None:
+    #     imo = typer.prompt("Enter the vessel's IMO number")
     # --- End fix ---
 
     # --- MODIFIED: API key check moved here ---
     api_key = API_KEYS.aisstream_api_key
     if not api_key:
         typer.echo("Error: AISSTREAM_API_KEY not found in .env file.", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1)
+        sys.exit(1)
     # --- End modification ---
 
     typer.echo(f"Starting live tracking for vessel with IMO: {imo}...")
     try:
         # MODIFIED: Pass api_key to the async function
         asyncio.run(get_vessel_data(imo, api_key=api_key, test_mode=test))
+        
+        # FIX: Add explicit sys.exit(0) for success
+        sys.exit(0)
+        
     except ValueError as e:
         # This will now catch other ValueErrors, but not the API key one.
         typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1)
+        sys.exit(1)
     except KeyboardInterrupt:
         typer.echo("\nStopping vessel tracking.")
+        # FIX: Use sys.exit(0) or 1 depending on desired interrupt behavior
+        sys.exit(0) 
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
