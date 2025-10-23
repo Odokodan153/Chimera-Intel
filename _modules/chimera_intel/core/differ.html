@@ -231,12 +231,20 @@
         <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">),</span> <span class="nb">dict</span><span class="p">)</span>
     <span class="p">):</span>
         <span class="k">if</span> <span class="n">insert</span> <span class="ow">in</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">][</span><span class="s2">&quot;A&quot;</span><span class="p">]:</span>
-            <span class="n">new_ips</span> <span class="o">=</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">][</span><span class="s2">&quot;A&quot;</span><span class="p">][</span><span class="n">insert</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_ips</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            
+            <span class="c1"># --- FIX APPLIED ---</span>
+            <span class="c1"># new_ips_tuples is a list of (index, value) tuples, e.g., [(1, &#39;2.2.2.2&#39;)]</span>
+            <span class="n">new_ips_tuples</span> <span class="o">=</span> <span class="n">diff_result</span><span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">][</span><span class="s2">&quot;dns_records&quot;</span><span class="p">][</span><span class="s2">&quot;A&quot;</span><span class="p">][</span><span class="n">insert</span><span class="p">]</span>
+            
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">new_ips_tuples</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="c1"># We must extract only the values (the IPs) for the .join() call.</span>
+                <span class="n">just_the_ips</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">ip_tuple</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">ip_tuple</span> <span class="ow">in</span> <span class="n">new_ips_tuples</span><span class="p">]</span>
+            <span class="c1"># --- END FIX ---</span>
+
                 <span class="n">signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="n">MicroSignal</span><span class="p">(</span>
                         <span class="n">signal_type</span><span class="o">=</span><span class="s2">&quot;Infrastructure Change&quot;</span><span class="p">,</span>
-                        <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;New IP address(es) detected: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_ips</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;New IP address(es) detected: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">just_the_ips</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                         <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;High&quot;</span><span class="p">,</span>
                         <span class="n">source_field</span><span class="o">=</span><span class="s2">&quot;footprint.dns_records.A&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
