@@ -196,6 +196,12 @@
             <span class="n">module</span><span class="o">=</span><span class="s2">&quot;appint_static&quot;</span><span class="p">,</span>
             <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">,</span>
         <span class="p">)</span>
+    <span class="c1"># --- FIX APPLIED ---</span>
+    <span class="c1"># Catch typer.Exit and re-raise it immediately so it&#39;s not</span>
+    <span class="c1"># caught by the generic &#39;except Exception&#39; block.</span>
+    <span class="k">except</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">:</span>
+        <span class="k">raise</span>
+    <span class="c1"># --- END FIX ---</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[red]An unexpected error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">[/red]&quot;</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
