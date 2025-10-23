@@ -3,7 +3,6 @@ Influence & Information Operations (IO) Tracking Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
 import httpx
 from rich.table import Table
 import tweepy

@@ -3,8 +3,6 @@ Disinformation & Narrative Tracking Module for Chimera Intel.
 """
 
 import typer
-# import sys  <-- FIX: Removed sys import
-from typing_extensions import Annotated
 import httpx
 import tweepy
 from rich.console import Console
