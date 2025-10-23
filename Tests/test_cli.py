@@ -95,7 +95,9 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         for plugin in mock_discover_plugins.return_value:
             self.app.add_typer(plugin.app, name=plugin.name)
-        self.runner = CliRunner()
+        
+        # PYTEST_FIX: Add mix_stderr=True to capture rich output
+        self.runner = CliRunner(mix_stderr=True)
 
     def test_main_app_help(self):
         """Tests that the --help command works and displays commands from plugins."""
@@ -200,14 +202,15 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
                 json_output_str = line
                 break
         
-        self.assertIsNotNone(json_output_str, "No JSON output found in stdout")
+        self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
         output = json.loads(json_output_str)
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
     # --- FIX: Added patch for 'resolve_target' ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="invalid-domain")
-    def test_scan_footprint_invalid_domain(self, mock_resolve_target: MagicMock):
+    @patch("chimera_intel.core.footprint.is_valid_domain", return_value=False) # Mock the internal validation
+    async def test_scan_footprint_invalid_domain(self, mock_is_valid, mock_resolve_target: MagicMock):
         """Tests 'scan footprint run' with an invalid domain, expecting a specific error."""
         # Act
 
@@ -248,7 +251,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
                 json_output_str = line
                 break
 
-        self.assertIsNotNone(json_output_str, "No JSON output found in stdout")
+        self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
         output = json.loads(json_output_str)
         self.assertEqual(output["breaches"], [])
 

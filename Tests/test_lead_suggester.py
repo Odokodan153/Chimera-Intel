@@ -84,12 +84,15 @@ class TestLeadSuggester(unittest.TestCase):
 
     # --- CLI Tests ---
 
+    # --- FIX: Added patch for API_KEYS here ---
+    @patch("chimera_intel.core.lead_suggester.API_KEYS")
     @patch("chimera_intel.core.lead_suggester.get_active_project")
     @patch("chimera_intel.core.lead_suggester.get_aggregated_data_for_target")
     @patch("chimera_intel.core.lead_suggester.generate_lead_suggestions")
     def test_cli_run_lead_suggestion_success(
-        self, mock_generate, mock_get_data, mock_get_project
+        self, mock_generate, mock_get_data, mock_get_project, mock_api_keys
     ):
+    # --- END FIX ---
         """Tests a successful run of the 'lead-suggester run' command."""
         # Arrange
 
@@ -104,8 +107,9 @@ class TestLeadSuggester(unittest.TestCase):
         )
 
         # --- FIX APPLIED ---
-        # The 'with patch(...)' context manager is removed from here
-        # because the API key is now set globally by the import-level patch.
+        # The import-level patch isn't active when the command is *invoked*.
+        # We must patch API_KEYS for the scope of this test function.
+        mock_api_keys.google_api_key = "fake_key_for_cli_test"
         # --- END FIX ---
 
         # Act
@@ -117,8 +121,10 @@ class TestLeadSuggester(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Suggested Lead", result.output)
-        # The CLI handler should read the key set at import time
-        mock_generate.assert_called_with({"target": "example.com"}, "fake_key_for_import")
+        
+        # --- FIX: Update assertion to use the new key ---
+        mock_generate.assert_called_with({"target": "example.com"}, "fake_key_for_cli_test")
+        # --- END FIX ---
 
     @patch("chimera_intel.core.lead_suggester.get_active_project", return_value=None)
     def test_cli_run_no_active_project(self, mock_get_project):

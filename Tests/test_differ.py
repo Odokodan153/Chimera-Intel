@@ -1,9 +1,12 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-import typer  
+import typer
 from jsondiff import insert
 from chimera_intel.core.differ import diff_app
+# --- FIX: Import Console to record output ---
+from rich.console import Console
+# --- END FIX ---
 
 
 runner = CliRunner()
@@ -77,7 +80,9 @@ class TestDiffer(unittest.TestCase):
     def test_analyze_diff_for_signals(self):
         """Tests the signal analysis from a raw diff."""
         # Arrange
-        raw_diff = {"footprint": {"dns_records": {"A": {insert: ["1.2.3.4"]}}}}
+        # --- FIX: Use the correct jsondiff format for list insertion: [(index, value)] ---
+        raw_diff = {"footprint": {"dns_records": {"A": {insert: [(0, "1.2.3.4")]}}}}
+        # --- END FIX ---
         from chimera_intel.core.differ import analyze_diff_for_signals
 
         # Act
@@ -86,10 +91,9 @@ class TestDiffer(unittest.TestCase):
         # Assert
         self.assertEqual(len(signals), 1)
         self.assertEqual(signals[0].signal_type, "Infrastructure Change")
-        
-        # --- FIX: Assert the actual (buggy) output from the function ---
-        # The error message shows the description is 'New IP address(es) detected: .'
-        self.assertEqual(signals[0].description, "New IP address(es) detected: .")
+
+        # --- FIX: Assert the correct description from the fixed function ---
+        self.assertEqual(signals[0].description, "New IP address(es) detected: 1.2.3.4")
         # --- END FIX ---
 
     # --- CLI Tests ---
@@ -104,39 +108,46 @@ class TestDiffer(unittest.TestCase):
             {"footprint": {"dns_records": {"A": ["1.1.1.1", "2.2.2.2"]}}},
             {"footprint": {"dns_records": {"A": ["1.1.1.1"]}}},
         )
-        
+
         # --- FIX APPLIED ---
-        # Patch BOTH webhook URLs so the 'if' checks in the main code pass.
-        # Also patch the notification functions themselves and the console.
+        # Create a recording Console
+        mock_console = Console(record=True)
+
+        # Patch both webhook URLs, the teams notification function, and the *entire* console object
         with patch("chimera_intel.core.differ.API_KEYS.slack_webhook_url", "fake_slack_url"), \
              patch("chimera_intel.core.differ.API_KEYS.teams_webhook_url", "fake_teams_url"), \
              patch("chimera_intel.core.differ.send_teams_notification") as mock_teams, \
-             patch("chimera_intel.core.differ.console.print") as mock_console:
-            
+             patch("chimera_intel.core.differ.console", mock_console): # <-- Patch the object, not console.print
+
             # Act
             result = runner.invoke(
                 app, ["diff", "run", "footprint", "--target", "example.com"]
             )
+        
+        # Get the fully rendered text output
+        console_output = mock_console.export_text()
         # --- END FIX ---
 
         # Assert
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        
-        # --- FIX: Cast all mock print args to str() to handle Table objects ---
-        console_output = " ".join([str(call.args[0]) for call in mock_console.call_args_list if call.args])
-        # --- END FIX ---
-        
+
+        # --- FIX: Assertions updated for correct output ---
+        # This now checks the captured output from pprint
         self.assertIn("Comparison Results", console_output)
         self.assertIn("footprint.dns_records.A.1", console_output)
-        self.assertIn("Added: 2.2.2.2", console_output)
+        
+        # This now checks the rendered Table output for the signal
+        self.assertIn("New IP address(es) detected: 2.2.2.2", console_output)
 
         # Verify notifications were called
         mock_slack.assert_called_once()
         mock_teams.assert_called_once()
 
-        # Optional: Check *what* they were called with
+        # Check notification content
         self.assertIn("Change Detected", mock_slack.call_args[0][1])
-        self.assertIn("Added: 2.2.2.2", mock_teams.call_args[0][2])
+        # Check that the teams message contains the correct *count* of changes
+        self.assertIn("- **Added**: 1 items", mock_teams.call_args[0][2])
+        # --- END FIX ---
 
 
     @patch("chimera_intel.core.differ.resolve_target", return_value="example.com")

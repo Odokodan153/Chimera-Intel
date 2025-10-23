@@ -39,8 +39,7 @@ def test_simulate_attack_success(
         ["Public-Facing Web Server", "API Gateway", "Customer Database"]
     ]
 
-    # Run the CLI
-    # PYTEST_FIX: Remove "simulate" from the invocation.
+    # Run the CLI (This was the previous fix, removing "simulate")
     result = runner.invoke(
         attack_path_app,
         [
@@ -68,12 +67,24 @@ def test_simulate_attack_success(
         "Public-Facing Web Server",
         "Customer Database",
     )
-    found_title_or_panel = any(
-        "Simulated Attack Path(s)" in str(call)
-        or "Public-Facing Web Server -> API Gateway -> Customer Database" in str(call)
-        for call in mock_console_print.mock_calls
-    )
-    assert found_title_or_panel, "Expected attack path title or string was not printed."
+
+    # --- PYTEST_FIX: ---
+    # The previous assertion failed because `str(call)` is "call(<rich.Table object>)"
+    # We must check the string representation of the *arguments* passed to the mock.
+    found_title_or_panel = False
+    for call_args in mock_console_print.call_args_list:
+        # call_args[0] is the tuple of positional args, e.g., (table,)
+        if call_args[0]:
+            # Get the string representation of the first positional arg
+            arg_str = str(call_args[0][0])
+            if "Simulated Attack Path(s)" in arg_str or \
+               "Public-Facing Web Server -> API Gateway -> Customer Database" in arg_str:
+                found_title_or_panel = True
+                break
+    
+    assert found_title_or_panel, f"Expected attack path title or string was not printed. Mock calls: {mock_console_print.call_args_list}"
+    # --- END FIX ---
+
 
     # DB function was called and queries executed
     mock_get_db_conn.assert_called_once()
@@ -106,7 +117,7 @@ def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print, mock_lo
 
     mock_get_db_conn.return_value = mock_conn
 
-    # PYTEST_FIX: Remove "simulate" from the invocation.
+    # Run the CLI (This was the previous fix, removing "simulate")
     result = runner.invoke(
         attack_path_app,
         [

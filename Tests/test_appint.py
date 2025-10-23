@@ -52,7 +52,7 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # We run the command. os.path.exists is mocked to return True.
-        # PYTEST_FIX: Remove "static" from the invocation.
+        # PYTEST_FIX 1: Remove "static" from the invocation.
         result = runner.invoke(appint_app, ["dummy.apk"])
 
         # Assert
@@ -60,7 +60,10 @@ class TestAppint(unittest.TestCase):
             result.exit_code, 0, f"CLI command failed with output: {result.stdout}"
         )
         # Check that the file was checked
-        mock_exists.assert_called_with("dummy.apk")
+        # PYTEST_FIX 2: Change assert_called_with to assert_any_call
+        # This ensures the *first* check for "dummy.apk" is verified,
+        # even though os.path.exists is called again later for the decompiled dir.
+        mock_exists.assert_any_call("dummy.apk")
         mock_subprocess.assert_called_once()  # Check that apktool was called
         mock_save_print.assert_called_once()  # Check results were saved/printed
         mock_save_db.assert_called_once()   # Check DB save was called
@@ -84,7 +87,7 @@ class TestAppint(unittest.TestCase):
         # os.path.exists is mocked via decorator to return False
 
         # Act
-        # PYTEST_FIX: Remove "static" from the invocation.
+        # PYTEST_FIX 1: Remove "static" from the invocation.
         result = runner.invoke(appint_app, ["nonexistent.apk"])
 
         # Assert
@@ -92,6 +95,8 @@ class TestAppint(unittest.TestCase):
         self.assertEqual(
             result.exit_code, 1, f"CLI command failed with output: {result.stdout}"
         )
+        # PYTEST_FIX 2: This assertion is correct, as the function exits
+        # after this first and only call.
         mock_exists.assert_called_with("nonexistent.apk")
 
         # Check that the correct error message was printed

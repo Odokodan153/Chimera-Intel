@@ -10,17 +10,23 @@ runner = CliRunner()
 def test_monitor_sequences_success(mock_console_print, mock_entrez):
     # Mock esearch and efetch
     mock_esearch_handle = MagicMock()
-    mock_efetch_handle = MagicMock()
+    mock_efetch_handle = MagicMock() # This handle is still returned by efetch
 
     mock_entrez.esearch.return_value = mock_esearch_handle
-    mock_entrez.read.return_value = {"IdList": ["12345", "67890"]}
     mock_entrez.efetch.return_value = mock_efetch_handle
-    mock_efetch_handle.read.return_value = (
-        "LOCUS 12345\nDESCRIPTION Synthetic\nACCESSION 12345\n//" * 2
-    )
 
-    # CLI invocation
-    # PYTEST_FIX: Remove "monitor-sequences" from the invocation.
+    # --- PYTEST_FIX ---
+    # Use side_effect to provide different return values for the two calls to Entrez.read
+    # 1. The first call (for esearch) returns the ID list.
+    # 2. The second call (for efetch) returns the raw sequence data.
+    mock_entrez.read.side_effect = [
+        {"IdList": ["12345", "67890"]},
+        "LOCUS 12345\nDESCRIPTION Synthetic\nACCESSION 12345\n//" * 2
+    ]
+    # We no longer mock mock_efetch_handle.read, as Entrez.read(efetch_handle) is called instead.
+    # --- END FIX ---
+
+    # CLI invocation (This fix was from the previous step)
     result = runner.invoke(
         bioint_app,
         [
@@ -48,7 +54,15 @@ def test_monitor_sequences_success(mock_console_print, mock_entrez):
 
     # Verify Entrez calls
     mock_entrez.esearch.assert_called_with(db="nucleotide", term="CRISPR", retmax=5)
-    mock_entrez.read.assert_called_with(mock_esearch_handle)
+    
+    # --- PYTEST_FIX ---
+    # Change assertion to assert_any_call since Entrez.read is called twice,
+    # and this is the first call.
+    mock_entrez.read.assert_any_call(mock_esearch_handle)
+    # We also assert that the second call to Entrez.read happened with the efetch handle
+    mock_entrez.read.assert_any_call(mock_efetch_handle)
+    # --- END FIX ---
+    
     mock_entrez.efetch.assert_called_with(
         db="nucleotide", id=["12345", "67890"], rettype="gb", retmode="text"
     )
@@ -60,9 +74,11 @@ def test_monitor_sequences_no_results(mock_console_print, mock_entrez):
     # No results returned
     mock_esearch_handle = MagicMock()
     mock_entrez.esearch.return_value = mock_esearch_handle
+    # This mock is fine as-is, because Entrez.read is only called once
+    # before the function returns.
     mock_entrez.read.return_value = {"IdList": []}
 
-    # PYTEST_FIX: Remove "monitor-sequences" from the invocation.
+    # CLI invocation (This fix was from the previous step)
     result = runner.invoke(
         bioint_app,
         [

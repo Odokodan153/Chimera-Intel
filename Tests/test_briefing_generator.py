@@ -10,7 +10,9 @@ from chimera_intel.core.briefing_generator import (
 )
 from chimera_intel.core.schemas import BriefingResult, SWOTAnalysisResult, ProjectConfig
 
-runner = CliRunner()
+# PYTEST_FIX: Instantiate CliRunner with mix_stderr=True
+# This captures output from rich.console.print, which often writes to stderr.
+runner = CliRunner(mix_stderr=True)
 
 
 class TestBriefingGenerator(unittest.TestCase):
@@ -116,7 +118,7 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
-        # PYTEST_FIX: Remove "generate" from the invocation.
+        # This was the previous fix (removing "generate"):
         result = runner.invoke(
             briefing_app, ["--template", "ciso_daily"]
         )
@@ -129,6 +131,7 @@ class TestBriefingGenerator(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         # Use stdout for checking output with CliRunner
+        # This assertion will now pass thanks to mix_stderr=True
         self.assertIn("Test Briefing", result.stdout)
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
@@ -164,7 +167,7 @@ class TestBriefingGenerator(unittest.TestCase):
 
         with patch("builtins.open", mock_open()) as mock_file:
             # Act
-            # PYTEST_FIX: Remove "generate" from the invocation.
+            # This was the previous fix (removing "generate"):
             result = runner.invoke(
                 briefing_app, ["--output", "test_briefing.pdf"]
             )
@@ -176,6 +179,7 @@ class TestBriefingGenerator(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         # Check stdout for the success message
+        # This assertion will now pass thanks to mix_stderr=True
         self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
         mock_file.assert_called_with("test_briefing.pdf", "w")
 
@@ -198,11 +202,13 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_status.return_value.__exit__.return_value = (None, None, None)
 
         # Act
-        # PYTEST_FIX: Remove "generate" from the invocation.
+        # This was the previous fix (removing "generate"):
         result = runner.invoke(briefing_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
+        # We mock console.print, so we check the mock directly.
+        # This assertion is more robust than checking result.stdout.
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
@@ -236,7 +242,7 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
-        # PYTEST_FIX: Remove "generate" from the invocation.
+        # This was the previous fix (removing "generate"):
         result = runner.invoke(briefing_app, [])
 
         # Assert
@@ -269,7 +275,7 @@ class TestBriefingGenerator(unittest.TestCase):
                 API_KEYS, "google_api_key", None
             ):
                 # Act
-                # PYTEST_FIX: Remove "generate" from the invocation.
+                # This was the previous fix (removing "generate"):
                 result = runner.invoke(briefing_app, [])
         # Assert
         self.assertEqual(result.exit_code, 1)

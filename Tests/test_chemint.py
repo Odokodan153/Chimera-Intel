@@ -63,7 +63,8 @@ class CHEMINTResult:
 @pytest.fixture
 def runner():
     """Provides a Typer CliRunner instance."""
-    return CliRunner()
+    # PYTEST_FIX: Add mix_stderr=True to capture rich output
+    return CliRunner(mix_stderr=True)
 
 
 # --- Mock Data Fixtures ---
@@ -127,8 +128,9 @@ class TestChemicalLookup:
 
         output_file = tmp_path / "chem_results.json"
 
+        # PYTEST_FIX: Remove "lookup" from invocation
         result = runner.invoke(
-            chemint_app, ["lookup", "--cid", "240", "-o", str(output_file)]
+            chemint_app, ["--cid", "240", "-o", str(output_file)]
         )
 
         assert result.exit_code == 0
@@ -172,8 +174,9 @@ class TestPatentSearch:
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Act ---
+        # PYTEST_FIX: Remove "monitor-patents-research" from invocation
         result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+            chemint_app, ["--keywords", "polymer"]
         )
 
         # --- Assert ---
@@ -206,20 +209,24 @@ class TestPatentSearch:
         research_table = printed_tables[1]
 
         # Check patent table (accessing internal row data is fragile, but works)
-        assert len(patent_table.rows) == 1
+        # PYTEST_FIX: Access internal `_rows` list, not the non-iterable `Row` object
+        assert len(patent_table._rows) == 1
         # Get cell data from the first (and only) row
         
         # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
-        patent_row_cells = [cell for cell in patent_table.rows[0]]
+        # PYTEST_FIX: Access the internal `_rows` list which IS iterable
+        patent_row_cells = patent_table._rows[0]
         
         assert mock_patent.title in patent_row_cells
         assert mock_patent.url in patent_row_cells
 
         # Check research table
-        assert len(research_table.rows) == 1
+        # PYTEST_FIX: Access internal `_rows` list
+        assert len(research_table._rows) == 1
         
         # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
-        research_row_cells = [cell for cell in research_table.rows[0]]
+        # PYTEST_FIX: Access the internal `_rows` list
+        research_row_cells = research_table._rows[0]
         
         assert "A great paper" in research_row_cells
         assert "http://example.com/paper" in research_row_cells
@@ -238,8 +245,9 @@ class TestSdsAnalysis:
         mock_response.text = "GHS02 H225 P210"
         mock_get.return_value = mock_response
 
+        # PYTEST_FIX: Remove "analyze-sds" from invocation
         result = runner.invoke(
-            chemint_app, ["analyze-sds", "--sds-url", "http://example.com/sds"]
+            chemint_app, ["--sds-url", "http://example.com/sds"]
         )
 
         assert result.exit_code == 0

@@ -223,7 +223,11 @@ def run_diff_analysis(
     )
 
     console.print("\n[bold]Comparison Results:[/bold]")
-    pprint(full_result.comparison_summary.model_dump())
+    # --- FIX: Pass the console object to pprint ---
+    # This ensures that when 'console' is mocked in a test,
+    # pprint's output is captured by the mock.
+    pprint(full_result.comparison_summary.model_dump(), console=console)
+    # --- END FIX ---
 
     if full_result.detected_signals:
         console.print("\n[bold yellow]💡 Interpreted Micro-Signals[/bold yellow]")
