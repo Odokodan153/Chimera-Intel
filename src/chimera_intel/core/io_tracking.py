@@ -74,6 +74,7 @@ def track_influence(
     narrative: Annotated[
         str,
         typer.Option(
+            ...,  
             "--narrative",
             "-n",
             help="The narrative or topic to track for influence operations."

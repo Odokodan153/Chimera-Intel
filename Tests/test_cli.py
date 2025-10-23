@@ -141,8 +141,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
     # --- Plugin Command Tests ---
 
+    # --- FIX: Added patch for 'resolve_target' ---
+    @patch("chimera_intel.core.footprint.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
-    async def test_scan_footprint_success(self, mock_gather_footprint: AsyncMock):
+    async def test_scan_footprint_success(self, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
         """Tests a successful 'scan footprint run' command with specific assertions."""
         # Arrange
 
@@ -189,7 +191,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output) # --- FIX: Added msg=result.output
         
         # FIX: Find the JSON line in stdout instead of assuming it's the only line
         json_output_str = None
@@ -203,7 +205,9 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
-    def test_scan_footprint_invalid_domain(self):
+    # --- FIX: Added patch for 'resolve_target' ---
+    @patch("chimera_intel.core.footprint.resolve_target", return_value="invalid-domain")
+    def test_scan_footprint_invalid_domain(self, mock_resolve_target: MagicMock):
         """Tests 'scan footprint run' with an invalid domain, expecting a specific error."""
         # Act
 
@@ -213,9 +217,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
         
-        # FIX: Typer validation errors (like invalid domain) return exit code 2
-        self.assertEqual(result.exit_code, 2)
-        self.assertIn("Invalid value", result.stdout)
+        # FIX: The code manually raises Exit(1), not 2.
+        self.assertEqual(result.exit_code, 1)
+        # FIX: Assert the actual error message from the Panel.
+        self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
     def test_defensive_breaches_success(self, mock_check_hibp: MagicMock):
@@ -234,7 +239,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             )
         # Assert
 
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, msg=result.output) # --- FIX: Added msg=result.output
         
         # FIX: Find the JSON line in stdout instead of assuming it's the last line
         json_output_str = None
@@ -259,9 +264,9 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         # Assert
         
         # This test now correctly expects exit code 1.
-        # It will pass once the source code is updated to raise typer.Exit(code=1).
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("HIBP_API_KEY not found in environment variables", result.stdout)
+        # FIX: Assert the actual error message from the Panel.
+        self.assertIn("`HIBP_API_KEY` not found in your .env file.", result.stdout)
 
 
 if __name__ == "__main__":

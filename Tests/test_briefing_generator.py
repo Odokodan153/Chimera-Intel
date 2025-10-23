@@ -87,7 +87,7 @@ class TestBriefingGenerator(unittest.TestCase):
     # --- FIX: Changed patch to patch.object(API_KEYS, ...) ---
     @patch.object(API_KEYS, "google_api_key", "fake_key")
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
     @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
@@ -102,7 +102,7 @@ class TestBriefingGenerator(unittest.TestCase):
         """Tests the 'briefing generate' CLI command with a successful run."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
-        mock_status.return_value.__exit__.return_value = None
+        mock_status.return_value.__exit__.return_value = (None, None, None)
 
         mock_get_project.return_value = ProjectConfig(
             project_name="Test",
@@ -121,7 +121,13 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Assert
-        self.assertEqual(result.exit_code, 0) # <-- Will now pass (no exception)
+        # Check for exception details if the exit code is not 0
+        if result.exit_code != 0:
+            print(f"Test Output: {result.stdout}")
+            print(f"Test Exception: {result.exception}")
+
+        self.assertEqual(result.exit_code, 0)
+        # Use stdout for checking output with CliRunner
         self.assertIn("Test Briefing", result.stdout)
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
@@ -130,7 +136,7 @@ class TestBriefingGenerator(unittest.TestCase):
     # --- FIX: Changed patch to patch.object(API_KEYS, ...) ---
     @patch.object(API_KEYS, "google_api_key", "fake_key")
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch("chimera_intel.core.briefing_generator.get_aggregated_data_for_target")
     @patch("chimera_intel.core.briefing_generator.generate_intelligence_briefing")
@@ -145,7 +151,7 @@ class TestBriefingGenerator(unittest.TestCase):
         """FIXED: Tests the CLI command with the --output option and verifies file content."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
-        mock_status.return_value.__exit__.return_value = None
+        mock_status.return_value.__exit__.return_value = (None, None, None)
 
         mock_get_project.return_value = ProjectConfig(
             project_name="Test", domain="test.com", created_at="2023-01-01"
@@ -162,7 +168,12 @@ class TestBriefingGenerator(unittest.TestCase):
             )
 
         # Assert
-        self.assertEqual(result.exit_code, 0) # <-- Will now pass
+        if result.exit_code != 0:
+            print(f"Test Output: {result.stdout}")
+            print(f"Test Exception: {result.exception}")
+
+        self.assertEqual(result.exit_code, 0)
+        # Check stdout for the success message
         self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
         mock_file.assert_called_with("test_briefing.pdf", "w")
 
@@ -172,7 +183,7 @@ class TestBriefingGenerator(unittest.TestCase):
 
     # --- FIX: Removed the unnecessary and faulty API key patch decorator ---
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status")
     @patch(
         "chimera_intel.core.briefing_generator.get_active_project", return_value=None
     )
@@ -182,13 +193,13 @@ class TestBriefingGenerator(unittest.TestCase):
         """Tests the CLI command when no active project is set."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
-        mock_status.return_value.__exit__.return_value = None
+        mock_status.return_value.__exit__.return_value = (None, None, None)
 
         # Act
         result = runner.invoke(briefing_app, ["generate"])
 
         # Assert
-        self.assertEqual(result.exit_code, 1) # <-- Will now pass
+        self.assertEqual(result.exit_code, 1)
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
@@ -196,7 +207,7 @@ class TestBriefingGenerator(unittest.TestCase):
     # --- FIX: Removed the unnecessary and faulty API key patch decorator ---
     # (The code exits before the API key is checked, so no patch is needed)
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch(
         "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
@@ -212,7 +223,7 @@ class TestBriefingGenerator(unittest.TestCase):
         """FIXED: Tests the CLI command when no historical data is found for the target."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
-        mock_status.return_value.__exit__.return_value = None
+        mock_status.return_value.__exit__.return_value = (None, None, None)
 
         mock_get_project.return_value = ProjectConfig(
             project_name="Test",
@@ -225,13 +236,13 @@ class TestBriefingGenerator(unittest.TestCase):
         result = runner.invoke(briefing_app, ["generate"])
 
         # Assert
-        self.assertEqual(result.exit_code, 1) # <-- Will now pass
+        self.assertEqual(result.exit_code, 1)
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No historical data found for 'Test Inc'. Run scans first."
         )
 
     @patch("chimera_intel.core.briefing_generator.console.print", new_callable=MagicMock)
-    @patch("chimera_intel.core.briefing_generator.console.status", new_callable=MagicMock)
+    @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     def test_cli_briefing_no_api_key(
         self, mock_get_project, mock_status, mock_print
@@ -239,7 +250,7 @@ class TestBriefingGenerator(unittest.TestCase):
         """FIXED: Tests the CLI command when the Google API key is not configured."""
         # Arrange
         mock_status.return_value.__enter__.return_value = None
-        mock_status.return_value.__exit__.return_value = None
+        mock_status.return_value.__exit__.return_value = (None, None, None)
 
         mock_get_project.return_value = ProjectConfig(
             project_name="Test", domain="test.com", created_at="2023-01-01"
@@ -256,7 +267,7 @@ class TestBriefingGenerator(unittest.TestCase):
                 # Act
                 result = runner.invoke(briefing_app, ["generate"])
         # Assert
-        self.assertEqual(result.exit_code, 1) # <-- Will now pass
+        self.assertEqual(result.exit_code, 1)
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )

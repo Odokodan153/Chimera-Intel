@@ -103,6 +103,10 @@ def ot_recon(
         else:
             typer.echo("\nNo common ICS/SCADA protocols identified in banner data.")
         typer.echo("-----------------------------")
+
+        # FIX: Add explicit success exit for the test runner
+        raise typer.Exit(code=0)
+        
     except (ValueError, shodan.APIError) as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)

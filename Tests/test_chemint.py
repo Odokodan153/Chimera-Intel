@@ -2,12 +2,18 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-from src.chimera_intel.core.chemint import chemint_app
+# --- FIX: Corrected import path ---
+from chimera_intel.core.chemint import chemint_app
+# --- FIX: Added Table import for type checking in mock ---
+from rich.table import Table
+
 
 # ------------------
 # Dummy Schema Classes
 # ------------------
-
+# (Note: These dummy classes are for test setup and don't need to be in the
+#  final file if the real schemas are accessible, but we'll keep them
+#  as they are part of the provided test file.)
 
 class ChemInfo:
     def __init__(self, cid, molecular_weight, iupac_name, canonical_smiles):
@@ -107,7 +113,8 @@ def mock_sds_data():
 class TestChemicalLookup:
     """Tests for the 'lookup' command."""
 
-    @patch("src.chimera_intel.core.chemint.pcp.Compound.from_cid")
+    # --- FIX: Corrected patch path ---
+    @patch("chimera_intel.core.chemint.pcp.Compound.from_cid")
     def test_cli_lookup_success(self, mock_from_cid, runner, mock_chem_info, tmp_path):
         """Tests the 'chemint lookup' CLI command with successful data."""
         mock_compound = MagicMock()
@@ -134,14 +141,15 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
-    @patch("src.chimera_intel.core.chemint.pypatent.Search")
-    @patch("src.chimera_intel.core.chemint.scholarly.search_pubs")
-    @patch("src.chimera_intel.core.chemint.print")  # <-- FIX: Mock print
+    # --- FIX: Patched 'print' to check data, not rendered output ---
+    @patch("chimera_intel.core.chemint.print")
+    @patch("chimera_intel.core.chemint.pypatent.Search")
+    @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        mock_print,  # <-- FIX: Add mock_print argument
         mock_search_pubs,
         mock_pypatent_search,
+        mock_rich_print,  # <-- Added mock for 'print'
         runner,
         mock_patent_info,
     ):
@@ -170,26 +178,52 @@ class TestPatentSearch:
 
         # --- Assert ---
         assert result.exit_code == 0
-        
-        # --- FIX: Check assertions against the mock_print calls ---
-        printed_texts = [args[0] for args, kwargs in mock_print.call_args_list]
-        combined_text = " ".join(str(t) for t in printed_texts)
-        
-        # Check that mocked titles and URLs are in the combined printed text
-        assert mock_patent.title in combined_text
-        assert mock_patent.url in combined_text
-        assert "A great paper" in combined_text
-        assert "http://example.com/paper" in combined_text
-        
-        # Check that section titles were also printed
-        assert "Patents (USPTO)" in combined_text
-        assert "Research Papers (Google Scholar)" in combined_text
+
+        # --- FIX: Check assertions against the mock_rich_print's call arguments ---
+        # This robustly checks the *data* sent to print, bypassing render issues.
+
+        # Capture all arguments passed to print()
+        print_calls = mock_rich_print.call_args_list
+
+        # Combine all arguments into a single string to check for section headers
+        all_printed_text = ""
+        printed_tables = []
+        for call in print_calls:
+            arg = call[0][0]  # Get the first positional argument of the print call
+            if isinstance(arg, Table):
+                printed_tables.append(arg)
+            all_printed_text += str(arg)
+
+        # Check that section titles were printed
+        assert "Patents (USPTO)" in all_printed_text
+        assert "Research Papers (Google Scholar)" in all_printed_text
+
+        # Check that two tables were passed to print
+        assert len(printed_tables) == 2
+
+        # Check the data inside the tables
+        patent_table = printed_tables[0]
+        research_table = printed_tables[1]
+
+        # Check patent table (accessing internal row data is fragile, but works)
+        assert len(patent_table.rows) == 1
+        # Get cell data from the first (and only) row
+        patent_row_cells = [cell for cell in patent_table.rows[0].cells]
+        assert mock_patent.title in patent_row_cells
+        assert mock_patent.url in patent_row_cells
+
+        # Check research table
+        assert len(research_table.rows) == 1
+        research_row_cells = [cell for cell in research_table.rows[0].cells]
+        assert "A great paper" in research_row_cells
+        assert "http://example.com/paper" in research_row_cells
 
 
 class TestSdsAnalysis:
     """Tests for the 'analyze-sds' command."""
 
-    @patch("src.chimera_intel.core.chemint.requests.get")
+    # --- FIX: Corrected patch path ---
+    @patch("chimera_intel.core.chemint.requests.get")
     def test_cli_sds_analysis_success(self, mock_get, runner, mock_sds_data, tmp_path):
         """Tests the 'chemint analyze-sds' CLI command."""
         mock_response = MagicMock()
@@ -204,6 +238,7 @@ class TestSdsAnalysis:
 
         assert result.exit_code == 0
         assert "Analyzing SDS from URL: http://example.com/sds" in result.stdout
+        # These assertions are fine because the table contents are simple strings
         assert "GHS Pictograms" in result.stdout
         assert "GHS02" in result.stdout
         assert "Hazard Statements" in result.stdout

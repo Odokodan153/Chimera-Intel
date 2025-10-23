@@ -609,7 +609,9 @@ def run_breach_check(
                 border_style="yellow",
             )
         )
-        return
+        # --- FIX: Changed 'return' to 'raise typer.Exit(code=1)' ---
+        raise typer.Exit(code=1)
+        
     logger.info("Starting HIBP breach check for %s", domain)
     results = check_hibp_breaches(domain, api_key)
     save_or_print_results(results.model_dump(), output_file)

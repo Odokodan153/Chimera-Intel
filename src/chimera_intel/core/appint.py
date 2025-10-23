@@ -12,6 +12,7 @@ import os
 import shutil
 import re
 from typing import Optional, List
+from typing_extensions import Annotated  # <-- FIX: Import Annotated
 
 from .schemas import StaticAppAnalysisResult, FoundSecret
 from .utils import save_or_print_results, console
@@ -30,7 +31,7 @@ def analyze_apk_static(file_path: str) -> StaticAppAnalysisResult:
         file_path (str): The path to the .apk file to analyze.
 
     Returns:
-        StaticAppAnalysisResult: A Pydantic model with the analysis results.
+        StaticAppAnalysisResult: A Pantic model with the analysis results.
     """
     if not os.path.exists(file_path):
         return StaticAppAnalysisResult(file_path=file_path, error="APK file not found.")
@@ -99,7 +100,11 @@ appint_app = typer.Typer()
 
 @appint_app.command("static")
 def run_static_apk_analysis(
-    file_path: str = typer.Argument(..., help="Path to the .apk file to analyze."),
+    # --- FIX: Use Annotated syntax for typer.Argument ---
+    file_path: Annotated[
+        str, typer.Argument(help="Path to the .apk file to analyze.")
+    ],
+    # --------------------------------------------------
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),

@@ -8,7 +8,7 @@ of two targets based on previously saved scan data.
 import typer
 import json
 import logging
-import sys  # <-- FIX: Import sys
+# --- FIX: Removed 'import sys' ---
 
 from rich.markdown import Markdown
 
@@ -122,16 +122,16 @@ def run_competitive_analysis(
         console.print(
             "[bold red]Error:[/bold red] Could not retrieve historical data for one or both targets. Ensure scans have been run for both."
         )
-        # FIX: Use sys.exit(1)
-        sys.exit(1)
+        # --- FIX: Reverted to typer.Exit ---
+        raise typer.Exit(code=1)
         
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
-        # FIX: Use sys.exit(1)
-        sys.exit(1)
+        # --- FIX: Reverted to typer.Exit ---
+        raise typer.Exit(code=1)
         
     console.print(
         "[bold cyan]Synthesizing data with AI for competitive analysis...[/bold cyan]"
@@ -145,10 +145,9 @@ def run_competitive_analysis(
         console.print(
             f"[bold red]Error generating analysis:[/bold red] {comp_result.error}"
         )
-        # FIX: Use sys.exit(1)
-        sys.exit(1)
+        # --- FIX: Reverted to typer.Exit ---
+        raise typer.Exit(code=1)
     else:
         console.print(Markdown(comp_result.analysis_text or "No analysis generated."))
 
-    # FIX: Add explicit sys.exit(0) for success
-    sys.exit(0)
+    # --- FIX: Removed explicit sys.exit(0). ---

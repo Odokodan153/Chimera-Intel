@@ -8,7 +8,7 @@ import os
 import tempfile
 import subprocess
 import json
-import sys  # <-- FIX: Import sys
+# import sys  <-- Removed this import
 
 # Create a new Typer application for SCAINT commands
 scaint_app = typer.Typer(
@@ -79,21 +79,21 @@ def analyze_repo(
             else:
                 print("\nNo known vulnerabilities found in the dependencies.")
             
-            # FIX: Use sys.exit(0) for explicit success
-            sys.exit(0)
+            # FIX: Use typer.Exit(code=0) for explicit success
+            raise typer.Exit(code=0)
         
         except git.exc.GitCommandError as e:
             print(f"Error cloning repository: {e}")
-            # FIX: Use sys.exit(1) instead of typer.Exit
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
         except FileNotFoundError as e:
             print(f"Analysis Error: {e}")
-            # FIX: Use sys.exit(1) instead of typer.Exit
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-            # FIX: Use sys.exit(1) instead of typer.Exit
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

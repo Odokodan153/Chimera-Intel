@@ -79,26 +79,18 @@ class TestInternal(unittest.TestCase):
         )
 
         # --- FIX APPLIED ---
-        # The parse_mft function opens a specific hardcoded file
-        # ("mft_temp_output.csv") after its internal call.
-        # We must patch 'builtins.open' with a side_effect to intercept
-        # the call to that specific file and return our mock CSV data.
-
-        def open_side_effect(file, *args, **kwargs):
-            if file == "mft_temp_output.csv":
-                # Return a mock file handle with our CSV data
-                return mock_open(read_data=mft_csv_output).return_value
-            # For any other file, use the default (original) open behavior
-            return unittest.mock.DEFAULT
-        
-        with patch("builtins.open", side_effect=open_side_effect):
+        # We patch 'builtins.open'. When 'parse_mft' tries to open
+        # 'mft_temp_output.csv', this patch will intercept the call
+        # and provide our mock CSV data instead.
+        m = mock_open(read_data=mft_csv_output)
+        with patch("builtins.open", m):
             # Act
             result = parse_mft("/fake/MFT")
         # --- END FIX ---
 
         # Assert
         self.assertIsInstance(result, MFTAnalysisResult)
-        self.assertEqual(result.total_records, 1) # This should now be 1
+        self.assertEqual(result.total_records, 1) # This should now pass
         self.assertEqual(result.entries[0].filename, "test.txt")
         self.assertFalse(result.entries[0].is_directory)
         mock_remove.assert_called_once()  # Check that the temp file was cleaned up

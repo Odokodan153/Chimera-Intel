@@ -29,7 +29,7 @@ runner = CliRunner()
 
 def run_coroutine(coro):
     """Helper function to run a coroutine in tests."""
-    # This helper is no longer needed for the CLI tests but kept for non-CLI async tests if any.
+    # This helper is useful again for our side_effect
     return asyncio.get_event_loop().run_until_complete(coro)
 
 
@@ -190,11 +190,10 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Command Tests ---
 
-    # FIX: Add all required mocks (resolve_target, get_active_project)
-    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
+    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
     @patch("chimera_intel.core.business_intel.resolve_target", return_value="Apple")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -210,6 +209,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         """Tests a successful run of the 'scan business run' command."""
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
+        # FIX: Add side_effect to actually run the coroutine
+        mock_asyncio_run.side_effect = run_coroutine
 
         # Act
         result = runner.invoke(business_app, ["run", "Apple", "--ticker", "AAPL"])
@@ -220,11 +221,10 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # FIX: Add all required mocks (resolve_target, get_active_project)
-    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
+    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
     @patch("chimera_intel.core.business_intel.resolve_target", return_value="Microsoft")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -241,6 +241,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
         mock_api_keys.sec_api_io_key = "dummy_key"
+        # FIX: Add side_effect to actually run the coroutine
+        mock_asyncio_run.side_effect = run_coroutine
 
         # Act
         result = runner.invoke(
@@ -254,10 +256,10 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
+    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
-    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
     @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -276,6 +278,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
         # No sec_api_io_key, so the SEC task will be skipped, but the warning should still log.
+        # FIX: Add side_effect to actually run the coroutine
+        mock_asyncio_run.side_effect = run_coroutine
 
         # Act
         result = runner.invoke(business_app, ["run", "SomeCompany", "--filings"])
@@ -294,12 +298,12 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_db.assert_called_once()
 
 
-    # FIX: Change asyncio.run patch to use new_callable=AsyncMock
+    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.resolve_target")
     @patch("chimera_intel.core.business_intel.get_active_project")
-    @patch("chimera_intel.core.business_intel.asyncio.run", new_callable=AsyncMock)
+    @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.API_KEYS")
     def test_cli_business_intel_with_project_context(
         self,
@@ -321,15 +325,17 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
             ticker="PCRP",
         )
         mock_get_project.return_value = mock_project
-
+        # FIX: Add side_effect to actually run the coroutine
+        mock_asyncio_run.side_effect = run_coroutine
+        
         # Act
         result = runner.invoke(business_app, ["run"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
-        # Fix: Expect 'run' as the arg, not None
+        # FIX: The first argument to resolve_target is company_name, which is None
         mock_resolve_target.assert_called_once_with(
-            "run", required_assets=["company_name"]
+            None, required_assets=["company_name"]
         )
         mock_asyncio_run.assert_called_once()
         mock_save_print.assert_called_once()

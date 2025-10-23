@@ -38,6 +38,7 @@ def simulate_attack(
     entry_point: Annotated[
         str,
         typer.Option(
+            ...,  
             "--entry-point",
             "-e",
             help="The entry point of the simulated attack (e.g., 'Public-Facing Web Server').",
@@ -46,6 +47,7 @@ def simulate_attack(
     target_asset: Annotated[
         str,
         typer.Option(
+            ...,  
             "--target-asset",
             "-t",
             help="The target asset to simulate the attack against (e.g., 'Customer Database').",

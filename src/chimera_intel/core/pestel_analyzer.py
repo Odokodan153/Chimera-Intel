@@ -7,7 +7,7 @@ PESTEL framework, providing high-level insights into a target's operating enviro
 
 import typer
 import json
-import sys  # <-- FIX: Import sys
+# import sys  <-- FIX: Removed sys import
 from rich.markdown import Markdown
 import logging
 from typing import Optional
@@ -98,16 +98,16 @@ def run_pestel_analysis(
         console.print(
             f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
         )
-        # FIX: Use sys.exit(1) instead of typer.Exit
-        sys.exit(1)
+        # FIX: Use typer.Exit(code=1)
+        raise typer.Exit(code=1)
         
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
-        # FIX: Use sys.exit(1) instead of typer.Exit
-        sys.exit(1)
+        # FIX: Use typer.Exit(code=1)
+        raise typer.Exit(code=1)
         
     with console.status(
         "[bold cyan]Synthesizing data with AI for PESTEL analysis...[/bold cyan]"
@@ -119,13 +119,13 @@ def run_pestel_analysis(
         console.print(
             f"[bold red]Error generating analysis:[/bold red] {pestel_result.error}"
         )
-        # FIX: Use sys.exit(1) instead of typer.Exit
-        sys.exit(1)
+        # FIX: Use typer.Exit(code=1)
+        raise typer.Exit(code=1)
     else:
         console.print(Markdown(pestel_result.analysis_text or "No analysis generated."))
 
-    # FIX: Use sys.exit(0) for explicit success
-    sys.exit(0)
+    # FIX: Use typer.Exit(code=0) for explicit success
+    raise typer.Exit(code=0)
 
 
 if __name__ == "__main__":
