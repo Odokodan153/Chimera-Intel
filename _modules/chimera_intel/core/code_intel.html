@@ -183,9 +183,13 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.code_intel.run_repo_analysis">[docs]</a>
 <span class="nd">@code_intel_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;analyze-repo&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_repo_analysis</span><span class="p">(</span>
-    <span class="n">repo_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
-        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The full URL of the public Git repository.&quot;</span>
+    <span class="c1"># --- FIX: Changed from positional Argument to named Option ---</span>
+    <span class="n">repo_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> 
+        <span class="s2">&quot;--repo-url&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The full URL of the public Git repository.&quot;</span>
     <span class="p">),</span>
+    <span class="c1"># --- End Fix ---</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
     <span class="p">),</span>
@@ -206,7 +210,6 @@
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">repo_url</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;code_intel_repo&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
 
 
-    <span class="c1"># --- FIX: Removed &#39;sys.exit(0)&#39;. A normal return is exit code 0. ---</span>
 </pre></div>
 
            </div>
