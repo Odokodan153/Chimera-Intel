@@ -14,7 +14,7 @@ from chimera_intel.core.schemas import BriefingResult, SWOTAnalysisResult, Proje
 
 # PYTEST_FIX: Instantiate CliRunner with mix_stderr=True
 # This captures output from rich.console.print, which often writes to stderr.
-runner = CliRunner(mix_stderr=True) # <-- FIX: Added mix_stderr=True
+runner = CliRunner() # <-- FIX: Added mix_stderr=True
 
 
 class TestBriefingGenerator(unittest.TestCase):
