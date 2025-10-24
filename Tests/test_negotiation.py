@@ -43,13 +43,17 @@ def test_recommend_tactic_with_history(engine):
     assert "De-escalate" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
 
-# FIX: Added the correct client fixture using ASGITransport
+
+# FIX: Replaced 'with' statement with yield/close pattern
 @pytest.fixture
 def client():
     """Provides an httpx.Client configured for the webapp using ASGITransport."""
     transport = ASGITransport(app=app)
-    with httpx.Client(transport=transport, base_url="http://test") as client:
+    client = httpx.Client(transport=transport, base_url="http://test")
+    try:
         yield client
+    finally:
+        client.close()
 
 
 def test_create_negotiation(client): # FIX: Added client fixture

@@ -64,11 +64,11 @@ def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     pcap_path.write_text("dummy pcap content")
     
     # Act
-    # --- FIX: Changed from '--file' option to 'analyze' command ---
-    # --- FIX: Passed file path as a positional argument ---
+    # --- FIX: Removed "analyze" from the args list ---
+    # Since wifi_analyzer_app has only one command, invoke it directly.
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(pcap_path)],
+        [str(pcap_path)],
     )
 
     # Assert
@@ -85,11 +85,10 @@ def test_analyze_wifi_file_not_found(tmp_path):
 
     # Act: No need to patch os.path.exists, the app's internal
     # check will handle this.
-    # --- FIX: Changed from '--file' option to 'analyze' command ---
-    # --- FIX: Passed file path as a positional argument ---
+    # --- FIX: Removed "analyze" from the args list ---
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(non_existent_file)],
+        [str(non_existent_file)],
     )
 
     # Assert

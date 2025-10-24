@@ -20,11 +20,11 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         mock_add_job.return_value = None
 
         # Act
-        # --- FIX: Changed back to named options ---
+        # --- FIX: Removed "add" from the args list ---
+        # Since page_monitor_app has only one command, invoke it directly.
         result = runner.invoke(
             page_monitor_app,
             [
-                "add", 
                 "--url", "https://example.com/about",
                 "--schedule", "* * * * *"
             ],

@@ -73,8 +73,8 @@ class TestPestelAnalyzer(unittest.TestCase):
         )
 
         # Act
-        # --- FIX: Pass 'example.com' as an option using '--target' ---
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- FIX: Removed "run" from the args list ---
+        result = runner.invoke(pestel_analyzer_app, ["--target", "example.com"])
         # --- END FIX ---
         
         # Assert
@@ -106,8 +106,8 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_api_keys.google_api_key = "fake_key"
 
         # Act
-        # --- FIX: Pass 'example.com' as an option using '--target' ---
-        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- FIX: Removed "run" from the args list ---
+        result = runner.invoke(pestel_analyzer_app, ["--target", "example.com"])
         # --- END FIX ---
 
         # Assert
