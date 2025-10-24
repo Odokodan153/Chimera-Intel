@@ -89,12 +89,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         reload(chimera_intel.cli)
 
+        # get_cli_app() now loads plugins automatically using the patched discover_plugins
         self.app = chimera_intel.cli.get_cli_app()
-
-        # Manually add the mocked plugins to self.app for testing
-
-        for plugin in mock_discover_plugins.return_value:
-            self.app.add_typer(plugin.app, name=plugin.name)
         
         # PYTEST_FIX: Add mix_stderr=True to capture rich output
         self.runner = CliRunner()

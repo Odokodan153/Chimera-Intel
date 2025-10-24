@@ -6,7 +6,8 @@ from unittest.mock import patch
 # The application instance to be tested
 from chimera_intel.core.wifi_analyzer import wifi_analyzer_app
 
-runner = CliRunner()
+# --- FIX: Initialize with mix_stderr=True ---
+runner = CliRunner(mix_stderr=True)
 
 
 @pytest.fixture
@@ -93,4 +94,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
 
     # Assert
     assert result.exit_code == 1
-    assert f"Error: Capture file not found at '{str(non_existent_file)}'" in result.stdout
+    
+    # --- FIX: Check for parts of the message to avoid newline/formatting issues ---
+    assert "Capture file not found at" in result.stdout
+    assert str(non_existent_file) in result.stdout

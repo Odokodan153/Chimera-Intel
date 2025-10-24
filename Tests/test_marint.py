@@ -48,9 +48,15 @@ def mock_websockets(mocker):
     # --- FIX ---
     # The 'async with' calls __aenter__, which should return
     # the object that will be iterated over ('websocket').
-    # An async generator object *is* an async iterator, so we
-    # can return the generator object directly.
-    mock_connect.__aenter__.return_value = message_generator()
+    # We return mock_connect itself, as it will be the websocket object.
+    mock_connect.__aenter__.return_value = mock_connect
+
+    # Add the missing 'send' method to the mock
+    mock_connect.send = AsyncMock()
+
+    # Configure mock_connect to be an async iterator
+    # by assigning the generator object to its __aiter__.
+    mock_connect.__aiter__.return_value = message_generator()
     # --- END FIX ---
 
     return mocker.patch("websockets.connect", return_value=mock_connect)

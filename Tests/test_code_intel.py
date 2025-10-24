@@ -14,7 +14,8 @@ runner = CliRunner()
 # Patch external dependencies
 @patch("git.Repo.clone_from")
 # We REMOVE the patch for save_or_print_results so the stdout assertions can pass
-@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
+# --- FIX: Updated lambda to accept *args and **kwargs ---
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *args, **kwargs: None)
 def test_analyze_repo_command_success(mock_clone):
     """
     Tests a successful run of the 'code-intel analyze-repo' command.
@@ -64,7 +65,8 @@ def test_analyze_repo_command_success(mock_clone):
 @patch("git.Repo.clone_from", side_effect=Exception("fatal: repository not found"))
 # This patch isn't strictly needed here as this code path doesn't save,
 # but we leave it for consistency.
-@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
+# --- FIX: Updated lambda to accept *args and **kwargs ---
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *args, **kwargs: None)
 def test_analyze_repo_command_clone_error(mock_clone):
     """
     Tests how the command handles an error during the git clone process.

@@ -10,7 +10,8 @@ from chimera_intel.core.schemas import SocialOSINTResult, SocialProfile
 class MockClaimedStatus:
     name = "CLAIMED"
 
-runner = CliRunner()
+# --- FIX: Initialize runner with mix_stderr=True ---
+runner = CliRunner(mix_stderr=True)
 
 class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Social Media OSINT (Sherlock) module."""
@@ -83,11 +84,11 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.social_osint.typer.echo")
     @patch("chimera_intel.core.social_osint.save_scan_to_db") # <-- Mock the DB call
-    @patch("chimera_intel.core.social_osint.find_social_profiles")
+    # --- FIX: Use new_callable=AsyncMock for a cleaner patch ---
+    @patch("chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock)
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_save_db, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
         
-        # The previous "FIX" for the mock coroutine was correct
         mock_data = SocialOSINTResult(
             username="cliuser",
             found_profiles=[
@@ -95,10 +96,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
             ],
         )
         
-        async def mock_coro(*args, **kwargs):
-            return mock_data
-
-        mock_find_profiles.return_value = mock_coro()
+        # --- FIX: Set return_value directly. AsyncMock handles the await. ---
+        mock_find_profiles.return_value = mock_data
        
         # --- FIX: Removed the "run" command name. ---
         result = runner.invoke(social_osint_app, ["cliuser"])
@@ -132,6 +131,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(result.exit_code, 0)
         
         # The previous "FIX" to read from result.stdout was correct
+        # Now it works because the runner mixes stderr.
         output = result.stdout
         self.assertIn("Error: Missing argument 'USERNAME'.", output)
 

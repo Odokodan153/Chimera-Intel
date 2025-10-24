@@ -44,16 +44,15 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-# FIX: Replaced 'with' statement with yield/close pattern
+# --- FIX: Removed the try/finally block as client.close() is not needed ---
 @pytest.fixture
 def client():
     """Provides an httpx.Client configured for the webapp using ASGITransport."""
     transport = ASGITransport(app=app)
     client = httpx.Client(transport=transport, base_url="http://test")
-    try:
-        yield client
-    finally:
-        client.close()
+    yield client
+    # No client.close() is needed for ASGITransport
+    # as it doesn't manage live connections.
 
 
 def test_create_negotiation(client): # FIX: Added client fixture

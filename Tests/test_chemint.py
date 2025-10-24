@@ -212,7 +212,8 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property, not internal `_rows`
         assert len(patent_table.rows) == 1
         
-        patent_row_cells = [str(cell) for cell in patent_table.rows[0].cells]
+        # --- BUG FIX: Changed .cells to .get_cells() ---
+        patent_row_cells = [str(cell) for cell in patent_table.rows[0].get_cells()]
         
         assert mock_patent.title in patent_row_cells
         assert mock_patent.url in patent_row_cells
@@ -221,7 +222,8 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property
         assert len(research_table.rows) == 1
         
-        research_row_cells = [str(cell) for cell in research_table.rows[0].cells]
+        # --- BUG FIX: Changed .cells to .get_cells() ---
+        research_row_cells = [str(cell) for cell in research_table.rows[0].get_cells()]
         
         assert "A great paper" in research_row_cells
         assert "http://example.com/paper" in research_row_cells
