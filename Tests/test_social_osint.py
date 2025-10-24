@@ -82,7 +82,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.social_osint.typer.echo")
-    @patch("chimera_intel.core.social_osint.save_scan_to_db") # <-- FIX: Mock the DB call
+    @patch("chimera_intel.core.social_osint.save_scan_to_db") # <-- Mock the DB call
     @patch("chimera_intel.core.social_osint.find_social_profiles")
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_save_db, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
@@ -100,9 +100,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
         mock_find_profiles.return_value = mock_coro()
        
-        # --- FIX: Invoke the app directly, not the "run" command ---
-        # A Typer app with one command doesn't need the command name.
-        result = runner.invoke(social_osint_app, ["cliuser"])
+        # --- FIX: Must invoke the "run" command specifically ---
+        result = runner.invoke(social_osint_app, ["run", "cliuser"])
         # --- End Fix ---
 
         # Assert
@@ -126,8 +125,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     def test_cli_run_no_username(self):
         """Tests that the CLI command fails if no username is provided."""
         
-        # --- FIX: Invoke without any arguments to trigger the missing argument error ---
-        result = runner.invoke(social_osint_app, [])
+        # --- FIX: Must invoke the "run" command to trigger its argument check ---
+        result = runner.invoke(social_osint_app, ["run"])
         # --- End Fix ---
         
         self.assertNotEqual(result.exit_code, 0)

@@ -90,8 +90,7 @@ async def check_for_changes(url: str, job_id: str):
         logger.error(f"Unexpected error checking {url}", exc_info=e)
 
 
-# --- FIX 2: Removed the 'name' argument ---
-# This was likely confusing the CliRunner's argument parsing.
+# --- FIX: Reverted 'name' argument removal (if it was removed) ---
 page_monitor_app = typer.Typer(
     help="Continuous Web Page Monitoring for change detection."
 )
@@ -101,17 +100,19 @@ page_monitor_app = typer.Typer(
     "add", help="Add a new web page monitoring job to the scheduler."
 )
 def add_page_monitor(
-    # --- FIX: Changed from Option to Argument ---
+    # --- FIX: Changed back to Option from Argument ---
     url: Annotated[
         str,
-        typer.Argument(
+        typer.Option(
+            "--url", "-u",
             help="The URL of the web page to monitor for changes.",
         ),
     ],
-    # --- FIX: Changed from Option to Argument ---
+    # --- FIX: Changed back to Option from Argument ---
     schedule: Annotated[
         str,
-        typer.Argument(
+        typer.Option(
+            "--schedule", "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
         ),
     ],

@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
-import sys  # <-- Import sys
+# import sys  <-- FIX: Removed sys import
 from rich.console import Console
 
 # Create a console object
@@ -101,15 +101,16 @@ def get_wifi_app():
         console.print(f"Analyzing wireless networks from: {capture_file}")
 
         if not os.path.exists(capture_file):
-            # FIX: Use console.print with rich markup and sys.exit(1)
+            # FIX: Use console.print with rich markup and typer.Exit(1)
             console.print(f"[red]Error:[/red] Capture file not found at '{capture_file}'")
-            sys.exit(1)
+            raise typer.Exit(code=1)
         try:
+            # FIX: Corrected NameError (was pcap_path, should be capture_file)
             analyze_wifi_capture(capture_file)
         except Exception as e:
-            # FIX: Use console.print with rich markup and sys.exit(1)
+            # FIX: Use console.print with rich markup and typer.Exit(1)
             console.print(f"[red]An error occurred during Wi-Fi analysis:[/red] {e}")
-            sys.exit(1)
+            raise typer.Exit(code=1)
             
         # FIX: Added rich markup for success
         console.print("\n[green]Wireless network analysis complete.[/green]")

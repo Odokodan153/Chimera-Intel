@@ -8,7 +8,7 @@ import os
 import tempfile
 import subprocess
 import json
-import sys  # <-- Import sys
+# import sys  # <-- FIX: Removed sys import
 
 # Create a new Typer application for SCAINT commands
 scaint_app = typer.Typer(
@@ -84,16 +84,16 @@ def analyze_repo(
         
         except git.exc.GitCommandError as e:
             print(f"Error cloning repository: {e}")
-            # FIX: Use sys.exit(1) for errors, which CliRunner understands.
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1) for errors.
+            raise typer.Exit(code=1)
         except FileNotFoundError as e:
             print(f"Analysis Error: {e}")
-            # FIX: Use sys.exit(1) for errors.
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1) for errors.
+            raise typer.Exit(code=1)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-            # FIX: Use sys.exit(1) for errors.
-            sys.exit(1)
+            # FIX: Use typer.Exit(code=1) for errors.
+            raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
