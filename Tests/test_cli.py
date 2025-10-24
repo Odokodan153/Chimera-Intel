@@ -146,7 +146,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
     # --- FIX: Added patch for 'resolve_target' ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
-    async def test_scan_footprint_success(self, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
+    @patch("chimera_intel.core.footprint.is_valid_domain", return_value=True) # FIX: Mock validation to return True
+    async def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock): # FIX: Added mock_is_valid
         """Tests a successful 'scan footprint run' command with specific assertions."""
         # Arrange
 
@@ -173,7 +174,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
                     dmarc_record="",
                 ),
                 ip_geolocation={
-                    "127.0.0.1": IpGeolocation(country="Testland", ip="127.0.0.1")
+                    "1.1.1.1": IpGeolocation(country="Testland", ip="1.1.1.1") # Corrected: Use a valid-looking IP
                 },
                 cdn_provider=None,
                 breach_info=BreachInfo(source="", breaches=[]),

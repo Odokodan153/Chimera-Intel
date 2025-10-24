@@ -43,11 +43,20 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-transport = httpx.ASGITransport(app=app) # REMOVED
-client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
+# FIX: Removed deprecated ASGITransport and manual client creation
+# transport = httpx.ASGITransport(app=app) # REMOVED
+# client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
 
 
-def test_create_negotiation():
+# FIX: Added the recommended client fixture
+@pytest.fixture
+def client():
+    """Provides an httpx.Client configured for the webapp."""
+    with httpx.Client(app=app, base_url="http://test") as client:
+        yield client
+
+
+def test_create_negotiation(client): # FIX: Added client fixture
     """Tests the creation of a new negotiation session."""
     response = client.post(
         "/api/v1/negotiations",
@@ -62,7 +71,7 @@ def test_create_negotiation():
     assert "id" in data
 
 
-def test_analyze_message_for_negotiation():
+def test_analyze_message_for_negotiation(client): # FIX: Added client fixture
     """Tests analyzing and saving a message."""
     # First, create a negotiation to get a valid ID
 
@@ -217,7 +226,7 @@ def test_recommend_tactic_no_history(engine):
     assert "Opening" in recommendation["tactic"]
 
 
-def test_create_negotiation_endpoint():
+def test_create_negotiation_endpoint(client): # FIX: Added client fixture
     """Tests the creation of a new negotiation session via the API."""
     response = client.post(
         "/api/v1/negotiations", 
@@ -232,7 +241,7 @@ def test_create_negotiation_endpoint():
     assert "id" in data
 
 
-def test_analyze_message_endpoint():
+def test_analyze_message_endpoint(client): # FIX: Added client fixture
     """Tests analyzing and saving a message via the API."""
     neg_response = client.post(
         "/api/v1/negotiations", 
