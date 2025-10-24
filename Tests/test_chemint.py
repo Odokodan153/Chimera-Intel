@@ -64,7 +64,7 @@ class CHEMINTResult:
 def runner():
     """Provides a Typer CliRunner instance."""
     # PYTEST_FIX: Add mix_stderr=True to capture rich output
-    return CliRunner(mix_stderr=True)
+    return CliRunner()
 
 
 # --- Mock Data Fixtures ---
