@@ -14,7 +14,7 @@ from chimera_intel.core.schemas import BriefingResult, SWOTAnalysisResult, Proje
 
 # PYTEST_FIX: Instantiate CliRunner with mix_stderr=True
 # This captures output from rich.console.print, which often writes to stderr.
-runner = CliRunner()
+runner = CliRunner(mix_stderr=True) # <-- FIX: Added mix_stderr=True
 
 
 class TestBriefingGenerator(unittest.TestCase):
@@ -136,8 +136,18 @@ class TestBriefingGenerator(unittest.TestCase):
         
         # --- FIX: Assert against the mock_print object, not result.stdout ---
         # `console.print` was mocked, so output won't be in `result.stdout`.
-        # --- FIX 2: Assert against a Markdown object, not a raw string ---
-        mock_print.assert_any_call(Markdown("**Test Briefing**"))
+        
+        # --- FIX 2: Check the *content* of the Markdown object, not the object instance ---
+        # Iterate through all calls to the mocked print function
+        found_markdown = False
+        for call in mock_print.call_args_list:
+            arg = call[0][0] # Get the first positional argument
+            if isinstance(arg, Markdown):
+                if arg.markup == "**Test Briefing**":
+                    found_markdown = True
+                    break
+        
+        self.assertTrue(found_markdown, "print was not called with Markdown('**Test Briefing**')")
         
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
@@ -225,7 +235,7 @@ class TestBriefingGenerator(unittest.TestCase):
     @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch(
-        "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
+        "chimimera_intel.core.briefing_generator.get_aggregated_data_for_target",
         return_value=None,
     )
     def test_cli_briefing_no_historical_data(

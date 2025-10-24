@@ -6,6 +6,7 @@ import typer
 import httpx
 from rich.table import Table
 import tweepy
+import sys  # <-- FIX: Import sys
 
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
@@ -100,7 +101,9 @@ def track_influence(
 
         if not news_articles:
             console.print("\nNo significant propagation found in news media.")
-            raise typer.Exit()
+            # FIX: Use a simple return for a successful exit (code 0)
+            return
+            
         table = Table(title="News Narrative Analysis")
         table.add_column("Source", style="cyan")
         table.add_column("Title", style="green")
@@ -108,18 +111,22 @@ def track_influence(
         for article in news_articles:
             table.add_row(article.get("source", {}).get("name"), article.get("title"))
         console.print(table)
+        
     except ValueError as e:
         typer.echo(f"Configuration Error: {e}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) for errors
+        sys.exit(1)
     except httpx.HTTPStatusError as e:
         typer.echo(
             f"API Error: Failed to fetch data. Status code: {e.response.status_code}",
             err=True,
         )
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) for errors
+        sys.exit(1)
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) for errors
+        sys.exit(1)
 
 
 if __name__ == "__main__":

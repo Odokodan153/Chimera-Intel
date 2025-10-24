@@ -101,21 +101,17 @@ page_monitor_app = typer.Typer(
     "add", help="Add a new web page monitoring job to the scheduler."
 )
 def add_page_monitor(
+    # --- FIX: Changed from Option to Argument ---
     url: Annotated[
         str,
-        typer.Option(
-            ...,  
-            "--url",
-            "-u",
+        typer.Argument(
             help="The URL of the web page to monitor for changes.",
         ),
     ],
+    # --- FIX: Changed from Option to Argument ---
     schedule: Annotated[
         str,
-        typer.Option(
-            ..., 
-            "--schedule",
-            "-s",
+        typer.Argument(
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
         ),
     ],

@@ -11,6 +11,7 @@ import hashlib
 import re
 import os
 import csv
+import sys  # <-- FIX: Added sys import
 from typing import Optional, List, Dict
 
 try:
@@ -181,7 +182,8 @@ def run_log_analysis(
     results = analyze_log_file(file_path)
     if results.error:
         typer.echo(f"Error: {results.error}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -197,7 +199,8 @@ def run_static_analysis(
     results = perform_static_analysis(file_path)
     if results.error:
         typer.echo(f"Error: {results.error}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -213,6 +216,7 @@ def run_mft_parsing(
     results = parse_mft(file_path)
     if results.error:
         typer.echo(f"Error: {results.error}", err=True)
-        raise typer.Exit(code=1)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)

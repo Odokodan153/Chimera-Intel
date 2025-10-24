@@ -20,13 +20,13 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         mock_add_job.return_value = None
 
         # Act
-        # --- FIX: Changed the positional argument back to the correct named option '--url' ---
+        # --- FIX: Changed from named options to positional arguments ---
         result = runner.invoke(
             page_monitor_app,
             [
                 "add", 
-                "--url", "https://example.com/about", 
-                "--schedule", "* * * * *"
+                "https://example.com/about", # Positional argument 1
+                "* * * * *"                  # Positional argument 2
             ],
         )
         # --- END FIX ---

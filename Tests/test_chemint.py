@@ -64,7 +64,7 @@ class CHEMINTResult:
 def runner():
     """Provides a Typer CliRunner instance."""
     # PYTEST_FIX: Add mix_stderr=True to capture rich output
-    return CliRunner() # Added mix_stderr=True
+    return CliRunner(mix_stderr=True) # Added mix_stderr=True
 
 
 # --- Mock Data Fixtures ---
@@ -209,24 +209,22 @@ class TestPatentSearch:
         research_table = printed_tables[1]
 
         # Check patent table (accessing internal row data is fragile, but works)
-        # PYTEST_FIX: Access internal `_rows` list, not the non-iterable `Row` object
-        assert len(patent_table._rows) == 1
+        # PYTEST_FIX: Access public `rows` property, not internal `_rows`
+        assert len(patent_table.rows) == 1
         # Get cell data from the first (and only) row
         
-        # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
-        # PYTEST_FIX: Access the internal `_rows` list which IS iterable
-        patent_row_cells = patent_table._rows[0]
+        # --- FIX: Access the Row object's internal `_cells` list ---
+        patent_row_cells = patent_table.rows[0]._cells
         
         assert mock_patent.title in patent_row_cells
         assert mock_patent.url in patent_row_cells
 
         # Check research table
-        # PYTEST_FIX: Access internal `_rows` list
-        assert len(research_table._rows) == 1
+        # PYTEST_FIX: Access public `rows` property
+        assert len(research_table.rows) == 1
         
-        # --- FIX: Removed .cells attribute. The Row object itself is iterable. ---
-        # PYTEST_FIX: Access the internal `_rows` list
-        research_row_cells = research_table._rows[0]
+        # --- FIX: Access the Row object's internal `_cells` list ---
+        research_row_cells = research_table.rows[0]._cells
         
         assert "A great paper" in research_row_cells
         assert "http://example.com/paper" in research_row_cells
