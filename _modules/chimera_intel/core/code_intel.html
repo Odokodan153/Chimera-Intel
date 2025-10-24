@@ -81,7 +81,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">git</span>  <span class="c1"># type: ignore</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
-<span class="c1"># --- FIX: Removed &#39;import sys&#39; ---</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>  <span class="c1"># --- FIX: Added sys import ---</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Counter</span> <span class="k">as</span> <span class="n">CounterType</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
@@ -183,10 +183,9 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.code_intel.run_repo_analysis">[docs]</a>
 <span class="nd">@code_intel_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;analyze-repo&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_repo_analysis</span><span class="p">(</span>
-    <span class="c1"># --- FIX: Changed from positional Argument to named Option ---</span>
-    <span class="n">repo_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+    <span class="c1"># --- FIX: Changed back to Argument to match the test file ---</span>
+    <span class="n">repo_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="o">...</span><span class="p">,</span> 
-        <span class="s2">&quot;--repo-url&quot;</span><span class="p">,</span>
         <span class="n">help</span><span class="o">=</span><span class="s2">&quot;The full URL of the public Git repository.&quot;</span>
     <span class="p">),</span>
     <span class="c1"># --- End Fix ---</span>
@@ -202,13 +201,12 @@
         <span class="n">console</span><span class="o">.</span><span class="n">print</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;[bold red]Error:[/bold red] Failed to clone or analyze repository: </span><span class="si">{</span><span class="n">results_model</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-        <span class="c1"># --- FIX: Use typer.Exit(code=1) for errors ---</span>
-        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># --- FIX: Use sys.exit(1) for errors ---</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         
     <span class="n">results_dict</span> <span class="o">=</span> <span class="n">results_model</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_none</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results_dict</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>  <span class="c1"># Corrected line</span>
     <span class="n">save_scan_to_db</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">repo_url</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;code_intel_repo&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">results_dict</span><span class="p">)</span></div>
-
 
 </pre></div>
 
