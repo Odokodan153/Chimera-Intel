@@ -118,7 +118,8 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
-        # This was the previous fix (removing "generate"):
+        # Note: The 'generate' subcommand is removed here because the logic
+        # is likely in a Typer 'callback' function, making it the default.
         result = runner.invoke(
             briefing_app, ["--template", "ciso_daily"]
         )
@@ -130,9 +131,11 @@ class TestBriefingGenerator(unittest.TestCase):
             print(f"Test Exception: {result.exception}")
 
         self.assertEqual(result.exit_code, 0)
-        # Use stdout for checking output with CliRunner
-        # This assertion will now pass thanks to mix_stderr=True
-        self.assertIn("Test Briefing", result.stdout)
+        
+        # --- FIX: Assert against the mock_print object, not result.stdout ---
+        # `console.print` was mocked, so output won't be in `result.stdout`.
+        mock_print.assert_any_call("**Test Briefing**")
+        
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
         mock_generate.assert_called_with(unittest.mock.ANY, "fake_key", "ciso_daily")
@@ -167,7 +170,6 @@ class TestBriefingGenerator(unittest.TestCase):
 
         with patch("builtins.open", mock_open()) as mock_file:
             # Act
-            # This was the previous fix (removing "generate"):
             result = runner.invoke(
                 briefing_app, ["--output", "test_briefing.pdf"]
             )
@@ -178,9 +180,14 @@ class TestBriefingGenerator(unittest.TestCase):
             print(f"Test Exception: {result.exception}")
 
         self.assertEqual(result.exit_code, 0)
-        # Check stdout for the success message
-        # This assertion will now pass thanks to mix_stderr=True
-        self.assertIn("Briefing saved to: test_briefing.pdf", result.stdout)
+        
+        # --- FIX: Assert against the mock_print object, not result.stdout ---
+        # Check that the "Saved to" message was passed to the mocked print.
+        # Use a partial check in case Rich adds formatting.
+        self.assertTrue(
+            any("Briefing saved to: test_briefing.pdf" in str(call) for call in mock_print.call_args_list)
+        )
+        
         mock_file.assert_called_with("test_briefing.pdf", "w")
 
         # Verify that both the title and the content were written to the file
@@ -202,13 +209,11 @@ class TestBriefingGenerator(unittest.TestCase):
         mock_status.return_value.__exit__.return_value = (None, None, None)
 
         # Act
-        # This was the previous fix (removing "generate"):
         result = runner.invoke(briefing_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
-        # We mock console.print, so we check the mock directly.
-        # This assertion is more robust than checking result.stdout.
+        # This assertion is correct, as it checks the mock object.
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
         )
@@ -242,11 +247,11 @@ class TestBriefingGenerator(unittest.TestCase):
         )
 
         # Act
-        # This was the previous fix (removing "generate"):
         result = runner.invoke(briefing_app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
+        # This assertion is correct.
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] No historical data found for 'Test Inc'. Run scans first."
         )
@@ -275,10 +280,10 @@ class TestBriefingGenerator(unittest.TestCase):
                 API_KEYS, "google_api_key", None
             ):
                 # Act
-                # This was the previous fix (removing "generate"):
                 result = runner.invoke(briefing_app, [])
         # Assert
         self.assertEqual(result.exit_code, 1)
+        # This assertion is correct.
         mock_print.assert_called_with(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )

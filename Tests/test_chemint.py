@@ -64,7 +64,7 @@ class CHEMINTResult:
 def runner():
     """Provides a Typer CliRunner instance."""
     # PYTEST_FIX: Add mix_stderr=True to capture rich output
-    return CliRunner()
+    return CliRunner(mix_stderr=True) # Added mix_stderr=True
 
 
 # --- Mock Data Fixtures ---
@@ -128,12 +128,12 @@ class TestChemicalLookup:
 
         output_file = tmp_path / "chem_results.json"
 
-        # PYTEST_FIX: Remove "lookup" from invocation
+        # --- FIX: Added "lookup" subcommand back into the invocation ---
         result = runner.invoke(
-            chemint_app, ["--cid", "240", "-o", str(output_file)]
+            chemint_app, ["lookup", "--cid", "240", "-o", str(output_file)]
         )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Looking up chemical properties for CID: 240" in result.stdout
         with open(output_file, "r") as f:
             data = json.load(f)
@@ -174,13 +174,13 @@ class TestPatentSearch:
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Act ---
-        # PYTEST_FIX: Remove "monitor-patents-research" from invocation
+        # --- FIX: Added "monitor-patents-research" subcommand back ---
         result = runner.invoke(
-            chemint_app, ["--keywords", "polymer"]
+            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
 
         # --- Assert ---
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
 
         # --- FIX: Check assertions against the mock_rich_print's call arguments ---
         # This robustly checks the *data* sent to print, bypassing render issues.
@@ -245,12 +245,12 @@ class TestSdsAnalysis:
         mock_response.text = "GHS02 H225 P210"
         mock_get.return_value = mock_response
 
-        # PYTEST_FIX: Remove "analyze-sds" from invocation
+        # --- FIX: Added "analyze-sds" subcommand back ---
         result = runner.invoke(
-            chemint_app, ["--sds-url", "http://example.com/sds"]
+            chemint_app, ["analyze-sds", "--sds-url", "http://example.com/sds"]
         )
 
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Analyzing SDS from URL: http://example.com/sds" in result.stdout
         # These assertions are fine because the table contents are simple strings
         assert "GHS Pictograms" in result.stdout

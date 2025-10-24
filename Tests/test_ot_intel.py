@@ -30,8 +30,8 @@ def test_ot_recon_success(mocker):
     }
     mocker.patch("shodan.Shodan", return_value=mock_api_instance)
 
-    # --- FIX: Invoke with named option '--ip-address' ---
-    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- FIX: Invoke *without* the "recon" command name ---
+    result = runner.invoke(ot_intel_app, ["--ip-address", "192.168.1.1"])
     # --- END FIX ---
 
     assert result.exit_code == 0, result.output
@@ -49,8 +49,8 @@ def test_ot_recon_no_api_key(mocker):
     # FIX: Patch the API key to None using patch.object
     mocker.patch.object(API_KEYS, "shodan_api_key", None)
 
-    # --- FIX: Invoke with named option '--ip-address' ---
-    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- FIX: Invoke *without* the "recon" command name ---
+    result = runner.invoke(ot_intel_app, ["--ip-address", "192.168.1.1"])
     # --- END FIX ---
 
     assert result.exit_code == 1, result.output
@@ -71,8 +71,8 @@ def test_ot_recon_shodan_api_error(mocker):
     mock_api_instance.host.side_effect = shodan.APIError("Invalid API key.")
     mocker.patch("shodan.Shodan", return_value=mock_api_instance)
 
-    # --- FIX: Invoke with named option '--ip-address' ---
-    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- FIX: Invoke *without* the "recon" command name ---
+    result = runner.invoke(ot_intel_app, ["--ip-address", "192.168.1.1"])
     # --- END FIX ---
 
     assert result.exit_code == 1, result.output
