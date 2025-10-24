@@ -1,6 +1,7 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
 import httpx 
+from httpx import ASGITransport 
 from webapp.main import app
 
 
@@ -42,17 +43,12 @@ def test_recommend_tactic_with_history(engine):
     assert "De-escalate" in recommendation["tactic"]
     assert "negative" in recommendation["reason"]
 
-
-# FIX: Removed deprecated ASGITransport and manual client creation
-# transport = httpx.ASGITransport(app=app) # REMOVED
-# client = httpx.Client(transport=transport, base_url="http://test") # REMOVED
-
-
-# FIX: Added the recommended client fixture
+# FIX: Added the correct client fixture using ASGITransport
 @pytest.fixture
 def client():
-    """Provides an httpx.Client configured for the webapp."""
-    with httpx.Client(app=app, base_url="http://test") as client:
+    """Provides an httpx.Client configured for the webapp using ASGITransport."""
+    transport = ASGITransport(app=app)
+    with httpx.Client(transport=transport, base_url="http://test") as client:
         yield client
 
 

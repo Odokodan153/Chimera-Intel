@@ -24,7 +24,8 @@ def mock_api_key_globally(mocker):
 @pytest.fixture
 def mock_websockets(mocker):
     """Mocks the websockets.connect call."""
-    mock_websocket = AsyncMock()
+    # This is the mock for the object returned by websockets.connect()
+    mock_connect = AsyncMock()
 
     # Simulate receiving a valid JSON message
     message = {
@@ -40,13 +41,19 @@ def mock_websockets(mocker):
         },
     }
 
-    # Create an async iterator for the mock
+    # Create an async iterator that yields the message just once
     async def message_generator():
         yield json.dumps(message)
 
-    mock_websocket.__aenter__.return_value.__aiter__.return_value = message_generator()
+    # --- FIX ---
+    # The 'async with' calls __aenter__, which should return
+    # the object that will be iterated over ('websocket').
+    # An async generator object *is* an async iterator, so we
+    # can return the generator object directly.
+    mock_connect.__aenter__.return_value = message_generator()
+    # --- END FIX ---
 
-    return mocker.patch("websockets.connect", return_value=mock_websocket)
+    return mocker.patch("websockets.connect", return_value=mock_connect)
 
 
 def test_track_vessel_success(mocker, mock_websockets):
@@ -57,8 +64,7 @@ def test_track_vessel_success(mocker, mock_websockets):
     # but we can re-patch it here if needed.
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", "fake_api_key")
 
-    # --- FIX: Removed "track_vessel" from the args list ---
-    # Since marint_app has only one command, invoke it directly.
+    # --- FIX: Pass 'imo' as a positional argument, not an option ---
     result = runner.invoke(marint_app, ["9450635", "--test"])
     # --- END FIX ---
 
@@ -75,7 +81,7 @@ def test_track_vessel_no_api_key(mocker):
     # This mock will override the 'autouse' fixture just for this test
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", None)
 
-    # --- FIX: Removed "track_vessel" from the args list ---
+    # --- FIX: Pass 'imo' as a positional argument, not an option ---
     result = runner.invoke(marint_app, ["9450635"])
     # --- END FIX ---
 

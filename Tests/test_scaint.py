@@ -46,9 +46,9 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
     """Analyze repo successfully with vulnerabilities."""
     mocker.patch("os.path.exists", return_value=True)
 
-    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
+    # --- FIX: Removed "analyze-repo" from the args list ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
+        scaint_app, ["https://github.com/some/repo"]
     )
     # --- END FIX ---
 
@@ -64,9 +64,9 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     """Fails if requirements.txt is missing."""
     mocker.patch("os.path.exists", return_value=False)
 
-    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
+    # --- FIX: Removed "analyze-repo" from the args list ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
+        scaint_app, ["https://github.com/some/repo"]
     )
     # --- END FIX ---
 
@@ -82,9 +82,9 @@ def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
         "clone", 1, stderr="mock error"
     )
 
-    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
+    # --- FIX: Removed "analyze-repo" from the args list ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
+        scaint_app, ["https://github.com/some/repo"]
     )
     # --- END FIX ---
 
