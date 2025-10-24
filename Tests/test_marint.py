@@ -58,7 +58,7 @@ def test_track_vessel_success(mocker, mock_websockets):
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", "fake_api_key")
 
     # --- FIX: Pass 'imo' as a positional argument, not an option ---
-    result = runner.invoke(marint_app, ["track-vessel", "9450635", "--test"])
+    result = runner.invoke(marint_app, ["track_vessel", "9450635", "--test"])
     # --- END FIX ---
 
     assert result.exit_code == 0, result.output
@@ -75,7 +75,7 @@ def test_track_vessel_no_api_key(mocker):
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", None)
 
     # --- FIX: Pass 'imo' as a positional argument, not an option ---
-    result = runner.invoke(marint_app, ["track-vessel", "9450635"])
+    result = runner.invoke(marint_app, ["track_vessel", "9450635"])
     # --- END FIX ---
 
     assert result.exit_code == 1, result.output

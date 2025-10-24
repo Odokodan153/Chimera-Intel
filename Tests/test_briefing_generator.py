@@ -235,7 +235,7 @@ class TestBriefingGenerator(unittest.TestCase):
     @patch("chimera_intel.core.briefing_generator.console.status")
     @patch("chimera_intel.core.briefing_generator.get_active_project")
     @patch(
-        "chimimera_intel.core.briefing_generator.get_aggregated_data_for_target",
+        "chimera_intel.core.briefing_generator.get_aggregated_data_for_target",
         return_value=None,
     )
     def test_cli_briefing_no_historical_data(

@@ -36,11 +36,10 @@ def analyze_dependencies(repo_path: str) -> dict:
         raise Exception(f"OSV-Scanner error: {result.stderr}")
     return json.loads(result.stdout) if result.stdout else {"results": []}
 
-
 @scaint_app.command(
-    name="analyze-repo",
-    help="Analyze a public code repository for supply chain vulnerabilities.",
+    help="Analyze a public code repository for supply chain vulnerabilities."
 )
+# --- End Fix ---
 def analyze_repo(
     repo_url: str = typer.Argument(
         ...,

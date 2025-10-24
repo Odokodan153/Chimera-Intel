@@ -86,9 +86,10 @@ def get_wifi_app():
     )
 
     @app.command(
-        name="analyze", help="Analyze a wireless network capture file."
+        help="Analyze a wireless network capture file."
     )
-    def analyze_wifi(
+    def analyze(
+    # --- End Fix ---
         capture_file: Annotated[
             str,
             typer.Argument(help="Path to the wireless capture file (.pcap or .pcapng)."),

@@ -105,8 +105,8 @@ def analyze_git_repository(repo_url: str) -> RepoAnalysisResult:
 code_intel_app = typer.Typer()
 
 
-@code_intel_app.command("analyze-repo")
-def run_repo_analysis(
+@code_intel_app.command()
+def analyze_repo(
     # --- FIX: Changed back to Argument to match the test file ---
     repo_url: str = typer.Argument(
         ..., 

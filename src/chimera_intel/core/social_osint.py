@@ -66,8 +66,9 @@ social_osint_app = typer.Typer(
 )
 
 
-@social_osint_app.command(name="run")
-def run_social_osint_scan(
+@social_osint_app.command()
+def run(
+# --- End Fix ---
     username: str = typer.Argument(
         ..., metavar="USERNAME", help="The username to search for."
     ),

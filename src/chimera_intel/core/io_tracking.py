@@ -67,10 +67,12 @@ def search_reddit_narrative(narrative: str, client: httpx.Client) -> list:
         return []
 
 
+
 @io_tracking_app.command(
-    name="track", help="Track a narrative to identify influence campaigns."
+    help="Track a narrative to identify influence campaigns."
 )
-def track_influence(
+def track(
+# --- End Fix ---
     # --- FIX: Changed from Annotated syntax to standard assignment syntax ---
     narrative: str = typer.Option(
         ...,

@@ -49,7 +49,8 @@ async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):  # M
                         break  # Exit after one message in test mode
 
 
-@marint_app.command(name="track-vessel", help="Track a vessel by its IMO number.")
+
+@marint_app.command(help="Track a vessel by its IMO number.")
 def track_vessel(
     # --- FIX: Changed from Option to Argument to match test invocation ---
     imo: Annotated[
@@ -62,6 +63,7 @@ def track_vessel(
     # --- MYPY FIX: Removed the trailing '...' ---
     test: bool = typer.Option(False, "--test"),
 ):
+# --- End fix ---
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
     """
