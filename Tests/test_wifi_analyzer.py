@@ -7,7 +7,7 @@ from unittest.mock import patch
 from chimera_intel.core.wifi_analyzer import wifi_analyzer_app
 
 # --- FIX: Initialize with mix_stderr=True ---
-runner = CliRunner(mix_stderr=True)
+runner = CliRunner()
 
 
 @pytest.fixture

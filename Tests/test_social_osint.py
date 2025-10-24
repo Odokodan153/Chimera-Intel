@@ -11,7 +11,7 @@ class MockClaimedStatus:
     name = "CLAIMED"
 
 # --- FIX: Initialize runner with mix_stderr=True ---
-runner = CliRunner(mix_stderr=True)
+runner = CliRunner()
 
 class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Social Media OSINT (Sherlock) module."""
