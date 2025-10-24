@@ -179,10 +179,10 @@
 <span class="n">code_intel_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="run_repo_analysis">
-<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.code_intel.run_repo_analysis">[docs]</a>
-<span class="nd">@code_intel_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;analyze-repo&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">run_repo_analysis</span><span class="p">(</span>
+<div class="viewcode-block" id="analyze_repo">
+<a class="viewcode-back" href="../../../modules.html#chimera_intel.core.code_intel.analyze_repo">[docs]</a>
+<span class="nd">@code_intel_app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_repo</span><span class="p">(</span>
     <span class="c1"># --- FIX: Changed back to Argument to match the test file ---</span>
     <span class="n">repo_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="o">...</span><span class="p">,</span> 
