@@ -100,8 +100,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
         mock_find_profiles.return_value = mock_coro()
        
-        # --- FIX: Must invoke the "run" command specifically ---
-        result = runner.invoke(social_osint_app, ["run", "cliuser"])
+        # --- FIX: Removed the "run" command name. ---
+        result = runner.invoke(social_osint_app, ["cliuser"])
         # --- End Fix ---
 
         # Assert
@@ -125,8 +125,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     def test_cli_run_no_username(self):
         """Tests that the CLI command fails if no username is provided."""
         
-        # --- FIX: Must invoke the "run" command to trigger its argument check ---
-        result = runner.invoke(social_osint_app, ["run"])
+        # --- FIX: Removed the "run" command. Invoke with no args. ---
+        result = runner.invoke(social_osint_app, [])
         # --- End Fix ---
         
         self.assertNotEqual(result.exit_code, 0)

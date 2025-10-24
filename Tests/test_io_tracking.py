@@ -41,10 +41,11 @@ def test_track_influence_success(
     ]
 
     # Act
-
+    # --- FIX: Removed the "track" command name from the invoke call ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "rumors of product failure"]
+        io_tracking_app, ["--narrative", "rumors of product failure"]
     )
+    # --- End Fix ---
 
     # Assert
 
@@ -71,10 +72,11 @@ def test_track_influence_no_api_key(mock_search_twitter, mock_search_reddit):
     # to override the global 'fake_key_for_import' and test the error case.
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
-
+        # --- FIX: Removed the "track" command name from the invoke call ---
         result = runner.invoke(
-            io_tracking_app, ["track", "--narrative", "some narrative"]
+            io_tracking_app, ["--narrative", "some narrative"]
         )
+        # --- End Fix ---
 
     # Assert
 
@@ -101,8 +103,9 @@ def test_track_influence_api_error(
     )
 
     # Act
-
-    result = runner.invoke(io_tracking_app, ["track", "--narrative", "api failure"])
+    # --- FIX: Removed the "track" command name from the invoke call ---
+    result = runner.invoke(io_tracking_app, ["--narrative", "api failure"])
+    # --- End Fix ---
 
     # Assert
 

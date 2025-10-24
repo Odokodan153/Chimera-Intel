@@ -11,9 +11,9 @@ runner = CliRunner()
 
 # The mock_git_repo fixture is no longer needed, as we will patch directly.
 
-# Patch external dependencies to prevent unhandled exceptions
+# Patch external dependencies
 @patch("git.Repo.clone_from")
-@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
+# We REMOVE the patch for save_or_print_results so the stdout assertions can pass
 @patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
 def test_analyze_repo_command_success(mock_clone):
     """
@@ -34,17 +34,21 @@ def test_analyze_repo_command_success(mock_clone):
     mock_clone.return_value = mock_repo_instance
 
     # --- Execute ---
-    # The command is 'analyze-repo', with the repository URL as an argument
+    # FIXED: Remove "analyze-repo" from the list.
+    # The app *is* the analyze-repo command.
     result = runner.invoke(
-        code_intel_app, ["analyze-repo", "https://github.com/user/repo"]
+        code_intel_app, ["https://github.com/user/repo"]
     )
 
     # --- Assert ---
     # With patches, exit_code should be 0 (success) as expected
     assert result.exit_code == 0
+    
     # Check for the initial status message
     assert "Analyzing repository: https://github.com/user/repo" in result.stdout
+    
     # Check for the key sections in the output
+    # These assertions should now pass because save_or_print_results is no longer patched
     assert "Repository Analysis" in result.stdout
     assert "Top Committers" in result.stdout
     assert "John Doe" in result.stdout
@@ -58,7 +62,8 @@ def test_analyze_repo_command_success(mock_clone):
 
 # Patch external dependencies and the clone_from method to raise an error
 @patch("git.Repo.clone_from", side_effect=Exception("fatal: repository not found"))
-@patch("chimera_intel.core.code_intel.save_or_print_results", lambda *_: None)
+# This patch isn't strictly needed here as this code path doesn't save,
+# but we leave it for consistency.
 @patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *_: None)
 def test_analyze_repo_command_clone_error(mock_clone):
     """
@@ -68,8 +73,9 @@ def test_analyze_repo_command_clone_error(mock_clone):
     # The mock_clone decorator is already configured to raise the exception.
 
     # --- Execute ---
+    # FIXED: Remove "analyze-repo" from the list.
     result = runner.invoke(
-        code_intel_app, ["analyze-repo", "https://github.com/user/nonexistent-repo"]
+        code_intel_app, ["https://github.com/user/nonexistent-repo"]
     )
 
     # --- Assert ---
@@ -79,6 +85,7 @@ def test_analyze_repo_command_clone_error(mock_clone):
         exit_code = result.exception.exit_code
 
     assert exit_code == 1
+    
     # Check for the specific error message in the output
     assert "Failed to clone or analyze repository" in result.stdout
     assert "fatal: repository not found" in result.stdout
