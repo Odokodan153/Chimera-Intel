@@ -108,7 +108,7 @@ def ot_recon(
         typer.echo("-----------------------------")
 
         # FIX: Add explicit success exit for the test runner
-        raise typer.Exit(code=0)
+        # REMOVED: raise typer.Exit(code=0)
         
     except (ValueError, shodan.APIError) as e:
         typer.echo(f"Error: {e}", err=True)
@@ -116,6 +116,11 @@ def ot_recon(
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)
+
+    # --- FIX: Moved success exit outside the try/except block ---
+    # This prevents it from being caught by 'except Exception'
+    raise typer.Exit(code=0)
+    # --- END FIX ---
 
 
 if __name__ == "__main__":

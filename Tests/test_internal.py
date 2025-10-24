@@ -73,21 +73,22 @@ class TestInternal(unittest.TestCase):
         # Arrange
         mock_analyzeMFT.main = MagicMock(return_value=None)
 
-        # --- FIX: Added a trailing newline to the mock CSV data ---
         mft_csv_output = (
             "Record Number,Filename,Created,Last Modified,is_directory\n"
             "123,test.txt,2023-01-01,2023-01-02,false\n"
         )
-        # --- END FIX ---
 
-
+        # --- FIX: Patch mock_open's iterator directly for compatibility with csv ---
         # We patch 'builtins.open'. When 'parse_mft' tries to open
-        # 'mft_temp_output.csv', this patch will intercept the call
-        # and provide our mock CSV data instead.
-        m = mock_open(read_data=mft_csv_output)
+        # 'mft_temp_output.csv', this patch will intercept the call.
+        m = mock_open()
         with patch("builtins.open", m):
+            # Configure the mock file handle to return a real iterator
+            m.return_value.__iter__.return_value = mft_csv_output.splitlines()
+            
             # Act
             result = parse_mft("/fake/MFT")
+        # --- END FIX ---
 
         # Assert
         self.assertIsInstance(result, MFTAnalysisResult)

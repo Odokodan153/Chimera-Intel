@@ -119,7 +119,7 @@ def track_narrative(
         console.print(table)
         
         # FIX: Use typer.Exit(code=0) for success
-        raise typer.Exit(code=0)
+        # REMOVED: raise typer.Exit(code=0)
         
         # The return statement below was unreachable due to sys.exit()
         # and is not needed for the CLI command test to pass.
@@ -133,6 +133,9 @@ def track_narrative(
         console.print(f"[bold red]An unexpected error occurred:[/bold red] {e}")
         # FIX: Use typer.Exit(code=1)
         raise typer.Exit(code=1)
+
+    # --- FIX: Moved success exit outside the try/except block ---
+    raise typer.Exit(code=0)
 
 
 if __name__ == "__main__":

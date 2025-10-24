@@ -54,12 +54,12 @@ def track_vessel(
     # --- FIX: Changed from Option to Argument to match test invocation ---
     imo: Annotated[
         str,
-        typer.Argument(
+        typer.Argument(  # <-- This is the fix
             help="The IMO number of the vessel to track."
         ),
     ],
     # --- End fix ---
-    test: bool = typer.Option(False, "--test", help="Run in test mode.", hidden=True),
+    test: bool = typer.Option(False, "--test", ...),
 ):
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.

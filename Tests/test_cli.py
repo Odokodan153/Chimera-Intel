@@ -244,12 +244,21 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output) # --- FIX: Added msg=result.output
         
-        # FIX: Find the JSON line in stdout instead of assuming it's the last line
+        # --- FIX: Extract the JSON blob from the output, ignoring subsequent error text. ---
+        # The output contains multi-line JSON followed by database errors.
         json_output_str = None
-        for line in result.stdout.splitlines():
-            if line.strip().startswith("{") and line.strip().endswith("}"):
-                json_output_str = line
-                break
+        try:
+            start_index = result.stdout.find('{')
+            end_index = result.stdout.rfind('}')
+            if start_index != -1 and end_index != -1 and end_index > start_index:
+                json_output_str = result.stdout[start_index : end_index + 1]
+                # Try to parse it to make sure it's valid JSON before asserting
+                json.loads(json_output_str)
+            else:
+                json_output_str = None
+        except json.JSONDecodeError:
+            json_output_str = None # Failed to parse, let the assertion fail
+        # --- END FIX ---
 
         self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
         output = json.loads(json_output_str)

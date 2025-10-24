@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 from typer.testing import CliRunner
+# --- FIX: Import Markdown for assertion ---
+from rich.markdown import Markdown
 
 # --- FIX: Import API_KEYS to use with patch.object ---
 from chimera_intel.core.config_loader import API_KEYS
@@ -134,7 +136,8 @@ class TestBriefingGenerator(unittest.TestCase):
         
         # --- FIX: Assert against the mock_print object, not result.stdout ---
         # `console.print` was mocked, so output won't be in `result.stdout`.
-        mock_print.assert_any_call("**Test Briefing**")
+        # --- FIX 2: Assert against a Markdown object, not a raw string ---
+        mock_print.assert_any_call(Markdown("**Test Briefing**"))
         
         mock_get_project.assert_called_once()
         mock_get_data.assert_called_with("TestCorp")
@@ -183,10 +186,8 @@ class TestBriefingGenerator(unittest.TestCase):
         
         # --- FIX: Assert against the mock_print object, not result.stdout ---
         # Check that the "Saved to" message was passed to the mocked print.
-        # Use a partial check in case Rich adds formatting.
-        self.assertTrue(
-            any("Briefing saved to: test_briefing.pdf" in str(call) for call in mock_print.call_args_list)
-        )
+        # --- FIX 2: Use a direct assertion instead of complex 'any' loop ---
+        mock_print.assert_any_call("[bold green]Briefing saved to:[/bold green] test_briefing.pdf")
         
         mock_file.assert_called_with("test_briefing.pdf", "w")
 
