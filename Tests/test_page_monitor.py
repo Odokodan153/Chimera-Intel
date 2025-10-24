@@ -11,7 +11,6 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Tests ---
 
-    # --- FIX: Add patch for the module's logger ---
     @patch("chimera_intel.core.page_monitor.logger")
     @patch("chimera_intel.core.page_monitor.add_job")
     @patch("chimera_intel.core.page_monitor.console.print")
@@ -21,11 +20,16 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         mock_add_job.return_value = None
 
         # Act
-        # --- FIX: Changed '--url' from a named option to a positional argument ---
+        # --- FIX: Changed the positional argument back to the correct named option '--url' ---
         result = runner.invoke(
             page_monitor_app,
-            ["add", "https://example.com/about", "--schedule", "* * * * *"],
+            [
+                "add", 
+                "--url", "https://example.com/about", 
+                "--schedule", "* * * * *"
+            ],
         )
+        # --- END FIX ---
 
         # Debug info (helps diagnose CLI parsing or exit code issues)
         if result.exit_code != 0 and result.exception:

@@ -144,7 +144,7 @@ class TestDiffer(unittest.TestCase):
         mock_teams.assert_called_once()
 
         # Check notification content
-        self.assertIn("Change Detected", mock_slack.call_args[0][1])
+        self.assertIn("Chimera Intel Change Alert", mock_slack.call_args[0][1])
         # Check that the teams message contains the correct *count* of changes
         self.assertIn("- **Added**: 1 items", mock_teams.call_args[0][2])
         # --- END FIX ---

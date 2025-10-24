@@ -37,7 +37,10 @@ def mock_tweepy():
 @pytest.fixture
 def mock_ai_sentiment():
     with patch("chimera_intel.core.narrative_analyzer.analyze_sentiment") as mock:
-        mock.return_value.label = "Positive"
+        # Mock the return object to have a .label attribute
+        sentiment_result = MagicMock()
+        sentiment_result.label = "Positive"
+        mock.return_value = sentiment_result
         yield mock
 
 
@@ -65,18 +68,16 @@ def mock_sync_client(monkeypatch):
     )
 
 
-# Removed the broken 'test_track_narrative_returns_analyzed_data' test.
-# It was calling a typer command function directly, which is incorrect.
-# The CLI test below correctly tests the functionality.
-
-
 def test_track_narrative_cli_command(mock_gnews, mock_tweepy, mock_ai_sentiment):
     """
     Tests that the CLI command runs correctly and prints the output table.
     """
-    result = runner.invoke(narrative_analyzer_app, ["track", "--track", "test query"])
+    # --- FIX: Remove the "track" command from the invocation ---
+    # Since it's a single-command app, the app IS the command.
+    result = runner.invoke(narrative_analyzer_app, ["--track", "test query"])
+    # --- END FIX ---
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert "Narrative Analysis Summary" in result.stdout
     assert "A Test Article" in result.stdout
     assert "A test tweet" in result.stdout

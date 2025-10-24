@@ -97,7 +97,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             self.app.add_typer(plugin.app, name=plugin.name)
         
         # PYTEST_FIX: Add mix_stderr=True to capture rich output
-        self.runner = CliRunner(mix_stderr=True)
+        self.runner = CliRunner()
 
     def test_main_app_help(self):
         """Tests that the --help command works and displays commands from plugins."""

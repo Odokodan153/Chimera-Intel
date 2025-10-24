@@ -46,12 +46,13 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
     """Analyze repo successfully with vulnerabilities."""
     mocker.patch("os.path.exists", return_value=True)
 
-    # --- FIX: Changed positional argument to named option '--url' ---
+    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
     )
+    # --- END FIX ---
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     assert "Analyzing repository: https://github.com/some/repo" in result.stdout
     assert "Cloning repository" in result.stdout
     assert "Scanning for known vulnerabilities..." in result.stdout
@@ -63,12 +64,13 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     """Fails if requirements.txt is missing."""
     mocker.patch("os.path.exists", return_value=False)
 
-    # --- FIX: Changed positional argument to named option '--url' ---
+    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
     )
+    # --- END FIX ---
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
     assert (
         "Analysis Error: requirements.txt not found in the repository." in result.stdout
     )
@@ -80,10 +82,12 @@ def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
         "clone", 1, stderr="mock error"
     )
 
-    # --- FIX: Changed positional argument to named option '--url' ---
+    # --- FIX: Pass 'repo_url' as a positional argument, not an option ---
     result = runner.invoke(
-        scaint_app, ["analyze-repo", "--url", "https://github.com/some/repo"]
+        scaint_app, ["analyze-repo", "https://github.com/some/repo"]
     )
+    # --- END FIX ---
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.stdout
+    assert "Error cloning repository" in result.stdout
     assert "mock error" in result.stdout

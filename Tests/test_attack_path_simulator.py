@@ -2,6 +2,7 @@ from typer.testing import CliRunner
 import unittest
 from unittest.mock import MagicMock, patch
 from chimera_intel.core.attack_path_simulator import attack_path_app
+from rich.panel import Panel  # <-- IMPORT PANEL TO INSPECT IT
 
 runner = CliRunner()
 
@@ -39,7 +40,7 @@ def test_simulate_attack_success(
         ["Public-Facing Web Server", "API Gateway", "Customer Database"]
     ]
 
-    # Run the CLI (This was the previous fix, removing "simulate")
+    # Run the CLI
     result = runner.invoke(
         attack_path_app,
         [
@@ -69,16 +70,24 @@ def test_simulate_attack_success(
     )
 
     # --- PYTEST_FIX: ---
-    # The previous assertion failed because `str(call)` is "call(<rich.Table object>)"
-    # We must check the string representation of the *arguments* passed to the mock.
+    # Iterate through mock calls and inspect the Panel object's attributes,
+    # not the string representation of the object itself.
     found_title_or_panel = False
-    for call_args in mock_console_print.call_args_list:
-        # call_args[0] is the tuple of positional args, e.g., (table,)
-        if call_args[0]:
-            # Get the string representation of the first positional arg
-            arg_str = str(call_args[0][0])
-            if "Simulated Attack Path(s)" in arg_str or \
-               "Public-Facing Web Server -> API Gateway -> Customer Database" in arg_str:
+    for call in mock_console_print.call_args_list:
+        # call[0] is the tuple of positional args, e.g., (panel_obj,)
+        if not call[0]:
+            continue
+            
+        arg = call[0][0]  # Get the first positional argument
+        
+        # Check if the argument is a Panel object
+        if isinstance(arg, Panel):
+            panel_title = str(arg.title)
+            panel_content = str(arg.renderable)
+
+            # Check if either the title or the content matches
+            if "Simulated Attack Path(s)" in panel_title or \
+               "Public-Facing Web Server -> API Gateway -> Customer Database" in panel_content:
                 found_title_or_panel = True
                 break
     
@@ -117,7 +126,7 @@ def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print, mock_lo
 
     mock_get_db_conn.return_value = mock_conn
 
-    # Run the CLI (This was the previous fix, removing "simulate")
+    # Run the CLI
     result = runner.invoke(
         attack_path_app,
         [

@@ -14,7 +14,7 @@ runner = CliRunner()
 class TestPestelAnalyzer(unittest.TestCase):
     """Test cases for the PESTEL Analysis module."""
 
-    # --- Function Tests ---
+    # --- Function Tests (These are correct as-is) ---
 
     @patch("chimera_intel.core.pestel_analyzer.generate_swot_from_data")
     @patch("chimera_intel.core.pestel_analyzer.API_KEYS")
@@ -73,8 +73,9 @@ class TestPestelAnalyzer(unittest.TestCase):
         )
 
         # Act
-        # --- FIX: Changed named option '--target' to a positional argument ---
-        result = runner.invoke(pestel_analyzer_app, ["run", "example.com"])
+        # --- FIX: Pass 'example.com' as an option using '--target' ---
+        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- END FIX ---
         
         # Assert
         self.assertEqual(result.exit_code, 0, result.stdout)
@@ -82,7 +83,7 @@ class TestPestelAnalyzer(unittest.TestCase):
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
         
-        # --- FIX: Verify resolver was called with the explicit target AND kwargs ---
+        # This assertion was correct
         mock_resolve.assert_called_once_with(
             "example.com", required_assets=["domain", "company_name"]
         )
@@ -105,15 +106,16 @@ class TestPestelAnalyzer(unittest.TestCase):
         mock_api_keys.google_api_key = "fake_key"
 
         # Act
-        # --- FIX: Changed named option '--target' to a positional argument ---
-        result = runner.invoke(pestel_analyzer_app, ["run", "example.com"])
+        # --- FIX: Pass 'example.com' as an option using '--target' ---
+        result = runner.invoke(pestel_analyzer_app, ["run", "--target", "example.com"])
+        # --- END FIX ---
 
         # Assert
 
         self.assertEqual(result.exit_code, 1, result.stdout)
         self.assertIn("No historical data found", result.stdout)
         
-        # --- FIX: Verify resolver was called with the explicit target AND kwargs ---
+        # This assertion was correct
         mock_resolve.assert_called_once_with(
             "example.com", required_assets=["domain", "company_name"]
         )

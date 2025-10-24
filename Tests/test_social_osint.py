@@ -15,7 +15,7 @@ runner = CliRunner()
 class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Social Media OSINT (Sherlock) module."""
 
-    # --- Function Tests ---
+    # --- Function Tests (These are correct as-is) ---
 
     @patch("chimera_intel.core.social_osint.SitesInformation")
     @patch("chimera_intel.core.social_osint.sherlock", new_callable=AsyncMock)
@@ -82,14 +82,12 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     # --- CLI Tests ---
 
     @patch("chimera_intel.core.social_osint.typer.echo")
-    # FIX 2: Use a normal Mock, not AsyncMock, because the CLI command 
-    # itself is synchronous and uses loop.run_until_complete.
+    @patch("chimera_intel.core.social_osint.save_scan_to_db") # <-- FIX: Mock the DB call
     @patch("chimera_intel.core.social_osint.find_social_profiles")
-    def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_echo):
+    def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_save_db, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
         
-        # --- FIX: The mock must return a coroutine, not the result object. ---
-        # Create a simple async function to return the mock data.
+        # The previous "FIX" for the mock coroutine was correct
         mock_data = SocialOSINTResult(
             username="cliuser",
             found_profiles=[
@@ -100,18 +98,21 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         async def mock_coro(*args, **kwargs):
             return mock_data
 
-        # Set the return_value to be the coroutine object itself
         mock_find_profiles.return_value = mock_coro()
-        # --- End Fix ---
        
-        # Act
-        result = runner.invoke(social_osint_app, ["run", "cliuser"])
+        # --- FIX: Invoke the app directly, not the "run" command ---
+        # A Typer app with one command doesn't need the command name.
+        result = runner.invoke(social_osint_app, ["cliuser"])
+        # --- End Fix ---
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, result.stdout)
         
         # Check that the function was called correctly
         mock_find_profiles.assert_called_once_with("cliuser")
+        
+        # Check that the DB save function was called
+        mock_save_db.assert_called_once()
         
         # Check that typer.echo was called with the correct JSON
         mock_echo.assert_called_once()
@@ -124,13 +125,16 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
     def test_cli_run_no_username(self):
         """Tests that the CLI command fails if no username is provided."""
-        result = runner.invoke(social_osint_app, ["run"])
+        
+        # --- FIX: Invoke without any arguments to trigger the missing argument error ---
+        result = runner.invoke(social_osint_app, [])
+        # --- End Fix ---
+        
         self.assertNotEqual(result.exit_code, 0)
         
-        # --- FIX: Typer CLI runner mixes stderr into stdout by default. ---
+        # The previous "FIX" to read from result.stdout was correct
         output = result.stdout
         self.assertIn("Error: Missing argument 'USERNAME'.", output)
-        # --- End Fix ---
 
 if __name__ == "__main__":
     unittest.main()

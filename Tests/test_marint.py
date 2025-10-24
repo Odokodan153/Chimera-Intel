@@ -57,10 +57,11 @@ def test_track_vessel_success(mocker, mock_websockets):
     # but we can re-patch it here if needed.
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", "fake_api_key")
 
-    # Pass the '--imo' option explicitly to avoid the prompt
-    result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635", "--test"])
+    # --- FIX: Pass 'imo' as a positional argument, not an option ---
+    result = runner.invoke(marint_app, ["track-vessel", "9450635", "--test"])
+    # --- END FIX ---
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "Starting live tracking for vessel with IMO: 9450635..." in result.output
     assert "Latitude: 34.0522" in result.output
     assert "Longitude: -118.2437" in result.output
@@ -73,8 +74,9 @@ def test_track_vessel_no_api_key(mocker):
     # This mock will override the 'autouse' fixture just for this test
     mocker.patch("chimera_intel.core.marint.API_KEYS.aisstream_api_key", None)
 
-    # Pass the '--imo' option explicitly here as well
-    result = runner.invoke(marint_app, ["track-vessel", "--imo", "9450635"])
+    # --- FIX: Pass 'imo' as a positional argument, not an option ---
+    result = runner.invoke(marint_app, ["track-vessel", "9450635"])
+    # --- END FIX ---
 
-    assert result.exit_code == 1
+    assert result.exit_code == 1, result.output
     assert "Error: AISSTREAM_API_KEY not found in .env file." in result.output
