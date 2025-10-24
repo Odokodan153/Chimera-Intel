@@ -97,9 +97,10 @@ page_monitor_app = typer.Typer(
 
 
 @page_monitor_app.command(
-    "add", help="Add a new web page monitoring job to the scheduler."
+    help="Add a new web page monitoring job to the scheduler."
 )
-def add_page_monitor(
+def add(
+# --- End Fix ---
     # --- FIX: Changed back to Option from Argument ---
     url: Annotated[
         str,
