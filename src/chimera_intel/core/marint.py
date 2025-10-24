@@ -59,7 +59,8 @@ def track_vessel(
         ),
     ],
     # --- End fix ---
-    test: bool = typer.Option(False, "--test", ...),
+    # --- MYPY FIX: Removed the trailing '...' ---
+    test: bool = typer.Option(False, "--test"),
 ):
     """
     Tracks a vessel using its IMO number by connecting to a live AIS data stream.
