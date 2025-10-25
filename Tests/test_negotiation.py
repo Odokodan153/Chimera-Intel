@@ -1,9 +1,19 @@
 import pytest
+import sys
+from pathlib import Path
+
+# --- FIX: Add project root to sys.path to allow 'webapp' import ---
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+# --- END FIX ---
+
 from chimera_intel.core.negotiation import NegotiationEngine
 
 # --- FIX: Import httpx module and app explicitly ---
+# This import will now succeed thanks to the sys.path modification
 from webapp.main import app
-import httpx
+# --- FIX: Import the correct TestClient ---
+from fastapi.testclient import TestClient
 # --- END FIX ---
 
 
@@ -46,19 +56,14 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-# --- FIX: Use client.close() instead of 'with' statement ---
+# --- FIX: Use fastapi.testclient.TestClient ---
 @pytest.fixture
 def client():
     """Provides a synchronous TestClient configured for the webapp."""
-    # Manually create the httpx.Client with the correct ASGITransport
-    # to bypass any version incompatibility.
-    transport = httpx.ASGITransport(app=app)
-    
-    # This avoids the AttributeError on ASGITransport, which seems
-    # to not be a context manager in the version being used.
-    client = httpx.Client(transport=transport, base_url="http://test")
-    yield client
-    client.close()
+    # TestClient is the correct way to test a FastAPI app.
+    # It wraps httpx.Client and handles the ASGITransport correctly.
+    with TestClient(app) as client:
+        yield client
 # --- END FIX ---
 
 
