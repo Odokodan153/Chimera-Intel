@@ -212,9 +212,18 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property, not internal `_rows`
         assert len(patent_table.rows) == 1
         
-        # --- BUG FIX: Use version-agnostic getattr to find cells ---
+        # --- BUG FIX: Create a robust cell getter for all rich versions ---
         patent_row = patent_table.rows[0]
-        patent_row_cells = [str(cell) for cell in getattr(patent_row, "cells", getattr(patent_row, "_cells", patent_row))]
+        # Try .cells, then ._cells, then .get_cells()
+        if hasattr(patent_row, "cells"):
+            cells_iterable = patent_row.cells
+        elif hasattr(patent_row, "_cells"):
+            cells_iterable = patent_row._cells
+        else:
+            cells_iterable = patent_row.get_cells()
+            
+        patent_row_cells = [str(cell) for cell in cells_iterable]
+        # --- END OF FIX ---
         
         assert mock_patent.title in patent_row_cells
         assert mock_patent.url in patent_row_cells
@@ -223,9 +232,18 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property
         assert len(research_table.rows) == 1
         
-        # --- BUG FIX: Use version-agnostic getattr to find cells ---
+        # --- BUG FIX: Create a robust cell getter for all rich versions ---
         research_row = research_table.rows[0]
-        research_row_cells = [str(cell) for cell in getattr(research_row, "cells", getattr(research_row, "_cells", research_row))]
+        # Try .cells, then ._cells, then .get_cells()
+        if hasattr(research_row, "cells"):
+            cells_iterable = research_row.cells
+        elif hasattr(research_row, "_cells"):
+            cells_iterable = research_row._cells
+        else:
+            cells_iterable = research_row.get_cells()
+            
+        research_row_cells = [str(cell) for cell in cells_iterable]
+        # --- END OF FIX ---
         
         assert "A great paper" in research_row_cells
         assert "http://example.com/paper" in research_row_cells

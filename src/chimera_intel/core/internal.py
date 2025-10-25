@@ -145,10 +145,8 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
 
         # --- FIX: Make CSV parsing robust to mock 'open' calls ---
         with open(dummy_output, "r", encoding="utf-8") as f:
-            # Read content, strip whitespace, and split into lines
-            content = f.read().strip().splitlines()
-            # Pass the list of lines to DictReader
-            reader = csv.DictReader(content)
+            # Pass the file handle f directly to DictReader
+            reader = csv.DictReader(f)
             for row in reader:
                 if not row:  # Skip empty rows that might result
                     continue

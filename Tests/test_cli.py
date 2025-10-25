@@ -62,13 +62,14 @@ class MockDefensivePlugin(ChimeraPlugin):
         pass
 
 
-class TestCLI(unittest.IsolatedAsyncioTestCase):
+# --- FIX: Change from IsolatedAsyncioTestCase to TestCase ---
+class TestCLI(unittest.TestCase):
     """Tests for the main CLI with mocked plugins and database."""
 
     app: typer.Typer
     runner: CliRunner
 
-    # --- FIX: Patches now target the *original source* of the functions ---
+    # --- FIX: Patches must target the *original source* module ---
     @patch("chimera_intel.core.database.initialize_database")
     @patch(
         "chimera_intel.core.plugin_manager.discover_plugins",
@@ -108,7 +109,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Chimera Intel v1.0.0", result.stdout)
 
-    # --- FIX: Patch now targets the *original source* of the function ---
+    # --- FIX: Patch must target the *original source* module ---
     @patch(
         "chimera_intel.core.database.initialize_database", side_effect=ConnectionError("DB Down")
     )
@@ -117,7 +118,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
     ):
         """Tests that the CLI can still run basic commands like --help without a DB connection."""
         # We need to re-run the setup logic with the new, specific patch for this test
-        # --- FIX: Patch now targets the *original source* of the function ---
+        # --- FIX: Patch must target the *original source* module ---
         with patch(
             "chimera_intel.core.plugin_manager.discover_plugins",
             return_value=[MockFootprintPlugin(), MockDefensivePlugin()],
@@ -148,10 +149,11 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
     # --- Plugin Command Tests ---
 
+    # --- FIX: Remove 'async' keyword from test definition ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
     @patch("chimera_intel.core.footprint.is_valid_domain", return_value=True)
-    async def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
+    def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
         """Tests a successful 'scan footprint run' command with specific assertions."""
         # Arrange
 
@@ -211,9 +213,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
+    # --- FIX: Remove 'async' keyword from test definition ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="invalid-domain")
     @patch("chimera_intel.core.footprint.is_valid_domain", return_value=False) # Mock the internal validation
-    async def test_scan_footprint_invalid_domain(self, mock_is_valid, mock_resolve_target: MagicMock):
+    def test_scan_footprint_invalid_domain(self, mock_is_valid, mock_resolve_target: MagicMock):
         """Tests 'scan footprint run' with an invalid domain, expecting a specific error."""
         # Act
 
