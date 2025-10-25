@@ -78,16 +78,11 @@ class TestInternal(unittest.TestCase):
             "123,test.txt,2023-01-01,2023-01-02,false\n"
         )
 
-        # --- FIX: Correctly mock the open file handle to be iterable for csv.DictReader ---
-        # We patch 'builtins.open'. When 'parse_mft' tries to open
-        # 'mft_temp_output.csv', this patch will intercept the call.
-        m = mock_open()
+        # --- FIX: Provide 'read_data' to mock_open for csv.DictReader ---
+        # mock_open with 'read_data' correctly makes the file handle
+        # iterable, which is required by csv.DictReader.
+        m = mock_open(read_data=mft_csv_output)
         with patch("builtins.open", m):
-            # Configure the mock file handle (m.return_value) to correctly handle iteration.
-            # This is essential for compatibility with csv.DictReader, which expects the
-            # file object to return a fresh iterator of lines when __iter__ is called.
-            m.return_value.__iter__ = lambda: iter(mft_csv_output.splitlines())
-
             # Act
             result = parse_mft("/fake/MFT")
         # --- END FIX ---

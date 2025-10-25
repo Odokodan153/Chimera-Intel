@@ -202,11 +202,23 @@ class TestCLI(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         
+        # --- FIX for multi-line JSON output ---
         json_output_str = None
-        for line in result.stdout.splitlines():
-            if line.strip().startswith("{") and line.strip().endswith("}"):
-                json_output_str = line
-                break
+        try:
+            # Find the start of the JSON object
+            start_index = result.stdout.find('{')
+            # Find the last closing brace of the main object
+            end_index = result.stdout.rfind('}')
+            
+            if start_index != -1 and end_index != -1 and end_index > start_index:
+                json_output_str = result.stdout[start_index : end_index + 1]
+                # Try to parse it to make sure it's valid JSON before asserting
+                json.loads(json_output_str)
+            else:
+                json_output_str = None # No valid JSON found
+        except json.JSONDecodeError:
+            json_output_str = None # Failed to parse
+        # --- END FIX ---
         
         self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
         output = json.loads(json_output_str)

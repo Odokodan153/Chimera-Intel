@@ -212,15 +212,14 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property, not internal `_rows`
         assert len(patent_table.rows) == 1
         
-        # --- BUG FIX: Create a robust cell getter for all rich versions ---
+        # --- BUG FIX: Make cell access robust for different rich versions ---
         patent_row = patent_table.rows[0]
-        # Try .cells, then ._cells, then .get_cells()
         if hasattr(patent_row, "cells"):
+            # For older rich versions (e.g., v10)
             cells_iterable = patent_row.cells
-        elif hasattr(patent_row, "_cells"):
-            cells_iterable = patent_row._cells
         else:
-            cells_iterable = patent_row.get_cells()
+            # For newer rich versions (e.g., v11+), the row itself is iterable
+            cells_iterable = patent_row
             
         patent_row_cells = [str(cell) for cell in cells_iterable]
         # --- END OF FIX ---
@@ -232,15 +231,14 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property
         assert len(research_table.rows) == 1
         
-        # --- BUG FIX: Create a robust cell getter for all rich versions ---
+        # --- BUG FIX: Make cell access robust for different rich versions ---
         research_row = research_table.rows[0]
-        # Try .cells, then ._cells, then .get_cells()
         if hasattr(research_row, "cells"):
+            # For older rich versions (e.g., v10)
             cells_iterable = research_row.cells
-        elif hasattr(research_row, "_cells"):
-            cells_iterable = research_row._cells
         else:
-            cells_iterable = research_row.get_cells()
+            # For newer rich versions (e.g., v11+), the row itself is iterable
+            cells_iterable = research_row
             
         research_row_cells = [str(cell) for cell in cells_iterable]
         # --- END OF FIX ---

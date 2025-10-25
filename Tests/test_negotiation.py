@@ -46,15 +46,19 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-# --- FIX: Use httpx.Client with ASGITransport for synchronous testing ---
+# --- FIX: Use client.close() instead of 'with' statement ---
 @pytest.fixture
 def client():
     """Provides a synchronous TestClient configured for the webapp."""
     # Manually create the httpx.Client with the correct ASGITransport
     # to bypass any version incompatibility.
     transport = httpx.ASGITransport(app=app)
-    with httpx.Client(transport=transport, base_url="http://test") as client:
-        yield client
+    
+    # This avoids the AttributeError on ASGITransport, which seems
+    # to not be a context manager in the version being used.
+    client = httpx.Client(transport=transport, base_url="http://test")
+    yield client
+    client.close()
 # --- END FIX ---
 
 
