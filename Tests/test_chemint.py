@@ -156,10 +156,6 @@ class TestPatentSearch:
 
         # 2. Configure Mocks
         
-        # FIX: Replaced MagicMock with a simple, "dumb" object.
-        # The repeated failures suggest MagicMock is failing an internal
-        # check in the code (e.g., `isinstance`), causing the loop to be skipped.
-        # A plain object with only the needed attributes is a safer mock.
         class SimplePatentMock:
             pass
         
@@ -168,27 +164,13 @@ class TestPatentSearch:
         mock_patent_obj.url = patent_url
 
         # Mock for pypatent (this section's call)
-        
-        # --- START FIX ---
-        # The "FIX" comment was correct about MagicMock failing an
-        # `isinstance` check, but it was applied to the patent object
-        # instead of the search *instance*. The code likely checks
-        # `isinstance(search_result, pypatent.Search)` before looping.
-        # We replace the MagicMock for the instance with a "dumb" object.
-        
-        class SimpleSearchMock:
-            pass
-            
-        mock_pypatent_instance = SimpleSearchMock()
-        # --- END FIX ---
-        
-        # The .results attribute should be a list, as implied by the
-        # passing mock in the other test (`.results = []`).
-        mock_pypatent_instance.results = [mock_patent_obj]
+        mock_pypatent_instance = MagicMock()
+
+        mock_pypatent_instance.__iter__.return_value = iter([mock_patent_obj])
+
         mock_pypatent_class.return_value = mock_pypatent_instance
 
-        # Mock for scholarly (the other section's call, to avoid real requests)
-        mock_scholarly_search.return_value = iter([]) # Return no research results
+        mock_scholarly_search.return_value = iter([]) 
 
         # 3. Run CLI
         result = runner.invoke(
@@ -230,7 +212,8 @@ class TestPatentSearch:
 
         # Mock for pypatent (the other section's call, to avoid real requests)
         mock_pypatent_instance = MagicMock()
-        mock_pypatent_instance.results = [] # Return no patent results
+        # This .results = [] is fine, as it correctly results in an empty table.
+        mock_pypatent_instance.results = [] 
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # 3. Run CLI
