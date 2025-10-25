@@ -166,13 +166,8 @@ class TestPatentSearch:
         }
         # --- END FIX ---
 
-        # Mock for pypatent (this section's call)
-        mock_pypatent_instance = MagicMock()
-
         # Set the .results attribute, as implied by the other test
-        mock_pypatent_instance.results = iter([mock_patent_obj_as_dict])
-
-        mock_pypatent_class.return_value = mock_pypatent_instance
+        mock_pypatent_class.return_value = iter([mock_patent_obj_as_dict])
 
         # Mock for scholarly (the other section)
         mock_scholarly_search.return_value = iter([]) 
