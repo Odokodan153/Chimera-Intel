@@ -208,20 +208,14 @@ class TestPatentSearch:
         patent_table = printed_tables[0]
         research_table = printed_tables[1]
 
-        # Check patent table (accessing internal row data is fragile, but works)
-        # PYTEST_FIX: Access public `rows` property, not internal `_rows`
+        # PYTEST_FIX: Access public `rows` property
         assert len(patent_table.rows) == 1
         
-        # --- BUG FIX: Make cell access robust for different rich versions ---
-        patent_row = patent_table.rows[0]
-        if hasattr(patent_row, "cells"):
-            # For older rich versions (e.g., v10)
-            cells_iterable = patent_row.cells
-        else:
-            # For newer rich versions (e.g., v11+), the row itself is iterable
-            cells_iterable = patent_row
-            
-        patent_row_cells = [str(cell) for cell in cells_iterable]
+        # --- BUG FIX: Access cell data directly from the table's internal list ---
+        # This avoids issues with different `Row` object APIs in rich versions
+        assert hasattr(patent_table, "_row_cells"), "Table object missing '_row_cells'"
+        assert len(patent_table._row_cells) >= 1, "Patent table has no cell data"
+        patent_row_cells = [str(cell) for cell in patent_table._row_cells[0]]
         # --- END OF FIX ---
         
         assert mock_patent.title in patent_row_cells
@@ -231,16 +225,10 @@ class TestPatentSearch:
         # PYTEST_FIX: Access public `rows` property
         assert len(research_table.rows) == 1
         
-        # --- BUG FIX: Make cell access robust for different rich versions ---
-        research_row = research_table.rows[0]
-        if hasattr(research_row, "cells"):
-            # For older rich versions (e.g., v10)
-            cells_iterable = research_row.cells
-        else:
-            # For newer rich versions (e.g., v11+), the row itself is iterable
-            cells_iterable = research_row
-            
-        research_row_cells = [str(cell) for cell in cells_iterable]
+        # --- BUG FIX: Access cell data directly from the table's internal list ---
+        assert hasattr(research_table, "_row_cells"), "Table object missing '_row_cells'"
+        assert len(research_table._row_cells) >= 1, "Research table has no cell data"
+        research_row_cells = [str(cell) for cell in research_table._row_cells[0]]
         # --- END OF FIX ---
         
         assert "A great paper" in research_row_cells

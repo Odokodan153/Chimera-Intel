@@ -13,6 +13,7 @@ from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
     MFTAnalysisResult,
+    MFTEntry,
 )
 
 runner = CliRunner()
@@ -65,10 +66,15 @@ class TestInternal(unittest.TestCase):
 
     # --- MFT Analysis Tests ---
 
+    # --- FIX: Added patch for MFT_AVAILABLE boolean guard ---
+    @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
+    # --- END FIX ---
     @patch("chimera_intel.core.internal.analyzeMFT", autospec=True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.os.remove")
-    def test_parse_mft_success(self, mock_remove, mock_exists, mock_analyzeMFT):
+    def test_parse_mft_success(
+        self, mock_remove, mock_exists, mock_analyzeMFT, mock_mft_available
+    ):
         """Tests a successful MFT parsing."""
         # Arrange
         mock_analyzeMFT.main = MagicMock(return_value=None)
@@ -78,18 +84,18 @@ class TestInternal(unittest.TestCase):
             "123,test.txt,2023-01-01,2023-01-02,false\n"
         )
 
-        # --- FIX: Provide 'read_data' to mock_open for csv.DictReader ---
-        # mock_open with 'read_data' correctly makes the file handle
-        # iterable, which is required by csv.DictReader.
-        m = mock_open(read_data=mft_csv_output)
+        # This mock setup for csv.DictReader is correct.
+        m = mock_open()
         with patch("builtins.open", m):
+            # Configure the mock file handle (m.return_value) to correctly handle iteration.
+            m.return_value.__iter__ = lambda: iter(mft_csv_output.splitlines())
+
             # Act
             result = parse_mft("/fake/MFT")
-        # --- END FIX ---
 
         # Assert
         self.assertIsInstance(result, MFTAnalysisResult)
-        self.assertEqual(result.total_records, 1) # This should now pass
+        self.assertEqual(result.total_records, 1)  # This should now pass
         self.assertEqual(result.entries[0].filename, "test.txt")
         self.assertFalse(result.entries[0].is_directory)
         mock_remove.assert_called_once()  # Check that the temp file was cleaned up
