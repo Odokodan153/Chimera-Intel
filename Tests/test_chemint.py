@@ -145,8 +145,8 @@ class TestPatentSearch:
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        mock_search_pubs,  # Decorator order corrected
-        mock_pypatent_search,
+        mock_pypatent_search,  # Decorator order corrected previously
+        mock_search_pubs,
         runner,
         mock_patent_info,
     ):
@@ -157,10 +157,10 @@ class TestPatentSearch:
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
 
-        # --- FIX: Mock the .results attribute to match the source code ---
+        # --- FIX: Mock the method returning results (assuming .execute()) ---
         mock_search_instance = MagicMock()
-        # Make the .results attribute return the list of mock patents
-        mock_search_instance.results = [mock_patent]
+        # Make the assumed execute() method return the list directly
+        mock_search_instance.execute.return_value = [mock_patent]
         mock_pypatent_search.return_value = mock_search_instance
         # --- END FIX ---
 
