@@ -68,9 +68,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
     app: typer.Typer
     runner: CliRunner
 
-    @patch("chimera_intel.cli.initialize_database")
+    # --- FIX: Patches now target the *original source* of the functions ---
+    @patch("chimera_intel.core.database.initialize_database")
     @patch(
-        "chimera_intel.cli.discover_plugins",
+        "chimera_intel.core.plugin_manager.discover_plugins",
         return_value=[MockFootprintPlugin(), MockDefensivePlugin()],
     )
     def setUp(self, mock_discover_plugins, mock_initialize_database):
@@ -107,16 +108,18 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Chimera Intel v1.0.0", result.stdout)
 
+    # --- FIX: Patch now targets the *original source* of the function ---
     @patch(
-        "chimera_intel.cli.initialize_database", side_effect=ConnectionError("DB Down")
+        "chimera_intel.core.database.initialize_database", side_effect=ConnectionError("DB Down")
     )
     def test_main_no_db_connection_still_runs_basic_commands(
         self, mock_initialize_database
     ):
         """Tests that the CLI can still run basic commands like --help without a DB connection."""
         # We need to re-run the setup logic with the new, specific patch for this test
+        # --- FIX: Patch now targets the *original source* of the function ---
         with patch(
-            "chimera_intel.cli.discover_plugins",
+            "chimera_intel.core.plugin_manager.discover_plugins",
             return_value=[MockFootprintPlugin(), MockDefensivePlugin()],
         ):
             import chimera_intel.cli

@@ -143,14 +143,14 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
     try:
         analyzeMFT.main(filename=file_path, output_filename=dummy_output)
 
-        # --- FIX: Apply "Fix Option 2" for robust CSV parsing ---
-        # This reads the content, splits by lines, and passes the list
-        # to DictReader, making it robust to mock 'open' calls.
+        # --- FIX: Make CSV parsing robust to mock 'open' calls ---
         with open(dummy_output, "r", encoding="utf-8") as f:
+            # Read content, strip whitespace, and split into lines
             content = f.read().strip().splitlines()
+            # Pass the list of lines to DictReader
             reader = csv.DictReader(content)
             for row in reader:
-                if not row:
+                if not row:  # Skip empty rows that might result
                     continue
                 entries.append(
                     MFTEntry(
@@ -161,7 +161,7 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
                         is_directory=row.get("is_directory", "false").lower() == "true",
                     )
                 )
-        # --- End of FIX ---
+        # --- END OF FIX ---
         
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
