@@ -156,10 +156,16 @@ class TestPatentSearch:
 
         # 2. Configure Mocks
         # Mock for pypatent (this section's call)
-        mock_patent_obj = MagicMock(
-            title=patent_title,
-            url=patent_url
-        )
+        
+        # FIX: Changed MagicMock object to a dictionary.
+        # The code under test likely uses dictionary key access (e.g., patent['title'])
+        # which failed on the MagicMock object. This now aligns with the mock
+        # style used in test_cli_research_section_output.
+        mock_patent_obj = {
+            "title": patent_title,
+            "url": patent_url
+        }
+        
         mock_pypatent_instance = MagicMock()
         # The code accesses the 'results' attribute, which is a list
         mock_pypatent_instance.results = [mock_patent_obj]
