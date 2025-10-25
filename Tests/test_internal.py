@@ -74,7 +74,7 @@ class TestInternal(unittest.TestCase):
         mock_remove,
         mock_exists,
         mock_analyzeMFT,
-        mock_mft_available 
+        mock_mft_available  
     ):
         """Tests a successful MFT parsing."""
         # Arrange

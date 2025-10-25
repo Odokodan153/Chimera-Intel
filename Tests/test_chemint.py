@@ -4,6 +4,8 @@ from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from chimera_intel.core.chemint import chemint_app
 
+
+
 # ------------------
 # Dummy Schema Classes
 # ------------------
@@ -59,8 +61,8 @@ class CHEMINTResult:
 @pytest.fixture
 def runner():
     """Provides a Typer CliRunner instance."""
-    # PYTEST_FIX: Add mix_stderr=True to capture rich output
-    return CliRunner() # Added mix_stderr=True
+    # Use mix_stderr=False (default) as we are only checking stdout
+    return CliRunner()
 
 
 # --- Mock Data Fixtures ---
@@ -139,13 +141,14 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
-    # --- REFACTOR: Remove mock of 'print' and test stdout directly ---
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        mock_search_pubs,
-        mock_pypatent_search,
+        # --- FIX: Swapped argument order to match decorator stack ---
+        mock_pypatent_search,  # <--- from @patch("...pypatent.Search")
+        mock_search_pubs,      # <--- from @patch("...scholarly.search_pubs")
+        # --- END FIX ---
         runner,
         mock_patent_info,
     ):
@@ -158,6 +161,7 @@ class TestPatentSearch:
 
         mock_search_instance = MagicMock()
         mock_search_instance.results = [mock_patent]
+        # This now correctly mocks pypatent.Search
         mock_pypatent_search.return_value = mock_search_instance
 
         # --- Arrange: Mock Scholarly Search ---
@@ -165,6 +169,7 @@ class TestPatentSearch:
             "bib": {"title": "A great paper"},
             "eprint_url": "http://example.com/paper",
         }
+        # This now correctly mocks scholarly.search_pubs
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Act ---
@@ -176,12 +181,11 @@ class TestPatentSearch:
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
 
         # --- REFACTOR: Assert directly against the captured stdout string ---
-        # This is more robust than inspecting 'rich' internals
         stdout = result.stdout
         assert "Patents (USPTO)" in stdout
         assert "Research Papers (Google Scholar)" in stdout
         
-        # Check for patent data
+        # Check for patent data (This will now pass)
         assert mock_patent_info.title in stdout
         assert "http://example.com/patent" in stdout
         
