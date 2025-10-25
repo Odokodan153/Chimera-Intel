@@ -145,10 +145,9 @@ class TestPatentSearch:
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        # --- FIX 1: Argument order corrected. scholarly.search_pubs (bottom) comes first. ---
-        mock_search_pubs,
-        mock_pypatent_search,
-        # --- END FIX 1 ---
+        # Argument order is correct based on decorators:
+        mock_search_pubs,      # 1. This is the scholarly.search_pubs mock (bottom)
+        mock_pypatent_search,  # 2. This is the pypatent.Search mock (top)
         runner,
         mock_patent_info,
     ):
@@ -158,20 +157,25 @@ class TestPatentSearch:
         mock_patent = MagicMock()
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
-
-        # --- FIX 2: Mock the .results attribute, not .execute() ---
+        
         mock_search_instance = MagicMock()
-        # The source code accesses search.results, not search.execute()
         mock_search_instance.results = [mock_patent]
+        
+        # --- FIX: Assign correct mock to correct variable ---
+        # mock_pypatent_search (the patent mock) gets the patent data.
         mock_pypatent_search.return_value = mock_search_instance
-        # --- END FIX 2 ---
+        # --- END FIX ---
 
         # --- Arrange: Mock Scholarly Search ---
         mock_pub = {
             "bib": {"title": "A great paper"},
             "eprint_url": "http://example.com/paper",
         }
+        
+        # --- FIX: Assign correct mock to correct variable ---
+        # mock_search_pubs (the scholarly mock) gets the paper data.
         mock_search_pubs.return_value = iter([mock_pub])
+        # --- END FIX ---
 
         # --- Act ---
         result = runner.invoke(
@@ -184,18 +188,19 @@ class TestPatentSearch:
         assert "Patents (USPTO)" in stdout
         assert "Research Papers (Google Scholar)" in stdout
 
-        # --- FIX 3: Corrected assertions to check for presence of data ---
-        # The test was incorrectly asserting that the patent data was NOT present.
-        # The fix is to assert that both patent and scholarly data ARE present.
-
+        # --- FIX: Asserting the CORRECT behavior ---
+        # The test assertions were wrong. The app code is correct,
+        # and now the mocks are correct. We should expect
+        # the patent title and the paper title to be in the output.
+        
+        # Assert that the patent data is present
+        assert mock_patent_info.title in stdout
+        assert "http://example.com/patent" in stdout
+        
         # Assert that the scholarly data is present
         assert "A great paper" in stdout
         assert "http://example.com/paper" in stdout
-
-        # Assert that the patent data IS present
-        assert mock_patent_info.title in stdout
-        assert "http://example.com/patent" in stdout
-        # --- END FIX 3 ---
+        # --- END FIX ---
 
 
 class TestSdsAnalysis:
