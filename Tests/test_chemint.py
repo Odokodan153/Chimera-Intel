@@ -143,15 +143,13 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
-    # --- FIX: Patched 'print' to check data, not rendered output ---
-    @patch("chimera_intel.core.chemint.print")
+    # --- REFACTOR: Remove mock of 'print' and test stdout directly ---
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
         mock_search_pubs,
         mock_pypatent_search,
-        mock_rich_print,  # <-- Added mock for 'print'
         runner,
         mock_patent_info,
     ):
@@ -174,7 +172,6 @@ class TestPatentSearch:
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Act ---
-        # --- FIX: Added "monitor-patents-research" subcommand back ---
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
@@ -182,57 +179,20 @@ class TestPatentSearch:
         # --- Assert ---
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
 
-        # --- FIX: Check assertions against the mock_rich_print's call arguments ---
-        # This robustly checks the *data* sent to print, bypassing render issues.
-
-        # Capture all arguments passed to print()
-        print_calls = mock_rich_print.call_args_list
-
-        # Combine all arguments into a single string to check for section headers
-        all_printed_text = ""
-        printed_tables = []
-        for call in print_calls:
-            arg = call[0][0]  # Get the first positional argument of the print call
-            if isinstance(arg, Table):
-                printed_tables.append(arg)
-            all_printed_text += str(arg)
-
-        # Check that section titles were printed
-        assert "Patents (USPTO)" in all_printed_text
-        assert "Research Papers (Google Scholar)" in all_printed_text
-
-        # Check that two tables were passed to print
-        assert len(printed_tables) == 2
-
-        # Check the data inside the tables
-        patent_table = printed_tables[0]
-        research_table = printed_tables[1]
-
-        # PYTEST_FIX: Access public `rows` property
-        assert len(patent_table.rows) == 1
+        # --- REFACTOR: Assert directly against the captured stdout string ---
+        # This is more robust than inspecting 'rich' internals
+        stdout = result.stdout
+        assert "Patents (USPTO)" in stdout
+        assert "Research Papers (Google Scholar)" in stdout
         
-        # --- BUG FIX: Access cell data directly from the table's internal list ---
-        # This avoids issues with different `Row` object APIs in rich versions
-        assert hasattr(patent_table, "_row_cells"), "Table object missing '_row_cells'"
-        assert len(patent_table._row_cells) >= 1, "Patent table has no cell data"
-        patent_row_cells = [str(cell) for cell in patent_table._row_cells[0]]
-        # --- END OF FIX ---
+        # Check for patent data
+        assert mock_patent_info.title in stdout
+        assert "http://example.com/patent" in stdout
         
-        assert mock_patent.title in patent_row_cells
-        assert mock_patent.url in patent_row_cells
-
-        # Check research table
-        # PYTEST_FIX: Access public `rows` property
-        assert len(research_table.rows) == 1
-        
-        # --- BUG FIX: Access cell data directly from the table's internal list ---
-        assert hasattr(research_table, "_row_cells"), "Table object missing '_row_cells'"
-        assert len(research_table._row_cells) >= 1, "Research table has no cell data"
-        research_row_cells = [str(cell) for cell in research_table._row_cells[0]]
-        # --- END OF FIX ---
-        
-        assert "A great paper" in research_row_cells
-        assert "http://example.com/paper" in research_row_cells
+        # Check for research data
+        assert "A great paper" in stdout
+        assert "http://example.com/paper" in stdout
+        # --- END REFACTOR ---
 
 
 class TestSdsAnalysis:

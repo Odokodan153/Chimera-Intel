@@ -12,7 +12,8 @@ from chimera_intel.core.internal import (
 from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
-    MFTAnalysisResult
+    MFTAnalysisResult,
+    MFTEntry,
 )
 
 runner = CliRunner()
@@ -65,14 +66,16 @@ class TestInternal(unittest.TestCase):
 
     # --- MFT Analysis Tests ---
 
-    # --- FIX: Added patch for MFT_AVAILABLE boolean guard ---
     @patch("chimera_intel.core.internal.MFT_AVAILABLE", True)
-    # --- END FIX ---
     @patch("chimera_intel.core.internal.analyzeMFT", autospec=True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.os.remove")
     def test_parse_mft_success(
-        self, mock_remove, mock_exists, mock_analyzeMFT, mock_mft_available
+        self,
+        mock_remove,
+        mock_exists,
+        mock_analyzeMFT,
+        mock_mft_available 
     ):
         """Tests a successful MFT parsing."""
         # Arrange
