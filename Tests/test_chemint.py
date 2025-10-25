@@ -156,20 +156,25 @@ class TestPatentSearch:
 
         # 2. Configure Mocks
         
-        class SimplePatentMock:
-            pass
-        
-        mock_patent_obj = SimplePatentMock()
-        mock_patent_obj.title = patent_title
-        mock_patent_obj.url = patent_url
+        # --- START FIX ---
+        # Mock the patent result as a dictionary, not a class.
+        # This aligns with how the 'scholarly' mock is structured
+        # and suggests the application code uses key-access (e.g., result['title']).
+        mock_patent_obj_as_dict = {
+            "title": patent_title,
+            "url": patent_url
+        }
+        # --- END FIX ---
 
         # Mock for pypatent (this section's call)
         mock_pypatent_instance = MagicMock()
 
-        mock_pypatent_instance.results = [mock_patent_obj]
- 
+        # Set the .results attribute, as implied by the other test
+        mock_pypatent_instance.results = [mock_patent_obj_as_dict]
+
         mock_pypatent_class.return_value = mock_pypatent_instance
 
+        # Mock for scholarly (the other section)
         mock_scholarly_search.return_value = iter([]) 
 
         # 3. Run CLI
