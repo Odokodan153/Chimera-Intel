@@ -145,8 +145,8 @@ class TestPatentSearch:
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        mock_search_pubs,      # scholarly.search_pubs
-        mock_pypatent_search,  # pypatent.Search
+        mock_search_pubs,      # patched scholarly.search_pubs
+        mock_search_class,     # patched pypatent.Search class
         runner,
         mock_patent_info,
     ):
@@ -157,31 +157,30 @@ class TestPatentSearch:
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
         mock_search_instance = MagicMock(results=[mock_patent])
-        mock_pypatent_search.return_value = mock_search_instance
+        mock_search_class.return_value = mock_search_instance  # Correct: assign the instance
 
         # --- Mock Scholarly Search ---
         mock_pub = {"bib": {"title": "A great paper"}, "eprint_url": "http://example.com/paper"}
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Run CLI ---
-        result = runner.invoke(chemint_app, ["monitor-patents-research", "--keywords", "polymer"])
+        result = runner.invoke(
+            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+        )
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
 
-        # --- Combine printed Rich table output as plain text ---
+        # --- Check that the mocked patent appears in stdout ---
         stdout = result.stdout
-
-        # --- Check that patent info appears somewhere in the output ---
         assert "high-temperature resistant polymer" in stdout
         assert "http://example.com/patent" in stdout
 
-        # --- Check research paper info appears ---
+        # --- Check that the mocked research paper appears ---
         assert "A great paper" in stdout
         assert "http://example.com/paper" in stdout
 
-        # --- Optional: check headers ---
+        # --- Optional: check section headers ---
         assert "Patents (USPTO)" in stdout
         assert "Research Papers (Google Scholar)" in stdout
-
 
 class TestSdsAnalysis:
     """Tests for the 'analyze-sds' command."""
