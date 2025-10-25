@@ -69,13 +69,15 @@ class TestInternal(unittest.TestCase):
     @patch("chimera_intel.core.internal.analyzeMFT", autospec=True)
     @patch("chimera_intel.core.internal.os.path.exists", return_value=True)
     @patch("chimera_intel.core.internal.os.remove")
+    # --- FIX: Reordered arguments to match decorator stack ---
     def test_parse_mft_success(
         self,
-        mock_remove,
-        mock_exists,
-        mock_analyzeMFT,
-        mock_mft_available  
+        mock_mft_available,  # From @patch("...MFT_AVAILABLE", True)
+        mock_analyzeMFT,   # From @patch("...analyzeMFT", autospec=True)
+        mock_exists,       # From @patch("...os.path.exists", ...)
+        mock_remove        # From @patch("...os.remove")
     ):
+    # --- END FIX ---
         """Tests a successful MFT parsing."""
         # Arrange
         mock_analyzeMFT.main = MagicMock(return_value=None)
