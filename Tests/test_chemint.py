@@ -169,7 +169,7 @@ class TestPatentSearch:
         # FIX: Changed the .results mock from a list `[]` to an iterator `iter([])`.
         # This matches the successful mock pattern in test_cli_research_section_output
         # and correctly mocks a generator/iterable result.
-        mock_pypatent_instance.results = iter([mock_patent_obj])
+        mock_pypatent_instance.results = [mock_patent_obj]
         
         mock_pypatent_class.return_value = mock_pypatent_instance
 
