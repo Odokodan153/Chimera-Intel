@@ -222,14 +222,14 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">analyzeMFT</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">output_filename</span><span class="o">=</span><span class="n">dummy_output</span><span class="p">)</span>
 
-        <span class="c1"># --- FIX: Apply &quot;Fix Option 2&quot; for robust CSV parsing ---</span>
-        <span class="c1"># This reads the content, splits by lines, and passes the list</span>
-        <span class="c1"># to DictReader, making it robust to mock &#39;open&#39; calls.</span>
+        <span class="c1"># --- FIX: Make CSV parsing robust to mock &#39;open&#39; calls ---</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dummy_output</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># Read content, strip whitespace, and split into lines</span>
             <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+            <span class="c1"># Pass the list of lines to DictReader</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictReader</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">reader</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">:</span>  <span class="c1"># Skip empty rows that might result</span>
                     <span class="k">continue</span>
                 <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="n">MFTEntry</span><span class="p">(</span>
@@ -240,7 +240,7 @@
                         <span class="n">is_directory</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_directory&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
                 <span class="p">)</span>
-        <span class="c1"># --- End of FIX ---</span>
+        <span class="c1"># --- END OF FIX ---</span>
         
         <span class="k">return</span> <span class="n">MFTAnalysisResult</span><span class="p">(</span><span class="n">total_records</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">),</span> <span class="n">entries</span><span class="o">=</span><span class="n">entries</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
