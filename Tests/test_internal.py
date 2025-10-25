@@ -12,7 +12,8 @@ from chimera_intel.core.internal import (
 from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
-    MFTAnalysisResult
+    MFTAnalysisResult,
+    MFTEntry  # --- FIX: Added MFTEntry import ---
 )
 
 runner = CliRunner()
@@ -88,14 +89,14 @@ class TestInternal(unittest.TestCase):
             "123,test.txt,2023-01-01,2023-01-02,false\n"
         )
 
-        # This mock setup for csv.DictReader is correct.
-        m = mock_open()
+        # --- FIX: Use mock_open(read_data=...) ---
+        # This correctly mocks the file handle to be iterable
+        # for csv.DictReader.
+        m = mock_open(read_data=mft_csv_output)
         with patch("builtins.open", m):
-            # Configure the mock file handle (m.return_value) to correctly handle iteration.
-            m.return_value.__iter__ = lambda: iter(mft_csv_output.splitlines())
-
             # Act
             result = parse_mft("/fake/MFT")
+        # --- END FIX ---
 
         # Assert
         self.assertIsInstance(result, MFTAnalysisResult)
