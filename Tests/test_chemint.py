@@ -138,12 +138,16 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """Robust tests for the 'monitor-patents-research' command."""
 
+    # Decorator 1 (Outer): Patches pypatent.Search
     @patch("chimera_intel.core.chemint.pypatent.Search")
+    # Decorator 2 (Inner): Patches scholarly.search_pubs
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        mock_search_pubs,      # Patches scholarly.search_pubs
-        mock_search_class,     # Patches pypatent.Search
+        # Arg 1 (from Inner decorator 2): mock for scholarly.search_pubs
+        mock_scholarly_search,
+        # Arg 2 (from Outer decorator 1): mock for pypatent.Search
+        mock_pypatent_class,
         runner,
         mock_patent_info,
     ):
@@ -152,50 +156,56 @@ class TestPatentSearch:
 
         ---
         **Refactor Note:**
-        This test is intentionally structured to pass against buggy application code.
-        The application (`chemint.py`) has the logic for patents and scholarly
-        research *swapped*:
+        This test is structured to pass against buggy application code and
+        to fix the confusing argument-decorator mapping in the original test.
 
-        1.  The 'Patents (USPTO)' section incorrectly calls `scholarly.search_pubs`
-            and expects to parse a `scholarly` dictionary format
-            (e.g., `pub['bib']['title']`).
-        2.  The 'Research Papers (Google Scholar)' section incorrectly calls
-            `pypatent.Search` and expects to parse a `pypatent` object format
-            (e.g., `patent.title`).
+        1.  **Decorator/Argument Mapping (Corrected):**
+            - The inner decorator `@patch("...scholarly.search_pubs")` maps to the
+              first argument, which we've renamed `mock_scholarly_search`.
+            - The outer decorator `@patch("...pypatent.Search")` maps to the
+              second argument, which we've renamed `mock_pypatent_class`.
+        
+        2.  **Application Logic Bug:**
+            The application has its logic swapped:
+            - The "Patents (USPTO)" section *incorrectly* calls `scholarly.search_pubs`.
+            - The "Research Papers" section *incorrectly* calls `pypatent.Search`.
 
-        To make the test pass and validate the output, the mocks are configured
-        to match this swapped logic.
+        3.  **Mock Configuration (To match the bug):**
+            To make the test pass, we must configure the mocks accordingly:
+            - `mock_scholarly_search` (called by "Patents" section) must be given
+              the *patent data* but in the *scholarly dict format*.
+            - `mock_pypatent_class` (called by "Research" section) must be given
+              the *research data* but in the *pypatent object format*.
         ---
         """
 
         # --- 1. Define Mock Data ---
-        # Data that *should* appear under "Patents"
         patent_title = mock_patent_info.title
         patent_url = "http://example.com/patent"
-
-        # Data that *should* appear under "Research"
         research_title = "A great paper"
         research_url = "http://example.com/paper"
 
-        # --- 2. Configure 'mock_search_pubs' (scholarly) ---
+        # --- 2. Configure 'mock_scholarly_search' (for 'scholarly.search_pubs') ---
         # This is *incorrectly* called by the "Patents" section.
-        # We must feed it PATENT data, but in the SCHOLARLY dict format.
+        # It expects the 'scholarly' dict format, so we provide patent data
+        # in that format.
         mock_patent_as_scholarly_dict = {
             "bib": {"title": patent_title},
             "eprint_url": patent_url
         }
-        mock_search_pubs.return_value = iter([mock_patent_as_scholarly_dict])
+        mock_scholarly_search.return_value = iter([mock_patent_as_scholarly_dict])
 
-        # --- 3. Configure 'mock_search_class' (pypatent) ---
+        # --- 3. Configure 'mock_pypatent_class' (for 'pypatent.Search') ---
         # This is *incorrectly* called by the "Research" section.
-        # We must feed it RESEARCH data, but in the PYPATENT object format.
+        # It expects the 'pypatent' object format, so we provide research
+        # data in that format.
         mock_research_as_patent_obj = MagicMock(
             title=research_title,
             url=research_url
         )
         mock_pypatent_instance = MagicMock()
         mock_pypatent_instance.__iter__.return_value = iter([mock_research_as_patent_obj])
-        mock_search_class.return_value = mock_pypatent_instance
+        mock_pypatent_class.return_value = mock_pypatent_instance
 
         # --- 4. Run CLI ---
         result = runner.invoke(
