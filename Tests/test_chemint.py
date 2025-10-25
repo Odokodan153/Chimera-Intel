@@ -157,19 +157,25 @@ class TestPatentSearch:
         # 2. Configure Mocks
         
         # --- START FIX ---
-        # Mock the patent result as a dictionary, not a class.
-        # This aligns with how the 'scholarly' mock is structured
-        # and suggests the application code uses key-access (e.g., result['title']).
-        mock_patent_obj_as_dict = {
-            "title": patent_title,
-            "url": patent_url
-        }
+        # The application code (chemint.py) accesses .title and .url attributes.
+        # We create a MagicMock to simulate the patent object.
+        mock_patent_obj = MagicMock()
+        mock_patent_obj.title = patent_title
+        mock_patent_obj.url = patent_url
+
+        # This is the same mocking strategy used in the WORKING test
+        # (test_cli_research_section_output). We create an instance...
+        mock_pypatent_instance = MagicMock()
+        
+        # ...and set its .results attribute to a list containing our mock object.
+        # The application code `search.results` will now work.
+        mock_pypatent_instance.results = [mock_patent_obj]
+        
+        # The return value of pypatent.Search(...) is our mock instance.
+        mock_pypatent_class.return_value = mock_pypatent_instance
         # --- END FIX ---
 
-        # Set the .results attribute, as implied by the other test
-        mock_pypatent_class.return_value = iter([mock_patent_obj_as_dict])
-
-        # Mock for scholarly (the other section)
+        # Mock for scholarly (the other section), returning no results
         mock_scholarly_search.return_value = iter([]) 
 
         # 3. Run CLI
@@ -179,7 +185,7 @@ class TestPatentSearch:
         stdout = result.stdout
 
         # 4. Assertions
-        assert result.exit_code == 0
+        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Patents (USPTO)" in stdout
         assert patent_title in stdout
         assert patent_url in stdout
