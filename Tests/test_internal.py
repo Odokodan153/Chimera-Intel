@@ -12,8 +12,7 @@ from chimera_intel.core.internal import (
 from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
-    MFTAnalysisResult,
-    MFTEntry  # --- FIX: Added MFTEntry import ---
+    MFTAnalysisResult
 )
 
 runner = CliRunner()
