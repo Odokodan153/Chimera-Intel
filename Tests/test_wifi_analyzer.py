@@ -70,6 +70,7 @@ def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     result = runner.invoke(
         wifi_analyzer_app,
         [str(pcap_path)],
+        env={"COLUMNS": "120"},
     )
 
     # Assert
@@ -90,6 +91,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
     result = runner.invoke(
         wifi_analyzer_app,
         [str(non_existent_file)],
+        env={"COLUMNS": "120"},
     )
 
     # Assert

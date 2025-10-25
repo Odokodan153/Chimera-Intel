@@ -1,5 +1,6 @@
 import typer
 from typer.testing import CliRunner
+import json
 from unittest.mock import MagicMock, patch 
 
 # The application instance to be tested
@@ -48,13 +49,22 @@ def test_analyze_repo_command_success(mock_clone):
     # Check for the initial status message
     assert "Analyzing repository: https://github.com/user/repo" in result.stdout
     
-    # Check for the key sections in the output
-    # These assertions should now pass because save_or_print_results is no longer patched
-    assert "Repository Analysis" in result.stdout
-    assert "Top Committers" in result.stdout
-    assert "John Doe" in result.stdout
-    assert "Commit Keyword Analysis" in result.stdout
-    assert "'feat': 1" in result.stdout
+    # --- FIX: Assert against the actual JSON output format ---
+    # The CLI prints a status message first, followed by the JSON output.
+    output_lines = result.stdout.splitlines()
+    json_output = "\n".join(output_lines[1:])
+
+    try:
+        data = json.loads(json_output)
+    except json.JSONDecodeError as e:
+        assert False, f"Output is not valid JSON: {json_output}. Error: {e}"
+
+    assert data["repository_url"] == "https://github.com/user/repo"
+    assert data["total_commits"] == 1
+    assert data["total_committers"] == 1
+    assert data["top_committers"][0]["name"] == "John Doe"
+    assert data["commit_keywords"]["feat"] == 1
+    # --- END FIX ---
     
     # Verify that the clone was attempted with the correct URL
     mock_clone.assert_called_once()

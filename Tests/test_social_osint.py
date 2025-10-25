@@ -10,8 +10,9 @@ from chimera_intel.core.schemas import SocialOSINTResult, SocialProfile
 class MockClaimedStatus:
     name = "CLAIMED"
 
-# --- FIX: Initialize runner with mix_stderr=True ---
+# --- FIX: Revert to default runner initialization as mix_stderr is unsupported ---
 runner = CliRunner()
+
 
 class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Social Media OSINT (Sherlock) module."""
@@ -130,9 +131,8 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         
         self.assertNotEqual(result.exit_code, 0)
         
-        # The previous "FIX" to read from result.stdout was correct
-        # Now it works because the runner mixes stderr.
-        output = result.stdout
+        # --- FIX: Check result.stderr since mix_stderr is unavailable/unsupported ---
+        output = result.stderr
         self.assertIn("Error: Missing argument 'USERNAME'.", output)
 
 if __name__ == "__main__":

@@ -1,11 +1,3 @@
-"""
-Tests for the main Command-Line Interface (CLI) of the Chimera Intel application.
-
-This test suite uses Typer's CliRunner to simulate command-line inputs and verify
-that the application behaves as expected, including correct command routing,
-parameter validation, and output.
-"""
-
 import subprocess
 import sys
 import unittest
@@ -89,8 +81,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         reload(chimera_intel.cli)
 
-        # get_cli_app() now loads plugins automatically using the patched discover_plugins
-        self.app = chimera_intel.cli.get_cli_app()
+        # FIX: Access the reloaded module-level 'app' object, which is now correctly configured with plugins.
+        self.app = chimera_intel.cli.app
         
         # PYTEST_FIX: Add mix_stderr=True to capture rich output
         self.runner = CliRunner()

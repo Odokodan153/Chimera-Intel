@@ -41,11 +41,7 @@ def mock_websockets(mocker):
         },
     }
 
-    # Create an async iterator that yields the message just once
-    async def message_generator():
-        yield json.dumps(message)
-
-    # --- FIX ---
+    # --- FIX START: Correctly configure AsyncMock for async iteration ---
     # The 'async with' calls __aenter__, which should return
     # the object that will be iterated over ('websocket').
     # We return mock_connect itself, as it will be the websocket object.
@@ -54,10 +50,15 @@ def mock_websockets(mocker):
     # Add the missing 'send' method to the mock
     mock_connect.send = AsyncMock()
 
-    # Configure mock_connect to be an async iterator
-    # by assigning the generator object to its __aiter__.
-    mock_connect.__aiter__.return_value = message_generator()
-    # --- END FIX ---
+    # Configure mock_connect to be an async iterator by setting its __aiter__ to return self
+    # and its __anext__ to yield the required message, then raise StopAsyncIteration.
+    # Assigning a lambda to __aiter__ ensures the object itself is returned as the async iterator.
+    mock_connect.__aiter__ = lambda: mock_connect
+    mock_connect.__anext__ = AsyncMock(side_effect=[
+        json.dumps(message),
+        StopAsyncIteration # Sentinel to end the async for loop
+    ])
+    # --- FIX END ---
 
     return mocker.patch("websockets.connect", return_value=mock_connect)
 
