@@ -157,18 +157,20 @@ class TestPatentSearch:
         # 2. Configure Mocks
         # Mock for pypatent (this section's call)
         
-        # FIX: Changed MagicMock object to a dictionary.
-        # The code under test likely uses dictionary key access (e.g., patent['title'])
-        # which failed on the MagicMock object. This now aligns with the mock
-        # style used in test_cli_research_section_output.
-        mock_patent_obj = {
-            "title": patent_title,
-            "url": patent_url
-        }
+        # FIX: Reverted to MagicMock, as the 'dict' fix caused an AttributeError.
+        # This confirms the code uses attribute access (e.g., patent.title).
+        mock_patent_obj = MagicMock(
+            title=patent_title,
+            url=patent_url
+        )
         
         mock_pypatent_instance = MagicMock()
-        # The code accesses the 'results' attribute, which is a list
-        mock_pypatent_instance.results = [mock_patent_obj]
+        
+        # FIX: Changed the .results mock from a list `[]` to an iterator `iter([])`.
+        # This matches the successful mock pattern in test_cli_research_section_output
+        # and correctly mocks a generator/iterable result.
+        mock_pypatent_instance.results = iter([mock_patent_obj])
+        
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # Mock for scholarly (the other section's call, to avoid real requests)
