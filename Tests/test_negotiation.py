@@ -54,9 +54,12 @@ def client():
     """Provides a synchronous TestClient configured for the webapp."""
     # TestClient is the correct way to test a FastAPI app.
     # It wraps httpx.Client and handles the ASGITransport correctly.
+    
+    # --- THIS IS THE FIX ---
+    # The 'app' must be a positional argument, not a keyword argument.
     with TestClient(app) as client:
         yield client
-# --- END FIX ---
+    # --- END FIX ---
 
 
 def test_create_negotiation(client): # FIX: Added client fixture
