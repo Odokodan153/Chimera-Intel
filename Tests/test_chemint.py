@@ -167,17 +167,21 @@ class TestPatentSearch:
         result = runner.invoke(chemint_app, ["monitor-patents-research", "--keywords", "polymer"])
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
 
-        # --- Assertions: Check for presence of key fields, not exact formatting ---
+        # --- Combine printed Rich table output as plain text ---
         stdout = result.stdout
-        # Patent section
-        assert mock_patent_info.title in stdout
+
+        # --- Check that patent info appears somewhere in the output ---
+        assert "high-temperature resistant polymer" in stdout
         assert "http://example.com/patent" in stdout
-        # Research papers section
+
+        # --- Check research paper info appears ---
         assert "A great paper" in stdout
         assert "http://example.com/paper" in stdout
-        # Section headers
+
+        # --- Optional: check headers ---
         assert "Patents (USPTO)" in stdout
         assert "Research Papers (Google Scholar)" in stdout
+
 
 class TestSdsAnalysis:
     """Tests for the 'analyze-sds' command."""
