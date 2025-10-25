@@ -139,32 +139,34 @@ class TestChemicalLookup:
 class TestPatentSearch:
     """
     Tests for the 'monitor-patents-research' command.
-    
-    NOTE: The application code has swapped logic. These tests are
-    structured to mock and validate that buggy behavior by splitting
-    the test into two parts.
     """
 
+    @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patents_section_output(
-        self, mock_scholarly_search, runner, mock_patent_info
+        self, mock_scholarly_search, mock_pypatent_class, runner, mock_patent_info
     ):
         """
         Tests if the 'Patents (USPTO)' section renders correctly.
-
-        NOTE: This section *incorrectly* calls 'scholarly.search_pubs'.
-        We mock that call and feed it patent data in a scholarly dict format.
+        This section correctly calls 'pypatent.Search'.
         """
         # 1. Define Mock Data
         patent_title = mock_patent_info.title
         patent_url = "http://example.com/patent"
 
-        # 2. Configure Mock
-        mock_patent_as_scholarly_dict = {
-            "bib": {"title": patent_title},
-            "eprint_url": patent_url
-        }
-        mock_scholarly_search.return_value = iter([mock_patent_as_scholarly_dict])
+        # 2. Configure Mocks
+        # Mock for pypatent (this section's call)
+        mock_patent_obj = MagicMock(
+            title=patent_title,
+            url=patent_url
+        )
+        mock_pypatent_instance = MagicMock()
+        # The code accesses the 'results' attribute, which is a list
+        mock_pypatent_instance.results = [mock_patent_obj]
+        mock_pypatent_class.return_value = mock_pypatent_instance
+
+        # Mock for scholarly (the other section's call, to avoid real requests)
+        mock_scholarly_search.return_value = iter([]) # Return no research results
 
         # 3. Run CLI
         result = runner.invoke(
@@ -183,26 +185,30 @@ class TestPatentSearch:
 
 
     @patch("chimera_intel.core.chemint.pypatent.Search")
+    @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_research_section_output(
-        self, mock_pypatent_class, runner
+        self, mock_scholarly_search, mock_pypatent_class, runner
     ):
         """
         Tests if the 'Research Papers (Google Scholar)' section renders correctly.
-
-        NOTE: This section *incorrectly* calls 'pypatent.Search'.
-        We mock that call and feed it research data in a pypatent object format.
+        This section correctly calls 'scholarly.search_pubs'.
         """
         # 1. Define Mock Data
         research_title = "A great paper"
         research_url = "http://example.com/paper"
 
-        # 2. Configure Mock
-        mock_research_as_patent_obj = MagicMock(
-            title=research_title,
-            url=research_url
-        )
+        # 2. Configure Mocks
+        # Mock for scholarly (this section's call)
+        mock_research_as_scholarly_dict = {
+            "bib": {"title": research_title},
+            "eprint_url": research_url
+        }
+        # The code iterates directly over the search_pubs result
+        mock_scholarly_search.return_value = iter([mock_research_as_scholarly_dict])
+
+        # Mock for pypatent (the other section's call, to avoid real requests)
         mock_pypatent_instance = MagicMock()
-        mock_pypatent_instance.__iter__.return_value = iter([mock_research_as_patent_obj])
+        mock_pypatent_instance.results = [] # Return no patent results
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # 3. Run CLI
