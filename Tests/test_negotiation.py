@@ -1,20 +1,12 @@
 import pytest
 import sys
 from pathlib import Path
-
-# --- FIX: Add project root to sys.path to allow 'webapp' import ---
+from chimera_intel.core.negotiation import NegotiationEngine
+from webapp.main import app
+from fastapi.testclient import TestClient
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
-# --- END FIX ---
 
-from chimera_intel.core.negotiation import NegotiationEngine
-
-# --- FIX: Import httpx module and app explicitly ---
-# This import will now succeed thanks to the sys.path modification
-from webapp.main import app
-# --- FIX: Import the correct TestClient ---
-from fastapi.testclient import TestClient
-# --- END FIX ---
 
 
 @pytest.fixture
