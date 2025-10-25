@@ -156,8 +156,12 @@ class TestPatentSearch:
         mock_patent = MagicMock()
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
-        mock_search_instance = MagicMock(results=[mock_patent])
-        mock_search_class.return_value = mock_search_instance  # Correct: assign the instance
+        
+        # --- FIX: Changed mock to make the Search instance iterable ---
+        # This mocks `for patent in pypatent.Search(...)`
+        mock_search_instance = MagicMock()
+        mock_search_instance.__iter__.return_value = iter([mock_patent])
+        mock_search_class.return_value = mock_search_instance
 
         # --- Mock Scholarly Search ---
         mock_pub = {"bib": {"title": "A great paper"}, "eprint_url": "http://example.com/paper"}
@@ -171,7 +175,9 @@ class TestPatentSearch:
 
         # --- Check that the mocked patent appears in stdout ---
         stdout = result.stdout
-        assert "high-temperature resistant polymer" in stdout
+        # Note: The original assertion failed on the *title* string, 
+        # so we check for the full title from mock_patent_info.
+        assert mock_patent_info.title in stdout 
         assert "http://example.com/patent" in stdout
 
         # --- Check that the mocked research paper appears ---
