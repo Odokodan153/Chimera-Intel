@@ -139,69 +139,45 @@ class TestChemicalLookup:
 
 
 class TestPatentSearch:
-    """Tests for the 'monitor-patents-research' command."""
+    """Robust tests for the 'monitor-patents-research' command."""
 
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        # Argument order is correct based on decorators:
-        mock_search_pubs,      # 1. This is the scholarly.search_pubs mock (bottom)
-        mock_pypatent_search,  # 2. This is the pypatent.Search mock (top)
+        mock_search_pubs,      # scholarly.search_pubs
+        mock_pypatent_search,  # pypatent.Search
         runner,
         mock_patent_info,
     ):
-        """Tests the 'chemint monitor-patents-research' CLI command."""
+        """Tests the CLI command while avoiding brittle string matching."""
 
-        # --- Arrange: Mock Patent Search ---
+        # --- Mock Patent Search ---
         mock_patent = MagicMock()
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
-        
-        mock_search_instance = MagicMock()
-        mock_search_instance.results = [mock_patent]
-        
-        # --- FIX: Assign correct mock to correct variable ---
-        # mock_pypatent_search (the patent mock) gets the patent data.
+        mock_search_instance = MagicMock(results=[mock_patent])
         mock_pypatent_search.return_value = mock_search_instance
-        # --- END FIX ---
 
-        # --- Arrange: Mock Scholarly Search ---
-        mock_pub = {
-            "bib": {"title": "A great paper"},
-            "eprint_url": "http://example.com/paper",
-        }
-        
-        # --- FIX: Assign correct mock to correct variable ---
-        # mock_search_pubs (the scholarly mock) gets the paper data.
+        # --- Mock Scholarly Search ---
+        mock_pub = {"bib": {"title": "A great paper"}, "eprint_url": "http://example.com/paper"}
         mock_search_pubs.return_value = iter([mock_pub])
-        # --- END FIX ---
 
-        # --- Act ---
-        result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
-        )
-
-        # --- Assert ---
+        # --- Run CLI ---
+        result = runner.invoke(chemint_app, ["monitor-patents-research", "--keywords", "polymer"])
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
-        stdout = result.stdout
-        assert "Patents (USPTO)" in stdout
-        assert "Research Papers (Google Scholar)" in stdout
 
-        # --- FIX: Asserting the CORRECT behavior ---
-        # The test assertions were wrong. The app code is correct,
-        # and now the mocks are correct. We should expect
-        # the patent title and the paper title to be in the output.
-        
-        # Assert that the patent data is present
+        # --- Assertions: Check for presence of key fields, not exact formatting ---
+        stdout = result.stdout
+        # Patent section
         assert mock_patent_info.title in stdout
         assert "http://example.com/patent" in stdout
-        
-        # Assert that the scholarly data is present
+        # Research papers section
         assert "A great paper" in stdout
         assert "http://example.com/paper" in stdout
-        # --- END FIX ---
-
+        # Section headers
+        assert "Patents (USPTO)" in stdout
+        assert "Research Papers (Google Scholar)" in stdout
 
 class TestSdsAnalysis:
     """Tests for the 'analyze-sds' command."""
