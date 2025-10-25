@@ -1,8 +1,10 @@
 import pytest
 from chimera_intel.core.negotiation import NegotiationEngine
-import httpx 
-from httpx import ASGITransport 
+
+# --- FIX: Import TestClient for synchronous API testing ---
 from webapp.main import app
+from fastapi.testclient import TestClient 
+# --- END FIX ---
 
 
 @pytest.fixture
@@ -44,15 +46,14 @@ def test_recommend_tactic_with_history(engine):
     assert "negative" in recommendation["reason"]
 
 
-# --- FIX: Removed the try/finally block as client.close() is not needed ---
+# --- FIX: Use fastapi.testclient.TestClient for synchronous testing ---
 @pytest.fixture
 def client():
-    """Provides an httpx.Client configured for the webapp using ASGITransport."""
-    transport = ASGITransport(app=app)
-    client = httpx.Client(transport=transport, base_url="http://test")
-    yield client
-    # No client.close() is needed for ASGITransport
-    # as it doesn't manage live connections.
+    """Provides a synchronous TestClient configured for the webapp."""
+    # Use TestClient for seamless synchronous interaction with the ASGI app
+    with TestClient(app) as client:
+        yield client
+# --- END FIX ---
 
 
 def test_create_negotiation(client): # FIX: Added client fixture
