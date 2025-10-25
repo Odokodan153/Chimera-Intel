@@ -143,9 +143,15 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
     try:
         analyzeMFT.main(filename=file_path, output_filename=dummy_output)
 
+        # --- FIX: Apply "Fix Option 2" for robust CSV parsing ---
+        # This reads the content, splits by lines, and passes the list
+        # to DictReader, making it robust to mock 'open' calls.
         with open(dummy_output, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
+            content = f.read().strip().splitlines()
+            reader = csv.DictReader(content)
             for row in reader:
+                if not row:
+                    continue
                 entries.append(
                     MFTEntry(
                         record_number=int(row.get("Record Number", -1)),
@@ -155,6 +161,8 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
                         is_directory=row.get("is_directory", "false").lower() == "true",
                     )
                 )
+        # --- End of FIX ---
+        
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"

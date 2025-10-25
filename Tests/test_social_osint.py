@@ -99,7 +99,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         mock_find_profiles.return_value = mock_data
        
         # --- FIX: The command MUST include the 'run' subcommand ---
-        result = runner.invoke(social_osint_app, ["run", "cliuser"])
+        result = runner.invoke(social_osint_app, ["cliuser"])
         # --- End Fix ---
 
         # Assert
@@ -124,7 +124,7 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         """Tests that the CLI command fails if no username is provided."""
         
         # The 'run' subcommand is passed, but the required 'USERNAME' is not.
-        result = runner.invoke(social_osint_app, ["run"])
+        result = runner.invoke(social_osint_app, [])
         
         self.assertNotEqual(result.exit_code, 0)
         
