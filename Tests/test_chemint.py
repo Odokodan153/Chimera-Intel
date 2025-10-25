@@ -2,11 +2,7 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
-# --- FIX: Corrected import path ---
 from chimera_intel.core.chemint import chemint_app
-# --- FIX: Added Table import for type checking in mock ---
-from rich.table import Table
-
 
 # ------------------
 # Dummy Schema Classes
