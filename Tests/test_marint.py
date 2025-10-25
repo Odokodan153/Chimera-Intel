@@ -14,7 +14,7 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def mock_api_key_globally(mocker):
     """
-    FIX: Mocks the API key at the config level (autouse=True)
+    Mocks the API key at the config level (autouse=True)
     to prevent SystemExit(2) when marint_app is imported.
     This fixture runs before all tests in this file.
     """
@@ -41,25 +41,24 @@ def mock_websockets(mocker):
         },
     }
 
-    # --- FIX START: Correctly configure AsyncMock for async iteration ---
     # The 'async with' calls __aenter__, which should return
     # the object that will be iterated over ('websocket').
-    # We return mock_connect itself, as it will be the websocket object.
     mock_connect.__aenter__.return_value = mock_connect
 
     # Add the missing 'send' method to the mock
     mock_connect.send = AsyncMock()
 
     # Configure mock_connect to be an async iterator by setting its __aiter__ to return self
-    # and its __anext__ to yield the required message, then raise StopAsyncIteration.
-    # Assigning a lambda to __aiter__ ensures the object itself is returned as the async iterator.
-    mock_connect.__aiter__ = lambda: mock_connect
+    # and its __anext__ to yield the desired message and then raise StopAsyncIteration.
+    # Note: This technique manually sets the required async iterator protocol attributes.
+    # FIX: Change lambda to accept 'self' (the mock object) as the first argument,
+    # and return itself to be the async iterator.
+    mock_connect.__aiter__ = lambda self: self 
     mock_connect.__anext__ = AsyncMock(side_effect=[
         json.dumps(message),
         StopAsyncIteration # Sentinel to end the async for loop
     ])
-    # --- FIX END ---
-
+    
     return mocker.patch("websockets.connect", return_value=mock_connect)
 
 

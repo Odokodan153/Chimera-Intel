@@ -10,7 +10,7 @@ from chimera_intel.core.schemas import SocialOSINTResult, SocialProfile
 class MockClaimedStatus:
     name = "CLAIMED"
 
-# --- FIX: Revert to default runner initialization as mix_stderr is unsupported ---
+# --- Revert to default runner initialization ---
 runner = CliRunner()
 
 
@@ -28,11 +28,11 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         mock_sherlock.return_value = {
             "GitHub": {
                 "status": MockClaimedStatus(),
-                "url_user": "https://github.com/testuser",
+                "url_user": "https.github.com/testuser",
             },
             "Twitter": {
                 "status": MockClaimedStatus(),
-                "url_user": "https://twitter.com/testuser",
+                "url_user": "https.twitter.com/testuser",
             },
         }
 
@@ -85,7 +85,6 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.social_osint.typer.echo")
     @patch("chimera_intel.core.social_osint.save_scan_to_db") # <-- Mock the DB call
-    # --- FIX: Use new_callable=AsyncMock for a cleaner patch ---
     @patch("chimera_intel.core.social_osint.find_social_profiles", new_callable=AsyncMock)
     def test_cli_run_social_osint_scan_success(self, mock_find_profiles, mock_save_db, mock_echo):
         """Tests a successful run of the 'social-osint run' CLI command."""
@@ -93,15 +92,14 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
         mock_data = SocialOSINTResult(
             username="cliuser",
             found_profiles=[
-                SocialProfile(name="GitLab", url="https://gitlab.com/cliuser")
+                SocialProfile(name="GitLab", url="https.gitlab.com/cliuser")
             ],
         )
         
-        # --- FIX: Set return_value directly. AsyncMock handles the await. ---
         mock_find_profiles.return_value = mock_data
        
-        # --- FIX: Removed the "run" command name. ---
-        result = runner.invoke(social_osint_app, ["cliuser"])
+        # --- FIX: The command MUST include the 'run' subcommand ---
+        result = runner.invoke(social_osint_app, ["run", "cliuser"])
         # --- End Fix ---
 
         # Assert
@@ -125,15 +123,16 @@ class TestSocialOsint(unittest.IsolatedAsyncioTestCase):
     def test_cli_run_no_username(self):
         """Tests that the CLI command fails if no username is provided."""
         
-        # --- FIX: Removed the "run" command. Invoke with no args. ---
-        result = runner.invoke(social_osint_app, [])
-        # --- End Fix ---
+        # The 'run' subcommand is passed, but the required 'USERNAME' is not.
+        result = runner.invoke(social_osint_app, ["run"])
         
         self.assertNotEqual(result.exit_code, 0)
         
-        # --- FIX: Check result.stderr since mix_stderr is unavailable/unsupported ---
+        # --- FIX: Correct the assertion string. ---
+        # Typer's rich formatting doesn't prefix "Error: " to the message itself.
         output = result.stderr
-        self.assertIn("Error: Missing argument 'USERNAME'.", output)
+        self.assertIn("Missing argument 'USERNAME'.", output)
+        # --- End Fix ---
 
 if __name__ == "__main__":
     unittest.main()

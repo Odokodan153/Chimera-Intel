@@ -79,12 +79,16 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         """
         import chimera_intel.cli
 
+        # Reload the module to ensure we have the latest code
         reload(chimera_intel.cli)
 
-        # FIX: Access the reloaded module-level 'app' object, which is now correctly configured with plugins.
-        self.app = chimera_intel.cli.app
+        # --- FIX: Directly call the factory function ---
+        # This ensures the app is created *while the patches are active*,
+        # avoiding issues with cached, un-patched module-level variables.
+        self.app = chimera_intel.cli.get_cli_app()
+        # --- END FIX ---
         
-        # PYTEST_FIX: Add mix_stderr=True to capture rich output
+        # This runner is correct for unittest. The mix_stderr comment was a red herring.
         self.runner = CliRunner()
 
     def test_main_app_help(self):
@@ -110,9 +114,19 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self, mock_initialize_database
     ):
         """Tests that the CLI can still run basic commands like --help without a DB connection."""
-        result = self.runner.invoke(self.app, ["--help"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Usage", result.stdout)
+        # We need to re-run the setup logic with the new, specific patch for this test
+        with patch(
+            "chimera_intel.cli.discover_plugins",
+            return_value=[MockFootprintPlugin(), MockDefensivePlugin()],
+        ):
+            import chimera_intel.cli
+            reload(chimera_intel.cli)
+            app = chimera_intel.cli.get_cli_app()
+            runner = CliRunner()
+            
+            result = runner.invoke(app, ["--help"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Usage", result.stdout)
 
     def test_main_script_entry_point(self):
         """Tests running the CLI script as a subprocess to ensure it's executable."""
@@ -131,11 +145,10 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
     # --- Plugin Command Tests ---
 
-    # --- FIX: Added patch for 'resolve_target' ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
-    @patch("chimera_intel.core.footprint.is_valid_domain", return_value=True) # FIX: Mock validation to return True
-    async def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock): # FIX: Added mock_is_valid
+    @patch("chimera_intel.core.footprint.is_valid_domain", return_value=True)
+    async def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
         """Tests a successful 'scan footprint run' command with specific assertions."""
         # Arrange
 
@@ -162,7 +175,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
                     dmarc_record="",
                 ),
                 ip_geolocation={
-                    "1.1.1.1": IpGeolocation(country="Testland", ip="1.1.1.1") # Corrected: Use a valid-looking IP
+                    "1.1.1.1": IpGeolocation(country="Testland", ip="1.1.1.1")
                 },
                 cdn_provider=None,
                 breach_info=BreachInfo(source="", breaches=[]),
@@ -182,9 +195,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
 
-        self.assertEqual(result.exit_code, 0, msg=result.output) # --- FIX: Added msg=result.output
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         
-        # FIX: Find the JSON line in stdout instead of assuming it's the only line
         json_output_str = None
         for line in result.stdout.splitlines():
             if line.strip().startswith("{") and line.strip().endswith("}"):
@@ -196,7 +208,6 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
-    # --- FIX: Added patch for 'resolve_target' ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="invalid-domain")
     @patch("chimera_intel.core.footprint.is_valid_domain", return_value=False) # Mock the internal validation
     async def test_scan_footprint_invalid_domain(self, mock_is_valid, mock_resolve_target: MagicMock):
@@ -209,9 +220,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
         
-        # FIX: The code manually raises Exit(1), not 2.
         self.assertEqual(result.exit_code, 1)
-        # FIX: Assert the actual error message from the Panel.
         self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.check_hibp_breaches")
@@ -231,10 +240,8 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
             )
         # Assert
 
-        self.assertEqual(result.exit_code, 0, msg=result.output) # --- FIX: Added msg=result.output
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         
-        # --- FIX: Extract the JSON blob from the output, ignoring subsequent error text. ---
-        # The output contains multi-line JSON followed by database errors.
         json_output_str = None
         try:
             start_index = result.stdout.find('{')
@@ -247,7 +254,6 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
                 json_output_str = None
         except json.JSONDecodeError:
             json_output_str = None # Failed to parse, let the assertion fail
-        # --- END FIX ---
 
         self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
         output = json.loads(json_output_str)
@@ -264,9 +270,7 @@ class TestCLI(unittest.IsolatedAsyncioTestCase):
 
         # Assert
         
-        # This test now correctly expects exit code 1.
         self.assertEqual(result.exit_code, 1)
-        # FIX: Assert the actual error message from the Panel.
         self.assertIn("`HIBP_API_KEY` not found in your .env file.", result.stdout)
 
 
