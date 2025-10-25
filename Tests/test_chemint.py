@@ -155,22 +155,23 @@ class TestPatentSearch:
         patent_url = "http://example.com/patent"
 
         # 2. Configure Mocks
+        
+        # FIX: Replaced MagicMock with a simple, "dumb" object.
+        # The repeated failures suggest MagicMock is failing an internal
+        # check in the code (e.g., `isinstance`), causing the loop to be skipped.
+        # A plain object with only the needed attributes is a safer mock.
+        class SimplePatentMock:
+            pass
+        
+        mock_patent_obj = SimplePatentMock()
+        mock_patent_obj.title = patent_title
+        mock_patent_obj.url = patent_url
+
         # Mock for pypatent (this section's call)
-        
-        # FIX: Reverted to MagicMock, as the 'dict' fix caused an AttributeError.
-        # This confirms the code uses attribute access (e.g., patent.title).
-        mock_patent_obj = MagicMock(
-            title=patent_title,
-            url=patent_url
-        )
-        
         mock_pypatent_instance = MagicMock()
-        
-        # FIX: Changed the .results mock from a list `[]` to an iterator `iter([])`.
-        # This matches the successful mock pattern in test_cli_research_section_output
-        # and correctly mocks a generator/iterable result.
+        # The .results attribute should be a list, as implied by the
+        # passing mock in the other test (`.results = []`).
         mock_pypatent_instance.results = [mock_patent_obj]
-        
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # Mock for scholarly (the other section's call, to avoid real requests)
