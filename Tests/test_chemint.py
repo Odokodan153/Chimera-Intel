@@ -166,8 +166,8 @@ class TestPatentSearch:
         # Mock for pypatent (this section's call)
         mock_pypatent_instance = MagicMock()
 
-        mock_pypatent_instance.__iter__.return_value = iter([mock_patent_obj])
-
+        mock_pypatent_instance.results = [mock_patent_obj]
+ 
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         mock_scholarly_search.return_value = iter([]) 
