@@ -168,7 +168,20 @@ class TestPatentSearch:
         mock_patent_obj.url = patent_url
 
         # Mock for pypatent (this section's call)
-        mock_pypatent_instance = MagicMock()
+        
+        # --- START FIX ---
+        # The "FIX" comment was correct about MagicMock failing an
+        # `isinstance` check, but it was applied to the patent object
+        # instead of the search *instance*. The code likely checks
+        # `isinstance(search_result, pypatent.Search)` before looping.
+        # We replace the MagicMock for the instance with a "dumb" object.
+        
+        class SimpleSearchMock:
+            pass
+            
+        mock_pypatent_instance = SimpleSearchMock()
+        # --- END FIX ---
+        
         # The .results attribute should be a list, as implied by the
         # passing mock in the other test (`.results = []`).
         mock_pypatent_instance.results = [mock_patent_obj]
