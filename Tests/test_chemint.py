@@ -145,10 +145,8 @@ class TestPatentSearch:
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_patent_search_success(
         self,
-        # --- FIX: Swapped argument order to match decorator stack ---
-        mock_pypatent_search,  # <--- from @patch("...pypatent.Search")
-        mock_search_pubs,      # <--- from @patch("...scholarly.search_pubs")
-        # --- END FIX ---
+        mock_pypatent_search,  # Decorator order corrected previously
+        mock_search_pubs,
         runner,
         mock_patent_info,
     ):
@@ -159,17 +157,18 @@ class TestPatentSearch:
         mock_patent.title = mock_patent_info.title
         mock_patent.url = "http://example.com/patent"
 
+        # --- FIX: Mock the method returning results (assuming .execute()) ---
         mock_search_instance = MagicMock()
-        mock_search_instance.results = [mock_patent]
-        # This now correctly mocks pypatent.Search
+        # Make the assumed execute() method return the list directly
+        mock_search_instance.execute.return_value = [mock_patent]
         mock_pypatent_search.return_value = mock_search_instance
+        # --- END FIX ---
 
         # --- Arrange: Mock Scholarly Search ---
         mock_pub = {
             "bib": {"title": "A great paper"},
             "eprint_url": "http://example.com/paper",
         }
-        # This now correctly mocks scholarly.search_pubs
         mock_search_pubs.return_value = iter([mock_pub])
 
         # --- Act ---
@@ -179,20 +178,14 @@ class TestPatentSearch:
 
         # --- Assert ---
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
-
-        # --- REFACTOR: Assert directly against the captured stdout string ---
         stdout = result.stdout
         assert "Patents (USPTO)" in stdout
         assert "Research Papers (Google Scholar)" in stdout
-        
-        # Check for patent data (This will now pass)
+        # This assertion should now pass
         assert mock_patent_info.title in stdout
         assert "http://example.com/patent" in stdout
-        
-        # Check for research data
         assert "A great paper" in stdout
         assert "http://example.com/paper" in stdout
-        # --- END REFACTOR ---
 
 
 class TestSdsAnalysis:
