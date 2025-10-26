@@ -14,7 +14,7 @@ from chimera_intel.core.schemas import (
     PulseInfo,  
 )
 
-from cve_search import CVESearch
+
 
 # Fixture for CliRunner
 @pytest.fixture
@@ -57,23 +57,6 @@ def mock_threat_intel():
         ], # -> impact 9.0
         error=None,
     )
-
-@pytest.fixture
-def mock_cve_results():
-    """Mocks the result from cve_search.search()."""
-    vuln1 = MagicMock(spec=CVESearch)
-    vuln1.id = "CVE-2023-2001"
-    vuln1.cvss_score = 9.8
-    vuln1.title = "Mock Apache Vuln"
-    vuln1.severity = "critical" # Use getattr to access this
-    
-    vuln2 = MagicMock(spec=CVESearch)
-    vuln2.id = "CVE-2023-2002"
-    vuln2.cvss_score = 7.5
-    vuln2.title = "Mock Apache Vuln 2"
-    vuln2.severity = "high"
-    
-    return [vuln1, vuln2]
 
 # --- Tests for calculate_risk ---
 
