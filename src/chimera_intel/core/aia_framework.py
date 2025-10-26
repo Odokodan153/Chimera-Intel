@@ -65,6 +65,10 @@ if not reasoning_logger.handlers:
     )
     reasoning_file_handler.setFormatter(reasoning_formatter)
     reasoning_logger.addHandler(reasoning_file_handler)
+
+# --- FIX: Moved import to global scope ---
+import chimera_intel.core.modules as aia_modules
+
 # --- Dynamic Module Loader ---
 
 
@@ -73,7 +77,8 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
     modules: Dict[str, Dict[str, Any]] = {}
     ALLOWED_MODULES = {"footprint", "threat_intel", "vulnerability_scanner"}
     try:
-        import chimera_intel.core.modules as aia_modules
+        # FIX: Import was moved to global scope
+        # import chimera_intel.core.modules as aia_modules
 
         for _, name, _ in pkgutil.iter_modules(
             aia_modules.__path__, aia_modules.__name__ + "."
