@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, mock_open
 import json
 
-from src.chimera_intel.core.ethical_guardrails import EthicalGuardrails
+from src.chimera_intel.core.ethical_guardrails import EthicalFramework
 
 # A mock valid framework for testing
 MOCK_FRAMEWORK = {
@@ -47,7 +47,7 @@ def test_load_framework_file_not_found(mock_json_load):
     m = mock_open()
     m.side_effect = FileNotFoundError("File not found")
     with patch("builtins.open", m):
-        guardrails = EthicalGuardrails()
+        guardrails = EthicalFramework()
         assert guardrails.framework == {}
         assert guardrails.is_enabled is False
 
@@ -57,13 +57,13 @@ def test_load_framework_invalid_json(mock_json_load):
     with patch("builtins.open", m):
         # Mock json.load to raise JSONDecodeError
         with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
-            guardrails = EthicalGuardrails()
+            guardrails = EthicalFramework()
             assert guardrails.framework == {}
             assert guardrails.is_enabled is False
 
 def test_load_framework_success(mock_open_file, mock_json_load):
     """Test successful loading of the framework."""
-    guardrails = EthicalGuardrails()
+    guardrails = EthicalFramework()
     assert guardrails.framework == MOCK_FRAMEWORK
     assert guardrails.is_enabled is True
 
@@ -84,12 +84,12 @@ def test_load_framework_success(mock_open_file, mock_json_load):
 ])
 def test_assess_prompt_various_cases(mock_open_file, mock_json_load, prompt, expected_assessment):
     """Test the assess_prompt method with different rules."""
-    guardrails = EthicalGuardrails()
+    guardrails = EthicalFramework()
     assert guardrails.assess_prompt(prompt) == expected_assessment
 
 def test_assess_prompt_disabled(mock_open_file, mock_json_load):
     """Test assess_prompt when guardrails are disabled."""
-    guardrails = EthicalGuardrails()
+    guardrails = EthicalFramework()
     guardrails.is_enabled = False # Manually disable
     
     prompt = "What is your social security number?"
