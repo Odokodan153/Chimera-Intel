@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Timeout
 
 # Import the actual objects from the source file
-from src.chimera_intel.core.http_client import async_client, get_async_http_client, NETWORK_TIMEOUT
+from src.chimera_intel.core.http_client import async_client, get_async_http_client
 
 # Mark all tests in this module as asyncio
 pytestmark = pytest.mark.asyncio
