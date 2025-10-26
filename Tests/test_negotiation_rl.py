@@ -79,8 +79,11 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         self.mock_policy_net = MagicMock(spec=DQN)
         self.mock_target_net = MagicMock(spec=DQN)
         
-        # FIX: Return an iterator, not a list, as optimizers may call next()
-        self.mock_policy_net.parameters.return_value = iter([torch.nn.Parameter(torch.randn(1))]) # For device
+        # FIX: Return a list, not an iterator.
+        # The .parameters() attribute is accessed multiple times (once for device,
+        # once for the optimizer). Returning a one-time iterator causes the
+        # optimizer to receive an empty list.
+        self.mock_policy_net.parameters.return_value = [torch.nn.Parameter(torch.randn(1))] # For device
         
         self.MockDQN.side_effect = [self.mock_policy_net, self.mock_target_net]
         

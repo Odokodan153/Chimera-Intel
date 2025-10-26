@@ -2,14 +2,14 @@ import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.credibility_assessor import (
     assess_source_credibility,
-    check_google_safe_browsing
+    check_google_safe_browsing,
 )
 from chimera_intel.core.schemas import CredibilityResult
 from datetime import datetime
 import httpx
 from typer.testing import CliRunner
-# FIX: Import the main app from cli.py, not the sub-app
-from chimera_intel.cli import app as main_app
+# FIX: Import the sub-app from credibility_assessor.py, not the main app
+from chimera_intel.core.credibility_assessor import app as credibility_app
 
 # Use unittest.IsolatedAsyncioTestCase for async test methods
 class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
@@ -174,8 +174,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        # FIX: Invoke the main app with the full command ["credibility", "assess", ...]
-        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
+        # FIX: Invoke the local credibility_app, not the main_app
+        result = self.runner.invoke(credibility_app, ["assess", "https.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 8.5/10.0", result.stdout)
         self.assertIn("Factor 1", result.stdout)
@@ -192,8 +192,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        # FIX: Invoke the main app with the full command
-        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
+        # FIX: Invoke the local credibility_app
+        result = self.runner.invoke(credibility_app, ["assess", "https.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 5.5/10.0", result.stdout)
         self.assertIn("yellow", result.stdout) # Color for medium score
@@ -209,8 +209,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        # FIX: Invoke the main app with the full command
-        result = self.runner.invoke(main_app, ["credibility", "assess", "http.example.com"])
+        # FIX: Invoke the local credibility_app
+        result = self.runner.invoke(credibility_app, ["assess", "http.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 2.0/10.0", result.stdout)
         self.assertIn("red", result.stdout) # Color for low score
@@ -226,17 +226,17 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        # FIX: Invoke the main app with the full command
-        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
-        # FIX: The command itself succeeds (exit code 0) even if it prints an error
+        # FIX: Invoke the local credibility_app
+        result = self.runner.invoke(credibility_app, ["assess", "https.example.com"])
+        # The command prints an error but exits cleanly (code 0)
         self.assertEqual(result.exit_code, 0) 
         self.assertIn("Error:", result.stdout)
         self.assertIn("A test error occurred", result.stdout)
 
     def test_cli_no_args(self):
         """Tests the CLI when no arguments are provided to the subcommand."""
-        # FIX: Invoke the main app with just the subcommand to trigger its "no_args_is_help"
-        result = self.runner.invoke(main_app, ["credibility"])
+        # FIX: Invoke the local credibility_app to trigger "no_args_is_help"
+        result = self.runner.invoke(credibility_app, [])
         self.assertNotEqual(result.exit_code, 0) # Should fail and show help
         self.assertIn("Usage:", result.stdout)
 

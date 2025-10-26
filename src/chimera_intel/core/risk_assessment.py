@@ -45,7 +45,14 @@ def calculate_risk(
                         severity_impact += 1.5  # Boost for critical
                     elif severity == "high":
                         severity_impact += 0.5  # Boost for high
-            impact = min(10.0, impact + severity_impact + len(vulnerabilities) * 0.5)
+                    # FIX: Added boosts for medium and low severities
+                    elif severity == "medium":
+                        severity_impact += 0.5  # Boost for medium
+                    elif severity == "low":
+                        severity_impact += 0.1  # Boost for low
+            # FIX: Removed the 'len(vulnerabilities) * 0.5' boost
+            # The logic should only be based on severity scores.
+            impact = min(10.0, impact + severity_impact)
         # Adjust probability based on threat actor activity
 
         if threat_actors:

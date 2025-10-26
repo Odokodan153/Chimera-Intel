@@ -171,8 +171,8 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         # FIX: Removed the "track" command name
         result = self.runner.invoke(cli_app, ["EZ123"])
         self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
-        self.assertIn("Missing option '--carrier'", result.stdout)
-
+        # FIX: Typer prints missing option errors to stderr, not stdout
+        self.assertIn("Missing option '--carrier'", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()
