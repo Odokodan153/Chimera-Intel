@@ -87,49 +87,6 @@ def test_optimize_models_no_data(mock_db_connection_no_data):
     assert result.exit_code == 1
     assert "No performance records found" in result.stdout
 
-# Fixture for CliRunner
-@pytest.fixture
-def runner():
-    return CliRunner()
-
-
-@pytest.fixture
-def mock_db_connection(mocker):
-    """Mocks the psycopg2 database connection and cursor with forecast data."""
-    mock_cursor = MagicMock()
-    mock_cursor.fetchall.return_value = [
-        (
-            "Competitor X will launch a new product.",
-            False,
-            "Competitor X did not launch a new product; they acquired a startup instead.",
-        ),
-        (
-            "Market Y will grow by 10%.",
-            True,
-            "Market Y grew by 11%.",
-        ),
-    ]
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mocker.patch(
-        "chimera_intel.core.autonomous.get_db_connection", return_value=mock_conn
-    )
-    return mock_conn, mock_cursor
-
-
-@pytest.fixture
-def mock_db_connection_no_data(mocker):
-    """Mocks the database connection to return no data."""
-    mock_cursor = MagicMock()
-    mock_cursor.fetchall.return_value = []  # Empty list
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mocker.patch(
-        "chimera_intel.core.autonomous.get_db_connection", return_value=mock_conn
-    )
-    return mock_conn, mock_cursor
-
-
 @pytest.fixture
 def mock_db_connection_ab_test(mocker):
     """Mocks the database connection with A/B test results."""
@@ -279,26 +236,6 @@ def test_trigger_retraining_pipeline_request_exception(mock_file_open, mock_post
 
 # --- Tests for "optimize-models" CLI command ---
 
-def test_optimize_models_success(runner, mock_db_connection, mock_api_keys, mock_ai_task):
-    """Tests the successful run of the optimize-models command."""
-    result = runner.invoke(
-        autonomous_app,
-        ["optimize-models", "--module", "forecaster"],
-    )
-    
-    assert result.exit_code == 0
-    assert "Model Optimization Plan" in result.stdout
-    assert "Incorporate M&A data" in result.stdout
-    assert "Note:" in result.stdout # Should show note about --auto-trigger
-    
-    mock_ai_task.assert_called_once()
-    prompt_arg = mock_ai_task.call_args[0][0]
-    assert "You are a Machine Learning Operations (MLOps) specialist" in prompt_arg
-    assert "Prediction Correct: False" in prompt_arg
-    assert "acquired a startup instead" in prompt_arg
-    assert "Prediction Correct: True" in prompt_arg # Check both records are in prompt
-    assert "Market Y grew by 11%" in prompt_arg
-
 @patch("chimera_intel.core.autonomous.trigger_retraining_pipeline")
 def test_optimize_models_auto_trigger(mock_trigger, runner, mock_db_connection, mock_api_keys, mock_ai_task):
     """Tests the --auto-trigger flag."""
@@ -314,15 +251,6 @@ def test_optimize_models_auto_trigger(mock_trigger, runner, mock_db_connection, 
     
     # Check that the trigger function was called
     mock_trigger.assert_called_once_with("Recommendation: Incorporate M&A data.")
-
-def test_optimize_models_no_data(runner, mock_db_connection_no_data, mock_api_keys):
-    """Tests the command's behavior when no performance data is found."""
-    result = runner.invoke(
-        autonomous_app,
-        ["optimize-models", "--module", "forecaster"],
-    )
-    assert result.exit_code == 1
-    assert "No performance records found" in result.stdout
 
 def test_optimize_models_unsupported_module(runner, mock_api_keys):
     """Tests running with an unsupported module name."""

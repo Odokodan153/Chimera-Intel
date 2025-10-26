@@ -1,10 +1,8 @@
 import unittest
-import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.credibility_assessor import (
     assess_source_credibility,
-    check_google_safe_browsing,
-    run_credibility_assessment_cli,
+    check_google_safe_browsing
 )
 from chimera_intel.core.schemas import CredibilityResult
 from datetime import datetime
