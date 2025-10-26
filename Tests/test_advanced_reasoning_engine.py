@@ -1,11 +1,11 @@
 import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from chimera_intel.core.advanced_reasoning_engine import (
     decompose_objective,
     generate_reasoning,
 )
-from chimera_intel.core.schemas import AnalysisResult, ReasoningOutput
+from chimera_intel.core.schemas import AnalysisResult
 
 # Mock the gemini_client at the module level
 @pytest.fixture(autouse=True)
