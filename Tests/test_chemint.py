@@ -141,55 +141,35 @@ class TestPatentSearch:
     Tests for the 'monitor-patents-research' command.
     """
 
-    @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
-    def test_cli_patents_section_output(
-        self, mock_scholarly_search, mock_pypatent_class, runner, mock_patent_info
-    ):
-        patent_title = "Method for synthesizing a high-temperature resistant polymer"
-        patent_url = "http://example.com/patent"
+    @patch("chimera_intel.core.chemint.pypatent.Search")
+    def test_patent_only_output(self, mock_pypatent_class, mock_scholarly, runner, mock_patent_data):
+        """Test that patents are displayed correctly in the CLI."""
+        # Scholarly mock returns empty so research section is empty
+        mock_scholarly.return_value = iter([])
 
-        # --- A.I. FIX (Third Time's the Charm) ---
-        mock_patent_obj = MagicMock()
-        mock_patent_obj.title = patent_title
-        mock_patent_obj.url = patent_url
+        # Mock the patent search
+        mock_instance = MagicMock()
+        mock_instance.results = mock_patent_data
+        mock_pypatent_class.return_value = mock_instance
 
-        # 1. Create the mock for the pypatent.Search() instance
-        mock_pypatent_instance = MagicMock()
-
-        # 2. Create a new mock specifically for the 'results' attribute
-        mock_results = MagicMock()
-        
-        # 3. Make it NOT callable (like a list)
-        #    This is the line I had wrong. side_effect is set on the mock itself.
-        mock_results.side_effect = TypeError("'MagicMock' object is not callable")
-
-        # 4. Give it a length (like a list)
-        mock_results.__len__.return_value = 1
-        
-        # 5. Make it iterable (like a list)
-        mock_results.__iter__.return_value = iter([mock_patent_obj])
-        
-        # 6. Assign our list-like mock to its .results attribute
-        mock_pypatent_instance.results = mock_results
-
-        # 7. Set the pypatent.Search class to return our instance
-        mock_pypatent_class.return_value = mock_pypatent_instance
-        # --- A.I. FIX END ---
-
-        mock_scholarly_search.return_value = iter([])
-
+        # Run CLI
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
-
         stdout = result.stdout
-        assert result.exit_code == 0, f"CLI failed with: {stdout}"
-        assert "Patents (USPTO)" in stdout
-        assert patent_title in stdout
-        assert patent_url in stdout
-        assert "A great paper" not in stdout
 
+        # Exit code should be 0
+        assert result.exit_code == 0
+
+        # Patent section printed
+        assert "Patents (USPTO):" in stdout
+        assert "High-temperature polymer synthesis" in stdout
+        assert "http://example.com/patent/123" in stdout
+
+        # Research section still printed but empty
+        assert "Research Papers (Google Scholar)" in stdout
+        
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_research_section_output(
