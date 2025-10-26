@@ -149,31 +149,31 @@ class TestPatentSearch:
         patent_title = "Method for synthesizing a high-temperature resistant polymer"
         patent_url = "http://example.com/patent"
 
-        # --- A.I. FIX START ---
+        # --- A.I. FIX (Third Time's the Charm) ---
         mock_patent_obj = MagicMock()
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
 
-        # This is the instance returned by pypatent.Search()
+        # 1. Create the mock for the pypatent.Search() instance
         mock_pypatent_instance = MagicMock()
-        
-        # Configure the 'results' attribute. It must be a mock object itself,
-        # not a real list, to correctly test the 'len(patents)' fix.
-        
-        # 1. Assign a new MagicMock to the 'results' attribute
-        mock_pypatent_instance.results = MagicMock()
-        
-        # 2. Make this 'results' mock iterable
-        mock_pypatent_instance.results.__iter__.return_value = iter([mock_patent_obj])
-        
-        # 3. Give it a __len__ so it passes the `len(patents) > 0` check.
-        mock_pypatent_instance.results.__len__.return_value = 1
-        
-        # 4. Explicitly make it NOT callable to ensure the `if callable(patents):`
-        #    block is skipped, forcing the code to use our mock object directly.
-        mock_pypatent_instance.results.__call__.side_effect = TypeError('not callable')
 
-        # Set the return value for the pypatent.Search class
+        # 2. Create a new mock specifically for the 'results' attribute
+        mock_results = MagicMock()
+        
+        # 3. Make it NOT callable (like a list)
+        #    This is the line I had wrong. side_effect is set on the mock itself.
+        mock_results.side_effect = TypeError("'MagicMock' object is not callable")
+
+        # 4. Give it a length (like a list)
+        mock_results.__len__.return_value = 1
+        
+        # 5. Make it iterable (like a list)
+        mock_results.__iter__.return_value = iter([mock_patent_obj])
+        
+        # 6. Assign our list-like mock to its .results attribute
+        mock_pypatent_instance.results = mock_results
+
+        # 7. Set the pypatent.Search class to return our instance
         mock_pypatent_class.return_value = mock_pypatent_instance
         # --- A.I. FIX END ---
 
