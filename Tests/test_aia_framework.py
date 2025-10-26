@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 
 # Import the class and CLI app from the source file
 from chimera_intel.core.aia_framework import AIAFramework, app as aia_cli_app
-from chimera_intel.core.schemas import AnalysisResult, ReasoningOutput
+from chimera_intel.core.schemas import AnalysisResult, ReasoningOutput, Plan, Task
 # Add the project's root directory to the Python path to ensure imports work correctly
 
 sys.path.insert(
@@ -16,9 +16,7 @@ sys.path.insert(
 
 from chimera_intel.core.aia_framework import (
     create_initial_plans,
-    synthesize_and_refine,
-    Plan,
-    Task,
+    synthesize_and_refine
 )
 
 class MockModule:
