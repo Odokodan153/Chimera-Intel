@@ -163,6 +163,7 @@ class TestPatentSearch:
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
         
+        mock_pypatent_class = MagicMock()
         mock_pypatent_class.results = [mock_patent_obj]
         
         # The return value of pypatent.Search(...) is our mock instance.
