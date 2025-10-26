@@ -148,50 +148,34 @@ class TestPatentSearch:
     ):
         """
         Tests if the 'Patents (USPTO)' section renders correctly.
-        This section correctly calls 'pypatent.Search'.
         """
-        # 1. Define Mock Data
-        patent_title = mock_patent_info.title
-        patent_url = "http://example.com/patent"
 
-        # 2. Configure Mocks
-        
-        # --- START FIX ---
-        # The application code (chemint.py) accesses .title and .url attributes.
-        # We create a MagicMock to simulate the patent object.
+        # --- 1. Mock Patent Object ---
         mock_patent_obj = MagicMock()
-        mock_patent_obj.title = patent_title
-        mock_patent_obj.url = patent_url
+        mock_patent_obj.title = mock_patent_info.title
+        mock_patent_obj.url = "http://example.com/patent"
 
-        # This is the same mocking strategy used in the WORKING test
-        # (test_cli_research_section_output). We create an instance...
-        mock_pypatent_instance = MagicMock()
-        
-        # ...and set its .results attribute to a *direct list* containing our mock object.
-        # This matches the mocking strategy in 'test_cli_research_section_output'
-        # and correctly interacts with the application's logic.
-        mock_pypatent_instance.results = [mock_patent_obj]
-        
-        # The return value of pypatent.Search(...) is our mock instance.
-        mock_pypatent_class.return_value = mock_pypatent_instance
-        # --- END FIX ---
+        # --- 2. Mock Search Instance ---
+        mock_search_instance = MagicMock()
+        mock_search_instance.results = [mock_patent_obj]  # plain list, not callable
+        mock_pypatent_class.return_value = mock_search_instance
 
-        # Mock for scholarly (the other section), returning no results
-        mock_scholarly_search.return_value = iter([]) 
+        # --- 3. Mock Scholarly Search (empty for this test) ---
+        mock_scholarly_search.return_value = iter([])
 
-        # 3. Run CLI
+        # --- 4. Run CLI ---
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
         stdout = result.stdout
 
-        # 4. Assertions
-        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
+        # --- 5. Assertions ---
+        assert result.exit_code == 0, f"CLI failed with: {stdout}"
         assert "Patents (USPTO)" in stdout
-        assert patent_title in stdout
-        assert patent_url in stdout
-        
-        # Make sure research data (which would come from the other mock) isn't present
+        assert mock_patent_info.title in stdout
+        assert "http://example.com/patent" in stdout
+
+        # Ensure no research papers accidentally appear
         assert "A great paper" not in stdout
 
 
