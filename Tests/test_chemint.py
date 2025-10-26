@@ -149,19 +149,33 @@ class TestPatentSearch:
         patent_title = "Method for synthesizing a high-temperature resistant polymer"
         patent_url = "http://example.com/patent"
 
-        # --- FIX START ---
+        # --- A.I. FIX START ---
         mock_patent_obj = MagicMock()
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
 
-        # A.I. FIX: .results should be mocked as a callable method
-        # that returns a list, to match the logic in chemint.py
+        # This is the instance returned by pypatent.Search()
         mock_pypatent_instance = MagicMock()
-        mock_pypatent_instance.results.return_value = [mock_patent_obj]
+        
+        # Configure the 'results' attribute. It must be a mock object itself,
+        # not a real list, to correctly test the 'len(patents)' fix.
+        
+        # 1. Assign a new MagicMock to the 'results' attribute
+        mock_pypatent_instance.results = MagicMock()
+        
+        # 2. Make this 'results' mock iterable
+        mock_pypatent_instance.results.__iter__.return_value = iter([mock_patent_obj])
+        
+        # 3. Give it a __len__ so it passes the `len(patents) > 0` check.
+        mock_pypatent_instance.results.__len__.return_value = 1
+        
+        # 4. Explicitly make it NOT callable to ensure the `if callable(patents):`
+        #    block is skipped, forcing the code to use our mock object directly.
+        mock_pypatent_instance.results.__call__.side_effect = TypeError('not callable')
 
-        # This line remains correct
+        # Set the return value for the pypatent.Search class
         mock_pypatent_class.return_value = mock_pypatent_instance
-        # --- FIX END ---
+        # --- A.I. FIX END ---
 
         mock_scholarly_search.return_value = iter([])
 
