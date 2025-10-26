@@ -154,9 +154,12 @@ class TestPatentSearch:
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
 
+        # A.I. FIX: .results should be mocked as a callable method
+        # that returns a list, to match the logic in chemint.py
         mock_pypatent_instance = MagicMock()
-        mock_pypatent_instance.results = [mock_patent_obj]
+        mock_pypatent_instance.results.return_value = [mock_patent_obj]
 
+        # This line remains correct
         mock_pypatent_class.return_value = mock_pypatent_instance
         # --- FIX END ---
 
@@ -172,8 +175,6 @@ class TestPatentSearch:
         assert patent_title in stdout
         assert patent_url in stdout
         assert "A great paper" not in stdout
-
-
 
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
