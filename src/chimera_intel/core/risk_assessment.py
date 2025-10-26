@@ -11,9 +11,7 @@ from .threat_actor_intel import search_threat_actors
 from .schemas import (
     Vulnerability,
     ThreatActor,
-    RiskAssessmentResult,
-    # FIX: Import CVE schema for type conversion
-    CVE,
+    RiskAssessmentResult
 )
 
 logger = logging.getLogger(__name__)
