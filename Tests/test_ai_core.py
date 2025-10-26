@@ -4,10 +4,9 @@ from unittest.mock import patch, MagicMock, mock_open
 from typer.testing import CliRunner
 
 # Import the specific Typer app for this module's CLI tests
-
-
 from chimera_intel.core.ai_core import (
     analyze_sentiment,
+    classify_text_zero_shot,  # Import the missing function
     generate_swot_from_data,
     detect_traffic_anomalies,
     generate_narrative_from_graph,
@@ -54,6 +53,36 @@ class TestAiCore(unittest.TestCase):
             self.assertEqual(result.label, "ERROR")
             self.assertIn("not installed", result.error)
 
+    # --- Extended Test ---
+    @patch("chimera_intel.core.ai_core.classifier")
+    def test_classify_text_zero_shot_success(self, mock_classifier):
+        """
+        Tests the zero-shot classification function.
+        """
+        mock_classifier.return_value = {"labels": ["urgent"], "scores": [0.9]}
+        result = classify_text_zero_shot("This is an urgent matter", ["urgent", "spam"])
+        self.assertIsNotNone(result)
+        self.assertIn("urgent", result["labels"])
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.ai_core.classifier")
+    def test_classify_text_zero_shot_failure(self, mock_classifier):
+        """
+        Tests the zero-shot classification function when the model fails.
+        """
+        mock_classifier.side_effect = Exception("Model error")
+        result = classify_text_zero_shot("Some text", ["urgent", "spam"])
+        self.assertIsNone(result)
+
+    # --- Extended Test ---
+    def test_classify_text_zero_shot_no_model(self):
+        """
+        Tests the zero-shot classification function when the model is not installed.
+        """
+        with patch("chimera_intel.core.ai_core.classifier", None):
+            result = classify_text_zero_shot("Some text", ["urgent", "spam"])
+            self.assertIsNone(result)
+
     @patch("chimera_intel.core.ai_core.genai")
     def test_generate_swot_from_data_success(self, mock_genai: MagicMock):
         """
@@ -95,7 +124,7 @@ class TestAiCore(unittest.TestCase):
 
     def test_detect_traffic_anomalies_invalid_data(self):
         """Tests anomaly detection with invalid (non-numeric) data."""
-        invalid_data = [100.0, "not a number", 110.0]
+        invalid_data = [100.0, "not a number", 110.0]  # type: ignore
         result = detect_traffic_anomalies(invalid_data)
         self.assertIn("Invalid input", result.error)
 
@@ -113,13 +142,8 @@ class TestAiCore(unittest.TestCase):
         Tests the 'sentiment' CLI command with more specific assertions.
         """
         mock_analyze.return_value = SentimentAnalysisResult(label="POSITIVE", score=0.9)
-        # CORRECTED: Test the specific Typer app instance for this module
-
         result = runner.invoke(ai_app, ["sentiment", "I love this!"])
         self.assertEqual(result.exit_code, 0)
-
-        # IMPROVED: Parse the JSON output for more precise testing
-
         output = json.loads(result.stdout)
         self.assertEqual(output["label"], "POSITIVE")
         self.assertAlmostEqual(output["score"], 0.9)
@@ -134,8 +158,6 @@ class TestAiCore(unittest.TestCase):
         mock_swot.return_value = SWOTAnalysisResult(
             analysis_text="SWOT Text", error=None
         )
-        # CORRECTED: Test the specific Typer app instance for this module
-
         result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("SWOT Text", result.stdout)
@@ -146,9 +168,44 @@ class TestAiCore(unittest.TestCase):
         """
         Tests the 'swot' command when the input file is not found.
         """
-        # CORRECTED: Test the specific Typer app instance for this module
-
         result = runner.invoke(ai_app, ["swot", "nonexistent.json"])
+        self.assertEqual(result.exit_code, 1)
+
+    # --- Extended Test ---
+    @patch("builtins.open", new_callable=mock_open, read_data="invalid json")
+    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
+    def test_cli_swot_command_invalid_json(self, mock_file: MagicMock):
+        """
+        Tests the 'swot' command when the input file contains invalid JSON.
+        """
+        result = runner.invoke(ai_app, ["swot", "input.json"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Invalid JSON", result.stdout)
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", None)
+    def test_cli_swot_command_no_api_key(self):
+        """
+        Tests the 'swot' command when the GOOGLE_API_KEY is not set.
+        """
+        result = runner.invoke(ai_app, ["swot", "input.json"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Google API key not found", result.stdout)
+
+    # --- Extended Test ---
+    @patch("builtins.open", new_callable=mock_open, read_data='{"data": "test"}')
+    @patch("chimera_intel.core.ai_core.generate_swot_from_data")
+    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
+    def test_cli_swot_command_api_error(
+        self, mock_swot: MagicMock, mock_file: MagicMock
+    ):
+        """
+        Tests the 'swot' CLI command when the underlying function returns an error.
+        """
+        mock_swot.return_value = SWOTAnalysisResult(
+            analysis_text="", error="API Error"
+        )
+        result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 1)
 
     @patch("chimera_intel.core.ai_core.detect_traffic_anomalies")
@@ -159,85 +216,66 @@ class TestAiCore(unittest.TestCase):
         mock_detect.return_value = AnomalyDetectionResult(
             data_points=[100.0, 200.0, 500.0], detected_anomalies=[500.0]
         )
-        # CORRECTED: Test the specific Typer app instance for this module
-
         result = runner.invoke(ai_app, ["anomaly", "100,200,500"])
         self.assertEqual(result.exit_code, 0)
-
-        # IMPROVED: Parse the JSON output for more precise testing
-
         output = json.loads(result.stdout)
         self.assertIn(500.0, output["detected_anomalies"])
         self.assertEqual(len(output["detected_anomalies"]), 1)
 
     def test_cli_anomaly_command_invalid_data(self):
         """Tests the 'anomaly' command with invalid data."""
-        # CORRECTED: Test the specific Typer app instance for this module
-
         result = runner.invoke(ai_app, ["anomaly", "a,b,c"])
-        # Should exit cleanly, but the function inside will handle the error
-
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Invalid data points", result.stdout)
 
-    # --- EXTENDED LOGIC & EDGE CASES ---
-
-    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", None)
-    def test_cli_swot_command_no_api_key(self):
-        """
-        Tests the 'swot' command when the GOOGLE_API_KEY is not set.
-        """
-        # CORRECTED: Test the specific Typer app instance for this module
-
-        result = runner.invoke(ai_app, ["swot", "input.json"])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Google API key not found", result.stdout)
-
-    @patch("builtins.open", new_callable=mock_open, read_data="invalid json")
-    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
-    def test_cli_swot_command_invalid_json(self, mock_file: MagicMock):
-        """
-        Tests the 'swot' command when the input file contains invalid JSON.
-        """
-        # CORRECTED: Test the specific Typer app instance for this module
-
-        result = runner.invoke(ai_app, ["swot", "input.json"])
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("Invalid JSON", result.stdout)
+    # --- Extended Test ---
+    def test_cli_anomaly_command_no_data(self):
+        """Tests the 'anomaly' command with no valid data."""
+        result = runner.invoke(ai_app, ["anomaly", ", ,"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Invalid data points", result.stdout)
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")
     @patch("os.path.exists", return_value=True)
     @patch(
-        "builtins.open", new_callable=mock_open, read_data='{"domain": "example.com"}'
+        "builtins.open",
+        new_callable=mock_open,
+        read_data='{"domain": "example.com", "footprint": {"dns_records": {"A": ["1.2.3.4"]}}}',
     )
     def test_generate_narrative_from_graph_success(
         self, mock_file, mock_exists, mock_build_graph, mock_gen_swot
     ):
         """Tests successful graph narrative generation."""
-        mock_build_graph.return_value = EntityGraphResult(
-            target="example.com", total_nodes=2, total_edges=1, nodes=[], edges=[]
-        )
         mock_gen_swot.return_value = SWOTAnalysisResult(analysis_text="Test narrative")
 
-        result = generate_narrative_from_graph("example.com", "fake_api_key")
+        result = generate_narrative_from_graph("example.com.json", "fake_api_key")
 
         self.assertIsInstance(result, GraphNarrativeResult)
         self.assertEqual(result.narrative_text, "Test narrative")
         self.assertIsNone(result.error)
+        mock_build_graph.assert_called_once()
 
-    @patch("chimera_intel.core.ai_core.build_and_save_graph")
-    def test_generate_narrative_from_graph_build_error(self, mock_build_graph):
-        """Tests graph narrative generation when the graph build fails."""
-        mock_build_graph.return_value = EntityGraphResult(
-            target="example.com", total_nodes=0, total_edges=0, error="DB error"
-        )
-
-        result = generate_narrative_from_graph("example.com", "fake_api_key")
-
+    # --- Extended Test ---
+    @patch("os.path.exists", return_value=False)
+    def test_generate_narrative_from_graph_db_not_found(self, mock_exists):
+        """
+        Tests narrative generation when the source JSON file doesn't exist.
+        """
+        result = generate_narrative_from_graph("nonexistent.json", "fake_api_key")
         self.assertIsNotNone(result.error)
-        self.assertIn("DB error", result.error)
-        self.assertEqual(result.narrative_text, "")
+        self.assertEqual(result.error, "DB error")
+
+    # --- Extended Test ---
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", new_callable=mock_open, read_data="invalid json data")
+    def test_generate_narrative_from_graph_json_error(self, mock_file, mock_exists):
+        """
+        Tests narrative generation when the source JSON file is malformed.
+        """
+        result = generate_narrative_from_graph("bad.json", "fake_api_key")
+        self.assertIsNotNone(result.error)
+        self.assertIn("JSONDecodeError", result.error)
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")
@@ -249,14 +287,11 @@ class TestAiCore(unittest.TestCase):
         self, mock_file, mock_exists, mock_build_graph, mock_gen_swot
     ):
         """Tests graph narrative generation when the SWOT analysis fails."""
-        mock_build_graph.return_value = EntityGraphResult(
-            target="example.com", total_nodes=2, total_edges=1, nodes=[], edges=[]
-        )
         mock_gen_swot.return_value = SWOTAnalysisResult(
             analysis_text="", error="API Error"
         )
 
-        result = generate_narrative_from_graph("example.com", "fake_api_key")
+        result = generate_narrative_from_graph("example.com.json", "fake_api_key")
 
         self.assertIsNotNone(result.error)
         self.assertIn("API Error", result.error)

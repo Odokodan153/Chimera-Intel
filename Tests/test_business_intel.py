@@ -124,6 +124,34 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("500", result.error)
 
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
+    async def test_get_news_gnews_request_error(self, mock_async_get):
+        """Tests the GNews lookup for a network/request error."""
+        # Arrange
+        mock_async_get.side_effect = RequestError("Network down")
+
+        # Act
+        result = await get_news_gnews("Apple", "fake_api_key")
+
+        # Assert
+        self.assertIsNotNone(result.error)
+        self.assertIn("A network error occurred: Network down", result.error)
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
+    async def test_get_news_gnews_unexpected_error(self, mock_async_get):
+        """Tests the GNews lookup for a generic exception."""
+        # Arrange
+        mock_async_get.side_effect = Exception("Parsing error")
+
+        # Act
+        result = await get_news_gnews("Apple", "fake_api_key")
+
+        # Assert
+        self.assertIsNotNone(result.error)
+        self.assertIn("An unexpected error occurred: Parsing error", result.error)
+
     async def test_get_news_gnews_no_api_key(self):
         """Tests the GNews lookup when the API key is missing."""
         # Act
@@ -169,6 +197,69 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(result.error)
         self.assertIn("Network error scraping patents", result.error)
 
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
+    async def test_scrape_google_patents_http_error(self, mock_async_get):
+        """Tests the patent scraper for an HTTP status error."""
+        # Arrange
+        http_error = HTTPStatusError(
+            "Forbidden", request=MagicMock(), response=Response(status_code=403)
+        )
+        mock_async_get.side_effect = http_error
+
+        # Act
+        result = await scrape_google_patents("Apple")
+
+        # Assert
+        self.assertIsNotNone(result.error)
+        self.assertIn("HTTP error scraping patents: 403", result.error)
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.async_client.get", new_callable=AsyncMock)
+    async def test_scrape_google_patents_unexpected_error(self, mock_async_get):
+        """Tests the patent scraper for a generic exception."""
+        # Arrange
+        mock_async_get.side_effect = Exception("Parsing error")
+
+        # Act
+        result = await scrape_google_patents("Apple")
+
+        # Assert
+        self.assertIsNotNone(result.error)
+        self.assertIn("An unexpected error occurred while scraping patents", result.error)
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.API_KEYS")
+    def test_get_sec_filings_analysis_no_api_key(self, mock_api_keys):
+        """Tests SEC filing analysis when the sec-api key is missing."""
+        # Arrange
+        mock_api_keys.sec_api_io_key = None
+
+        # Act
+        result = get_sec_filings_analysis("AAPL")
+
+        # Assert
+        self.assertIsNone(result)
+
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.QueryApi")
+    @patch("chimera_intel.core.business_intel.API_KEYS")
+    def test_get_sec_filings_analysis_no_filings_found(
+        self, mock_api_keys, mock_query_api
+    ):
+        """Tests SEC filing analysis when no 10-K filings are found."""
+        # Arrange
+        mock_api_keys.sec_api_io_key = "fake_key"
+        mock_query_instance = mock_query_api.return_value
+        # Simulate API returning an empty list of filings
+        mock_query_instance.get_filings.return_value = {"filings": []}
+
+        # Act
+        result = get_sec_filings_analysis("AAPL")
+
+        # Assert
+        self.assertIsNone(result)
+
     @patch("chimera_intel.core.business_intel.QueryApi")
     @patch("chimera_intel.core.business_intel.ExtractorApi")
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -190,7 +281,6 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
 
     # --- CLI Command Tests ---
 
-    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.asyncio.run")
@@ -206,24 +296,20 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_save_db,
         mock_save_print,
     ):
-        """Tests a successful run of the 'scan business run' command."""
+        """Tests a successful run of the 'business run' command."""
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
-        # FIX: Add side_effect to actually run the coroutine
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        # PYTEST_FIX: Remove "run" from the invocation.
-        # The app is behaving as if business_app *is* the command.
-        result = runner.invoke(business_app, ["Apple", "--ticker", "AAPL"])
+        result = runner.invoke(business_app, ["run", "Apple", "--ticker", "AAPL"])
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 0, result.stderr)
         mock_asyncio_run.assert_called_once()
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.asyncio.run")
@@ -243,23 +329,19 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
         mock_api_keys.sec_api_io_key = "dummy_key"
-        # FIX: Add side_effect to actually run the coroutine
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        # PYTEST_FIX: Remove "run" from the invocation.
         result = runner.invoke(
-            business_app, ["Microsoft", "--ticker", "MSFT", "--filings"]
+            business_app, ["run", "Microsoft", "--ticker", "MSFT", "--filings"]
         )
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
-        # Check that the async main function was called, implying the command was parsed correctly
+        self.assertEqual(result.exit_code, 0, result.stderr)
         mock_asyncio_run.assert_called_once()
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
-    # FIX: Change asyncio.run patch to be a standard mock
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.asyncio.run")
@@ -280,29 +362,55 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         """Tests that a warning is logged if --filings is used without --ticker."""
         # Arrange
         mock_api_keys.gnews_api_key = "dummy_key"
-        # No sec_api_io_key, so the SEC task will be skipped, but the warning should still log.
-        # FIX: Add side_effect to actually run the coroutine
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        # PYTEST_FIX: Remove "run" from the invocation.
-        result = runner.invoke(business_app, ["SomeCompany", "--filings"])
+        result = runner.invoke(business_app, ["run", "SomeCompany", "--filings"])
 
         # Assert
-        
-        # It should still exit cleanly
-        self.assertEqual(result.exit_code, 0)
-        # Check that the warning was logged
+        self.assertEqual(result.exit_code, 0, result.stderr)
         mock_logger.warning.assert_called_with(
             "The --filings flag requires a --ticker to be provided."
         )
-        # Check that the main logic still ran
         mock_asyncio_run.assert_called_once()
         mock_save_print.assert_called_once()
         mock_save_db.assert_called_once()
 
+    # --- Extended Test ---
+    @patch("chimera_intel.core.business_intel.save_or_print_results")
+    @patch("chimera_intel.core.business_intel.save_scan_to_db")
+    @patch("chimera_intel.core.business_intel.asyncio.run")
+    @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
+    @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
+    @patch("chimera_intel.core.business_intel.API_KEYS")
+    @patch("chimera_intel.core.business_intel.logger")
+    def test_cli_business_intel_no_gnews_key_warning(
+        self,
+        mock_logger,
+        mock_api_keys,
+        mock_resolve_target,
+        mock_get_project,
+        mock_asyncio_run,
+        mock_save_db,
+        mock_save_print,
+    ):
+        """Tests that a warning is logged if the GNews API key is missing."""
+        # Arrange
+        mock_api_keys.gnews_api_key = None  # No GNews key
+        mock_asyncio_run.side_effect = run_coroutine
 
-    # FIX: Change asyncio.run patch to be a standard mock
+        # Act
+        result = runner.invoke(business_app, ["run", "SomeCompany"])
+
+        # Assert
+        self.assertEqual(result.exit_code, 0, result.stderr)
+        mock_logger.warning.assert_called_with(
+            "GNews API key not found. Skipping news gathering."
+        )
+        mock_asyncio_run.assert_called_once()
+        mock_save_print.assert_called_once()
+        mock_save_db.assert_called_once()
+
     @patch("chimera_intel.core.business_intel.save_or_print_results")
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.resolve_target")
@@ -329,17 +437,14 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
             ticker="PCRP",
         )
         mock_get_project.return_value = mock_project
-        # FIX: Add side_effect to actually run the coroutine
         mock_asyncio_run.side_effect = run_coroutine
         
         # Act
-        # PYTEST_FIX: Remove "run" from invocation.
         # This will pass `None` to company_name, triggering the resolver.
-        result = runner.invoke(business_app, [])
+        result = runner.invoke(business_app, ["run"])
 
         # Assert
-        self.assertEqual(result.exit_code, 0)
-        # FIX: The first argument to resolve_target is company_name, which is None
+        self.assertEqual(result.exit_code, 0, result.stderr)
         mock_resolve_target.assert_called_once_with(
             None, required_assets=["company_name"]
         )
@@ -354,8 +459,7 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_resolve_target.side_effect = typer.Exit(code=1)
 
         # Act
-        # PYTEST_FIX: Remove "run" from invocation.
-        result = runner.invoke(business_app, [])
+        result = runner.invoke(business_app, ["run"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
