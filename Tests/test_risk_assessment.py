@@ -11,8 +11,9 @@ from chimera_intel.core.schemas import (
     ThreatActor,
     ThreatIntelResult,
     RiskAssessmentResult,
+    PulseInfo,  
 )
-from chimera_intel.core.threat_intel import OTXPulse
+
 from cve_search import CVESearch
 
 # Fixture for CliRunner
@@ -51,8 +52,8 @@ def mock_threat_intel():
         is_malicious=True,
         pulse_count=60, # -> probability 0.7
         pulses=[
-            OTXPulse(name="Pulse 1", tags=["ransomware"], malware_families=["lockbit"]),
-            OTXPulse(name="Pulse 2", tags=["apt"], malware_families=[]),
+            PulseInfo(name="Pulse 1", tags=["ransomware"], malware_families=["lockbit"]), # <-- Changed to PulseInfo
+            PulseInfo(name="Pulse 2", tags=["apt"], malware_families=[]),             # <-- Changed to PulseInfo
         ], # -> impact 9.0
         error=None,
     )
