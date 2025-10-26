@@ -6,7 +6,10 @@ import pandas as pd
 from unittest.mock import patch, MagicMock, mock_open, ANY
 from chimera_intel.core.autonomous import autonomous_app, trigger_retraining_pipeline
 
-runner = CliRunner()
+
+@pytest.fixture
+def runner():
+    return CliRunner()
 
 
 @pytest.fixture
