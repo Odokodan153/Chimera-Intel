@@ -143,33 +143,30 @@ class TestPatentSearch:
 
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     @patch("chimera_intel.core.chemint.pypatent.Search")
-    def test_patent_only_output(self, mock_pypatent_class, mock_scholarly, runner, mock_patent_data):
-        """Test that patents are displayed correctly in the CLI."""
-        # Scholarly mock returns empty so research section is empty
+    def test_no_patents_found(self, mock_pypatent_class, mock_scholarly, runner):
+        """Test CLI behavior when no patents are found."""
+        # Scholarly mock returns empty iterator
         mock_scholarly.return_value = iter([])
 
-        # Mock the patent search
+        # Patent search mock returns empty list
         mock_instance = MagicMock()
-        mock_instance.results = mock_patent_data
+        mock_instance.results = []
         mock_pypatent_class.return_value = mock_instance
 
-        # Run CLI
         result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+            chemint_app, ["monitor-patents-research", "--keywords", "nonexistentchemical"]
         )
         stdout = result.stdout
 
-        # Exit code should be 0
+        # Exit code
         assert result.exit_code == 0
 
-        # Patent section printed
+        # Patent section should still appear with fallback message
         assert "Patents (USPTO):" in stdout
-        assert "High-temperature polymer synthesis" in stdout
-        assert "http://example.com/patent/123" in stdout
+        assert "No patents found on USPTO." in stdout
 
-        # Research section still printed but empty
+        # Research section should appear but empty
         assert "Research Papers (Google Scholar)" in stdout
-        
     @patch("chimera_intel.core.chemint.pypatent.Search")
     @patch("chimera_intel.core.chemint.scholarly.search_pubs")
     def test_cli_research_section_output(
