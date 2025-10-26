@@ -1,14 +1,13 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, AsyncMock
 
 # FIX: Import the main app for CLI testing
 from chimera_intel.cli import app as main_app
 
 from chimera_intel.core.risk_assessment import (
     calculate_risk,
-    assess_risk_from_indicator,
-    app as cli_app, # Keep this import for aia_framework
+    assess_risk_from_indicator
 )
 from chimera_intel.core.schemas import (
     Vulnerability,
