@@ -20,6 +20,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+import chimera_intel.core.modules as aia_modules
 
 from chimera_intel.core.advanced_reasoning_engine import generate_reasoning, decompose_objective
 
@@ -66,8 +67,6 @@ if not reasoning_logger.handlers:
     reasoning_file_handler.setFormatter(reasoning_formatter)
     reasoning_logger.addHandler(reasoning_file_handler)
 
-# --- FIX: Moved import to global scope ---
-import chimera_intel.core.modules as aia_modules
 
 # --- Dynamic Module Loader ---
 
