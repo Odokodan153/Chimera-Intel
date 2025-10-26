@@ -1,11 +1,5 @@
 import pytest
-import sys
-from pathlib import Path
 from chimera_intel.core.negotiation import NegotiationEngine
-from webapp.main import app
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
 
 
 @pytest.fixture

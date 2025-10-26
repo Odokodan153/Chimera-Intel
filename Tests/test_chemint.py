@@ -148,34 +148,56 @@ class TestPatentSearch:
     ):
         """
         Tests if the 'Patents (USPTO)' section renders correctly.
+        This section correctly calls 'pypatent.Search'.
         """
+        # 1. Define Mock Data
+        patent_title = mock_patent_info.title
+        patent_url = "http://example.com/patent"
 
-        # --- 1. Mock Patent Object ---
+        # 2. Configure Mocks
+        
+        # --- START FIX ---
+        # The application code (chemint.py) accesses .title and .url attributes.
+        # We create a MagicMock to simulate the patent object.
         mock_patent_obj = MagicMock()
-        mock_patent_obj.title = mock_patent_info.title
-        mock_patent_obj.url = "http://example.com/patent"
+        mock_patent_obj.title = patent_title
+        mock_patent_obj.url = patent_url
 
-        # --- 2. Mock Search Instance ---
-        mock_search_instance = MagicMock()
-        mock_search_instance.results = [mock_patent_obj]  # plain list, not callable
-        mock_pypatent_class.return_value = mock_search_instance
+        # Create a mock instance for pypatent.Search
+        mock_pypatent_instance = MagicMock()
 
-        # --- 3. Mock Scholarly Search (empty for this test) ---
-        mock_scholarly_search.return_value = iter([])
+        # THIS IS THE FIX:
+        # The app code checks `if callable(patents):`, so we mock `results`
+        # as a callable (a MagicMock) that *returns* our desired list.
+        # This correctly simulates an API like `search.results()`
+        mock_pypatent_instance.results = MagicMock(return_value=[mock_patent_obj])
+        
+        # The return value of pypatent.Search(...) is our mock instance.
+        mock_pypatent_class.return_value = mock_pypatent_instance
+        # --- END FIX ---
 
-        # --- 4. Run CLI ---
+        # Mock for scholarly (the other section), returning no results
+        mock_scholarly_search.return_value = iter([]) 
+
+        # 3. Run CLI
+        # --- ADDED --verbose FLAG ---
         result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+            chemint_app, ["monitor-patents-research", "--keywords", "polymer", "--verbose"]
         )
         stdout = result.stdout
 
-        # --- 5. Assertions ---
-        assert result.exit_code == 0, f"CLI failed with: {stdout}"
+        # 4. Assertions
+        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Patents (USPTO)" in stdout
-        assert mock_patent_info.title in stdout
-        assert "http://example.com/patent" in stdout
+        
+        # This assertion will now pass
+        assert patent_title in stdout 
+        assert patent_url in stdout
+        
+        # We can even test that our debug message appeared
+        assert "DEBUG: 'search.results' is callable" in stdout
 
-        # Ensure no research papers accidentally appear
+        # Make sure research data (which would come from the other mock) isn't present
         assert "A great paper" not in stdout
 
 
@@ -203,7 +225,7 @@ class TestPatentSearch:
 
         # Mock for pypatent (the other section's call, to avoid real requests)
         mock_pypatent_instance = MagicMock()
-        # This .results = [] is fine, as it correctly results in an empty table.
+        
         mock_pypatent_instance.results = [] 
         mock_pypatent_class.return_value = mock_pypatent_instance
 
