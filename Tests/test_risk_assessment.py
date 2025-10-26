@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock
 from chimera_intel.core.risk_assessment import (

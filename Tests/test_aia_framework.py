@@ -14,9 +14,6 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
 
-from chimera_intel.core.advanced_reasoning_engine import (
-    ReasoningOutput,
-)
 from chimera_intel.core.aia_framework import (
     create_initial_plans,
     synthesize_and_refine,
