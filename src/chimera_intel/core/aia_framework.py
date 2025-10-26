@@ -13,13 +13,15 @@ import re
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
-from .schemas import Plan, Task, SynthesizedReport, AnalysisResult
+
+# FIX: Changed relative imports to absolute
+from chimera_intel.core.schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .advanced_reasoning_engine import generate_reasoning, decompose_objective
+from chimera_intel.core.advanced_reasoning_engine import generate_reasoning, decompose_objective
 
 # --- Version Info ---
 
@@ -101,8 +103,9 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
     if not modules:
         # Fallback to ensure core functionality is present if dynamic loading fails
 
-        from .footprint import run_footprint_analysis
-        from .threat_intel import get_threat_intel_otx
+        # FIX: Changed relative imports to absolute
+        from chimera_intel.core.footprint import run_footprint_analysis
+        from chimera_intel.core.threat_intel import get_threat_intel_otx
 
         modules["footprint"] = {"func": run_footprint_analysis, "is_async": True}
         modules["threat_intel"] = {"func": get_threat_intel_otx, "is_async": False}

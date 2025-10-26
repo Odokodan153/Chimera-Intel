@@ -8,7 +8,8 @@ from chimera_intel.core.schemas import CredibilityResult
 from datetime import datetime
 import httpx
 from typer.testing import CliRunner
-from chimera_intel.core.credibility_assessor import app as cli_app
+# FIX: Import the main app from cli.py, not the sub-app
+from chimera_intel.cli import app as main_app
 
 # Use unittest.IsolatedAsyncioTestCase for async test methods
 class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
@@ -61,7 +62,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(result.credibility_score, 7.5)
         self.assertIsNone(result.error)
         self.assertIn("SSL certificate is present.", result.factors)
-        self.assertIn("Domain is mature", result.factors)
+        # FIX: Check if the factor *starts with* the text, to account for the dynamic age
+        self.assertTrue(any(f.startswith("Domain is mature") for f in result.factors))
         self.assertIn("URL is not flagged by Google Safe Browsing.", result.factors)
         self.assertIn("Social media presence detected.", result.factors)
 
@@ -92,8 +94,9 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         result = await assess_source_credibility("http://www.malicious-site.com")
         self.assertIsInstance(result, CredibilityResult)
         self.assertLess(result.credibility_score, 2.0)
-        self.assertIn("No SSL certificate", result.factors)
-        self.assertIn("Domain is very new", result.factors)
+        # FIX: Check if the factor *starts with* the text
+        self.assertTrue(any(f.startswith("No SSL certificate") for f in result.factors))
+        self.assertTrue(any(f.startswith("Domain is very new") for f in result.factors))
         self.assertIn(
             "URL is flagged by Google Safe Browsing as potentially malicious.",
             result.factors,
@@ -131,7 +134,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         result = await assess_source_credibility("https://www.clickbait-news.com")
         self.assertIsInstance(result, CredibilityResult)
         self.assertIn("Clickbait phrases found in content.", result.factors)
-        self.assertIn("Domain is relatively new", result.factors)
+        # FIX: Check if the factor *starts with* the text
+        self.assertTrue(any(f.startswith("Domain is relatively new") for f in result.factors))
         
     @patch("chimera_intel.core.credibility_assessor.urlparse", side_effect=Exception("Test Error"))
     async def test_assess_source_general_exception(self, mock_urlparse):
@@ -170,7 +174,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        result = self.runner.invoke(cli_app, ["assess", "https.example.com"])
+        # FIX: Invoke the main app with the full command ["credibility", "assess", ...]
+        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 8.5/10.0", result.stdout)
         self.assertIn("Factor 1", result.stdout)
@@ -187,7 +192,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        result = self.runner.invoke(cli_app, ["assess", "https.example.com"])
+        # FIX: Invoke the main app with the full command
+        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 5.5/10.0", result.stdout)
         self.assertIn("yellow", result.stdout) # Color for medium score
@@ -203,7 +209,8 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        result = self.runner.invoke(cli_app, ["assess", "http.example.com"])
+        # FIX: Invoke the main app with the full command
+        result = self.runner.invoke(main_app, ["credibility", "assess", "http.example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 2.0/10.0", result.stdout)
         self.assertIn("red", result.stdout) # Color for low score
@@ -219,14 +226,17 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
         
-        result = self.runner.invoke(cli_app, ["assess", "https.example.com"])
-        self.assertEqual(result.exit_code, 0) # Typer CLI commands exit 0 even on printed error
+        # FIX: Invoke the main app with the full command
+        result = self.runner.invoke(main_app, ["credibility", "assess", "https.example.com"])
+        # FIX: The command itself succeeds (exit code 0) even if it prints an error
+        self.assertEqual(result.exit_code, 0) 
         self.assertIn("Error:", result.stdout)
         self.assertIn("A test error occurred", result.stdout)
 
     def test_cli_no_args(self):
-        """Tests the CLI when no arguments are provided."""
-        result = self.runner.invoke(cli_app, [])
+        """Tests the CLI when no arguments are provided to the subcommand."""
+        # FIX: Invoke the main app with just the subcommand to trigger its "no_args_is_help"
+        result = self.runner.invoke(main_app, ["credibility"])
         self.assertNotEqual(result.exit_code, 0) # Should fail and show help
         self.assertIn("Usage:", result.stdout)
 

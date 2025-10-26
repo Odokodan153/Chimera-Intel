@@ -5,6 +5,7 @@ import os
 import pytest
 import asyncio
 import json
+import typer  # Import typer
 from typer.testing import CliRunner
 
 # Add the project's root directory to the Python path to ensure imports work correctly
@@ -252,8 +253,10 @@ class TestExecutePlan:
     async def test_execute_plan_task_timeout(self, mock_console, mock_modules):
         """Tests failure when a module times out."""
         # Patch the specific module to actually sleep, overriding the fixture
+        
+        # FIX: Use a lambda to return a new coroutine on each call
         mock_modules["timeout_module"]["func"] = AsyncMock(
-            side_effect=asyncio.sleep(2)
+            side_effect=lambda *args, **kwargs: asyncio.sleep(2)
         )
 
         plan = Plan(
@@ -455,7 +458,8 @@ class TestRunAutonomousAnalysis:
         """Tests that the run exits if no initial plan can be created."""
         mock_create_plans.return_value = [] # No plan
         
-        with pytest.raises(SystemExit) as e:
+        # FIX: Catch the specific typer.Exit exception
+        with pytest.raises(typer.Exit) as e:
             await _run_autonomous_analysis("Test", None, 5, 30, 300)
         
         assert e.value.code == 1

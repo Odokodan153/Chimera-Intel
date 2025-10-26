@@ -117,7 +117,8 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        result = self.runner.invoke(cli_app, ["track", "EZ123", "--carrier", "USPS"])
+        # FIX: Removed the "track" command name
+        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): pre_transit", result.stdout)
@@ -138,7 +139,8 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        result = self.runner.invoke(cli_app, ["track", "EZ123", "--carrier", "USPS"])
+        # FIX: Removed the "track" command name
+        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): in_transit", result.stdout)
@@ -156,7 +158,8 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        result = self.runner.invoke(cli_app, ["track", "EZ123", "--carrier", "USPS"])
+        # FIX: Removed the "track" command name
+        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
         
         self.assertEqual(result.exit_code, 0) # CLI exits 0
         self.assertIn("Error:", result.stdout)
@@ -165,7 +168,8 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
 
     def test_cli_track_missing_carrier(self):
         """Tests the CLI when the required --carrier option is missing."""
-        result = self.runner.invoke(cli_app, ["track", "EZ123"])
+        # FIX: Removed the "track" command name
+        result = self.runner.invoke(cli_app, ["EZ123"])
         self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
         self.assertIn("Missing option '--carrier'", result.stdout)
 

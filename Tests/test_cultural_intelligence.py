@@ -15,11 +15,20 @@ def mock_db(mocker):
     """Mocks the database connection and cursor."""
     mock_cursor = MagicMock()
     mock_conn = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
+    
+    # FIX: Create a mock context manager for 'with conn.cursor() as cursor:'
+    mock_context_manager = MagicMock()
+    mock_context_manager.__enter__.return_value = mock_cursor
+    mock_context_manager.__exit__.return_value = None  # To suppress any errors on exit
+    
+    # Have conn.cursor() return the context manager
+    mock_conn.cursor.return_value = mock_context_manager
+    
     mocker.patch(
         "chimera_intel.core.cultural_intelligence.get_db_connection",
         return_value=mock_conn
     )
+    # Return the inner cursor so tests can set expectations on it
     return mock_conn, mock_cursor
 
 @pytest.fixture

@@ -48,7 +48,7 @@ def mock_db_connection_no_data(mocker):
 
 @patch("chimera_intel.core.autonomous.generate_swot_from_data")
 @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_api_key")
-def test_optimize_models_success(mock_ai_task, mock_db_connection):
+def test_optimize_models_success(runner, mock_ai_task, mock_db_connection):
     """
     Tests the successful run of the optimize-models command.
     """
@@ -77,7 +77,7 @@ def test_optimize_models_success(mock_ai_task, mock_db_connection):
 
 
 @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_api_key")
-def test_optimize_models_no_data(mock_db_connection_no_data):
+def test_optimize_models_no_data(runner, mock_db_connection_no_data):
     """
     Tests the command's behavior when no performance data is found.
     """
