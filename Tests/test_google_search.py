@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import the function to be tested
 from src.chimera_intel.core.google_search import search

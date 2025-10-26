@@ -1,12 +1,11 @@
 import pytest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock
 import pandas as pd
 from typer.testing import CliRunner
 
 # Import the functions and app to be tested
 from src.chimera_intel.core.analytics import (
     get_negotiation_kpis,
-    plot_sentiment_trajectory,
     analytics_app,
 )
 
