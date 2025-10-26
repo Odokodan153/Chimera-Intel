@@ -1,6 +1,6 @@
 from typer.testing import CliRunner
 from unittest.mock import MagicMock, patch
-from chimera_intel.core.bioint import bioint_app, search_genbank
+from chimera_intel.core.bioint import bioint_app
 
 runner = CliRunner()
 

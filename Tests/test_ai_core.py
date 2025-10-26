@@ -17,7 +17,7 @@ from chimera_intel.core.schemas import (
     SentimentAnalysisResult,
     AnomalyDetectionResult,
 )
-from chimera_intel.core.graph_schemas import GraphNarrativeResult, EntityGraphResult
+from chimera_intel.core.graph_schemas import GraphNarrativeResult
 
 runner = CliRunner()
 

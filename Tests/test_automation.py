@@ -1,5 +1,4 @@
 import unittest
-import json
 import subprocess
 from unittest.mock import patch, MagicMock, mock_open, AsyncMock
 from typer.testing import CliRunner
