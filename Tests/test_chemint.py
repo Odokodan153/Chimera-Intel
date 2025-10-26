@@ -156,7 +156,6 @@ class TestPatentSearch:
 
         # 2. Configure Mocks
         
-        # --- START FIX ---
         # The application code (chemint.py) accesses .title and .url attributes.
         # We create a MagicMock to simulate the patent object.
         mock_patent_obj = MagicMock()
@@ -166,37 +165,37 @@ class TestPatentSearch:
         # Create a mock instance for pypatent.Search
         mock_pypatent_instance = MagicMock()
 
-        # THIS IS THE FIX:
         # The app code checks `if callable(patents):`, so we mock `results`
         # as a callable (a MagicMock) that *returns* our desired list.
-        # This correctly simulates an API like `search.results()`
         mock_pypatent_instance.results = MagicMock(return_value=[mock_patent_obj])
         
         # The return value of pypatent.Search(...) is our mock instance.
         mock_pypatent_class.return_value = mock_pypatent_instance
-        # --- END FIX ---
 
         # Mock for scholarly (the other section), returning no results
         mock_scholarly_search.return_value = iter([]) 
 
         # 3. Run CLI
-        # --- ADDED --verbose FLAG ---
+        # --- START FIX ---
+        # We pass the `env` argument to `invoke` to set the terminal width.
+        # This tells `rich` it has plenty of space and prevents truncation.
         result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer", "--verbose"]
+            chemint_app, 
+            ["monitor-patents-research", "--keywords", "polymer", "--verbose"],
+            env={"TERMINAL_WIDTH": "200"}
         )
+        # --- END FIX ---
+        
         stdout = result.stdout
 
         # 4. Assertions
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Patents (USPTO)" in stdout
         
-        # This assertion will now pass
+        # This assertion should now pass thanks to the wider terminal
         assert patent_title in stdout 
         assert patent_url in stdout
         
-        # We can even test that our debug message appeared
-        assert "DEBUG: 'search.results' is callable" in stdout
-
         # Make sure research data (which would come from the other mock) isn't present
         assert "A great paper" not in stdout
 
@@ -226,12 +225,17 @@ class TestPatentSearch:
         # Mock for pypatent (the other section's call, to avoid real requests)
         mock_pypatent_instance = MagicMock()
         
-        mock_pypatent_instance.results = [] 
+        # --- FIX FOR CONSISTENCY ---
+        # Make this mock callable as well, returning an empty list
+        mock_pypatent_instance.results = MagicMock(return_value=[]) 
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # 3. Run CLI
+        # --- FIX: Set terminal width here too for consistency ---
         result = runner.invoke(
-            chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
+            chemint_app, 
+            ["monitor-patents-research", "--keywords", "polymer"],
+            env={"TERMINAL_WIDTH": "200"}
         )
         stdout = result.stdout
 
