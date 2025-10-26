@@ -151,7 +151,7 @@ class TestPatentSearch:
         This section correctly calls 'pypatent.Search'.
         """
         # 1. Define Mock Data
-        patent_title = mock_patent_info.title
+        patent_title = "Method for synthesizing a high-temperature resistant polymer"
         patent_url = "http://example.com/patent"
 
         # 2. Configure Mocks
@@ -162,18 +162,11 @@ class TestPatentSearch:
         mock_patent_obj = MagicMock()
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
-
-        # Create a mock instance for pypatent.Search
-        mock_pypatent_instance = MagicMock()
-
-        # THIS IS THE FIX:
-        # The app code checks `if callable(patents):`, so we mock `results`
-        # as a callable (a MagicMock) that *returns* our desired list.
-        # This correctly simulates an API like `search.results()`
-        mock_pypatent_instance.results = MagicMock(return_value=[mock_patent_obj])
+        
+        mock_pypatent_class.results = iter([mock_patent_obj])
         
         # The return value of pypatent.Search(...) is our mock instance.
-        mock_pypatent_class.return_value = mock_pypatent_instance
+        mock_pypatent_class.return_value = mock_pypatent_class
         # --- END FIX ---
 
         # Mock for scholarly (the other section), returning no results
@@ -188,9 +181,7 @@ class TestPatentSearch:
         # 4. Assertions
         assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
         assert "Patents (USPTO)" in stdout
-        
-        # This assertion will now pass
-        assert patent_title in stdout 
+        assert patent_title in stdout
         assert patent_url in stdout
         
         # Make sure research data (which would come from the other mock) isn't present
@@ -222,8 +213,7 @@ class TestPatentSearch:
         # Mock for pypatent (the other section's call, to avoid real requests)
         mock_pypatent_instance = MagicMock()
         # This .results = [] is fine, as it correctly results in an empty table.
-        # We'll make it callable to match the fix above for consistency.
-        mock_pypatent_instance.results = MagicMock(return_value=[]) 
+        mock_pypatent_instance.results = [] 
         mock_pypatent_class.return_value = mock_pypatent_instance
 
         # 3. Run CLI

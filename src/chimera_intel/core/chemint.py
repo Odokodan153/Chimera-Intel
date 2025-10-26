@@ -39,54 +39,27 @@ def monitor_patents_research(
         None, "--end-date", "-e", help="End date for patent search (YYYY-MM-DD)."
     ),
     limit: int = typer.Option(10, "--limit", "-l", help="Limit the number of results."),
-    # --- ADD THIS FLAG ---
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose debug messages.",
-        is_flag=True,
-    ),
 ):
     """
     Monitor patents and research for new developments.
     """
-    if verbose:
-        print("[dim]Starting 'monitor-patents-research' in verbose mode...[/dim]")
-
     print(f"Monitoring patents and research for keywords: {keywords}")
 
     # Search for patents
 
     try:
         print("\n[bold]Patents (USPTO):[/bold]")
-        if verbose:
-            print(f"[dim]  - Instantiating pypatent.Search(keywords='{keywords}', results_limit={limit})[/dim]")
-        
         search = pypatent.Search(keywords, results_limit=limit)
         patents = search.results
         
-        if verbose:
-            print(f"[dim]  - Got 'search.results'. Type: {type(patents)}[/dim]")
-
         if callable(patents):
-            if verbose:
-                print("[dim]  - 'search.results' is callable. Calling it...[/dim]")
             patents = patents()
-            if verbose:
-                print(f"[dim]  - 'patents' type after call: {type(patents)}[/dim]")
-                print(f"[dim]  - 'patents' length: {len(patents) if patents else 0}[/dim]")
-        else:
-            if verbose:
-                print("[dim]  - 'search.results' is not callable.[/dim]")
         
         # --- START FIX ---
         # Replaced `if patents:` with a more robust check 
-        # to avoid MagicMock's truthiness issues in tests.
+        # to avoid MagicMock's truthiness issues.
         if patents is not None and len(patents) > 0:
         # --- END FIX ---
-            if verbose:
-                print(f"[dim]  - Found {len(patents)} patent(s). Building table...[/dim]")
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Title")
             table.add_column("URL")
@@ -100,34 +73,23 @@ def monitor_patents_research(
 
     try:
         print("\n[bold]Research Papers (Google Scholar):[/bold]")
-        if verbose:
-            print(f"[dim]  - Calling scholarly.search_pubs(keywords='{keywords}')[/dim]")
         search_query = scholarly.search_pubs(keywords)
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Title")
         table.add_column("URL")
-        found_pubs = 0
         for i, pub in enumerate(search_query):
             if i >= limit:
-                if verbose:
-                    print(f"[dim]  - Reached limit of {limit}. Stopping.[/dim]")
                 break
             table.add_row(
                 pub["bib"]["title"], pub.get("eprint_url", "No URL available")
             )
-            found_pubs += 1
-        
-        if verbose:
-            print(f"[dim]  - Found {found_pubs} research paper(s).[/dim]")
         print(table)
-
     except Exception as e:
         print(f"[red]Error searching for research papers: {e}[/red]")
         print(
             "[yellow]Note: Google Scholar may block requests. Consider using proxies.[/yellow]"
         )
 
-# ... (rest of the file remains the same) ...
 
 @chemint_app.command(name="track-precursors")
 def track_precursors(
@@ -246,6 +208,8 @@ def analyze_sds(
 
         # Use regex to find GHS pictograms, Hazard statements (H-statements), and
         # Precautionary statements (P-statements). These are examples and may
+        # need to be refined for better accuracy.
+
         ghs_pictograms = re.findall(r"GHS\d{2}", text_content)
         h_statements = re.findall(r"H\d{3}", text_content)
         p_statements = re.findall(r"P\d{3}", text_content)
