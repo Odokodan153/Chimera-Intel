@@ -146,47 +146,33 @@ class TestPatentSearch:
     def test_cli_patents_section_output(
         self, mock_scholarly_search, mock_pypatent_class, runner, mock_patent_info
     ):
-        """
-        Tests if the 'Patents (USPTO)' section renders correctly.
-        This section correctly calls 'pypatent.Search'.
-        """
-        # 1. Define Mock Data
         patent_title = "Method for synthesizing a high-temperature resistant polymer"
         patent_url = "http://example.com/patent"
 
-        # 2. Configure Mocks
-        
-        # --- START FIX ---
-        # The application code (chemint.py) accesses .title and .url attributes.
-        # We create a MagicMock to simulate the patent object.
+        # --- FIX START ---
         mock_patent_obj = MagicMock()
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
-        
-        mock_pypatent_class = MagicMock()
-        mock_pypatent_class.results = [mock_patent_obj]
-        
-        # The return value of pypatent.Search(...) is our mock instance.
-        mock_pypatent_class.return_value = mock_pypatent_class
-        # --- END FIX ---
 
-        # Mock for scholarly (the other section), returning no results
-        mock_scholarly_search.return_value = iter([]) 
+        mock_pypatent_instance = MagicMock()
+        mock_pypatent_instance.results = [mock_patent_obj]
 
-        # 3. Run CLI
+        mock_pypatent_class.return_value = mock_pypatent_instance
+        # --- FIX END ---
+
+        mock_scholarly_search.return_value = iter([])
+
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
-        stdout = result.stdout
 
-        # 4. Assertions
-        assert result.exit_code == 0, f"CLI failed with: {result.stdout}"
+        stdout = result.stdout
+        assert result.exit_code == 0, f"CLI failed with: {stdout}"
         assert "Patents (USPTO)" in stdout
         assert patent_title in stdout
         assert patent_url in stdout
-        
-        # Make sure research data (which would come from the other mock) isn't present
         assert "A great paper" not in stdout
+
 
 
     @patch("chimera_intel.core.chemint.pypatent.Search")
