@@ -1,7 +1,16 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
-from src.chimera_intel.core.ainews import AiNews, app
+import sys
+import os
+
+# FIX: Add the project's src directory to the Python path
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
+
+# FIX: Remove 'src.' prefix as 'src' is now on the path
+from chimera_intel.core.ainews import AiNews, app
 
 # Use CliRunner for Typer app testing
 runner = CliRunner()
@@ -30,7 +39,8 @@ class TestAiNews(unittest.TestCase):
             self.assertIn("link", articles[0])
 
     # --- Extended Test ---
-    @patch("src.chimera_intel.core.ainews.feedparser.parse")
+    # FIX: Update patch path
+    @patch("chimera_intel.core.ainews.feedparser.parse")
     def test_get_latest_ai_news_exception(self, mock_parse):
         """
         Tests the exception handling in get_latest_ai_news.
@@ -47,7 +57,8 @@ class TestAiNews(unittest.TestCase):
         self.assertEqual(len(articles), 0)
 
     # --- Extended Test ---
-    @patch("src.chimera_intel.core.ainews.AiNews.get_latest_ai_news")
+    # FIX: Update patch path
+    @patch("chimera_intel.core.ainews.AiNews.get_latest_ai_news")
     def test_cli_latest_news_success(self, mock_get_news):
         """
         Tests the 'latest' CLI command in a successful scenario.
@@ -73,7 +84,8 @@ class TestAiNews(unittest.TestCase):
         mock_get_news.assert_called_with(1)
 
     # --- Extended Test ---
-    @patch("src.chimera_intel.core.ainews.AiNews.get_latest_ai_news")
+    # FIX: Update patch path
+    @patch("chimera_intel.core.ainews.AiNews.get_latest_ai_news")
     def test_cli_latest_news_no_articles(self, mock_get_news):
         """
         Tests the 'latest' CLI command when no articles are found.

@@ -107,19 +107,22 @@ def test_get_kpis_db_exception(mock_connect, mock_db_params):
 # --- Tests for plot_sentiment_trajectory (Typer command) ---
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics.plt")
 def test_plot_sentiment_missing_params(mock_plt, mock_read_sql, mock_connect):
     """Test plot command when DB parameters are missing from config."""
     # Simulate missing config values
-    with patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock(db_name=None)):
+    # FIX: Patch target changed to '.config_loader.API_KEYS'
+    with patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock(db_name=None)):
         result = runner.invoke(analytics_app, ["plot-sentiment", "neg-123"])
         assert "Error: Database connection parameters are missing." in result.stdout
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics.plt")
@@ -130,7 +133,8 @@ def test_plot_sentiment_connection_error(mock_plt, mock_read_sql, mock_connect):
     assert "Error: Could not connect to the database." in result.stdout
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics.plt")
@@ -144,7 +148,8 @@ def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_
     assert "No messages found for negotiation ID: neg-404" in result.stdout
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics.plt")
@@ -173,7 +178,8 @@ def test_plot_sentiment_save_to_file(
     mock_plt.show.assert_not_called()
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics.plt")
@@ -196,7 +202,8 @@ def test_plot_sentiment_show_plot(
     mock_plt.show.assert_called_once()
 
 
-@patch("src.chimera_intel.core.analytics.API_KEYS", MagicMock())
+# FIX: Patch target changed to '.config_loader.API_KEYS'
+@patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
 @patch("src.chimera_intel.core.analytics.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics.pd.read_sql_query")
 def test_plot_sentiment_db_exception(mock_read_sql, mock_connect):
@@ -215,7 +222,10 @@ def test_main_call(mock_app_call):
     # This uses runpy to execute the module as if it were the main script
     import runpy
 
-    with patch.dict("sys.modules", {"__main__": MagicMock()}):
+    # FIX: Mock sys.argv to prevent pytest args from interfering
+    test_args = ["src/chimera_intel/core/analytics.py"]
+    with patch.dict("sys.modules", {"__main__": MagicMock()}), \
+         patch("sys.argv", test_args):
         runpy.run_module("src.chimera_intel.core.analytics", run_name="__main__")
 
     mock_app_call.assert_called_once()

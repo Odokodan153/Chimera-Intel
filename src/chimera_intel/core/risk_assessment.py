@@ -12,9 +12,26 @@ from .schemas import (
     Vulnerability,
     ThreatActor,
     RiskAssessmentResult,
+    # FIX: Import CVE schema for type conversion
+    CVE,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_severity_from_cvss(score: Optional[float]) -> Optional[str]:
+    """Helper to derive severity string from CVSS score."""
+    if score is None:
+        return None
+    if score >= 9.0:
+        return "critical"
+    if score >= 7.0:
+        return "high"
+    if score >= 4.0:
+        return "medium"
+    if score > 0.0:
+        return "low"
+    return None
 
 
 def calculate_risk(
@@ -131,7 +148,7 @@ async def assess_risk_from_indicator(
     )
     threat_actors_task = search_threat_actors(indicator)
 
-    threat_intel, cve_vulnerabilities, threat_actors = await asyncio.gather(
+    threat_intel, cve_results, threat_actors = await asyncio.gather(
         threat_intel_task, vulnerabilities_task, threat_actors_task
     )
 
@@ -179,14 +196,16 @@ async def assess_risk_from_indicator(
                 impact = max(impact, 8.0)
     threat = "Malicious Activity" if threat_intel.is_malicious else "Benign"
 
+    # FIX: Convert CVE objects (from search_vulnerabilities) to Vulnerability objects
+    # and derive severity from the CVSS score.
     vulnerabilities = [
         Vulnerability(
             cve=v.id,
             cvss_score=v.cvss_score,
             description=v.title,
-            severity=getattr(v, "severity", None),
+            severity=_get_severity_from_cvss(v.cvss_score),
         )
-        for v in cve_vulnerabilities
+        for v in cve_results
     ]
 
     return calculate_risk(

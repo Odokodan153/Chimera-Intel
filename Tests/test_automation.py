@@ -12,7 +12,7 @@ from chimera_intel.core.automation import (
     generate_threat_model,
     run_workflow,
     automation_app,  # Import the Typer app
-    connect_app,      # Import the Typer app
+    # FIX: Removed connect_app
 )
 from chimera_intel.core.schemas import (
     ThreatIntelResult,
@@ -409,7 +409,8 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
     def test_cli_virustotal(self, mock_submit):
         """Tests the 'virustotal' CLI command."""
         mock_submit.return_value = MagicMock(model_dump=lambda: {"response_code": 1})
-        result = runner.invoke(connect_app, ["virustotal", "file.txt"])
+        # FIX: Changed connect_app to automation_app
+        result = runner.invoke(automation_app, ["virustotal", "file.txt"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"response_code": 1', result.stdout)
 
@@ -419,7 +420,10 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         """Tests the 'virustotal' CLI command with an --output file."""
         mock_dump = {"response_code": 1}
         mock_submit.return_value = MagicMock(model_dump=lambda: mock_dump)
-        result = runner.invoke(connect_app, ["virustotal", "file.txt", "--output", "out.json"])
+        # FIX: Changed connect_app to automation_app
+        result = runner.invoke(
+            automation_app, ["virustotal", "file.txt", "--output", "out.json"]
+        )
         self.assertEqual(result.exit_code, 0)
         mock_save.assert_called_with(mock_dump, "out.json")
 

@@ -88,9 +88,12 @@ def simulate_attack(
             console.print(
                 f"[bold yellow]No potential attack path found from '{entry_point}' to '{target_asset}'.[/bold yellow]"
             )
-            raise typer.Exit()
+            # FIX: Changed 'raise typer.Exit()' to 'return'
+            # This avoids being caught by the 'except Exception' block
+            # and allows the command to exit with the default code 0.
+            return
+        
         # Find all shortest paths
-
         paths = list(nx.all_shortest_paths(attack_graph, entry_point, target_asset))
         console.print(
             Panel(

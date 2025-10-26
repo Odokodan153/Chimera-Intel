@@ -275,7 +275,8 @@ class TestAiCore(unittest.TestCase):
         """
         result = generate_narrative_from_graph("bad.json", "fake_api_key")
         self.assertIsNotNone(result.error)
-        self.assertIn("JSONDecodeError", result.error)
+        # FIX: Check for the content of the error string, not the class name
+        self.assertIn("Expecting value", result.error)
 
     @patch("chimera_intel.core.ai_core.generate_swot_from_data")
     @patch("chimera_intel.core.ai_core.build_and_save_graph")

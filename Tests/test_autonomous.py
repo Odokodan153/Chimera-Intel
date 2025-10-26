@@ -48,7 +48,8 @@ def mock_db_connection_no_data(mocker):
 
 @patch("chimera_intel.core.autonomous.generate_swot_from_data")
 @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_api_key")
-def test_optimize_models_success(runner, mock_ai_task, mock_db_connection):
+# FIX: Swapped argument order. Mocks come before fixtures.
+def test_optimize_models_success(mock_ai_task, runner, mock_db_connection):
     """
     Tests the successful run of the optimize-models command.
     """

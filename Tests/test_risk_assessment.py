@@ -17,6 +17,8 @@ from chimera_intel.core.schemas import (
     PulseInfo,
     # FIX: Import TTP schema to fix Pydantic errors
     TTP,
+    # FIX: Import CVE schema for mock data
+    CVE,
 )
 
 
@@ -35,6 +37,19 @@ def mock_vulnerabilities():
         Vulnerability(cve="CVE-2023-1003", cvss_score=5.0, description="Med vuln", severity="medium"),
         # FIX: Changed severity to 'low' for a more realistic boost calculation
         Vulnerability(cve="CVE-2023-1004", cvss_score=2.0, description="Low vuln", severity="low"),
+    ]
+
+@pytest.fixture
+def mock_cve_results():
+    """
+    Returns a list of mock CVE objects (from schemas.py) which
+    assess_risk_from_indicator expects from search_vulnerabilities.
+    """
+    return [
+        CVE(id="CVE-2023-1001", cvss=9.8, title="Crit vuln"),
+        CVE(id="CVE-2023-1002", cvss=7.5, title="High vuln"),
+        CVE(id="CVE-2023-1003", cvss=5.0, title="Med vuln"),
+        CVE(id="CVE-2023-1004", cvss=2.0, title="Low vuln"),
     ]
 
 @pytest.fixture
@@ -152,7 +167,8 @@ def test_calculate_risk_with_threat_actors(mock_threat_actors):
     assert result.probability == 0.7
     assert result.risk_score == 5.6
     assert result.risk_level == "High"
-    assert "Monitor for TTPs" in result.mitigation
+    # FIX: Check for the full mitigation string
+    assert "Monitor for TTPs associated with identified threat actors." in result.mitigation
 
 def test_calculate_risk_all_factors(mock_vulnerabilities, mock_threat_actors):
     """Tests risk calculation with both factors combined."""
@@ -175,7 +191,8 @@ def test_calculate_risk_all_factors(mock_vulnerabilities, mock_threat_actors):
     assert result.risk_score == 2.3
     assert result.risk_level == "Medium"
     assert "Patch identified vulnerabilities." in result.mitigation
-    assert "Monitor for TTPs" in result.mitigation
+    # FIX: Assert the full mitigation string
+    assert "Monitor for TTPs associated with identified threat actors." in result.mitigation
 
 def test_calculate_risk_exception():
     """Tests the exception handling in calculate_risk."""
@@ -197,11 +214,11 @@ def test_calculate_risk_exception():
 @patch("chimera_intel.core.risk_assessment.search_vulnerabilities")
 @patch("chimera_intel.core.risk_assessment.search_threat_actors")
 @pytest.mark.asyncio
-async def test_assess_risk_success(mock_search_actors, mock_search_vulns, mock_get_intel, mock_threat_intel, mock_vulnerabilities, mock_threat_actors):
+async def test_assess_risk_success(mock_search_actors, mock_search_vulns, mock_get_intel, mock_threat_intel, mock_cve_results, mock_threat_actors):
     """Tests a successful risk assessment."""
-    # FIX: Used defined mock_vulnerabilities instead of undefined mock_cve_results
+    # FIX: Use mock_cve_results (List[CVE]) which the function expects
     mock_get_intel.return_value = mock_threat_intel
-    mock_search_vulns.return_value = mock_vulnerabilities
+    mock_search_vulns.return_value = mock_cve_results
     mock_search_actors.return_value = mock_threat_actors
     
     result = await assess_risk_from_indicator("8.8.8.8", "apache")
@@ -215,6 +232,9 @@ async def test_assess_risk_success(mock_search_actors, mock_search_vulns, mock_g
     assert result.impact == 9.0 # From 'ransomware'/'apt' tags
     
     # Check boosts
+    # Based on _get_severity_from_cvss:
+    # 9.8 (crit, +1.5), 7.5 (high, +0.5), 5.0 (med, +0.5), 2.0 (low, +0.1)
+    # Total boost: 1.5 + 0.5 + 0.5 + 0.1 = 2.6
     # Vuln Impact: 9.0 (base) + 2.6 (boost) = 11.6 -> capped at 10.0
     # Actor Prob: 0.7 (base) + 2*0.1 (count) = 0.9
     # Final Score: 0.9 * 10.0 = 9.0
@@ -224,6 +244,8 @@ async def test_assess_risk_success(mock_search_actors, mock_search_vulns, mock_g
     assert result.risk_level == "Critical"
     assert len(result.vulnerabilities) == 4
     assert result.vulnerabilities[0].cve == "CVE-2023-1001"
+    assert result.vulnerabilities[0].severity == "critical" # Check derived severity
+    assert result.vulnerabilities[3].severity == "low"      # Check derived severity
     assert len(result.threat_actors) == 2
     assert result.threat_actors[0].name == "APT Evil"
     assert result.error is None
@@ -308,7 +330,8 @@ def test_cli_assess_indicator_success(mock_asyncio_run, runner, mock_vulnerabili
         impact=10.0,
         risk_score=9.0,
         risk_level="Critical",
-        details=ThreatIntelResult(pulse_count=150),
+        # FIX: Pydantic validation requires 'indicator' field
+        details=ThreatIntelResult(indicator="8.8.8.8", pulse_count=150),
         vulnerabilities=mock_vulns,
         threat_actors=mock_actors,
         mitigation=["Patch vulnerabilities.", "Monitor TTPs."],
@@ -316,8 +339,8 @@ def test_cli_assess_indicator_success(mock_asyncio_run, runner, mock_vulnerabili
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8", "--service", "apache"])
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8", "--service", "apache"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -355,8 +378,8 @@ def test_cli_assess_indicator_no_service(mock_asyncio_run, runner):
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8"]) # No --service
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"]) # No --service
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -381,8 +404,8 @@ def test_cli_assess_indicator_error(mock_asyncio_run, runner):
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0 # Typer CLI prints error and exits 0
     assert "Error:" in result.stdout
@@ -462,8 +485,8 @@ def test_cli_assess_indicator_no_vulns_with_actors(mock_asyncio_run, runner, moc
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -491,8 +514,8 @@ def test_cli_assess_indicator_with_vulns_no_actors(mock_asyncio_run, runner, moc
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -559,8 +582,8 @@ def test_cli_assess_indicator_no_details(mock_asyncio_run, runner, mock_vulnerab
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *without* the "risk" subcommand
-    result = runner.invoke(main_app, ["assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the main_app *with* the "risk" subcommand
+    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout

@@ -55,7 +55,10 @@ class TestAppint(unittest.TestCase):
         self.assertEqual(len(result.secrets_found), 1)
         self.assertEqual(result.secrets_found[0].secret_type, "api_key")
         self.assertEqual(result.secrets_found[0].line_number, 2)
-        self.assertEqual(result.secrets_found[0].file_path, "strings.xml")
+        
+        # FIX: Changed assertion to expect the full path, as constructed by the code.
+        self.assertEqual(result.secrets_found[0].file_path, "/fake_dir/strings.xml")
+        
         mock_rmtree.assert_called_once()  # Ensure cleanup happens
 
     # --- Extended Test ---

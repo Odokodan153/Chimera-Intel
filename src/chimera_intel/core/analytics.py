@@ -15,11 +15,13 @@ def get_negotiation_kpis(db_params: Dict[str, Any]) -> Dict[str, Any]:
     conn = None
     if not all(db_params.values()):
         return {"error": "Database connection parameters are missing."}
+    
+    kpis = {}  # <-- FIX: Initialize kpis dictionary before the try block
     try:
         conn = psycopg2.connect(**db_params)
         if not conn:
             return {"error": "Could not connect to the database."}
-        kpis = {}
+        # kpis = {} <-- MOVED
         with conn.cursor() as cursor:
             # --- Success Rate ---
 

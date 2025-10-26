@@ -66,6 +66,7 @@ def mock_modules():
             "is_async": True,
         },
         "timeout_module": {
+            # Provide a base AsyncMock
             "func": AsyncMock(side_effect=asyncio.TimeoutError("Module Timed Out")),
             "is_async": True,
         },
@@ -77,10 +78,23 @@ def mock_modules():
 class TestLoadAvailableModules:
     """Tests the dynamic module loader."""
 
+    @pytest.fixture
+    def mock_modules_pkg(self):
+        """Mocks the chimera_intel.core.modules package."""
+        mock_pkg = MagicMock()
+        mock_pkg.__path__ = ["dummy/path/to/modules"]
+        mock_pkg.__name__ = "chimera_intel.core.modules"
+        return mock_pkg
+
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    def test_load_success(self, mock_import, mock_iter_modules, caplog):
+    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
+    def test_load_success(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests successful loading of allowed sync and async modules."""
+        # Configure the mock package
+        mock_aia_modules.__path__ = mock_modules_pkg.__path__
+        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+
         mock_mod_async = MagicMock()
         mock_mod_async.run = AsyncMock()
         
@@ -104,8 +118,13 @@ class TestLoadAvailableModules:
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    def test_load_skip_non_allowed(self, mock_import, mock_iter_modules, caplog):
+    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
+    def test_load_skip_non_allowed(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests that modules not in ALLOWED_MODULES are skipped."""
+        # Configure the mock package
+        mock_aia_modules.__path__ = mock_modules_pkg.__path__
+        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+
         mock_mod = MagicMock()
         mock_mod.run = MagicMock()
 
@@ -126,8 +145,13 @@ class TestLoadAvailableModules:
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    def test_load_no_run_attr(self, mock_import, mock_iter_modules, caplog):
+    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
+    def test_load_no_run_attr(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests warning if a module has no 'run' attribute."""
+        # Configure the mock package
+        mock_aia_modules.__path__ = mock_modules_pkg.__path__
+        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+        
         mock_mod = MagicMock()
         del mock_mod.run  # Ensure it has no 'run' attribute
 
@@ -141,8 +165,13 @@ class TestLoadAvailableModules:
         assert "Module footprint does not have a 'run' function" in caplog.text
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    def test_load_fallback(self, mock_iter_modules, caplog):
+    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
+    def test_load_fallback(self, mock_aia_modules, mock_iter_modules, caplog):
         """Tests fallback to built-ins if dynamic loading finds nothing."""
+        # Configure the mock package
+        mock_aia_modules.__path__ = ["dummy/path"]
+        mock_aia_modules.__name__ = "chimera_intel.core.modules"
+        
         mock_iter_modules.return_value = []  # Simulate no modules found
 
         modules = load_available_modules()
@@ -252,12 +281,14 @@ class TestExecutePlan:
 
     async def test_execute_plan_task_timeout(self, mock_console, mock_modules):
         """Tests failure when a module times out."""
-        # Patch the specific module to actually sleep, overriding the fixture
         
-        # FIX: Use a lambda to return a new coroutine on each call
-        mock_modules["timeout_module"]["func"] = AsyncMock(
-            side_effect=lambda *args, **kwargs: asyncio.sleep(2)
-        )
+        # FIX: Use a real async function for the side_effect
+        async def long_sleep(*args, **kwargs):
+            await asyncio.sleep(2)
+            return "Should not return"
+
+        # Set the side_effect on the *existing* AsyncMock from the fixture
+        mock_modules["timeout_module"]["func"].side_effect = long_sleep
 
         plan = Plan(
             objective="Test",
@@ -462,7 +493,8 @@ class TestRunAutonomousAnalysis:
         with pytest.raises(typer.Exit) as e:
             await _run_autonomous_analysis("Test", None, 5, 30, 300)
         
-        assert e.value.code == 1
+        # FIX: Check for 'exit_code' attribute
+        assert e.value.exit_code == 1
 
 
 class TestCLI:
@@ -482,7 +514,7 @@ class TestCLI:
     def test_cli_execute_objective_args_passed(self, mock_run_analysis, runner):
         """Tests that CLI arguments are correctly passed to the analysis function."""
         
-        runner.invoke(
+        result = runner.invoke(
             aia_cli_app,
             [
                 "execute-objective",
@@ -498,6 +530,7 @@ class TestCLI:
             ],
         )
         
+        assert result.exit_code == 0
         mock_run_analysis.assert_called_once_with(
             "Full test",
             "out.json", # The CLI passes the specified name
@@ -514,6 +547,7 @@ class TestCLI:
         result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
         
         assert result.exit_code == 1
+        assert "An unhandled error occurred" in result.stdout
 
 
 if __name__ == "__main__":
