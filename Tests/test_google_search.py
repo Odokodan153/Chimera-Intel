@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 
 # Import the function to be tested
