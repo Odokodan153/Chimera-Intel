@@ -169,7 +169,7 @@ class TestPatentSearch:
         
         # ...and set its .results attribute to a list containing our mock object.
         # The application code `search.results` will now work.
-        mock_pypatent_instance.results = [mock_patent_obj]
+        mock_pypatent_instance.results = lambda: [mock_patent_obj]
         
         # The return value of pypatent.Search(...) is our mock instance.
         mock_pypatent_class.return_value = mock_pypatent_instance
