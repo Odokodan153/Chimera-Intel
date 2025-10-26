@@ -511,7 +511,8 @@
 
 
 <span class="n">automation_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
-<span class="n">connect_app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+<span class="c1"># FIX: Removed the separate connect_app</span>
+<span class="c1"># connect_app = typer.Typer()</span>
 
 
 <div class="viewcode-block" id="run_ioc_enrichment">
@@ -593,9 +594,10 @@
 
 
 
+<span class="c1"># FIX: Changed decorator from @connect_app.command to @automation_app.command</span>
 <div class="viewcode-block" id="run_vt_submission">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.automation.run_vt_submission">[docs]</a>
-<span class="nd">@connect_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;virustotal&quot;</span><span class="p">)</span>
+<span class="nd">@automation_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;virustotal&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_vt_submission</span><span class="p">(</span>
     <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
         <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the file to submit to VirusTotal.&quot;</span>
