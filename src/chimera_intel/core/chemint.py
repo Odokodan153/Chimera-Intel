@@ -51,6 +51,13 @@ def monitor_patents_research(
         print("\n[bold]Patents (USPTO):[/bold]")
         search = pypatent.Search(keywords, results_limit=limit)
         patents = search.results
+        
+        # --- START FIX ---
+        # Check if .results is a callable method and call it if true
+        if callable(patents):
+            patents = patents()
+        # --- END FIX ---
+            
         if patents:
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Title")
@@ -62,8 +69,7 @@ def monitor_patents_research(
             print("No patents found on USPTO.")
     except Exception as e:
         print(f"[red]Error searching for patents on USPTO: {e}[/red]")
-    # Search for research papers
-
+        
     try:
         print("\n[bold]Research Papers (Google Scholar):[/bold]")
         search_query = scholarly.search_pubs(keywords)
