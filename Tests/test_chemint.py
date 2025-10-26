@@ -163,7 +163,7 @@ class TestPatentSearch:
         mock_patent_obj.title = patent_title
         mock_patent_obj.url = patent_url
         
-        mock_pypatent_class.results = iter([mock_patent_obj])
+        mock_pypatent_class.results = [mock_patent_obj]
         
         # The return value of pypatent.Search(...) is our mock instance.
         mock_pypatent_class.return_value = mock_pypatent_class
