@@ -156,9 +156,4 @@ def plot_sentiment_trajectory(
 
 
 if __name__ == "__main__":
-    # --- FIX: Call app via import to allow test patching ---
-    # This allows the analytics_app object to be patched by tests
-    # that use runpy to execute this file as __main__.
-    import src.chimera_intel.core.analytics_cli as cli
-    cli.analytics_app()
-    # --- End Fix ---
+   analytics_app()
