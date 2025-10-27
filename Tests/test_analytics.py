@@ -4,10 +4,10 @@ import pandas as pd
 from typer.testing import CliRunner
 
 # Import the functions and app to be tested
-from src.chimera_intel.core.analytics import (
-    get_negotiation_kpis,
-    analytics_app,
-)
+# --- FIX: Import app from analytics_cli and logic from analytics ---
+from src.chimera_intel.core.analytics import get_negotiation_kpis
+from src.chimera_intel.core.analytics_cli import analytics_app
+# --- End Fix ---
 
 # Runner for testing the Typer app
 runner = CliRunner()
@@ -109,9 +109,11 @@ def test_get_kpis_db_exception(mock_connect, mock_db_params):
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics.plt")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+@patch("src.chimera_intel.core.analytics_cli.plt")
+# --- End Fix ---
 def test_plot_sentiment_missing_params(mock_plt, mock_read_sql, mock_connect):
     """Test plot command when DB parameters are missing from config."""
     # Simulate missing config values
@@ -123,9 +125,11 @@ def test_plot_sentiment_missing_params(mock_plt, mock_read_sql, mock_connect):
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics.plt")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+@patch("src.chimera_intel.core.analytics_cli.plt")
+# --- End Fix ---
 def test_plot_sentiment_connection_error(mock_plt, mock_read_sql, mock_connect):
     """Test plot command when DB connection fails."""
     mock_connect.return_value = None
@@ -135,9 +139,11 @@ def test_plot_sentiment_connection_error(mock_plt, mock_read_sql, mock_connect):
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics.plt")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+@patch("src.chimera_intel.core.analytics_cli.plt")
+# --- End Fix ---
 def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_db_conn):
     """Test plot command when no messages are found for the negotiation ID."""
     mock_connect.return_value = mock_db_conn[0]
@@ -150,9 +156,11 @@ def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics.plt")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+@patch("src.chimera_intel.core.analytics_cli.plt")
+# --- End Fix ---
 def test_plot_sentiment_save_to_file(
     mock_plt, mock_read_sql, mock_connect, mock_db_conn
 ):
@@ -180,9 +188,11 @@ def test_plot_sentiment_save_to_file(
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics.plt")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+@patch("src.chimera_intel.core.analytics_cli.plt")
+# --- End Fix ---
 def test_plot_sentiment_show_plot(
     mock_plt, mock_read_sql, mock_connect, mock_db_conn
 ):
@@ -204,8 +214,10 @@ def test_plot_sentiment_show_plot(
 
 # FIX: Patch target changed to '.config_loader.API_KEYS'
 @patch("src.chimera_intel.core.config_loader.API_KEYS", MagicMock())
-@patch("src.chimera_intel.core.analytics.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics.pd.read_sql_query")
+# --- FIX: Update patch targets to point to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
+@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
+# --- End Fix ---
 def test_plot_sentiment_db_exception(mock_read_sql, mock_connect):
     """Test plot command when a database exception occurs."""
     mock_connect.side_effect = Exception("Test Plot DB Error")
@@ -216,16 +228,18 @@ def test_plot_sentiment_db_exception(mock_read_sql, mock_connect):
 
 # --- Test for __main__ block ---
 
-@patch("src.chimera_intel.core.analytics.analytics_app")
+# --- FIX: Update patch and runpy targets to analytics_cli ---
+@patch("src.chimera_intel.core.analytics_cli.analytics_app")
 def test_main_call(mock_app_call):
     """Test that the main block calls the typer app."""
     # This uses runpy to execute the module as if it were the main script
     import runpy
 
     # FIX: Mock sys.argv to prevent pytest args from interfering
-    test_args = ["src/chimera_intel/core/analytics.py"]
+    test_args = ["src/chimera_intel/core/analytics_cli.py"]
     with patch.dict("sys.modules", {"__main__": MagicMock()}), \
          patch("sys.argv", test_args):
-        runpy.run_module("src.chimera_intel.core.analytics", run_name="__main__")
+        runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
+# --- End Fix ---
 
     mock_app_call.assert_called_once()

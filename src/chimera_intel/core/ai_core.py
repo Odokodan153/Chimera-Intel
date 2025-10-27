@@ -160,6 +160,15 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
             detected_anomalies=[],
             error="'scikit-learn' or 'numpy' not installed.",
         )
+    
+    # --- FIX: Handle empty list gracefully ---
+    if not traffic_data:
+        return AnomalyDetectionResult(
+            data_points=[],
+            detected_anomalies=[]
+        )
+    # --- End Fix ---
+    
     if not all(isinstance(x, (int, float)) for x in traffic_data):
         return AnomalyDetectionResult(
             data_points=traffic_data,

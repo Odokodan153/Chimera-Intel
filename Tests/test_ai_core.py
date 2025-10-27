@@ -329,22 +329,62 @@ class TestAiCore(unittest.TestCase):
         
         # Check that the SWOT function was called with the correct graph data
         self.assertEqual(mock_gen_swot.call_count, 1)
-        # Get the second argument (the JSON string) passed to generate_swot_from_data
-        prompt_json_str = mock_gen_swot.call_args[0][0] 
         
-        self.assertIn('"nodes"', prompt_json_str)
-        self.assertIn('"edges"', prompt_json_str)
+        # --- FIX: Parse the JSON string from the prompt ---
+        prompt_full_string = mock_gen_swot.call_args[0][0]
+        json_data_string = prompt_full_string.split("\n", 1)[-1]
+        graph_data = json.loads(json_data_string)
+
+        self.assertIn("nodes", graph_data)
+        self.assertIn("edges", graph_data)
+
+        # Check for nodes by ID
+        node_ids = {n['id'] for n in graph_data['nodes']}
+        self.assertIn("example.com", node_ids)
+        self.assertIn("sub.example.com", node_ids)
+        self.assertIn("1.2.3.4", node_ids)
+        self.assertIn("React", node_ids)
+
+        # Check for edges by content
+        expected_edge = {
+            "source": "example.com",
+            "target": "sub.example.com",
+            "label": "has_subdomain"
+        }
+        found_edge = any(
+            e["source"] == expected_edge["source"] and
+            e["target"] == expected_edge["target"] and
+            e["label"] == expected_edge["label"]
+            for e in graph_data["edges"]
+        )
+        self.assertTrue(found_edge, "Edge 'has_subdomain' not found in graph data")
+
+        expected_edge_2 = {
+            "source": "example.com",
+            "target": "1.2.3.4",
+            "label": "resolves_to"
+        }
+        found_edge_2 = any(
+            e["source"] == expected_edge_2["source"] and
+            e["target"] == expected_edge_2["target"] and
+            e["label"] == expected_edge_2["label"]
+            for e in graph_data["edges"]
+        )
+        self.assertTrue(found_edge_2, "Edge 'resolves_to' not found in graph data")
         
-        # Check for specific nodes
-        self.assertIn('"id": "example.com"', prompt_json_str)
-        self.assertIn('"id": "sub.example.com"', prompt_json_str)
-        self.assertIn('"id": "1.2.3.4"', prompt_json_str)
-        self.assertIn('"id": "React"', prompt_json_str)
-        
-        # Check for specific edges
-        self.assertIn('"source": "example.com", "target": "sub.example.com", "label": "has_subdomain"', prompt_json_str)
-        self.assertIn('"source": "example.com", "target": "1.2.3.4", "label": "resolves_to"', prompt_json_str)
-        self.assertIn('"source": "example.com", "target": "React", "label": "uses_tech"', prompt_json_str)
+        expected_edge_3 = {
+            "source": "example.com",
+            "target": "React",
+            "label": "uses_tech"
+        }
+        found_edge_3 = any(
+            e["source"] == expected_edge_3["source"] and
+            e["target"] == expected_edge_3["target"] and
+            e["label"] == expected_edge_3["label"]
+            for e in graph_data["edges"]
+        )
+        self.assertTrue(found_edge_3, "Edge 'uses_tech' not found in graph data")
+        # --- End Fix ---
 
 
 if __name__ == "__main__":

@@ -43,12 +43,15 @@ def mock_cve_results():
     """
     Returns a list of mock CVE objects (from schemas.py) which
     assess_risk_from_indicator expects from search_vulnerabilities.
+    
+    FIX: Pydantic V2 model with alias 'cvss' expects the alias
+    to be used on instantiation. Changed 'cvss_score=' to 'cvss='.
     """
     return [
-        CVE(id="CVE-2023-1001", cvss_score=9.8, title="Crit vuln"),
-        CVE(id="CVE-2023-1002", cvss_score=7.5, title="High vuln"),
-        CVE(id="CVE-2023-1003", cvss_score=5.0, title="Med vuln"),
-        CVE(id="CVE-2023-1004", cvss_score=2.0, title="Low vuln"),
+        CVE(id="CVE-2023-1001", cvss=9.8, title="Crit vuln"),
+        CVE(id="CVE-2023-1002", cvss=7.5, title="High vuln"),
+        CVE(id="CVE-2023-1003", cvss=5.0, title="Med vuln"),
+        CVE(id="CVE-2023-1004", cvss=2.0, title="Low vuln"),
     ]
 
 @pytest.fixture

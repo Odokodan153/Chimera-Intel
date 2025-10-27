@@ -30,8 +30,10 @@ def mock_pool_request():
     by the transport's handle_async_request. This allows the
     transport's *own* retry logic to execute.
     """
+    # FIX: The patch target has changed in httpx >= 0.26.0
+    # The transport logic is now in the 'httpcore' library.
     with patch(
-        "httpx._async.connection_pool.AsyncConnectionPool.handle_async_request",
+        "httpcore._async.connection_pool.AsyncConnectionPool.handle_async_request",
         new_callable=AsyncMock,
     ) as mock_handle:
         yield mock_handle
@@ -99,6 +101,10 @@ async def test_global_client_retry_on_server_error(mock_pool_request, status_cod
 async def test_global_client_retry_on_timeout(mock_pool_request):
     """Test that the client retries on httpx.TimeoutException."""
     # The transport's underlying call will raise TimeoutException
+    # Note: httpx's *transport* retries on httpcore exceptions.
+    # To trigger a retry, we must raise the httpcore equivalent.
+    # However, patching the pool's handle_async_request and having it
+    # raise httpx.TimeoutException is also caught by the transport's retry logic.
     mock_pool_request.side_effect = httpx.TimeoutException("Timeout")
 
     with pytest.raises(httpx.TimeoutException):

@@ -99,12 +99,18 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
             else:
                 logger.warning(f"Module {module_name} does not have a 'run' function.")
     except Exception as e:
+        # --- FIX: Moved fallback log message to the 'if not modules' block ---
         logger.warning(
-            f"Dynamic module loading failed: {e}. Falling back to built-ins."
+            f"Dynamic module loading failed with exception: {e}."
         )
     if not modules:
         # Fallback to ensure core functionality is present if dynamic loading fails
 
+        # --- FIX: Added log message here so it runs if load fails OR finds nothing ---
+        logger.warning(
+            "Dynamic module loading found no modules. Falling back to built-ins."
+        )
+        
         # FIX: Changed relative imports to absolute
         from chimera_intel.core.footprint import run_footprint_analysis
         from chimera_intel.core.threat_intel import get_threat_intel_otx

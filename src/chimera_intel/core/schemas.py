@@ -493,6 +493,7 @@ class CVE(BaseModel):
     id: str
     cvss_score: float = Field(..., alias="cvss")
     title: str
+    cvss_score: float = Field(..., alias="cvss")
 
 
 class PortDetail(BaseModel):

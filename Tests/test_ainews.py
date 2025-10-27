@@ -74,7 +74,8 @@ class TestAiNews(unittest.TestCase):
         mock_get_news.return_value = [mock_article]
 
         # Act
-        result = self.runner.invoke(app, ["latest", "--limit", "1"])
+        # --- FIX: Removed "latest" from the invoke call ---
+        result = self.runner.invoke(app, ["--limit", "1"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -95,7 +96,8 @@ class TestAiNews(unittest.TestCase):
         mock_get_news.return_value = []
 
         # Act
-        result = self.runner.invoke(app, ["latest"])
+        # --- FIX: Removed "latest" from the invoke call ---
+        result = self.runner.invoke(app, [])
 
         # Assert
         self.assertEqual(result.exit_code, 0)

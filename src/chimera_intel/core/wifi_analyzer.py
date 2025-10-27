@@ -11,7 +11,8 @@ import os
 from rich.console import Console
 
 # Create a console object
-console = Console()
+# --- FIX: Set force_terminal=True to enable rich markup in capsys ---
+console = Console(force_terminal=True)
 
 # --- Logic Function ---
 

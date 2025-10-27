@@ -4,6 +4,10 @@ from rich.table import Table
 from rich.panel import Panel
 from . import analytics
 from .config_loader import API_KEYS  # To get DB params
+import psycopg2
+import pandas as pd
+import matplotlib.pyplot as plt
+from typing_extensions import Annotated
 
 # FIX: Removed global console object
 # console = Console()
@@ -70,6 +74,60 @@ def show_analytics():
         for timestamp, score in kpis["sentiment_trend"][-10:]:  # Show last 10
             color = "green" if score > 0.1 else "red" if score < -0.1 else "yellow"
             console.print(f"  - {timestamp}: [bold {color}]{score:.2f}[/bold {color}]")
+
+
+# --- FIX: Added missing plot-sentiment command ---
+@analytics_app.command("plot-sentiment")
+def plot_sentiment_trajectory(
+    negotiation_id: Annotated[str, typer.Argument(help="The ID of the negotiation to plot.")],
+    output: Annotated[str, typer.Option(help="Path to save the plot image file.")] = None,
+):
+    """
+    Plots the sentiment trajectory over time for a negotiation.
+    """
+    console = Console()
+    db_params = {
+        "dbname": getattr(API_KEYS, "db_name", None),
+        "user": getattr(API_KEYS, "db_user", None),
+        "password": getattr(API_KEYS, "db_password", None),
+        "host": getattr(API_KEYS, "db_host", None),
+    }
+
+    if not all(db_params.values()):
+         console.print("Error: Database connection parameters are missing.", style="red")
+         return
+
+    try:
+        conn = psycopg2.connect(**db_params)
+        if conn is None:
+            console.print("Error: Could not connect to the database.", style="red")
+            return
+
+        query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %s ORDER BY timestamp"
+        # Note: pd.read_sql_query first argument is sql, then con
+        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
+        conn.close()
+
+        if df.empty:
+            console.print(f"No messages found for negotiation ID: {negotiation_id}", style="yellow")
+            return
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
+        plt.title(f"Sentiment Trajectory for {negotiation_id}")
+        plt.xlabel("Time")
+        plt.ylabel("Sentiment Score")
+        plt.grid(True)
+
+        if output:
+            plt.savefig(output)
+            console.print(f"Plot saved to {output}", style="green")
+        else:
+            plt.show()
+
+    except Exception as e:
+        console.print(f"An error occurred: {e}", style="red")
+# --- End Fix ---
 
 
 if __name__ == "__main__":
