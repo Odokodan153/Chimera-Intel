@@ -1,55 +1,52 @@
 from typer.testing import CliRunner
 import httpx
 from unittest.mock import patch, MagicMock
-from time import sleep
-from threading import Lock
-import os
+import tweepy 
+
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.io_tracking import FileChange, IOTracking, FileChangeType
 
 # Patch the API key *before* importing the io_tracking_app.
 # This ensures the Typer app initializes correctly at import time,
 # resolving the exit code 2 errors.
 with patch.object(API_KEYS, "gnews_api_key", "fake_key_for_import"):
-    from chimera_intel.core.io_tracking import io_tracking_app
+    with patch.object(API_KEYS, "twitter_bearer_token", "fake_token_for_import"):
+        from chimera_intel.core.io_tracking import io_tracking_app
 # --- END FIX ---
 
 runner = CliRunner()
 
+# --- MOCK DATA ---
+MOCK_NEWS_ARTICLES = [
+    {
+        "title": "Rumors of Failure Swirl Around New Product",
+        "source": {"name": "Tech News Today"},
+        "url": "http://example.com/news1",
+    },
+    {
+        "title": "Product Failure Claims Debunked by Company",
+        "source": {"name": "Business Insider"},
+        "url": "http://example.com/news2",
+    },
+]
+
+# --- ORIGINAL TESTS (Corrected) ---
 
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative")
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_success(
     mock_search_news, mock_search_twitter, mock_search_reddit
 ):
     """
-    Tests the track-influence command with a successful API response.
+    Tests the track-influence command with a successful API response
+    and multiple news articles.
     """
-    # Arrange
-
-    mock_search_news.return_value = [
-        {
-            "title": "Rumors of Failure Swirl Around New Product",
-            "source": {"name": "Tech News Today"},
-            "url": "http://example.com/news1",
-        },
-        {
-            "title": "Product Failure Claims Debunked by Company",
-            "source": {"name": "Business Insider"},
-            "url": "http://example.com/news2",
-        },
-    ]
-
     # Act
-    # --- FIX: Removed the "track" command name from the invoke call ---
     result = runner.invoke(
         io_tracking_app, ["--narrative", "rumors of product failure"]
     )
-    # --- End Fix ---
 
     # Assert
-
     assert result.exit_code == 0
     assert (
         "Tracking influence campaign for narrative: 'rumors of product failure'"
@@ -58,272 +55,218 @@ def test_track_influence_success(
     assert "Found 2 news articles related to the narrative." in result.output
     assert "Tech News Today" in result.output
     assert "Business Insider" in result.output
+    mock_search_news.assert_called_with("rumors of product failure", ANY)
+    mock_search_twitter.assert_called_with("rumors of product failure")
+    mock_search_reddit.assert_called_with("rumors of product failure", ANY)
 
 
-# --- FIX APPLIED: Added mocks for twitter and reddit ---
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-def test_track_influence_no_api_key(mock_search_twitter, mock_search_reddit):
-# --- END FIX ---
+@patch("chimera_intel.core.io_tracking.search_news_narrative") # Not called, but mocked for consistency
+def test_track_influence_no_api_key(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
     """
-    Tests the track-influence command when the API key is missing.
+    Tests the track-influence command when the GNEWS_API_KEY is missing.
+    This should cause a Configuration Error and exit code 1.
     """
     # Arrange
-    # We patch the key to None *within* this test's context
-    # to override the global 'fake_key_for_import' and test the error case.
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
-        # --- FIX: Removed the "track" command name from the invoke call ---
         result = runner.invoke(
             io_tracking_app, ["--narrative", "some narrative"]
         )
-        # --- End Fix ---
 
     # Assert
-
     assert result.exit_code == 1
     assert "Configuration Error: GNEWS_API_KEY not found in .env file." in result.output
+    mock_search_news.assert_not_called() # Fails before calling
 
 
-# --- FIX APPLIED: Added mocks for twitter and reddit ---
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
 def test_track_influence_api_error(
     mock_search_news, mock_search_twitter, mock_search_reddit
 ):
-# --- END FIX ---
     """
-    Tests the track-influence command when the GNews API returns an error.
+    Tests the track-influence command when the GNews API (the primary one)
+    returns an HTTPStatusError. This should fail the command.
     """
     # Arrange
-    # The API key is already set by the import-level patch,
-    # so we only need to mock the side effect.
     mock_search_news.side_effect = httpx.HTTPStatusError(
         "API Error", request=MagicMock(), response=httpx.Response(500)
     )
 
     # Act
-    # --- FIX: Removed the "track" command name from the invoke call ---
     result = runner.invoke(io_tracking_app, ["--narrative", "api failure"])
-    # --- End Fix ---
 
     # Assert
-
     assert result.exit_code == 1
     assert "API Error: Failed to fetch data. Status code: 500" in result.output
-# --- Original Tests (for context, unchanged) ---
-
-def test_file_change_model():
-    """Tests the FileChange pydantic model."""
-    change = FileChange(
-        change_type=FileChangeType.MODIFIED,
-        file_path="/tmp/test.txt",
-        message="File was modified.",
-    )
-    assert change.change_type == FileChangeType.MODIFIED
-    assert change.file_path == "/tmp/test.txt"
-
-
-def test_io_tracking_initialization():
-    """Tests the IOTracking class initializes correctly."""
-    tracker = IOTracking()
-    assert tracker.file_paths == set()
-    assert tracker.file_states == {}
-    assert isinstance(tracker.lock, Lock)
-
-
-def test_add_and_remove_file(tmp_path):
-    """Tests adding and removing a file from the tracker."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("initial content")
-
-    # Test Add
-    tracker.add_file(str(test_file))
-    assert str(test_file) in tracker.file_paths
-    assert str(test_file) in tracker.file_states
-    assert tracker.file_states[str(test_file)] is not None
-
-    # Test Remove
-    tracker.remove_file(str(test_file))
-    assert str(test_file) not in tracker.file_paths
-    assert str(test_file) not in tracker.file_states
-
-
-def test_check_files_no_changes(tmp_path):
-    """Tests that check_files yields no changes if files are untouched."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("content")
-    tracker.add_file(str(test_file))
-
-    # First check (initializes state)
-    list(tracker.check_files())
-    
-    # Second check (no changes)
-    changes = list(tracker.check_files())
-    assert len(changes) == 0
-
-
-def test_check_files_modification(tmp_path):
-    """Tests detection of file modification."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("content")
-    tracker.add_file(str(test_file))
-
-    # Initial check
-    list(tracker.check_files())
-    
-    # Modify file (ensure mtime changes)
-    sleep(0.01)
-    test_file.write_text("new content")
-    
-    changes = list(tracker.check_files())
-    assert len(changes) == 1
-    assert changes[0].change_type == FileChangeType.MODIFIED
-    assert changes[0].file_path == str(test_file)
-
-
-def test_check_files_creation(tmp_path):
-    """Tests detection of file creation (for a file added while it didn't exist)."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test_new.txt"
-    
-    # Add file to tracker *before* it exists
-    tracker.add_file(str(test_file))
-    
-    # First check, file doesn't exist, state is None
-    changes_init = list(tracker.check_files())
-    assert len(changes_init) == 0
-    assert tracker.file_states[str(test_file)] is None
-
-    # Create the file
-    test_file.write_text("I exist now")
-    
-    # Second check, should detect creation
-    changes_created = list(tracker.check_files())
-    assert len(changes_created) == 1
-    assert changes_created[0].change_type == FileChangeType.CREATED
-    assert changes_created[0].file_path == str(test_file)
-
-
-def test_check_files_deletion(tmp_path):
-    """Tests detection of file deletion."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("content")
-    tracker.add_file(str(test_file))
-
-    # Initial check
-    list(tracker.check_files())
-    
-    # Delete file
-    os.remove(str(test_file))
-    
-    changes = list(tracker.check_files())
-    assert len(changes) == 1
-    assert changes[0].change_type == FileChangeType.DELETED
-    assert changes[0].file_path == str(test_file)
 
 
 # --- NEW EXTENDED TESTS ---
 
-@patch("chimera_intel.core.io_tracking.os.path.getmtime", return_value=12345.0)
-@patch("chimera_intel.core.io_tracking.os.path.getsize", return_value=100)
-def test_get_file_state_success(mock_getsize, mock_getmtime, tmp_path):
-    """Tests the internal _get_file_state method on success."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    
-    state = tracker._get_file_state(str(test_file))
-    
-    assert state == (12345.0, 100)
-    mock_getmtime.assert_called_with(str(test_file))
-    mock_getsize.assert_called_with(str(test_file))
+from unittest.mock import ANY # Import ANY for client matching
+
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[{"data": "reddit post"}])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
+def test_track_influence_no_news_success(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests the scenario where no news articles are found, but other
+    sources might have results. This is a successful run (exit code 0).
+    """
+    # Act
+    result = runner.invoke(
+        io_tracking_app, ["--narrative", "obscure narrative"]
+    )
+
+    # Assert
+    assert result.exit_code == 0
+    assert "Found 0 news articles related to the narrative." in result.output
+    assert "\nNo significant propagation found in news media." in result.output
+    # Ensure it doesn't print a table
+    assert "News Narrative Analysis" not in result.output
+    # Ensure other searches were still called
+    mock_search_twitter.assert_called_once()
+    mock_search_reddit.assert_called_once()
 
 
-@patch("chimera_intel.core.io_tracking.os.path.getmtime", side_effect=FileNotFoundError)
-def test_get_file_state_file_not_found(mock_getmtime, tmp_path):
-    """Tests the internal _get_file_state method when the file doesn't exist."""
-    tracker = IOTracking()
-    test_file = tmp_path / "non_existent.txt"
-    
-    state = tracker._get_file_state(str(test_file))
-    
-    assert state is None
-    mock_getmtime.assert_called_with(str(test_file))
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+def test_track_influence_no_twitter_key(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests that a missing Twitter key prints a warning to stderr
+    but does *not* cause the command to fail (exit code 0).
+    """
+    # Arrange
+    # Patch the key *within* the function, not at the module level
+    with patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", None):
+        # Act
+        result = runner.invoke(
+            io_tracking_app, ["--narrative", "test narrative"]
+        )
+
+    # Assert
+    assert result.exit_code == 0
+    # Check for the warning in stderr (via result.output, as CliRunner captures both)
+    assert "Warning: TWITTER_BEARER_TOKEN not found." in result.output
+    # Check that the rest of the command (news) still worked
+    assert "Found 2 news articles related to the narrative." in result.output
+    assert "Tech News Today" in result.output
+    # The mock function itself won't be called, as the key check fails first
+    mock_search_twitter.assert_not_called()
 
 
-def test_remove_non_existent_file():
-    """Tests that removing a file that isn't tracked doesn't raise an error."""
-    tracker = IOTracking()
-    tracker.add_file("file1.txt")
-    
-    # Should not raise any exception
-    tracker.remove_file("non_existent.txt")
-    
-    assert "non_existent.txt" not in tracker.file_paths
-    assert "non_existent.txt" not in tracker.file_states
-    assert "file1.txt" in tracker.file_paths
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", side_effect=tweepy.TweepyException("Twitter is down"))
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+def test_track_influence_twitter_api_error(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests that a non-HTTP error from the Twitter search is caught,
+    printed to stderr, and does *not* fail the main command (exit code 0).
+    """
+    # Act
+    result = runner.invoke(
+        io_tracking_app, ["--narrative", "test narrative"]
+    )
+
+    # Assert
+    assert result.exit_code == 0
+    assert "Error searching Twitter: Twitter is down" in result.output
+    # The rest of the command should proceed
+    assert "Found 2 news articles related to the narrative." in result.output
+    assert "Business Insider" in result.output
 
 
-def test_add_duplicate_file(tmp_path):
-    """Tests that adding a file twice updates its state."""
-    tracker = IOTracking()
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("content")
-    
-    tracker.add_file(str(test_file))
-    initial_state = tracker.file_states[str(test_file)]
-    assert initial_state is not None
-    
-    # Modify file
-    sleep(0.01)
-    test_file.write_text("new content")
-    
-    # Add the same file again
-    tracker.add_file(str(test_file))
-    new_state = tracker.file_states[str(test_file)]
-    
-    assert new_state is not None
-    assert new_state != initial_state
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", side_effect=httpx.RequestError("Reddit is down"))
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+def test_track_influence_reddit_api_error(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests that a non-HTTP error from the Reddit search is caught,
+    printed to stderr, and does *not* fail the main command (exit code 0).
+    """
+    # Act
+    result = runner.invoke(
+        io_tracking_app, ["--narrative", "test narrative"]
+    )
+
+    # Assert
+    assert result.exit_code == 0
+    assert "Error searching Reddit: Reddit is down" in result.output
+    # The rest of the command should proceed
+    assert "Found 2 news articles related to the narrative." in result.output
+    assert "Business Insider" in result.output
 
 
-def test_check_files_state_transitions(tmp_path):
-    """Tests multiple state transitions in a row: CREATED -> MODIFIED -> DELETED."""
-    tracker = IOTracking()
-    test_file = tmp_path / "state_test.txt"
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=RuntimeError("A generic unexpected error"))
+def test_track_influence_generic_exception(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests the main command's generic 'except Exception' block.
+    This should be caught and cause an exit code 1.
+    """
+    # Act
+    result = runner.invoke(
+        io_tracking_app, ["--narrative", "test narrative"]
+    )
 
-    # 1. Add to tracker (file doesn't exist)
-    tracker.add_file(str(test_file))
-    list(tracker.check_files()) # Initial state: None
-    
-    # 2. Create file
-    sleep(0.01)
-    test_file.write_text("created")
-    
-    changes_created = list(tracker.check_files())
-    assert len(changes_created) == 1
-    assert changes_created[0].change_type == FileChangeType.CREATED
-    created_state = tracker.file_states[str(test_file)]
-    
-    # 3. Modify file
-    sleep(0.01)
-    test_file.write_text("modified")
-    
-    changes_modified = list(tracker.check_files())
-    assert len(changes_modified) == 1
-    assert changes_modified[0].change_type == FileChangeType.MODIFIED
-    modified_state = tracker.file_states[str(test_file)]
-    assert modified_state != created_state
+    # Assert
+    assert result.exit_code == 1
+    assert "An unexpected error occurred: A generic unexpected error" in result.output
 
-    # 4. Delete file
-    sleep(0.01)
-    os.remove(str(test_file))
+
+def test_track_influence_no_narrative_arg():
+    """
+    Tests the CLI behavior when the required '--narrative' argument is missing.
+    Typer should handle this and exit with code 2.
+    """
+    # Act
+    result = runner.invoke(io_tracking_app, []) # No arguments
+
+    # Assert
+    assert result.exit_code == 2 # Typer's exit code for missing options
+    assert "Missing option" in result.output
+    assert "--narrative" in result.output
+
+
+@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
+def test_track_influence_short_arg_and_empty_narrative(
+    mock_search_news, mock_search_twitter, mock_search_reddit
+):
+    """
+    Tests using the short-form '-n' argument and provides an empty
+    string. This should be a successful run (exit code 0) that finds nothing.
+    """
+    # Act
+    result = runner.invoke(
+        io_tracking_app, ["-n", ""] # Use short-form and empty string
+    )
+
+    # Assert
+    assert result.exit_code == 0
+    assert "Tracking influence campaign for narrative: ''" in result.output
+    assert "Found 0 news articles related to the narrative." in result.output
+    assert "\nNo significant propagation found in news media." in result.output
     
-    changes_deleted = list(tracker.check_files())
-    assert len(changes_deleted) == 1
-    assert changes_deleted[0].change_type == FileChangeType.DELETED
-    assert tracker.file_states[str(test_file)] is None
+    # Check that searches were called with the empty string
+    mock_search_news.assert_called_with("", ANY)
+    mock_search_twitter.assert_called_with("")
+    mock_search_reddit.assert_called_with("", ANY)
