@@ -130,7 +130,7 @@ def test_engine_init_load_model_not_found(mock_std_agent, caplog):
     mock_agent_instance.load_model.side_effect = FileNotFoundError
     mock_std_agent.return_value = mock_agent_instance
     
-    engine = NegotiationEngine(rl_model_path="bad/path.model")
+    NegotiationEngine(rl_model_path="bad/path.model")
     
     mock_agent_instance.load_model.assert_called_once_with("bad/path.model")
     assert "RL model not found" in caplog.text
@@ -280,7 +280,7 @@ def test_cli_run_simulation_exit(mock_engine_class, mock_asyncio_run, mock_plot,
     ]
     
     # Mock console.input to provide user input
-    with patch("rich.console.Console.input", side_effect=["User message 1", "exit"]) as mock_input:
+    with patch("rich.console.Console.input", side_effect=["User message 1", "exit"]):
         
         # Act
         result = runner.invoke(negotiation_app, ["simulate"])
