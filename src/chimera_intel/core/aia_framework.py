@@ -13,14 +13,15 @@ import re
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
-
+# FIX: Import the 'core' package itself to find sub-modules
+import chimera_intel.core as aia_core_package
 # FIX: Changed relative imports to absolute
 from chimera_intel.core.schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-import chimera_intel.core.modules as aia_modules
+# import chimera_intel.core.modules as aia_modules # FIX: Removed this incorrect import
 
 from chimera_intel.core.advanced_reasoning_engine import generate_reasoning, decompose_objective
 
@@ -72,15 +73,12 @@ if not reasoning_logger.handlers:
 
 
 def load_available_modules() -> Dict[str, Dict[str, Any]]:
-    """Dynamically loads modules from the 'chimera_intel.core.modules' package."""
+    """Dynamically loads modules from the 'chimera_intel.core' package."""
     modules: Dict[str, Dict[str, Any]] = {}
     ALLOWED_MODULES = {"footprint", "threat_intel", "vulnerability_scanner"}
     try:
-        # FIX: Import was moved to global scope
-        # import chimera_intel.core.modules as aia_modules
-
         for _, name, _ in pkgutil.iter_modules(
-            aia_modules.__path__, aia_modules.__name__ + "."
+            aia_core_package.__path__, aia_core_package.__name__ + "."
         ):
             module_name = name.split(".")[-1]
             if module_name not in ALLOWED_MODULES:
