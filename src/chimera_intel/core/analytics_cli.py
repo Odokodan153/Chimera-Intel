@@ -24,7 +24,7 @@ def show_analytics():
     """
     # FIX: Instantiate Console inside the function
     console = Console()
-    
+
     db_params = {
         "dbname": getattr(API_KEYS, "db_name", None),
         "user": getattr(API_KEYS, "db_user", None),
@@ -82,7 +82,7 @@ def show_analytics():
 def plot_sentiment_trajectory(
     negotiation_id: Annotated[str, typer.Argument(help="The ID of the negotiation to plot.")],
     # FIX: Changed type hint to Optional[str]
-    output: Annotated[Optional[str], typer.Option(help="Path to save the plot image file.")] = None, 
+    output: Annotated[Optional[str], typer.Option(help="Path to save the plot image file.")] = None,
 ):
     """
     Plots the sentiment trajectory over time for a negotiation.
@@ -107,13 +107,26 @@ def plot_sentiment_trajectory(
 
         query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %s ORDER BY timestamp"
         # Note: pd.read_sql_query first argument is sql, then con
-        # FIX: Changed params from tuple to list
-        df = pd.read_sql_query(query, conn, params=[negotiation_id]) 
+        # FIX: Changed params back to a tuple
+        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
         conn.close()
 
         if df.empty:
             console.print(f"No messages found for negotiation ID: {negotiation_id}", style="yellow")
             return
+
+        # Ensure 'sentiment' column is numeric, coercing errors
+        df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+        # Drop rows where sentiment could not be converted
+        df.dropna(subset=['sentiment'], inplace=True)
+
+        # Convert timestamp to datetime objects if they are not already
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+
+        if df.empty:
+             console.print(f"No valid numeric sentiment data found for negotiation ID: {negotiation_id} after cleaning.", style="yellow")
+             return
 
         plt.figure(figsize=(10, 6))
         plt.plot(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
@@ -121,6 +134,9 @@ def plot_sentiment_trajectory(
         plt.xlabel("Time")
         plt.ylabel("Sentiment Score")
         plt.grid(True)
+        plt.xticks(rotation=45) # Rotate x-axis labels for better readability
+        plt.tight_layout() # Adjust layout
+
 
         if output:
             plt.savefig(output)
