@@ -126,7 +126,14 @@
         <span class="n">balance_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
         <span class="n">balance_data</span> <span class="o">=</span> <span class="n">balance_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
-        <span class="n">balance_in_wei</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">balance_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="c1"># --- FIX START: Add check for status and result key ---</span>
+        <span class="k">if</span> <span class="n">balance_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;1&quot;</span> <span class="ow">or</span> <span class="s2">&quot;result&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">balance_data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;API response error or malformed data: </span><span class="si">{</span><span class="n">balance_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;message&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;No message&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="c1"># --- FIX END ---</span>
+
+        <span class="n">balance_in_wei</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">balance_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span> <span class="c1"># or balance_data[&quot;result&quot;]</span>
         <span class="n">balance_in_eth</span> <span class="o">=</span> <span class="n">balance_in_wei</span> <span class="o">/</span> <span class="mf">1e18</span>
 
         <span class="c1"># --- 2. Get Transactions ---</span>
@@ -146,7 +153,15 @@
         <span class="n">tx_response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
         <span class="n">tx_data</span> <span class="o">=</span> <span class="n">tx_response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
 
+        <span class="c1"># --- FIX START: Add check for status and result key ---</span>
+        <span class="k">if</span> <span class="n">tx_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;1&quot;</span> <span class="ow">or</span> <span class="s2">&quot;result&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tx_data</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;API response error or malformed data for txlist: </span><span class="si">{</span><span class="n">tx_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;message&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;No message&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="c1"># --- FIX END ---</span>
+
         <span class="n">transactions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Use .get() for safety in case tx_data[&quot;result&quot;] is not a list</span>
         <span class="k">for</span> <span class="n">tx</span> <span class="ow">in</span> <span class="n">tx_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;result&quot;</span><span class="p">,</span> <span class="p">[]):</span>
             <span class="c1"># Use model_validate with a dictionary to handle the &#39;from&#39; alias correctly</span>
 
@@ -172,7 +187,6 @@
             <span class="n">total_transactions</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">error</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;An API error occurred: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="p">)</span></div>
-
 
 
 <span class="c1"># --- Typer CLI Application ---</span>
