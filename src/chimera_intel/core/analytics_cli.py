@@ -110,7 +110,8 @@ def plot_sentiment_trajectory(
         
         # FIX: Changed params to a dictionary to match query and satisfy mypy
         
-        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id}) # type: ignore[arg-type] 
+        # FIX: Changed type: ignore to match the correct mypy error code
+        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id}) # type: ignore[call-overload] 
         conn.close()
 
         if df.empty:
