@@ -83,8 +83,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing_extensions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>  <span class="c1"># &lt;-- FIX: Import Annotated</span>
-
 <span class="kn">from</span><span class="w"> </span><span class="nn">.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticAppAnalysisResult</span><span class="p">,</span> <span class="n">FoundSecret</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_or_print_results</span><span class="p">,</span> <span class="n">console</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_scan_to_db</span>
@@ -176,10 +174,10 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.appint.run_static_apk_analysis">[docs]</a>
 <span class="nd">@appint_app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="s2">&quot;static&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_static_apk_analysis</span><span class="p">(</span>
-    <span class="c1"># --- FIX: Use Annotated syntax for typer.Argument ---</span>
-    <span class="n">file_path</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
-        <span class="nb">str</span><span class="p">,</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the .apk file to analyze.&quot;</span><span class="p">)</span>
-    <span class="p">],</span>
+    <span class="c1"># --- FIX REVERTED: Use standard typer.Argument syntax ---</span>
+    <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to the .apk file to analyze.&quot;</span>
+    <span class="p">),</span>
     <span class="c1"># --------------------------------------------------</span>
     <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
         <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Save results to a JSON file.&quot;</span>
