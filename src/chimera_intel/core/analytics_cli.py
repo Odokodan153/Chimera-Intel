@@ -105,10 +105,11 @@ def plot_sentiment_trajectory(
             console.print("Error: Could not connect to the database.", style="red")
             return
 
-        query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %s ORDER BY timestamp"
-        # Note: pd.read_sql_query first argument is sql, then con
-        # FIX: Changed params from a tuple to a list to satisfy mypy
-        df = pd.read_sql_query(query, conn, params=[negotiation_id,])
+        # FIX: Changed query to use named-style placeholder
+        query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %(neg_id)s ORDER BY timestamp"
+        
+        # FIX: Changed params to a dictionary to match query and satisfy mypy
+        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id})
         conn.close()
 
         if df.empty:
