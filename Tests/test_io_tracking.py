@@ -2,7 +2,7 @@ from typer.testing import CliRunner
 import httpx
 from unittest.mock import patch, MagicMock
 import tweepy 
-
+from unittest.mock import ANY 
 from chimera_intel.core.config_loader import API_KEYS
 
 # Patch the API key *before* importing the io_tracking_app.
@@ -105,10 +105,6 @@ def test_track_influence_api_error(
     assert result.exit_code == 1
     assert "API Error: Failed to fetch data. Status code: 500" in result.output
 
-
-# --- NEW EXTENDED TESTS ---
-
-from unittest.mock import ANY # Import ANY for client matching
 
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[{"data": "reddit post"}])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])

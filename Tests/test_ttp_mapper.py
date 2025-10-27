@@ -1,9 +1,6 @@
 from typer.testing import CliRunner
 import pytest
 from unittest.mock import patch, MagicMock
-
-# Module under test
-from chimera_intel.core import ttp_mapper
 from chimera_intel.cli import app as main_app
 from chimera_intel.core.ttp_mapper import ttp_app, map_cves_to_ttp
 
