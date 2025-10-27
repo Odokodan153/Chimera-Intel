@@ -175,7 +175,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.return_value = mock_result
         
         # FIX: Added required URL argument
-        result = self.runner.invoke(credibility_app, ["assess", "https://example.com"])
+        result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 8.5/10.0", result.stdout)
         self.assertIn("Factor 1", result.stdout)
@@ -194,7 +194,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.return_value = mock_result
         
         # FIX: Added required URL argument
-        result = self.runner.invoke(credibility_app, ["assess", "https://example.com"])
+        result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 5.5/10.0", result.stdout)
         # FIX: Check for title instead of unreliable color
@@ -212,7 +212,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.return_value = mock_result
         
         # FIX: Added required URL argument
-        result = self.runner.invoke(credibility_app, ["assess", "https://example.com"])
+        result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Credibility Score: 2.0/10.0", result.stdout)
         # FIX: Check for title instead of unreliable color
@@ -230,7 +230,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.return_value = mock_result
         
         # FIX: Added required URL argument
-        result = self.runner.invoke(credibility_app, ["assess", "https://example.com"])
+        result = self.runner.invoke(credibility_app, ["https://example.com"])
         # The command prints an error but exits cleanly (code 0)
         self.assertEqual(result.exit_code, 0) 
         self.assertIn("Error:", result.stdout)

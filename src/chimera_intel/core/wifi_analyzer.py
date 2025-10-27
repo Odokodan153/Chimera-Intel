@@ -26,12 +26,17 @@ def analyze_wifi_capture(pcap_path: str):
     for packet in packets:
         if packet.haslayer(Dot11Beacon):
             bssid = packet[Dot11].addr2
-            # Use a try-except block for safer SSID decoding
+            
+            # --- FIX: Correctly parse SSID by ID, not just first Elt ---
+            ssid = "<hidden>" # Default if no SSID element
+            ssid_elt = packet.getlayer(Dot11Elt, ID='SSID')
+            if ssid_elt is not None:
+                try:
+                    ssid = ssid_elt.info.decode()
+                except UnicodeDecodeError:
+                    ssid = ssid_elt.info.hex()  # Fallback for undecodable SSIDs
+            # --- End Fix ---
 
-            try:
-                ssid = packet[Dot11Elt].info.decode()
-            except UnicodeDecodeError:
-                ssid = packet[Dot11Elt].info.hex()  # Fallback for undecodable SSIDs
             if bssid not in aps:
                 stats = packet[Dot11Beacon].network_stats()
                 crypto = stats.get("crypto")

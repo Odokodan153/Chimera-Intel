@@ -346,7 +346,7 @@ def test_cli_assess_indicator_success(mock_asyncio_run, runner, mock_vulnerabili
     
     # FIX: Invoke the *local* risk_app, not main_app
     # and remove the "risk" subcommand name
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8", "--service", "apache"])
+    result = runner.invoke(risk_app, ["8.8.8.8", "--service", "apache"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -385,7 +385,7 @@ def test_cli_assess_indicator_no_service(mock_asyncio_run, runner):
     mock_asyncio_run.return_value = mock_result
     
     # FIX: Invoke the *local* risk_app, not main_app
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"]) # No --service
+    result = runner.invoke(risk_app, ["8.8.8.8"]) # No --service
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -411,7 +411,7 @@ def test_cli_assess_indicator_error(mock_asyncio_run, runner):
     mock_asyncio_run.return_value = mock_result
     
     # FIX: Invoke the *local* risk_app, not main_app
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
+    result = runner.invoke(risk_app, ["8.8.8.8"])
     
     # --- FIX: Assert exit_code 1, as the app now raises typer.Exit(1) ---
     assert result.exit_code == 1 
@@ -493,7 +493,7 @@ def test_cli_assess_indicator_no_vulns_with_actors(mock_asyncio_run, runner, moc
     mock_asyncio_run.return_value = mock_result
     
     # FIX: Invoke the *local* risk_app, not main_app
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
+    result = runner.invoke(risk_app, ["8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -522,7 +522,7 @@ def test_cli_assess_indicator_with_vulns_no_actors(mock_asyncio_run, runner, moc
     mock_asyncio_run.return_value = mock_result
     
     # FIX: Invoke the *local* risk_app, not main_app
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
+    result = runner.invoke(risk_app, ["8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -590,7 +590,7 @@ def test_cli_assess_indicator_no_details(mock_asyncio_run, runner, mock_vulnerab
     mock_asyncio_run.return_value = mock_result
     
     # FIX: Invoke the *local* risk_app, not main_app
-    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
+    result = runner.invoke(risk_app, ["8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout

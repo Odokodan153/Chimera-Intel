@@ -111,7 +111,7 @@ def test_cli_top_stories_success(mock_get_stories):
     assert "Test Title" in result.stdout
     assert "Test Author" in result.stdout
     # Check that the limit was respected by the mocked call
-    mock_get_stories.assert_called_with(limit=1)
+    mock_get_stories.assert_called_with(1)
 
 
 # --- NEW TEST: Test the CLI 'top' command when no articles are found ---

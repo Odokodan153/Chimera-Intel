@@ -117,9 +117,9 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Added "track" command and NO_COLOR env var
+        # FIX: Removed "track" command name
         result = self.runner.invoke(
-            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+            cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
         
         self.assertEqual(result.exit_code, 0)
@@ -141,9 +141,9 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Added "track" command and NO_COLOR env var
+        # FIX: Removed "track" command name
         result = self.runner.invoke(
-            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+            cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
         
         self.assertEqual(result.exit_code, 0)
@@ -162,10 +162,10 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Added "track" command and NO_COLOR env var
+        # FIX: Removed "track" command name
         # FIX: Update test to expect exit code 1 on error
         result = self.runner.invoke(
-            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+            cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
         
         self.assertEqual(result.exit_code, 1) # CLI should exit with 1 on error
@@ -175,11 +175,12 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
 
     def test_cli_track_missing_carrier(self):
         """Tests the CLI when the required --carrier option is missing."""
-        # FIX: Added "track" command and NO_COLOR env var
-        result = self.runner.invoke(cli_app, ["track", "EZ123"], env={"NO_COLOR": "1"})
+        # FIX: Removed "track" command name
+        result = self.runner.invoke(cli_app, ["EZ123"], env={"NO_COLOR": "1"})
         
         self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
         # FIX: Typer prints missing option errors to stderr, not stdout
+        # This assertion should now pass
         self.assertIn("Missing option '--carrier'", result.stderr)
 
 if __name__ == "__main__":

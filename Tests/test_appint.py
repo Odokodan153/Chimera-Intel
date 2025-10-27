@@ -150,7 +150,7 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # FIX: Added 'static' command
-        result = runner.invoke(appint_app, ["static", "dummy.apk"])
+        result = runner.invoke(appint_app, ["dummy.apk"])
 
         # Assert
         self.assertEqual(
@@ -191,7 +191,7 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # FIX: Added 'static' command
-        result = runner.invoke(appint_app, ["static", "dummy.apk", "--output", "test.json"])
+        result = runner.invoke(appint_app, ["dummy.apk", "--output", "test.json"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -224,7 +224,7 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # FIX: Added 'static' command
-        result = runner.invoke(appint_app, ["static", "dummy.apk"])
+        result = runner.invoke(appint_app, ["dummy.apk"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
@@ -248,7 +248,7 @@ class TestAppint(unittest.TestCase):
         """Tests the 'static' CLI command when the file is not found (mocks os.path.exists)."""
         # Act
         # FIX: Added 'static' command
-        result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
+        result = runner.invoke(appint_app, ["nonexistent.apk"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)

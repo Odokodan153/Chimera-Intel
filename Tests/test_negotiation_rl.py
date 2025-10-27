@@ -208,10 +208,18 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         self.agent.memory = transitions
         mock_sample.return_value = transitions
         
-        # Mock network outputs
-        self.mock_policy_net.return_value = torch.rand(self.agent.batch_size, 3)
-        self.mock_policy_net.gather.return_value = torch.rand(self.agent.batch_size, 1)
-        self.mock_target_net.return_value = torch.rand(self.agent.batch_size, 3)
+        # --- FIX: Mock the *output* of the network calls ---
+        # Mock the tensor returned by policy_net(...) and its .gather() method
+        mock_policy_output = MagicMock(spec=torch.Tensor)
+        mock_policy_output.gather.return_value = torch.rand(self.agent.batch_size, 1)
+        self.mock_policy_net.return_value = mock_policy_output
+
+        # Mock the tensor returned by target_net(...) and its .max() method
+        # .max(1) returns a tuple (values, indices)
+        mock_target_output = MagicMock(spec=torch.Tensor)
+        mock_target_output.max.return_value = (torch.rand(self.agent.batch_size, 1), None)
+        self.mock_target_net.return_value = mock_target_output
+        # --- END FIX ---
 
         # Mock optimizer
         self.agent.optimizer = MagicMock()
@@ -240,6 +248,12 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
     def test_load_model(self, mock_torch_load):
         """Tests loading the state dict into both networks."""
         mock_torch_load.return_value = {"key": "value"}
+
+        # --- FIX: Reset mocks to ignore any calls made during agent __init__ ---
+        self.mock_policy_net.load_state_dict.reset_mock()
+        self.mock_target_net.load_state_dict.reset_mock()
+        # --- END FIX ---
+        
         self.agent.load_model("test.pth")
         
         # --- FIX: This test should pass now that load_model is fixed ---

@@ -39,9 +39,8 @@ def test_track_influence_success(
     and multiple news articles.
     """
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "rumors of product failure"]
+        io_tracking_app, ["--narrative", "rumors of product failure"]
     )
 
     # Assert
@@ -72,9 +71,8 @@ def test_track_influence_no_api_key(
     # --- FIX: This test now works as intended due to the refactor of track() ---
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
-        # --- FIX: Added "track" command ---
         result = runner.invoke(
-            io_tracking_app, ["track", "--narrative", "some narrative"]
+            io_tracking_app, ["--narrative", "some narrative"]
         )
 
     # Assert
@@ -99,8 +97,7 @@ def test_track_influence_api_error(
     )
 
     # Act
-    # --- FIX: Added "track" command ---
-    result = runner.invoke(io_tracking_app, ["track", "--narrative", "api failure"])
+    result = runner.invoke(io_tracking_app, ["--narrative", "api failure"])
 
     # Assert
     assert result.exit_code == 1
@@ -118,9 +115,8 @@ def test_track_influence_no_news_success(
     sources might have results. This is a successful run (exit code 0).
     """
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "obscure narrative"]
+        io_tracking_app, ["--narrative", "obscure narrative"]
     )
 
     # Assert
@@ -148,9 +144,8 @@ def test_track_influence_no_twitter_key(
     # --- FIX: This test now works as intended due to the refactor of track() ---
     with patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", None):
         # Act
-        # --- FIX: Added "track" command ---
         result = runner.invoke(
-            io_tracking_app, ["track", "--narrative", "test narrative"]
+            io_tracking_app, ["--narrative", "test narrative"]
         )
 
     # Assert
@@ -181,9 +176,8 @@ def test_track_influence_twitter_api_error(
     mock_client_instance.search_recent_tweets.side_effect = tweepy.TweepyException("Twitter is down")
 
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "test narrative"]
+        io_tracking_app, ["--narrative", "test narrative"]
     )
 
     # Assert
@@ -208,9 +202,8 @@ def test_track_influence_reddit_api_error(
     printed to stderr, and does *not* fail the main command (exit code 0).
     """
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "test narrative"]
+        io_tracking_app, ["--narrative", "test narrative"]
     )
 
     # Assert
@@ -232,9 +225,8 @@ def test_track_influence_generic_exception(
     This should be caught and cause an exit code 1.
     """
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "--narrative", "test narrative"]
+        io_tracking_app, ["--narrative", "test narrative"]
     )
 
     # Assert
@@ -248,8 +240,7 @@ def test_track_influence_no_narrative_arg():
     Typer should handle this and exit with code 2.
     """
     # Act
-    # --- FIX: Added "track" command to test its missing argument ---
-    result = runner.invoke(io_tracking_app, ["track"]) # No arguments for "track"
+    result = runner.invoke(io_tracking_app, []) # No arguments for "track"
 
     # Assert
     assert result.exit_code == 2 # Typer's exit code for missing options
@@ -268,9 +259,8 @@ def test_track_influence_short_arg_and_empty_narrative(
     string. This should be a successful run (exit code 0) that finds nothing.
     """
     # Act
-    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["track", "-n", ""] # Use short-form and empty string
+        io_tracking_app, ["-n", ""] # Use short-form and empty string
     )
 
     # Assert

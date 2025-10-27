@@ -95,12 +95,10 @@ def plot_sentiment_trajectory(
         "host": getattr(API_KEYS, "db_host", None),
     }
 
-    # --- FIX: Removed this check as it breaks tests ---
-    # The tests mock the connect() call itself, and this
-    # check was failing first due to the test's incomplete mock.
-    # if not all(db_params.values()):
-    #      console.print("Error: Database connection parameters are missing.", style="red")
-    #      return
+    # --- FIX: Re-enabled this check to fix the test ---
+    if not all(db_params.values()):
+         console.print("Error: Database connection parameters are missing.", style="red")
+         return
     # --- End Fix ---
 
     try:

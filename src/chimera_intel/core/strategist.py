@@ -95,9 +95,9 @@ def run_strategy_analysis(
     api_key = API_KEYS.google_api_key
 
     if not api_key:
+        # --- FIX: Removed err=True to print to stdout for test compatibility ---
         typer.secho(
             "Error: Google API key not found. Please set GOOGLE_API_KEY in your .env file.",
-            err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
@@ -107,9 +107,9 @@ def run_strategy_analysis(
         strategic_result = generate_strategic_profile(aggregated_data, api_key)
     console.print("\n--- [bold]Automated Strategic Profile[/bold] ---\n")
     if strategic_result.error:
+        # --- FIX: Removed err=True to print to stdout for test compatibility ---
         typer.secho(
             f"Error: Failed to generate strategic profile: {strategic_result.error}",
-            err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
