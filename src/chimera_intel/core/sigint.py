@@ -146,7 +146,7 @@ def decode_adsb_from_capture(
     file_path: str, ref_lat: float, ref_lon: float
 ) -> Dict[str, Any]:
     """Decodes ADS-B messages from a CSV capture file."""
-    print(f"Decoding ADS-B data from {file_path}...")
+    console.print(f"Decoding ADS-B data from {file_path}...")
     interceptor = SignalIntercept(ref_lat=ref_lat, ref_lon=ref_lon)
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -169,7 +169,8 @@ def decode_adsb_from_capture(
 
 def decode_ais_from_capture(file_path: str) -> Dict[str, Any]:
     """Decodes AIS NMEA messages from a text or CSV capture file."""
-    print(f"Decoding AIS data from {file_path}...")
+    # FIX: Change print to console.print for consistent output stream handling
+    console.print(f"Decoding AIS data from {file_path}...")
     vessels = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -179,7 +180,8 @@ def decode_ais_from_capture(file_path: str) -> Dict[str, Any]:
 
                     msg = pyais.decode(line.strip().encode())
                     if msg and hasattr(msg, "mmsi"):
-                        vessels[msg.mmsi] = msg.asdict()
+                        # FIX: For consistency with JSON keys and to avoid potential issues with int keys.
+                        vessels[str(msg.mmsi)] = msg.asdict()
                 except Exception as e:
                     logger.debug(
                         f"Could not decode AIS message: '{line.strip()}' - {e}"

@@ -118,12 +118,8 @@ def track_narrative(
             )
         console.print(table)
         
-        # FIX: Use typer.Exit(code=0) for success
-        # REMOVED: raise typer.Exit(code=0)
-        
-        # The return statement below was unreachable due to sys.exit()
-        # and is not needed for the CLI command test to pass.
-        # return analyzed_content
+        # FIX: The function must return the result when called as a module utility.
+        return analyzed_content
         
     except ValueError as e:
         console.print(f"[bold red]Configuration Error:[/bold red] {e}")
@@ -134,8 +130,9 @@ def track_narrative(
         # FIX: Use typer.Exit(code=1)
         raise typer.Exit(code=1)
 
-    # --- FIX: Moved success exit outside the try/except block ---
-    raise typer.Exit(code=0)
+    # --- FIX: Removed the unconditional typer.Exit(code=0) as it stops execution
+    # when the function is called as a module utility.
+    # raise typer.Exit(code=0) 
 
 
 if __name__ == "__main__":

@@ -76,8 +76,9 @@ class CognitiveWarfareEngine:
 
         narrative_data = track_narrative(self.narrative_query)
         if narrative_data:
-            for item in narrative_data:
-                item["source"] = "Web/News"
+            # FIX: Removed the erroneous loop that overwrites source information
+            # for item in narrative_data:
+            #     item["source"] = "Web/News"
             all_narratives.extend(narrative_data)
             console.print(
                 f"  - [green]Loaded {len(narrative_data)} narratives from web sources.[/green]"

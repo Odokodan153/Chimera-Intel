@@ -55,11 +55,8 @@ def monitor_patents_research(
         if callable(patents):
             patents = patents()
         
-        # --- START FIX ---
-        # Replaced `if patents:` with a more robust check 
-        # to avoid MagicMock's truthiness issues.
+        # FIX: Ensure robust checking for patents list
         if patents is not None and len(patents) > 0:
-        # --- END FIX ---
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Title")
             table.add_column("URL")
@@ -167,7 +164,8 @@ def track_precursors(
             writer = csv.writer(f)
             writer.writerow(["Supplier", "Precursor", "Product Name", "Price", "URL"])
             writer.writerows(results)
-        print(f"\n[green]Precursor tracking data saved to {output_file}[/green]")
+        # FIX: Removed leading \n from the output message to fix test assertion.
+        print(f"[green]Precursor tracking data saved to {output_file}[/green]")
     else:
         print("\n[yellow]No precursor data was found.[/yellow]")
 
@@ -207,7 +205,7 @@ def analyze_sds(
         print("\n[bold]Extracted SDS Information:[/bold]")
 
         # Use regex to find GHS pictograms, Hazard statements (H-statements), and
-        # Precautionary statements (P-statements). These are examples and may
+        # Precautionary statements (P-statements. These are examples and may
         # need to be refined for better accuracy.
 
         ghs_pictograms = re.findall(r"GHS\d{2}", text_content)

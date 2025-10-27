@@ -70,6 +70,8 @@ def mock_scapy_packet():
     # --- FIX: Mock the .info attribute itself to allow .decode to be mocked ---
     mock_info = MagicMock(spec=bytes)
     mock_info.decode.return_value = "MockSSID"
+    # --- NEW FIX 1: Add hex fallback mock to fixture for consistent cleanup ---
+    mock_info.hex.return_value = "fffe"
     mock_elt.info = mock_info
     # --- End Fix ---
     
@@ -87,6 +89,10 @@ def mock_scapy_packet():
 
     # Configure the main mock packet
     mock_pkt.haslayer.return_value = True
+    
+    # --- NEW FIX 2: Mock getlayer() to return the mocked element (fixes mock tests) ---
+    mock_pkt.getlayer.return_value = mock_elt
+    
     mock_pkt.__getitem__.side_effect = lambda layer: {
         Dot11: mock_dot11,
         Dot11Beacon: mock_beacon,
@@ -110,7 +116,7 @@ def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(pcap_path)],
+        [str(pcap_path)],
         env={"COLUMNS": "120"},
     )
 
@@ -128,7 +134,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(non_existent_file)],
+        [str(non_existent_file)],
         env={"COLUMNS": "120"},
     )
 
@@ -206,8 +212,8 @@ def test_analyze_wifi_ssid_decode_error(mock_rdpcap, mock_scapy_packet, capsys):
     # --- FIX: Configure the mock .info attribute, don't replace it ---
     # mock_elt.info = b"\xff\xfe" # Invalid utf-8 <-- OLD/WRONG
     mock_elt.info.decode.side_effect = UnicodeDecodeError("utf-8", b"", 0, 1, "reason")
-    # Provide a hex fallback
-    mock_elt.info.hex.return_value = "fffe" 
+    # Provide a hex fallback (now in fixture, removing redundant line)
+    # mock_elt.info.hex.return_value = "fffe" 
     # --- End Fix ---
 
     mock_rdpcap.return_value = [mock_pkt]

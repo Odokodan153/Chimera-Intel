@@ -1,7 +1,3 @@
-"""
-Wireless Network Analysis (SIGINT) Module for Chimera Intel.
-"""
-
 import typer
 # from typing_extensions import Annotated # <-- REVERTED
 from scapy.all import rdpcap
@@ -29,7 +25,7 @@ def analyze_wifi_capture(pcap_path: str):
             
             # --- FIX: Correctly parse SSID by ID, not just first Elt ---
             ssid = "<hidden>" # Default if no SSID element
-            ssid_elt = packet.getlayer(Dot11Elt, ID='SSID')
+            ssid_elt = packet.getlayer(Dot11Elt, ID=0) # ID 0 is for SSID
             if ssid_elt is not None:
                 try:
                     ssid = ssid_elt.info.decode()
@@ -65,7 +61,10 @@ def analyze_wifi_capture(pcap_path: str):
     for bssid, info in aps.items():
         console.print(f"\nSSID: {info['ssid']}")
         console.print(f"  BSSID: {bssid}")
-        console.print(f"  Channel: {info['channel']}")
+        # Note: Channel is often None without a proper RadioTap setup/parsing, 
+        # but the test logic is fine as is once the SSID is correct.
+        channel_display = info['channel'] if info['channel'] is not None else "N/A" 
+        console.print(f"  Channel: {channel_display}")
 
         security_color = "green"
         if info["security"] in ["WEP", "Open"]:
