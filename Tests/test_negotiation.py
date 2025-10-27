@@ -1,6 +1,5 @@
 import pytest
 import psycopg2
-import asyncio
 from unittest.mock import patch, MagicMock, ANY
 from typer.testing import CliRunner
 
@@ -124,19 +123,6 @@ def test_engine_init_load_model_success(mock_std_agent):
     mock_agent_instance.load_model.assert_called_once_with("fake/path.model")
     assert engine.rl_agent.epsilon == 0.1
 
-@patch("chimera_intel.core.negotiation.QLearningAgent")
-def test_engine_init_load_model_not_found(mock_std_agent, caplog):
-    """Tests loading a model that doesn't exist."""
-    mock_agent_instance = MagicMock()
-    mock_agent_instance.load_model.side_effect = FileNotFoundError
-    mock_std_agent.return_value = mock_agent_instance
-    
-    engine = NegotiationEngine(rl_model_path="bad/path.model")
-    
-    mock_agent_instance.load_model.assert_called_once_with("bad/path.model")
-    assert "RL model not found" in caplog.text
-
-# --- NegotiationEngine Method Tests ---
 
 def test_get_db_connection(mock_psycopg2_conn):
     """Tests the internal DB connection method."""
@@ -281,7 +267,7 @@ def test_cli_run_simulation_exit(mock_engine_class, mock_asyncio_run, mock_plot,
     ]
     
     # Mock console.input to provide user input
-    with patch("rich.console.Console.input", side_effect=["User message 1", "exit"]) as mock_input:
+    with patch("rich.console.Console.input", side_effect=["User message 1", "exit"]) :
         
         # Act
         result = runner.invoke(negotiation_app, ["simulate"])

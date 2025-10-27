@@ -1,6 +1,4 @@
-# Chimera-Intel/Tests/test_sigint.py
 import pytest
-import json
 import socket
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
