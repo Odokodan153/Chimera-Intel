@@ -71,7 +71,8 @@ def calculate_risk(
         # Adjust probability based on threat actor activity
 
         if threat_actors:
-            probability = min(1.0, probability + len(threat_actors) * 0.1)
+            # --- FIX: Round the probability to 2 decimal places to avoid float errors ---
+            probability = round(min(1.0, probability + len(threat_actors) * 0.1), 2)
         # Round the risk score to avoid floating-point precision errors
 
         risk_score = round(probability * impact, 2)
@@ -222,7 +223,8 @@ app = typer.Typer()
 
 @app.command("assess-indicator")
 def run_indicator_assessment(
-    indicator: str = typer.Argument(..., help="The indicator (IP, domain) to assess."),
+    # --- FIX: Removed ... from typer.Argument ---
+    indicator: str = typer.Argument(help="The indicator (IP, domain) to assess."),
     service: str = typer.Option(
         None,
         "--service",
@@ -243,7 +245,9 @@ def run_indicator_assessment(
 
     if result.error:
         console.print(f"[bold red]Error:[/] {result.error}")
-        return
+        # --- FIX: Added typer.Exit(code=1) for error handling ---
+        raise typer.Exit(code=1)
+    
     table = Table(title=f"Risk Assessment for {indicator}")
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="magenta")

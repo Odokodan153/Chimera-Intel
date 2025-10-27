@@ -147,12 +147,14 @@ def test_analyze_wifi_capture_integration(mock_wifi_pcap, capsys):
     # Check for Open network
     assert "SSID: OpenWiFi" in captured.out
     assert "BSSID: 00:11:22:33:44:55" in captured.out
-    assert "Security: [red]Open[/red]" in captured.out
+    # --- FIX: Assert plain text, not rich markup ---
+    assert "Security: Open" in captured.out
 
     # Check for WPA2 network
     assert "SSID: SecureWiFi" in captured.out
     assert "BSSID: aa:bb:cc:dd:ee:ff" in captured.out
-    assert "Security: [green]WPA2[/green]" in captured.out
+    # --- FIX: Assert plain text, not rich markup ---
+    assert "Security: WPA2" in captured.out
 
 
 @patch("chimera_intel.core.wifi_analyzer.rdpcap")
@@ -182,7 +184,8 @@ def test_analyze_wifi_duplicate_bssid(mock_rdpcap, mock_scapy_packet, capsys):
 
     # Ensure the SSID and security type are only printed once
     assert captured.out.count("SSID: MockSSID") == 1
-    assert captured.out.count("Security: [red]WEP[/red]") == 1
+    # --- FIX: Assert plain text, not rich markup ---
+    assert captured.out.count("Security: WEP") == 1
 
 
 # --- FIX: Corrected patch path for rdpcap (was 'src.chimera_intel...') ---
@@ -208,17 +211,19 @@ def test_analyze_wifi_ssid_decode_error(mock_rdpcap, mock_scapy_packet, capsys):
     
     # Logic should fall back to hex representation
     assert "SSID: fffe" in captured.out
-    assert "Security: [red]Open[/red]" in captured.out
+    # --- FIX: Assert plain text, not rich markup ---
+    assert "Security: Open" in captured.out
 
 
 # --- FIX: Corrected patch path for rdpcap (was 'src.chimera_intel...') ---
 @patch("chimera_intel.core.wifi_analyzer.rdpcap")
+# --- FIX: Update expected strings to be plain text ---
 @pytest.mark.parametrize("crypto_set, expected_security", [
-    ({"WPA2", "WPA"}, "[green]WPA/WPA2[/green]"), # WPA/WPA2 is green (not yellow)
-    ({"WPA2"}, "[green]WPA2[/green]"),
-    ({"WPA"}, "[yellow]WPA[/yellow]"),
-    ({"WEP"}, "[red]WEP[/red]"),
-    (set(), "[red]Open[/red]"), # Open is red in the logic
+    ({"WPA2", "WPA"}, "WPA/WPA2"),
+    ({"WPA2"}, "WPA2"),
+    ({"WPA"}, "WPA"),
+    ({"WEP"}, "WEP"),
+    (set(), "Open"),
 ])
 def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, crypto_set, expected_security):
     """Test detection of various security protocols and their colors."""
@@ -229,4 +234,5 @@ def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, cry
     analyze_wifi_capture("dummy.pcap")
     captured = capsys.readouterr()
     
+    # --- FIX: Assert plain text, not rich markup ---
     assert f"Security: {expected_security}" in captured.out

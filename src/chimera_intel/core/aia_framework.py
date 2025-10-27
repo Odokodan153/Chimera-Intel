@@ -464,6 +464,9 @@ def run_autonomous_analysis_cli(
         raise e
     except Exception as e:
         logger.critical(f"An unhandled error occurred: {e}")
+        # --- FIX: Print error to stdout to match test expectation ---
+        print(f"An unhandled error occurred: {e}")
+        # --- End Fix ---
         raise typer.Exit(code=1)
 
 

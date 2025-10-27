@@ -3,7 +3,7 @@ Wireless Network Analysis (SIGINT) Module for Chimera Intel.
 """
 
 import typer
-from typing_extensions import Annotated
+# from typing_extensions import Annotated # <-- REVERTED
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
@@ -11,8 +11,8 @@ import os
 from rich.console import Console
 
 # Create a console object
-# --- FIX: Set force_terminal=True to enable rich markup in capsys ---
-console = Console(force_terminal=True)
+# --- FIX: Reverted force_terminal=True to allow plain-text output in capsys ---
+console = Console()
 
 # --- Logic Function ---
 
@@ -91,10 +91,10 @@ def get_wifi_app():
     )
     def analyze(
     # --- End Fix ---
-        capture_file: Annotated[
-            str,
-            typer.Argument(help="Path to the wireless capture file (.pcap or .pcapng)."),
-        ],
+    # --- FIX REVERTED: Use standard typer.Argument syntax ---
+        capture_file: str = typer.Argument(
+            ..., help="Path to the wireless capture file (.pcap or .pcapng)."
+        ),
     ):
         """
         Analyzes wireless network capture files to identify, profile, and assess

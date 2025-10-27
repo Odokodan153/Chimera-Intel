@@ -1,5 +1,6 @@
 import pytest
 import httpx
+import httpcore  # <-- Add this import
 from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Timeout
 
@@ -43,9 +44,18 @@ def mock_pool_request():
 def create_mock_pool_response(status_code, content):
     """Creates a mock (status, headers, stream, extensions) tuple."""
     headers = [(b"content-type", b"application/json")]
-    stream = AsyncMock(spec=httpx.AsyncByteStream)
-    stream.read = AsyncMock(return_value=content)
+
+    # Create a real async generator for the stream content
+    async def async_iterator():
+        yield content
+
+    # Use httpx.AsyncByteStream to wrap the generator.
+    # This correctly implements the async stream protocol httpcore expects.
+    stream = httpx.AsyncByteStream(async_iterator())
+
+    # We still mock aclose to ensure it can be awaited without issue
     stream.aclose = AsyncMock()
+    
     return (status_code, headers, stream, {})
 
 
@@ -103,10 +113,12 @@ async def test_global_client_retry_on_timeout(mock_pool_request):
     # The transport's underlying call will raise TimeoutException
     # Note: httpx's *transport* retries on httpcore exceptions.
     # To trigger a retry, we must raise the httpcore equivalent.
-    # However, patching the pool's handle_async_request and having it
-    # raise httpx.TimeoutException is also caught by the transport's retry logic.
-    mock_pool_request.side_effect = httpx.TimeoutException("Timeout")
+    # We raise httpcore.ReadTimeout, as this is what the httpcore
+    # transport retry logic is designed to catch.
+    mock_pool_request.side_effect = httpcore.ReadTimeout("Timeout")
 
+    # The client will catch the httpcore exception, retry, and after
+    # exhausting retries, httpx will wrap and raise its own exception.
     with pytest.raises(httpx.TimeoutException):
         await async_client.request("GET", "https://example.com")
 

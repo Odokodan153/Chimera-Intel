@@ -12,8 +12,6 @@ import os
 import shutil
 import re
 from typing import Optional, List
-from typing_extensions import Annotated  # <-- FIX: Import Annotated
-
 from .schemas import StaticAppAnalysisResult, FoundSecret
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
@@ -100,10 +98,10 @@ appint_app = typer.Typer()
 
 @appint_app.command("static")
 def run_static_apk_analysis(
-    # --- FIX: Use Annotated syntax for typer.Argument ---
-    file_path: Annotated[
-        str, typer.Argument(help="Path to the .apk file to analyze.")
-    ],
+    # --- FIX REVERTED: Use standard typer.Argument syntax ---
+    file_path: str = typer.Argument(
+        ..., help="Path to the .apk file to analyze."
+    ),
     # --------------------------------------------------
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."

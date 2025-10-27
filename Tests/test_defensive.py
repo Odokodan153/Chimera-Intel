@@ -510,10 +510,11 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.search_github_leaks")
     @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
-    def test_cli_leaks_command(self, mock_search: MagicMock):
+    def test_cli_leaks_command(self, mock_pat: MagicMock, mock_search: MagicMock):
         """Tests a successful 'leaks' CLI command.
 
         Args:
+            mock_pat (MagicMock): A mock for the patched `github_pat`.
             mock_search (MagicMock): A mock for `search_github_leaks`.
         """
         mock_search.return_value.model_dump.return_value = {"total_count": 0}
@@ -525,7 +526,7 @@ class TestDefensive(unittest.TestCase):
     def test_cli_leaks_no_api_key_shows_warning(self):
         """Tests 'defensive leaks' prints a warning when API key is missing."""
         result = runner.invoke(defensive_app, ["leaks", "query"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Skipping GitHub Leaks Scan", result.stdout)
         self.assertIn("GITHUB_PAT", result.stdout)
 
@@ -557,10 +558,11 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_apk_mobsf")
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", "fake_key")
-    def test_cli_mobsf_command_success(self, mock_analyze: MagicMock):
+    def test_cli_mobsf_command_success(self, mock_key: MagicMock, mock_analyze: MagicMock):
         """Tests a successful 'mobsf' CLI command.
 
         Args:
+            mock_key (MagicMock): A mock for the patched `mobsf_api_key`.
             mock_analyze (MagicMock): A mock for `analyze_apk_mobsf`.
         """
         mock_analyze.return_value.model_dump.return_value = {
@@ -580,10 +582,11 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
-    def test_cli_surface_command(self, mock_analyze: MagicMock):
+    def test_cli_surface_command(self, mock_key: MagicMock, mock_analyze: MagicMock):
         """Tests a successful 'surface' CLI command.
 
         Args:
+            mock_key (MagicMock): A mock for the patched `shodan_api_key`.
             mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
         """
         mock_analyze.return_value.model_dump.return_value = {"total_results": 1}
@@ -595,7 +598,7 @@ class TestDefensive(unittest.TestCase):
     def test_cli_surface_no_api_key_shows_warning(self):
         """Tests 'defensive surface' prints a warning when API key is missing."""
         result = runner.invoke(defensive_app, ["surface", "query"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Skipping Shodan Scan", result.stdout)
         self.assertIn("SHODAN_API_KEY", result.stdout)
 

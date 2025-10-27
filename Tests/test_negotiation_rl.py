@@ -158,7 +158,9 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         self.assertIn("cultural profile", prompt_with_culture)
         self.assertIn('"style": "direct"', prompt_with_culture)
 
-    def test_generate_negotiation_message(self):
+    # --- FIX: Added patch for 'get_cultural_profile' to prevent ConnectionError ---
+    @patch("chimera_intel.core.negotiation_rl_agent.get_cultural_profile", return_value={})
+    def test_generate_negotiation_message(self, mock_get_culture):
         """Tests message generation and ethical check."""
         self.mock_ethics.check_message.return_value = [] # No violations
         state = {"turn": 1}
@@ -168,6 +170,7 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
             mock_gen.assert_called_once()
             self.mock_ethics.check_message.assert_called_once_with({"message": "Test OK"})
             self.assertEqual(response["message"], "Test OK")
+            mock_get_culture.assert_called_once_with("US") # Verify mock was called
 
     def test_generate_negotiation_message_ethics_violation(self):
         """Tests message generation when an ethical violation is found."""
@@ -239,6 +242,7 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         mock_torch_load.return_value = {"key": "value"}
         self.agent.load_model("test.pth")
         
+        # --- FIX: This test should pass now that load_model is fixed ---
         mock_torch_load.assert_called_once_with("test.pth")
         self.mock_policy_net.load_state_dict.assert_called_once_with({"key": "value"})
         self.mock_target_net.load_state_dict.assert_called_once_with({"key": "value"})

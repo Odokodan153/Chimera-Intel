@@ -18,11 +18,12 @@ def test_model_creation(model):
     assert isinstance(model, nn.Module)
     assert len(list(model.children())) > 0 # Check if it has layers
     
-    # Check layer types (this is a bit brittle but ensures structure)
-    layer1 = model.layers[0]
+    # FIX: Access attributes directly instead of a 'layers' list
+    layer1 = model.layer1
     assert isinstance(layer1, nn.Linear)
     
-    layer_last = model.layers[-1]
+    # FIX: Access attributes directly
+    layer_last = model.layer3
     assert isinstance(layer_last, nn.Linear)
 
 def test_forward_pass(model):
@@ -83,7 +84,7 @@ def test_select_action_random(mock_torch_randint, mock_random, model):
     
     # Mock the random integer generation to return a predictable "random" action (e.g., action 0)
     action_dim = 2
-    mock_torch_randint.return_value = torch.tensor([0]) # Mocked random action
+    mock_torch_randint.return_value = torch.tensor([0], dtype=torch.long) # Mocked random action
     
     state_dim = 4
     state = torch.randn(1, state_dim) # Example state
@@ -96,7 +97,7 @@ def test_select_action_random(mock_torch_randint, mock_random, model):
         mock_forward.assert_not_called() 
         
         # Check that the mocked random action (index 0) was selected
-        mock_torch_randint.assert_called_once_with(0, action_dim, (1,))
+        mock_torch_randint.assert_called_once_with(0, action_dim, (1,), dtype=torch.long, device='cpu')
         assert action.item() == 0
 
 def test_model_to_device(model):

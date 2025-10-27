@@ -117,8 +117,10 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Removed the "track" command name
-        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
+        # FIX: Added "track" command and NO_COLOR env var
+        result = self.runner.invoke(
+            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+        )
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): pre_transit", result.stdout)
@@ -139,8 +141,10 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Removed the "track" command name
-        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
+        # FIX: Added "track" command and NO_COLOR env var
+        result = self.runner.invoke(
+            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+        )
         
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): in_transit", result.stdout)
@@ -158,18 +162,22 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_asyncio_run.return_value = mock_result
 
-        # FIX: Removed the "track" command name
-        result = self.runner.invoke(cli_app, ["EZ123", "--carrier", "USPS"])
+        # FIX: Added "track" command and NO_COLOR env var
+        # FIX: Update test to expect exit code 1 on error
+        result = self.runner.invoke(
+            cli_app, ["track", "EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
+        )
         
-        self.assertEqual(result.exit_code, 0) # CLI exits 0
+        self.assertEqual(result.exit_code, 1) # CLI should exit with 1 on error
         self.assertIn("Error:", result.stdout)
         self.assertIn("No API key", result.stdout)
         self.assertNotIn("Tracking History", result.stdout) # Table should not be printed
 
     def test_cli_track_missing_carrier(self):
         """Tests the CLI when the required --carrier option is missing."""
-        # FIX: Removed the "track" command name
-        result = self.runner.invoke(cli_app, ["EZ123"])
+        # FIX: Added "track" command and NO_COLOR env var
+        result = self.runner.invoke(cli_app, ["track", "EZ123"], env={"NO_COLOR": "1"})
+        
         self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
         # FIX: Typer prints missing option errors to stderr, not stdout
         self.assertIn("Missing option '--carrier'", result.stderr)

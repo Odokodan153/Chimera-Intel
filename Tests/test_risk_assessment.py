@@ -413,7 +413,8 @@ def test_cli_assess_indicator_error(mock_asyncio_run, runner):
     # FIX: Invoke the *local* risk_app, not main_app
     result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
     
-    assert result.exit_code == 0 # Typer CLI prints error and exits 0
+    # --- FIX: Assert exit_code 1, as the app now raises typer.Exit(1) ---
+    assert result.exit_code == 1 
     assert "Error:" in result.stdout
     assert "API call failed" in result.stdout
     assert "Risk Assessment" not in result.stdout # Table should not show

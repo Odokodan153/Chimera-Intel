@@ -639,7 +639,7 @@ def run_leaks_check(
                 border_style="yellow",
             )
         )
-        return
+        raise typer.Exit(code=1)
     logger.info("Starting GitHub leaks search for query: '%s'", query)
     results = search_github_leaks(query, api_key)
     save_or_print_results(results.model_dump(), output_file)
@@ -695,7 +695,7 @@ def run_surface_check(
                 border_style="yellow",
             )
         )
-        return
+        raise typer.Exit(code=1)
     logger.info("Starting Shodan surface scan for query: '%s'", query)
     results = analyze_attack_surface_shodan(query, api_key)
     save_or_print_results(results.model_dump(), output_file)

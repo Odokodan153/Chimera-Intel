@@ -6,12 +6,9 @@ from unittest.mock import ANY
 from chimera_intel.core.config_loader import API_KEYS
 
 # Patch the API key *before* importing the io_tracking_app.
-# This ensures the Typer app initializes correctly at import time,
-# resolving the exit code 2 errors.
 with patch.object(API_KEYS, "gnews_api_key", "fake_key_for_import"):
     with patch.object(API_KEYS, "twitter_bearer_token", "fake_token_for_import"):
         from chimera_intel.core.io_tracking import io_tracking_app
-# --- END FIX ---
 
 runner = CliRunner()
 
@@ -42,8 +39,9 @@ def test_track_influence_success(
     and multiple news articles.
     """
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["--narrative", "rumors of product failure"]
+        io_tracking_app, ["track", "--narrative", "rumors of product failure"]
     )
 
     # Assert
@@ -62,7 +60,7 @@ def test_track_influence_success(
 
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative") # Not called, but mocked for consistency
+@patch("chimera_intel.core.io_tracking.search_news_narrative") 
 def test_track_influence_no_api_key(
     mock_search_news, mock_search_twitter, mock_search_reddit
 ):
@@ -71,10 +69,12 @@ def test_track_influence_no_api_key(
     This should cause a Configuration Error and exit code 1.
     """
     # Arrange
+    # --- FIX: This test now works as intended due to the refactor of track() ---
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
+        # --- FIX: Added "track" command ---
         result = runner.invoke(
-            io_tracking_app, ["--narrative", "some narrative"]
+            io_tracking_app, ["track", "--narrative", "some narrative"]
         )
 
     # Assert
@@ -99,7 +99,8 @@ def test_track_influence_api_error(
     )
 
     # Act
-    result = runner.invoke(io_tracking_app, ["--narrative", "api failure"])
+    # --- FIX: Added "track" command ---
+    result = runner.invoke(io_tracking_app, ["track", "--narrative", "api failure"])
 
     # Assert
     assert result.exit_code == 1
@@ -117,8 +118,9 @@ def test_track_influence_no_news_success(
     sources might have results. This is a successful run (exit code 0).
     """
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["--narrative", "obscure narrative"]
+        io_tracking_app, ["track", "--narrative", "obscure narrative"]
     )
 
     # Assert
@@ -133,21 +135,22 @@ def test_track_influence_no_news_success(
 
 
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
+# --- FIX: Removed mock for search_twitter_narrative to test its internal logic ---
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_no_twitter_key(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_reddit
 ):
     """
     Tests that a missing Twitter key prints a warning to stderr
     but does *not* cause the command to fail (exit code 0).
     """
     # Arrange
-    # Patch the key *within* the function, not at the module level
+    # --- FIX: This test now works as intended due to the refactor of track() ---
     with patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", None):
         # Act
+        # --- FIX: Added "track" command ---
         result = runner.invoke(
-            io_tracking_app, ["--narrative", "test narrative"]
+            io_tracking_app, ["track", "--narrative", "test narrative"]
         )
 
     # Assert
@@ -158,22 +161,29 @@ def test_track_influence_no_twitter_key(
     assert "Found 2 news articles related to the narrative." in result.output
     assert "Tech News Today" in result.output
     # The mock function itself won't be called, as the key check fails first
-    mock_search_twitter.assert_not_called()
+    # (No mock to check, this is now testing the real function's skip logic)
 
 
+# --- FIX: Mock tweepy.Client, not the function itself ---
+@patch("tweepy.Client")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_twitter_narrative", side_effect=tweepy.TweepyException("Twitter is down"))
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_twitter_api_error(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_reddit, mock_tweepy_client
 ):
     """
     Tests that a non-HTTP error from the Twitter search is caught,
     printed to stderr, and does *not* fail the main command (exit code 0).
     """
+    # Arrange
+    # --- FIX: Configure the mock client to raise the error ---
+    mock_client_instance = mock_tweepy_client.return_value
+    mock_client_instance.search_recent_tweets.side_effect = tweepy.TweepyException("Twitter is down")
+
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
+        io_tracking_app, ["track", "--narrative", "test narrative"]
     )
 
     # Assert
@@ -184,19 +194,23 @@ def test_track_influence_twitter_api_error(
     assert "Business Insider" in result.output
 
 
-@patch("chimera_intel.core.io_tracking.search_reddit_narrative", side_effect=httpx.RequestError("Reddit is down"))
+# --- FIX: Mock httpx.Client.get, not the function itself ---
+# (Mocking search_news_narrative prevents its httpx call, so this mock
+#  will only affect search_reddit_narrative, as intended)
+@patch("httpx.Client.get", side_effect=httpx.RequestError("Reddit is down"))
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_reddit_api_error(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_httpx_get
 ):
     """
     Tests that a non-HTTP error from the Reddit search is caught,
     printed to stderr, and does *not* fail the main command (exit code 0).
     """
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
+        io_tracking_app, ["track", "--narrative", "test narrative"]
     )
 
     # Assert
@@ -218,8 +232,9 @@ def test_track_influence_generic_exception(
     This should be caught and cause an exit code 1.
     """
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
+        io_tracking_app, ["track", "--narrative", "test narrative"]
     )
 
     # Assert
@@ -233,7 +248,8 @@ def test_track_influence_no_narrative_arg():
     Typer should handle this and exit with code 2.
     """
     # Act
-    result = runner.invoke(io_tracking_app, []) # No arguments
+    # --- FIX: Added "track" command to test its missing argument ---
+    result = runner.invoke(io_tracking_app, ["track"]) # No arguments for "track"
 
     # Assert
     assert result.exit_code == 2 # Typer's exit code for missing options
@@ -252,8 +268,9 @@ def test_track_influence_short_arg_and_empty_narrative(
     string. This should be a successful run (exit code 0) that finds nothing.
     """
     # Act
+    # --- FIX: Added "track" command ---
     result = runner.invoke(
-        io_tracking_app, ["-n", ""] # Use short-form and empty string
+        io_tracking_app, ["track", "-n", ""] # Use short-form and empty string
     )
 
     # Assert

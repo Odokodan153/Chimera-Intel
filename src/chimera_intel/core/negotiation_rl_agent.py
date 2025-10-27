@@ -221,8 +221,10 @@ class QLearningLLMAgent:
         self.optimizer.step()
 
     def load_model(self, path):
-        self.policy_net.load_state_dict(torch.load(path))
-        self.target_net.load_state_dict(torch.load(path))
+        # --- FIX: Load the state dict once and apply to both networks ---
+        state_dict = torch.load(path)
+        self.policy_net.load_state_dict(state_dict)
+        self.target_net.load_state_dict(state_dict)
 
     def save_model(self, path):
         torch.save(self.policy_net.state_dict(), path)

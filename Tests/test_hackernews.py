@@ -102,7 +102,9 @@ def test_cli_top_stories_success(mock_get_stories):
         }
     ]
     
-    result = runner.invoke(hackernews_app, ["top", "--limit", "1"])
+    # FIX: A Typer app with one command is collapsed.
+    # We invoke the command directly, without the "top" argument.
+    result = runner.invoke(hackernews_app, ["--limit", "1"])
     
     assert result.exit_code == 0
     assert "Top Stories from Hacker News" in result.stdout
@@ -119,18 +121,27 @@ def test_cli_top_stories_no_articles(mock_get_stories):
     
     mock_get_stories.return_value = []
     
-    result = runner.invoke(hackernews_app, ["top"])
+    # FIX: A Typer app with one command is collapsed.
+    # We invoke the command directly, without the "top" argument.
+    result = runner.invoke(hackernews_app, [])
     
     assert result.exit_code == 0
     assert "No recent articles found in the feed" in result.stdout
 
 
-# --- NEW TEST: Test the CLI default behavior (no args) ---
-def test_cli_no_args():
-    """Tests that invoking the app with no commands prints the help message."""
-    result = runner.invoke(hackernews_app, [])
+# --- NEW TEST: Test the CLI help message ---
+def test_cli_help():
+    """
+    Tests that invoking the app with --help prints the help message.
+    Note: `no_args_is_help=True` does not apply when the app is
+    collapsed into a single command.
+    """
+    # FIX: A single-command app runs by default.
+    # To test help, we must explicitly pass "--help".
+    result = runner.invoke(hackernews_app, ["--help"])
     
     assert result.exit_code == 0
-    # 'no_args_is_help=True' means it should print help
+    # 'Usage: ' should be in the help output
     assert "Usage: " in result.stdout
-    assert "Hacker News (HackerNews) tools." in result.stdout
+    # The help text comes from the function's docstring
+    assert "Fetches the top stories from Hacker News." in result.stdout
