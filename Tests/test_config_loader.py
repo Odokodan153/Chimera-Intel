@@ -1,9 +1,7 @@
 import pytest
 import importlib
 import logging
-import sys
 from unittest.mock import MagicMock, mock_open
-
 # Import the module we are testing
 from chimera_intel.core import config_loader
 from chimera_intel.core.schemas import AppConfig
