@@ -185,7 +185,8 @@ def test_cli_forecast_success(mock_asyncio_run, mock_get_forecast, runner, mock_
     mock_get_forecast.return_value = mock_forecast
     
     # Act
-    result = runner.invoke(crypto_app, ["forecast", "BTC", "--days", "2"])
+    # FIX: Pass 'BTC' as an option --symbol 'BTC'
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC", "--days", "2"])
 
     # Assert
     assert result.exit_code == 0
@@ -212,7 +213,8 @@ def test_cli_forecast_data_fetch_error(mock_asyncio_run, mock_get_forecast, runn
     mock_get_forecast.return_value = mock_forecast
 
     # Act
-    result = runner.invoke(crypto_app, ["forecast", "BTC"])
+    # FIX: Pass 'BTC' as an option --symbol 'BTC'
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0 # CLI command handles the error gracefully
@@ -232,7 +234,8 @@ def test_cli_forecast_model_error(mock_asyncio_run, mock_get_forecast, runner, m
     mock_get_forecast.return_value = error_forecast
 
     # Act
-    result = runner.invoke(crypto_app, ["forecast", "BTC"])
+    # FIX: Pass 'BTC' as an option --symbol 'BTC'
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
@@ -253,10 +256,10 @@ def test_cli_forecast_no_forecast_data(mock_asyncio_run, mock_get_forecast, runn
     mock_get_forecast.return_value = no_forecast
 
     # Act
-    result = runner.invoke(crypto_app, ["forecast", "BTC"])
+    # FIX: Pass 'BTC' as an option --symbol 'BTC'
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
     assert "[bold red]Error:[/] Forecast generation failed to produce data." in result.stdout
     assert "Forecast" not in result.stdout
-

@@ -94,7 +94,10 @@ app = typer.Typer(
 
 @app.command("forecast")
 def run_crypto_forecast(
-    symbol: str = typer.Argument(..., help="The cryptocurrency symbol (e.g., 'BTC')."),
+    # FIX: Change from typer.Argument to a required typer.Option to fix CLI parsing issue
+    symbol: str = typer.Option(
+        ..., "--symbol", "-s", help="The cryptocurrency symbol (e.g., 'BTC')."
+    ),
     market: str = typer.Option(
         "USD", "--market", "-m", help="The market to compare against."
     ),

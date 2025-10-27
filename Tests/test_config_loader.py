@@ -1,6 +1,7 @@
 import pytest
 import importlib
 import logging
+import sys
 from unittest.mock import MagicMock, mock_open
 
 # Import the module we are testing
@@ -14,7 +15,7 @@ def clear_env(monkeypatch):
     vars_to_clear = [
         "VAULT_ADDR", "VAULT_TOKEN", "VAULT_SECRET_PATH",
         "SECRET_KEY", "VIRUSTOTAL_API_KEY", "DB_NAME", "DB_USER",
-        "DB_PASSWORD", "DB_HOST", "DB_PORT", "DATABASE_URL"
+        "DB_PASSWORD", "DB_HOST", "DB_PORT", "DATABASE_URL", "FINNHUB_API_KEY"
     ]
     for var in vars_to_clear:
         monkeypatch.delenv(var, raising=False)
@@ -131,6 +132,7 @@ def test_api_keys_assemble_db_connection(monkeypatch):
         reloaded_keys = config_loader.ApiKeys()
     
         # The str() of a PostgresDsn object redacts the password
+        # FIX: Corrected expected URL string to match Pydantic's redacted format
         expected_url = "postgresql://postgres:***@localhost:5432/chimera_db"
         assert str(reloaded_keys.database_url) == expected_url
 
@@ -216,29 +218,29 @@ def test_load_config_file_not_found(mocker, caplog):
     assert config.app_name == "Chimera Intel"  # Default value
     assert config.log_level == "INFO"        # Default value
 
-def test_load_config_validation_error(mock_yaml, caplog, mocker):
+def test_load_config_validation_error(mock_yaml, caplog):
     """Tests that the program exits on a Pydantic validation error."""
     mock_load, _ = mock_yaml
     # Pass invalid data type for timeout
     mock_load.return_value = {"network": {"timeout": "not-a-float"}}
     
-    mock_exit = mocker.patch("sys.exit")
+    with pytest.raises(SystemExit) as excinfo:
+        with caplog.at_level(logging.CRITICAL):
+            config_loader.load_config_from_yaml()
 
-    with caplog.at_level(logging.CRITICAL):
-        config_loader.load_config_from_yaml()
-
+    # Assert SystemExit code 1 and log content
+    assert excinfo.value.code == 1
     assert "Invalid configuration in config.yaml" in caplog.text
-    mock_exit.assert_called_with(1)
 
 def test_load_config_generic_exception(mocker, caplog):
     """Tests that the program exits on any other file loading error."""
     mocker.patch("builtins.open", side_effect=PermissionError("Permission denied"))
     
-    mock_exit = mocker.patch("sys.exit")
-
-    with caplog.at_level(logging.CRITICAL):
-        config_loader.load_config_from_yaml()
+    with pytest.raises(SystemExit) as excinfo:
+        with caplog.at_level(logging.CRITICAL):
+            config_loader.load_config_from_yaml()
     
+    # Assert SystemExit code 1 and log content
+    assert excinfo.value.code == 1
     assert "An unexpected error occurred" in caplog.text
     assert "Permission denied" in caplog.text
-    mock_exit.assert_called_with(1)

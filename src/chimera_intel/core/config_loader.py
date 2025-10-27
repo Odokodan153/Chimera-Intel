@@ -145,12 +145,17 @@ class ApiKeys(BaseSettings):
     def assemble_db_connection(cls, v: Optional[str], values: Any) -> Any:
         if isinstance(v, str):
             return v
-        db_host = values.data.get("DB_HOST")
-        db_user = values.data.get("DB_USER")
-        db_port = values.data.get("DB_PORT")
-        db_password = values.data.get("DB_PASSWORD")
-        db_name = values.data.get("DB_NAME")
+        
+        # FIX: Use os.getenv as a fallback for the raw environment variables
+        # in case pydantic-settings hasn't fully populated `values.data` in 'before' mode.
+        db_host = values.data.get("DB_HOST") or os.getenv("DB_HOST")
+        db_user = values.data.get("DB_USER") or os.getenv("DB_USER")
+        db_port = values.data.get("DB_PORT") or os.getenv("DB_PORT")
+        db_password = values.data.get("DB_PASSWORD") or os.getenv("DB_PASSWORD")
+        db_name = values.data.get("DB_NAME") or os.getenv("DB_NAME")
+        
         if all([db_host, db_user, db_port, db_password, db_name]):
+            # db_port is an integer field, but here it's read as string from env/data, which is fine for the f-string URL.
             return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         return v
 
