@@ -1,8 +1,6 @@
 import pytest
 from unittest.mock import patch, mock_open
 import json
-import logging
-
 # Ensure the 'src' directory is in the Python path or adjust the import
 from src.chimera_intel.core.ethical_guardrails import EthicalFramework
 

@@ -8,10 +8,9 @@ from chimera_intel.cli import get_cli_app
 
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.briefing_generator import (
-    generate_intelligence_briefing,
     briefing_app,
 )
-from chimera_intel.core.schemas import BriefingResult, SWOTAnalysisResult, ProjectConfig
+from chimera_intel.core.schemas import BriefingResult, ProjectConfig
 
 runner = CliRunner()
 
