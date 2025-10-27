@@ -107,8 +107,8 @@ def plot_sentiment_trajectory(
 
         query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %s ORDER BY timestamp"
         # Note: pd.read_sql_query first argument is sql, then con
-        # FIX: Changed params back to a tuple
-        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
+        # FIX: Changed params from a tuple to a list to satisfy mypy
+        df = pd.read_sql_query(query, conn, params=[negotiation_id,])
         conn.close()
 
         if df.empty:
