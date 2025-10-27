@@ -5,7 +5,6 @@ from rich.panel import Panel
 from . import analytics
 from .config_loader import API_KEYS  # To get DB params
 import psycopg2
-from typing import Any, Mapping
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing_extensions import Annotated
