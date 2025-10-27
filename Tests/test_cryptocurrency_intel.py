@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import httpx
-import pandas as pd
 from typer.testing import CliRunner
 
 from chimera_intel.core.cryptocurrency_intel import (

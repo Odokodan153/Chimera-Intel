@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import cv2
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from scapy.all import Ether, IP, TCP, wrpcap
 
 from chimera_intel.core.masint import app as masint_app, Masint, LibrosaPlaceholder

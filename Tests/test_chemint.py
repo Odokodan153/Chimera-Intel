@@ -1,7 +1,7 @@
 import pytest
 import json
 import requests
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from chimera_intel.core.chemint import chemint_app
 from io import BytesIO

@@ -1,6 +1,5 @@
 import pytest
 import psycopg2
-import asyncio
 from unittest.mock import patch, MagicMock, ANY
 from typer.testing import CliRunner
 

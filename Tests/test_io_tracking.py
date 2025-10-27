@@ -1,4 +1,3 @@
-import sys
 import pytest
 from typer.testing import CliRunner
 import httpx

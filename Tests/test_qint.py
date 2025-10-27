@@ -2,8 +2,7 @@
 import pytest
 import requests
 from typer.testing import CliRunner
-from unittest.mock import patch, Mock, MagicMock
-from bs4 import BeautifulSoup, Tag
+from unittest.mock import patch, Mock
 
 # The application instance to be tested
 from chimera_intel.core.qint import app as qint_app, QInt

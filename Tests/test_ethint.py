@@ -10,7 +10,6 @@ from chimera_intel.core.ethint import (
     load_frameworks,
     app as ethint_app,
 )
-from chimera_intel.core import ethint
 
 # --- Fixtures ---
 
@@ -57,7 +56,7 @@ def mock_rules_module():
     
     # Missing function: check_roe_03 is intentionally omitted
     
-    with patch("importlib.import_module", return_value=mock_module) as mock_import:
+    with patch("importlib.import_module", return_value=mock_module) :
         yield mock_module
 
 @pytest.fixture
