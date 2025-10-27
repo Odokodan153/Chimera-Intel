@@ -186,7 +186,7 @@ def test_cli_forecast_success(mock_asyncio_run, mock_get_forecast, runner, mock_
     
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC", "--days", "2"])
+    result = runner.invoke(crypto_app, ["--symbol", "BTC", "--days", "2"])
 
     # Assert
     assert result.exit_code == 0
@@ -214,7 +214,7 @@ def test_cli_forecast_data_fetch_error(mock_asyncio_run, mock_get_forecast, runn
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0 # CLI command handles the error gracefully
@@ -235,7 +235,7 @@ def test_cli_forecast_model_error(mock_asyncio_run, mock_get_forecast, runner, m
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
@@ -257,7 +257,7 @@ def test_cli_forecast_no_forecast_data(mock_asyncio_run, mock_get_forecast, runn
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
