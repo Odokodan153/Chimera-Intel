@@ -8,6 +8,7 @@ import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing_extensions import Annotated
+from typing import Optional # FIX: Import Optional
 
 # FIX: Removed global console object
 # console = Console()
@@ -80,7 +81,8 @@ def show_analytics():
 @analytics_app.command("plot-sentiment")
 def plot_sentiment_trajectory(
     negotiation_id: Annotated[str, typer.Argument(help="The ID of the negotiation to plot.")],
-    output: Annotated[str, typer.Option(help="Path to save the plot image file.")] = None,
+    # FIX: Changed type hint to Optional[str]
+    output: Annotated[Optional[str], typer.Option(help="Path to save the plot image file.")] = None, 
 ):
     """
     Plots the sentiment trajectory over time for a negotiation.
@@ -105,7 +107,8 @@ def plot_sentiment_trajectory(
 
         query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %s ORDER BY timestamp"
         # Note: pd.read_sql_query first argument is sql, then con
-        df = pd.read_sql_query(query, conn, params=(negotiation_id,))
+        # FIX: Changed params from tuple to list
+        df = pd.read_sql_query(query, conn, params=[negotiation_id]) 
         conn.close()
 
         if df.empty:
