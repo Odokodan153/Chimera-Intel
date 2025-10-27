@@ -194,7 +194,7 @@ class TestBehavioralAnalyzer(unittest.TestCase):
         mock_generate.return_value = mock_result
 
         # Act
-        result = runner.invoke(behavioral_app, ["psych-profile", "example.com"])
+        result = runner.invoke(behavioral_app, ["example.com"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -222,7 +222,7 @@ class TestBehavioralAnalyzer(unittest.TestCase):
 
         # Act
         result = runner.invoke(
-            behavioral_app, ["psych-profile", "example.com", "--output", "profile.json"]
+            behavioral_app, ["example.com", "--output", "profile.json"]
         )
 
         # Assert

@@ -5,7 +5,8 @@ from rich.panel import Panel
 from . import analytics
 from .config_loader import API_KEYS  # To get DB params
 
-console = Console()
+# FIX: Removed global console object
+# console = Console()
 analytics_app = typer.Typer(
     help="Tools for negotiation analytics and decision support."
 )
@@ -16,6 +17,9 @@ def show_analytics():
     """
     Displays a dashboard with KPIs for negotiation performance.
     """
+    # FIX: Instantiate Console inside the function
+    console = Console()
+    
     db_params = {
         "dbname": getattr(API_KEYS, "db_name", None),
         "user": getattr(API_KEYS, "db_user", None),

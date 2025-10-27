@@ -53,7 +53,14 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
         balance_response.raise_for_status()
         balance_data = balance_response.json()
 
-        balance_in_wei = int(balance_data.get("result", 0))
+        # --- FIX START: Add check for status and result key ---
+        if balance_data.get("status") != "1" or "result" not in balance_data:
+            raise KeyError(
+                f"API response error or malformed data: {balance_data.get('message', 'No message')}"
+            )
+        # --- FIX END ---
+
+        balance_in_wei = int(balance_data.get("result", 0)) # or balance_data["result"]
         balance_in_eth = balance_in_wei / 1e18
 
         # --- 2. Get Transactions ---
@@ -73,7 +80,15 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
         tx_response.raise_for_status()
         tx_data = tx_response.json()
 
+        # --- FIX START: Add check for status and result key ---
+        if tx_data.get("status") != "1" or "result" not in tx_data:
+            raise KeyError(
+                f"API response error or malformed data for txlist: {tx_data.get('message', 'No message')}"
+            )
+        # --- FIX END ---
+
         transactions = []
+        # Use .get() for safety in case tx_data["result"] is not a list
         for tx in tx_data.get("result", []):
             # Use model_validate with a dictionary to handle the 'from' alias correctly
 
@@ -99,7 +114,6 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
             total_transactions=0,
             error=f"An API error occurred: {e}",
         )
-
 
 # --- Typer CLI Application ---
 

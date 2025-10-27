@@ -2,12 +2,11 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, AsyncMock
 
-# FIX: Import the main app for CLI testing
-from chimera_intel.cli import app as main_app
-
+# FIX: Import the *local* app from the module being tested, not the main_app
 from chimera_intel.core.risk_assessment import (
     calculate_risk,
-    assess_risk_from_indicator
+    assess_risk_from_indicator,
+    app as risk_app  # Import the local app
 )
 from chimera_intel.core.schemas import (
     Vulnerability,
@@ -46,10 +45,10 @@ def mock_cve_results():
     assess_risk_from_indicator expects from search_vulnerabilities.
     """
     return [
-        CVE(id="CVE-2023-1001", cvss=9.8, title="Crit vuln"),
-        CVE(id="CVE-2023-1002", cvss=7.5, title="High vuln"),
-        CVE(id="CVE-2023-1003", cvss=5.0, title="Med vuln"),
-        CVE(id="CVE-2023-1004", cvss=2.0, title="Low vuln"),
+        CVE(id="CVE-2023-1001", cvss_score=9.8, title="Crit vuln"),
+        CVE(id="CVE-2023-1002", cvss_score=7.5, title="High vuln"),
+        CVE(id="CVE-2023-1003", cvss_score=5.0, title="Med vuln"),
+        CVE(id="CVE-2023-1004", cvss_score=2.0, title="Low vuln"),
     ]
 
 @pytest.fixture
@@ -228,18 +227,21 @@ async def test_assess_risk_success(mock_search_actors, mock_search_vulns, mock_g
     mock_search_actors.assert_called_once_with("8.8.8.8")
     
     # Check base prob/impact from mock_threat_intel
-    assert result.probability == 0.7 # From 60 pulses
-    assert result.impact == 9.0 # From 'ransomware'/'apt' tags
+    # Base Prob: 0.7 (From 60 pulses)
+    # Base Impact: 9.0 (From 'ransomware'/'apt' tags)
     
     # Check boosts
+    # Actor Prob: 0.7 (base) + 2*0.1 (count) = 0.9
+    # FIX: Corrected assertion for probability
+    assert result.probability == 0.9
+    
     # Based on _get_severity_from_cvss:
     # 9.8 (crit, +1.5), 7.5 (high, +0.5), 5.0 (med, +0.5), 2.0 (low, +0.1)
     # Total boost: 1.5 + 0.5 + 0.5 + 0.1 = 2.6
     # Vuln Impact: 9.0 (base) + 2.6 (boost) = 11.6 -> capped at 10.0
-    # Actor Prob: 0.7 (base) + 2*0.1 (count) = 0.9
+    assert result.impact == 10.0
+
     # Final Score: 0.9 * 10.0 = 9.0
-    
-    # FIX: Corrected assertions
     assert result.risk_score == 9.0
     assert result.risk_level == "Critical"
     assert len(result.vulnerabilities) == 4
@@ -339,8 +341,9 @@ def test_cli_assess_indicator_success(mock_asyncio_run, runner, mock_vulnerabili
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8", "--service", "apache"])
+    # FIX: Invoke the *local* risk_app, not main_app
+    # and remove the "risk" subcommand name
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8", "--service", "apache"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -378,8 +381,8 @@ def test_cli_assess_indicator_no_service(mock_asyncio_run, runner):
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"]) # No --service
+    # FIX: Invoke the *local* risk_app, not main_app
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"]) # No --service
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -404,8 +407,8 @@ def test_cli_assess_indicator_error(mock_asyncio_run, runner):
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the *local* risk_app, not main_app
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0 # Typer CLI prints error and exits 0
     assert "Error:" in result.stdout
@@ -485,8 +488,8 @@ def test_cli_assess_indicator_no_vulns_with_actors(mock_asyncio_run, runner, moc
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the *local* risk_app, not main_app
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -514,8 +517,8 @@ def test_cli_assess_indicator_with_vulns_no_actors(mock_asyncio_run, runner, moc
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the *local* risk_app, not main_app
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout
@@ -582,8 +585,8 @@ def test_cli_assess_indicator_no_details(mock_asyncio_run, runner, mock_vulnerab
     )
     mock_asyncio_run.return_value = mock_result
     
-    # FIX: Invoke the main_app *with* the "risk" subcommand
-    result = runner.invoke(main_app, ["risk", "assess-indicator", "8.8.8.8"])
+    # FIX: Invoke the *local* risk_app, not main_app
+    result = runner.invoke(risk_app, ["assess-indicator", "8.8.8.8"])
     
     assert result.exit_code == 0
     assert "Risk Assessment for 8.8.8.8" in result.stdout

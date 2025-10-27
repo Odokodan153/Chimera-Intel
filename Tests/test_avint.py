@@ -108,7 +108,8 @@ class TestAvint(unittest.IsolatedAsyncioTestCase):
         mock_get_live_flights.return_value = mock_result
 
         # Act
-        result = runner.invoke(avint_app, ["track"])
+        # FIX: Removed "track" from the args list
+        result = runner.invoke(avint_app, [])
 
         # Assert
         # Ensure exit code is 0 for success
@@ -133,7 +134,8 @@ class TestAvint(unittest.IsolatedAsyncioTestCase):
         mock_get_live_flights.return_value = AVINTResult(total_flights=0, flights=[], error=None)
 
         # Act
-        result = runner.invoke(avint_app, ["track", "--icao24", "a8a2d6"])
+        # FIX: Removed "track" from the args list
+        result = runner.invoke(avint_app, ["--icao24", "a8a2d6"])
 
         # Assert
         # Should still exit successfully even if no flights are found for the specific ICAO
@@ -166,7 +168,8 @@ class TestAvint(unittest.IsolatedAsyncioTestCase):
         mock_get_live_flights.return_value = mock_result
 
         # Act
-        result = runner.invoke(avint_app, ["track", "--output", "flights.json"])
+        # FIX: Removed "track" from the args list
+        result = runner.invoke(avint_app, ["--output", "flights.json"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, result.output)
@@ -191,7 +194,8 @@ class TestAvint(unittest.IsolatedAsyncioTestCase):
         mock_get_live_flights.return_value = mock_result
 
         # Act
-        result = runner.invoke(avint_app, ["track"])
+        # FIX: Removed "track" from the args list
+        result = runner.invoke(avint_app, [])
 
         # Assert
         # The function raises typer.Exit(code=1) on error

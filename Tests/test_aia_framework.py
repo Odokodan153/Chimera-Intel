@@ -80,20 +80,23 @@ class TestLoadAvailableModules:
 
     @pytest.fixture
     def mock_modules_pkg(self):
-        """Mocks the chimera_intel.core.modules package."""
+        """Mocks the chimera_intel.core package."""
         mock_pkg = MagicMock()
-        mock_pkg.__path__ = ["dummy/path/to/modules"]
-        mock_pkg.__name__ = "chimera_intel.core.modules"
+        mock_pkg.__path__ = ["dummy/path/to/core"]
+        # FIX: Point to the 'core' package, not 'core.modules'
+        mock_pkg.__name__ = "chimera_intel.core"
         return mock_pkg
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
-    def test_load_success(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # FIX: Patch the new import 'aia_core_package'
+    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    def test_load_success(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests successful loading of allowed sync and async modules."""
         # Configure the mock package
-        mock_aia_modules.__path__ = mock_modules_pkg.__path__
-        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+        # FIX: Use the correct mock object
+        mock_aia_core_package.__path__ = mock_modules_pkg.__path__
+        mock_aia_core_package.__name__ = mock_modules_pkg.__name__
 
         mock_mod_async = MagicMock()
         mock_mod_async.run = AsyncMock()
@@ -102,9 +105,10 @@ class TestLoadAvailableModules:
         mock_mod_sync.run = MagicMock()
 
         # Simulate finding two allowed modules
+        # FIX: Use the correct module paths
         mock_iter_modules.return_value = [
-            (None, "chimera_intel.core.modules.footprint", None),
-            (None, "chimera_intel.core.modules.threat_intel", None),
+            (None, "chimera_intel.core.footprint", None),
+            (None, "chimera_intel.core.threat_intel", None),
         ]
         mock_import.side_effect = [mock_mod_async, mock_mod_sync]
 
@@ -118,20 +122,23 @@ class TestLoadAvailableModules:
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
-    def test_load_skip_non_allowed(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # FIX: Patch the new import 'aia_core_package'
+    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    def test_load_skip_non_allowed(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests that modules not in ALLOWED_MODULES are skipped."""
         # Configure the mock package
-        mock_aia_modules.__path__ = mock_modules_pkg.__path__
-        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+        # FIX: Use the correct mock object
+        mock_aia_core_package.__path__ = mock_modules_pkg.__path__
+        mock_aia_core_package.__name__ = mock_modules_pkg.__name__
 
         mock_mod = MagicMock()
         mock_mod.run = MagicMock()
 
         # Simulate finding one allowed and one non-allowed module
+        # FIX: Use the correct module paths
         mock_iter_modules.return_value = [
-            (None, "chimera_intel.core.modules.footprint", None),
-            (None, "chimera_intel.core.modules.some_other", None),
+            (None, "chimera_intel.core.footprint", None),
+            (None, "chimera_intel.core.some_other", None), # This one is not in ALLOWED_MODULES
         ]
         mock_import.return_value = mock_mod
 
@@ -141,22 +148,26 @@ class TestLoadAvailableModules:
         assert "some_other" not in modules
         assert "Loaded 1 modules" in caplog.text
         # Ensure import was only called for the allowed module
-        mock_import.assert_called_once_with("chimera_intel.core.modules.footprint")
+        # FIX: Use the correct module path
+        mock_import.assert_called_once_with("chimera_intel.core.footprint")
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
     @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
-    def test_load_no_run_attr(self, mock_aia_modules, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # FIX: Patch the new import 'aia_core_package'
+    @patch("chimera_intel.core.aia_framework.aia_core_package")
+    def test_load_no_run_attr(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests warning if a module has no 'run' attribute."""
         # Configure the mock package
-        mock_aia_modules.__path__ = mock_modules_pkg.__path__
-        mock_aia_modules.__name__ = mock_modules_pkg.__name__
+        # FIX: Use the correct mock object
+        mock_aia_core_package.__path__ = mock_modules_pkg.__path__
+        mock_aia_core_package.__name__ = mock_modules_pkg.__name__
         
         mock_mod = MagicMock()
         del mock_mod.run  # Ensure it has no 'run' attribute
 
+        # FIX: Use the correct module path
         mock_iter_modules.return_value = [
-            (None, "chimera_intel.core.modules.footprint", None)
+            (None, "chimera_intel.core.footprint", None)
         ]
         mock_import.return_value = mock_mod
 
@@ -165,12 +176,14 @@ class TestLoadAvailableModules:
         assert "Module footprint does not have a 'run' function" in caplog.text
 
     @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    @patch("chimera_intel.core.aia_framework.aia_modules") # FIX: Patch the imported module
-    def test_load_fallback(self, mock_aia_modules, mock_iter_modules, caplog):
+    # FIX: Patch the new import 'aia_core_package'
+    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    def test_load_fallback(self, mock_aia_core_package, mock_iter_modules, caplog):
         """Tests fallback to built-ins if dynamic loading finds nothing."""
         # Configure the mock package
-        mock_aia_modules.__path__ = ["dummy/path"]
-        mock_aia_modules.__name__ = "chimera_intel.core.modules"
+        # FIX: Use the correct mock object
+        mock_aia_core_package.__path__ = ["dummy/path"]
+        mock_aia_core_package.__name__ = "chimera_intel.core"
         
         mock_iter_modules.return_value = []  # Simulate no modules found
 
@@ -509,7 +522,15 @@ class TestCLI:
         
         assert result.exit_code == 0
         assert "Objective Received" in result.stdout
-        mock_run_analysis.assert_called_once()
+        # FIX: Make assertion more robust to check for generated filename
+        mock_run_analysis.assert_called_once_with(
+            "Analyze example.com",
+            unittest.mock.ANY, # For the generated filename
+            5, # default
+            60, # default
+            300 # default
+        )
+
 
     @patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock)
     def test_cli_execute_objective_args_passed(self, mock_run_analysis, runner):

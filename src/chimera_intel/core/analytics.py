@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import typer
+from rich.console import Console  # FIX: Import Console
 
 analytics_app = typer.Typer()
 
@@ -85,6 +86,8 @@ def plot_sentiment_trajectory(
     """
     Retrieves the sentiment scores for a given negotiation and plots them over time.
     """
+    # FIX: Instantiate Console inside the function
+    console = Console()
     from .config_loader import API_KEYS
 
     db_params = {
@@ -95,12 +98,14 @@ def plot_sentiment_trajectory(
     }
     conn = None
     if not all(db_params.values()):
-        print("Error: Database connection parameters are missing.")
+        # FIX: Use console.print
+        console.print("[bold red]Error: Database connection parameters are missing.[/bold red]")
         return
     try:
         conn = psycopg2.connect(**db_params)
         if not conn:
-            print("Error: Could not connect to the database.")
+            # FIX: Use console.print
+            console.print("[bold red]Error: Could not connect to the database.[/bold red]")
             return
         query = """
             SELECT
@@ -113,7 +118,8 @@ def plot_sentiment_trajectory(
         df = pd.read_sql_query(query, conn, params=[negotiation_id])  # type: ignore
 
         if df.empty:
-            print(f"No messages found for negotiation ID: {negotiation_id}")
+            # FIX: Use console.print
+            console.print(f"[yellow]No messages found for negotiation ID: {negotiation_id}[/yellow]")
             return
         plt.figure(figsize=(12, 6))
         plt.plot(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
@@ -128,11 +134,13 @@ def plot_sentiment_trajectory(
 
         if output_path:
             plt.savefig(output_path)
-            print(f"Plot saved to {output_path}")
+            # FIX: Use console.print
+            console.print(f"Plot saved to {output_path}")
         else:
             plt.show()
     except Exception as e:
-        print(f"An error occurred while plotting sentiment trajectory: {e}")
+        # FIX: Use console.print
+        console.print(f"[bold red]An error occurred while plotting sentiment trajectory: {e}[/bold red]")
     finally:
         if conn:
             conn.close()

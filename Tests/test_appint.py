@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 from typer.testing import CliRunner
 import subprocess  # Import subprocess to mock its exceptions
+import os  # <-- FIX: Import os for path manipulation
 
 from chimera_intel.core.appint import analyze_apk_static, appint_app
 
@@ -42,13 +43,24 @@ class TestAppint(unittest.TestCase):
         # Arrange
         # Mock subprocess.run to simulate successful decompilation
         mock_subprocess.return_value = MagicMock(returncode=0)
-        # Mock os.walk to return one file to scan
+        
+        # --- FIX: Make mock_os_walk return a realistic relative path ---
+        # The function will call os.walk on "dummy.apk_decompiled"
+        output_dir = "dummy.apk_decompiled"
+        mock_subdir = "fake_dir"
+        mock_filename = "strings.xml"
+        # e.g., "dummy.apk_decompiled/fake_dir"
+        mock_root_path = os.path.join(output_dir, mock_subdir) 
+        
+        # Mock os.walk to return one file to scan in a subdirectory
         mock_os_walk.return_value = [
-            ("/fake_dir", [], ["strings.xml"]),
+            (mock_root_path, [], [mock_filename]),
         ]
+        # ----------------------------------------------------------------
 
         # Act
-        result = analyze_apk_static("dummy.apk")
+        # This will create output_dir = "dummy.apk_decompiled"
+        result = analyze_apk_static("dummy.apk") 
 
         # Assert
         self.assertIsNone(result.error)
@@ -56,8 +68,13 @@ class TestAppint(unittest.TestCase):
         self.assertEqual(result.secrets_found[0].secret_type, "api_key")
         self.assertEqual(result.secrets_found[0].line_number, 2)
         
-        # FIX: Changed assertion to expect the full path, as constructed by the code.
-        self.assertEqual(result.secrets_found[0].file_path, "/fake_dir/strings.xml")
+        # --- FIX: Assert the correct *relative* path ---
+        # The code calculates os.path.relpath("dummy.apk_decompiled/fake_dir/strings.xml", "dummy.apk_decompiled")
+        # which should result in "fake_dir/strings.xml"
+        # "fake_dir/strings.xml"
+        expected_rel_path = os.path.join(mock_subdir, mock_filename) 
+        self.assertEqual(result.secrets_found[0].file_path, expected_rel_path)
+        # ------------------------------------------------
         
         mock_rmtree.assert_called_once()  # Ensure cleanup happens
 
@@ -132,7 +149,8 @@ class TestAppint(unittest.TestCase):
         mock_rmtree.return_value = None
 
         # Act
-        result = runner.invoke(appint_app, ["dummy.apk"])
+        # FIX: Added 'static' command
+        result = runner.invoke(appint_app, ["static", "dummy.apk"])
 
         # Assert
         self.assertEqual(
@@ -172,7 +190,8 @@ class TestAppint(unittest.TestCase):
         mock_subprocess.return_value = MagicMock(stdout="Decompiled", returncode=0)
 
         # Act
-        result = runner.invoke(appint_app, ["dummy.apk", "--output", "test.json"])
+        # FIX: Added 'static' command
+        result = runner.invoke(appint_app, ["static", "dummy.apk", "--output", "test.json"])
 
         # Assert
         self.assertEqual(result.exit_code, 0)
@@ -199,12 +218,13 @@ class TestAppint(unittest.TestCase):
         """
         # Arrange
         # Mock the analysis to return a successful result
-        mock_analyze.return_value = MagicMock(error=None)
+        mock_analyze.return_value = MagicMock(error=None, model_dump=MagicMock(return_value={}))
         # Mock the save_scan_to_db to raise a generic error
         mock_save_db.side_effect = Exception("Database connection failed")
 
         # Act
-        result = runner.invoke(appint_app, ["dummy.apk"])
+        # FIX: Added 'static' command
+        result = runner.invoke(appint_app, ["static", "dummy.apk"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)
@@ -227,7 +247,8 @@ class TestAppint(unittest.TestCase):
     ):
         """Tests the 'static' CLI command when the file is not found (mocks os.path.exists)."""
         # Act
-        result = runner.invoke(appint_app, ["nonexistent.apk"])
+        # FIX: Added 'static' command
+        result = runner.invoke(appint_app, ["static", "nonexistent.apk"])
 
         # Assert
         self.assertEqual(result.exit_code, 1)

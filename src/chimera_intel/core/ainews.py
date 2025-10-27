@@ -6,7 +6,8 @@ from rich.table import Table
 app = typer.Typer(
     no_args_is_help=True, help="Artificial Intelligence News (AINews) tools."
 )
-console = Console()
+# FIX: Removed global console object.
+# console = Console()
 
 
 class AiNews:
@@ -19,8 +20,10 @@ class AiNews:
         """
         Fetches the latest AI-related news from the Ars Technica feed.
         """
+        # FIX: Instantiate Console inside the function.
+        console = Console()
+        
         # URL for the Ars Technica feed, which consistently has high-quality AI news
-
         feed_url = "http://feeds.arstechnica.com/arstechnica/index/"
 
         try:
@@ -57,6 +60,9 @@ def latest_news(
     )
 ):
     """Fetches the latest AI news from Ars Technica."""
+    # FIX: Instantiate Console inside the function.
+    console = Console()
+    
     ainews = AiNews()
     articles = ainews.get_latest_ai_news(limit)
 

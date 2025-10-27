@@ -24,104 +24,99 @@ def mock_network_timeout():
 
 
 @pytest.fixture
-def mock_async_transport():
+def mock_pool_request():
     """
-    Mocks the handle_async_request method of the base AsyncHTTPTransport.
-    
-    This is the layer that httpx uses to send requests and handle retries.
-    By mocking this, we can test the retry behavior configured
-    on the global `async_client` instance.
+    Mocks the underlying pool request method, which is called
+    by the transport's handle_async_request. This allows the
+    transport's *own* retry logic to execute.
     """
-    with patch("httpx.AsyncHTTPTransport.handle_async_request", new_callable=AsyncMock) as mock_handle:
+    with patch(
+        "httpx._async.connection_pool.AsyncConnectionPool.handle_async_request",
+        new_callable=AsyncMock,
+    ) as mock_handle:
         yield mock_handle
+
+
+# --- Helper to create a mock pool response ---
+def create_mock_pool_response(status_code, content):
+    """Creates a mock (status, headers, stream, extensions) tuple."""
+    headers = [(b"content-type", b"application/json")]
+    stream = AsyncMock(spec=httpx.AsyncByteStream)
+    stream.read = AsyncMock(return_value=content)
+    stream.aclose = AsyncMock()
+    return (status_code, headers, stream, {})
 
 
 # --- Tests for global async_client ---
 # These tests check the behavior of the global client, specifically
 # its retry logic which is configured via its transport.
 
-async def test_global_client_transport_success(mock_async_transport):
+async def test_global_client_transport_success(mock_pool_request):
     """Test a successful request via the transport."""
-    mock_response = MagicMock(spec=httpx.Response)
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"status": "ok"}
-    mock_response.is_error = False
-    mock_response.is_success = True
-    # The transport returns the response
-    mock_async_transport.return_value = mock_response
+    mock_pool_request.return_value = create_mock_pool_response(
+        200, b'{"status": "ok"}'
+    )
 
     response = await async_client.request("GET", "https://example.com")
 
     assert response.status_code == 200
-    # Note: .json() is not async on a MagicMock
     assert response.json() == {"status": "ok"}
-    assert mock_async_transport.call_count == 1
-    
-    # Check args of the transport call
-    called_request = mock_async_transport.call_args[0][0]
-    assert called_request.method == "GET"
+    assert mock_pool_request.call_count == 1
+
+    # Check args of the pool call
+    called_request = mock_pool_request.call_args[0][0]
+    assert called_request.method == b"GET"
     assert str(called_request.url) == "https://example.com/"
 
 
-@pytest.mark.parametrize("status_code, exception_class", [
-    (500, httpx.HTTPStatusError),
-    (502, httpx.HTTPStatusError),
-    (503, httpx.HTTPStatusError),
-    (504, httpx.HTTPStatusError),
-])
-async def test_global_client_retry_on_server_error(mock_async_transport, status_code, exception_class):
+@pytest.mark.parametrize(
+    "status_code",
+    [
+        (500),
+        (502),
+        (503),
+        (504),
+    ],
+)
+async def test_global_client_retry_on_server_error(mock_pool_request, status_code):
     """Test that the client retries on 5xx server errors."""
-    mock_response = MagicMock(spec=httpx.Response)
-    mock_response.status_code = status_code
-    mock_response.request = MagicMock(url="https://example.com")
-    mock_response.is_error = True
-    mock_response.is_success = False
-    mock_response.raise_for_status.side_effect = exception_class(
-        f"{status_code} Server Error", request=mock_response.request, response=mock_response
+    mock_pool_request.return_value = create_mock_pool_response(
+        status_code, b"Server Error"
     )
-    
-    mock_async_transport.return_value = mock_response
 
     # The global transport is configured with retries=3.
     # This means 1 initial call + 3 retries = 4 attempts.
-    
-    with pytest.raises(httpx.HTTPStatusError):
-        await async_client.request("GET", "https://example.com")
+    # The client itself doesn't raise, it just returns the final
+    # error response after retries are exhausted.
+    response = await async_client.request("GET", "https://example.com")
 
-    # The transport's handle_async_request should be called 4 times
-    assert mock_async_transport.call_count == 4
+    # The final response should be the error
+    assert response.status_code == status_code
+    # The pool's handle_async_request should be called 4 times
+    assert mock_pool_request.call_count == 4
 
 
-async def test_global_client_retry_on_timeout(mock_async_transport):
+async def test_global_client_retry_on_timeout(mock_pool_request):
     """Test that the client retries on httpx.TimeoutException."""
-    # The transport itself will raise TimeoutException
-    mock_async_transport.side_effect = httpx.TimeoutException("Timeout")
+    # The transport's underlying call will raise TimeoutException
+    mock_pool_request.side_effect = httpx.TimeoutException("Timeout")
 
     with pytest.raises(httpx.TimeoutException):
         await async_client.request("GET", "https://example.com")
 
     # Should be called 1 initial + 3 retries = 4 times
-    assert mock_async_transport.call_count == 4
+    assert mock_pool_request.call_count == 4
 
 
-async def test_global_client_no_retry_on_client_error(mock_async_transport):
+async def test_global_client_no_retry_on_client_error(mock_pool_request):
     """Test that the client does NOT retry on 4xx client errors."""
-    mock_response = MagicMock(spec=httpx.Response)
-    mock_response.status_code = 404
-    mock_response.request = MagicMock(url="https://example.com")
-    mock_response.is_error = True # 4xx is an error
-    mock_response.is_success = False
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "404 Not Found", request=mock_response.request, response=mock_response
-    )
-    
-    mock_async_transport.return_value = mock_response
+    mock_pool_request.return_value = create_mock_pool_response(404, b"Not Found")
 
-    with pytest.raises(httpx.HTTPStatusError):
-        await async_client.request("GET", "https://example.com")
+    response = await async_client.request("GET", "https://example.com")
 
     # 4xx errors are not retried by the default transport
-    assert mock_async_transport.call_count == 1
+    assert response.status_code == 404
+    assert mock_pool_request.call_count == 1
 
 
 # --- Tests for get_async_http_client context manager ---
@@ -129,11 +124,14 @@ async def test_global_client_no_retry_on_client_error(mock_async_transport):
 # and closes a new client, using either the global transport
 # or a new proxy-configured transport.
 
+
 @patch("src.chimera_intel.core.http_client.AsyncClient")
-@patch("src.chimera_intel.core.http_client.async_transport") # Patch the global instance
-async def test_get_client_no_proxy(mock_global_transport, mock_client_class_call, mock_network_timeout):
+@patch("src.chimera_intel.core.http_client.async_transport")  # Patch the global instance
+async def test_get_client_no_proxy(
+    mock_global_transport, mock_client_class_call, mock_network_timeout
+):
     """Test get_async_http_client without proxies uses the global transport."""
-    
+
     mock_client_instance = MagicMock(name="ClientInstance")
     mock_client_instance.aclose = AsyncMock()
     mock_client_class_call.return_value = mock_client_instance
@@ -144,27 +142,32 @@ async def test_get_client_no_proxy(mock_global_transport, mock_client_class_call
     # Check that the global transport was used
     mock_client_class_call.assert_called_once()
     call_kwargs = mock_client_class_call.call_args[1]
-    
-    assert call_kwargs['transport'] == mock_global_transport
-    assert isinstance(call_kwargs['timeout'], Timeout)
-    assert call_kwargs['timeout'].timeout == 30.0 # From mock_network_timeout
-    assert call_kwargs['headers'] == {"User-Agent": "Chimera-Intel/6.0"}
-    
+
+    assert call_kwargs["transport"] == mock_global_transport
+    assert isinstance(call_kwargs["timeout"], Timeout)
+    # FIX: Access .read (or .connect, .write) instead of .timeout
+    assert call_kwargs["timeout"].read == 30.0  # From mock_network_timeout
+    assert call_kwargs["headers"] == {"User-Agent": "Chimera-Intel/6.0"}
+
     mock_client_instance.aclose.assert_called_once()
 
 
 @patch("src.chimera_intel.core.http_client.AsyncClient")
-@patch("src.chimera_intel.core.http_client.AsyncHTTPTransport") # Patch the class
-async def test_get_client_with_proxy(mock_transport_class_call, mock_client_class_call, mock_network_timeout):
+@patch(
+    "src.chimera_intel.core.http_client.httpx.AsyncHTTPTransport"
+)  # FIX: Patch the correct path
+async def test_get_client_with_proxy(
+    mock_transport_class_call, mock_client_class_call, mock_network_timeout
+):
     """Test get_async_http_client with proxies creates a new transport."""
-    
+
     mock_transport_instance = MagicMock(name="ProxyTransportInstance")
     mock_client_instance = MagicMock(name="ProxyClientInstance")
     mock_client_instance.aclose = AsyncMock()
-    
+
     mock_transport_class_call.return_value = mock_transport_instance
     mock_client_class_call.return_value = mock_client_instance
-    
+
     proxy_config = {"http": "http://user:pass@10.10.1.10:3128"}
 
     async with get_async_http_client(proxies=proxy_config) as client:
@@ -172,17 +175,17 @@ async def test_get_client_with_proxy(mock_transport_class_call, mock_client_clas
 
     # Check that a *new* transport was created with proxy info
     mock_transport_class_call.assert_called_once_with(
-        retries=3,
-        proxy="http://user:pass@10.10.1.10:3128"
+        retries=3, proxy="http://user:pass@10.10.1.10:3128"
     )
-    
+
     # Check that the client was created with this new transport
     mock_client_class_call.assert_called_once()
     call_kwargs = mock_client_class_call.call_args[1]
-    
-    assert call_kwargs['transport'] == mock_transport_instance
-    assert isinstance(call_kwargs['timeout'], Timeout)
-    assert call_kwargs['timeout'].timeout == 30.0 # From mock_network_timeout
-    assert call_kwargs['headers'] == {"User-Agent": "Chimera-Intel/6.0"}
-    
+
+    assert call_kwargs["transport"] == mock_transport_instance
+    assert isinstance(call_kwargs["timeout"], Timeout)
+    # FIX: Access .read (or .connect, .write) instead of .timeout
+    assert call_kwargs["timeout"].read == 30.0  # From mock_network_timeout
+    assert call_kwargs["headers"] == {"User-Agent": "Chimera-Intel/6.0"}
+
     mock_client_instance.aclose.assert_called_once()

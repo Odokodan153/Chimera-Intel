@@ -79,11 +79,15 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         self.mock_policy_net = MagicMock(spec=DQN)
         self.mock_target_net = MagicMock(spec=DQN)
         
-        # FIX: Return a list, not an iterator.
-        # The .parameters() attribute is accessed multiple times (once for device,
-        # once for the optimizer). Returning a one-time iterator causes the
-        # optimizer to receive an empty list.
-        self.mock_policy_net.parameters.return_value = [torch.nn.Parameter(torch.randn(1))] # For device
+        # FIX: The .parameters() method must return a new iterator each time
+        # it is called. Using side_effect achieves this.
+        # This fixes the "list object is not an iterator" error (from next())
+        # and the "optimizer receives an empty list" error (from consuming
+        # a single iterator twice).
+        def get_params_iterator():
+            return iter([torch.nn.Parameter(torch.randn(1))])
+
+        self.mock_policy_net.parameters.side_effect = get_params_iterator
         
         self.MockDQN.side_effect = [self.mock_policy_net, self.mock_target_net]
         
@@ -94,7 +98,7 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
             action_space_n=3,
         )
         self.agent.device = "cpu" # Force CPU for testing
-        self.mock_policy_net.device = "cpu"
+        # self.mock_policy_net.device = "cpu" # Not needed, .to(device) will be mocked
 
     def tearDown(self):
         self.patcher_dqn.stop()
@@ -181,7 +185,9 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         """Tests that optimize_model returns early if memory is too small."""
         self.agent.memory = [1, 2, 3] # < batch_size (128)
         self.agent.optimize_model()
-        self.mock_policy_net.assert_not_called() # Should not proceed
+        # Optimizer won't be called, so policy_net won't be called for training
+        # It was already called once in setUp
+        self.assertEqual(self.mock_policy_net.call_count, 0) 
         
     @patch("random.sample")
     def test_optimize_model_step(self, mock_sample):
@@ -244,9 +250,6 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         response = self.mock_llm.generate_message("test prompt")
         self.assertIn("message", response)
         self.assertIsInstance(response["message"], str)
-
-    # FIX: Removed the broken test_get_reward. It does not belong in this class.
-
 
 if __name__ == "__main__":
     unittest.main()

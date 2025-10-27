@@ -302,7 +302,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        result = runner.invoke(business_app, ["run", "Apple", "--ticker", "AAPL"])
+        # FIX: Removed positional argument "Apple"
+        result = runner.invoke(business_app, ["run", "--ticker", "AAPL"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, result.stderr)
@@ -332,8 +333,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
+        # FIX: Removed positional argument "Microsoft"
         result = runner.invoke(
-            business_app, ["run", "Microsoft", "--ticker", "MSFT", "--filings"]
+            business_app, ["run", "--ticker", "MSFT", "--filings"]
         )
 
         # Assert
@@ -365,7 +367,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        result = runner.invoke(business_app, ["run", "SomeCompany", "--filings"])
+        # FIX: Removed positional argument "SomeCompany"
+        result = runner.invoke(business_app, ["run", "--filings"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, result.stderr)
@@ -400,7 +403,8 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_run.side_effect = run_coroutine
 
         # Act
-        result = runner.invoke(business_app, ["run", "SomeCompany"])
+        # FIX: Removed positional argument "SomeCompany"
+        result = runner.invoke(business_app, ["run"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, result.stderr)
