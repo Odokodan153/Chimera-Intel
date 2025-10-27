@@ -110,9 +110,8 @@ def plot_sentiment_trajectory(
         query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %(neg_id)s ORDER BY timestamp"
         
         # FIX: Changed params to a dictionary to match query and satisfy mypy
-        params: Mapping[str, Any] = {"neg_id": negotiation_id}
-        df = pd.read_sql_query(query, conn, params=params)
-        #df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id}) # type: ignore[arg-type] 
+        
+        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id}) # type: ignore[arg-type] 
         conn.close()
 
         if df.empty:
