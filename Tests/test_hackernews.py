@@ -1,4 +1,3 @@
-import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 import requests  # Import requests to patch its exceptions
@@ -136,7 +135,7 @@ def test_cli_no_args():
     assert "Usage: " in result.stdout
     assert "Hacker News (HackerNews) tools." in result.stdout
 
-def test_get_top_stories_live(self):
+def test_get_top_stories(self):
         """
         Tests the live fetching and parsing of the Hacker News feed.
         """
