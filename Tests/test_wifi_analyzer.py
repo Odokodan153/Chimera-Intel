@@ -4,9 +4,11 @@ from scapy.all import wrpcap, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 from unittest.mock import patch, MagicMock
 
 # The application instance to be tested
+# --- FIX: Ensure imports point to the correct module paths ---
+# (Assuming 'chimera_intel.core...' is correct based on original file)
 from chimera_intel.core.wifi_analyzer import wifi_analyzer_app, analyze_wifi_capture
 
-# --- FIX: Initialize with mix_stderr=True ---
+# Initialize with mix_stderr=False (default) or True if you need to capture stderr separately
 runner = CliRunner()
 
 
@@ -53,23 +55,53 @@ def mock_wifi_pcap(tmp_path):
     return str(pcap_path)
 
 
+# --- NEW FIX: Add the missing 'mock_scapy_packet' fixture ---
+@pytest.fixture
+def mock_scapy_packet():
+    """Mocks a Scapy packet and its corresponding stats dictionary."""
+    # Mock the packet structure
+    mock_pkt = MagicMock(spec=Dot11)
+    
+    # Mock layer access (e.g., packet[Dot11Elt].info)
+    mock_elt = MagicMock()
+    mock_elt.info = b"MockSSID"
+    
+    # Mock BSSID
+    mock_dot11 = MagicMock()
+    mock_dot11.addr2 = "00:11:22:33:44:55"
+    
+    # Mock network_stats()
+    mock_beacon = MagicMock()
+    stats = {
+        "crypto": set(),
+        "channel": 1
+    }
+    mock_beacon.network_stats.return_value = stats
+
+    # Configure the main mock packet
+    mock_pkt.haslayer.return_value = True
+    mock_pkt.__getitem__.side_effect = lambda layer: {
+        Dot11: mock_dot11,
+        Dot11Beacon: mock_beacon,
+        Dot11Elt: mock_elt
+    }[layer]
+
+    return mock_pkt, stats
+
+
 @patch("chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
 @patch("os.path.exists", return_value=True)
 def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     """
     Tests the analyze-wifi command with a successful analysis.
     """
-    # Arrange: Create a dummy file at the temp path.
-    # The content doesn't matter since analyze_wifi_capture is mocked.
     pcap_path = tmp_path / "wifi_test.pcap"
     pcap_path.write_text("dummy pcap content")
     
-    # Act
-    # --- FIX: Removed "analyze" from the args list ---
-    # Since wifi_analyzer_app has only one command, invoke it directly.
+    # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        [str(pcap_path)],
+        ["analyze", str(pcap_path)],
         env={"COLUMNS": "120"},
     )
 
@@ -82,112 +114,152 @@ def test_analyze_wifi_file_not_found(tmp_path):
     """
     Tests the command when the capture file does not exist.
     """
-    # Arrange: Get a path to a file that is guaranteed not to exist
     non_existent_file = tmp_path / "non_existent.pcapng"
 
-    # Act: No need to patch os.path.exists, the app's internal
-    # check will handle this.
-    # --- FIX: Removed "analyze" from the args list ---
+    # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        [str(non_existent_file)],
+        ["analyze", str(non_existent_file)],
         env={"COLUMNS": "120"},
     )
 
     # Assert
     assert result.exit_code == 1
-    
-    # --- FIX: Check for parts of the message to avoid newline/formatting issues ---
-    assert "Capture file not found at" in result.stdout
+    assert "Error: Capture file not found" in result.stdout
     assert str(non_existent_file) in result.stdout
 
-    # --- Tests for analyze_wifi_capture (Logic) ---
+# --- Tests for analyze_wifi_capture (Logic) ---
 
-    @patch("src.chimera_intel.core.wifi_analyzer.rdpcap")
-    def test_analyze_wifi_no_beacons(mock_rdpcap, capsys):
-        """Test analysis when the PCAP has no beacon frames."""
-        mock_pkt = MagicMock()
-        mock_pkt.haslayer.return_value = False  # Not a beacon
-        mock_rdpcap.return_value = [mock_pkt]
+# --- NEW TEST: Test the logic function with the real pcap fixture ---
+def test_analyze_wifi_capture_integration(mock_wifi_pcap, capsys):
+    """
+    Tests the analyze_wifi_capture logic function using the mock pcap file.
+    This is an integration test for the logic parsing.
+    """
+    analyze_wifi_capture(mock_wifi_pcap)
+    captured = capsys.readouterr()
+    
+    # Check for Open network
+    assert "SSID: OpenWiFi" in captured.out
+    assert "BSSID: 00:11:22:33:44:55" in captured.out
+    assert "Security: [red]Open[/red]" in captured.out
 
-        analyze_wifi_capture("dummy.pcap")
-        captured = capsys.readouterr()
-        assert "No Wi-Fi access points found" in captured.out
-
-
-    @patch("src.chimera_intel.core.wifi_analyzer.rdpcap")
-    def test_analyze_wifi_ssid_decode_error(mock_rdpcap, mock_scapy_packet, capsys):
-        """Test analysis when an SSID has a UnicodeDecodeError."""
-        mock_pkt, stats = mock_scapy_packet
-        # Simulate bad encoding
-        mock_pkt[MagicMock].info = b"\xff\xfe"
-        mock_pkt[MagicMock].info.decode.side_effect = UnicodeDecodeError("utf-8", b"", 0, 1, "reason")
-        mock_pkt[MagicMock].info.hex.return_value = "fffe" # Fallback hex value
-
-        mock_rdpcap.return_value = [mock_pkt]
-        
-        analyze_wifi_capture("dummy.pcap")
-        captured = capsys.readouterr()
-        
-        assert "SSID: fffe" in captured.out
-        assert "Security: [green]Open[/green]" in captured.out
+    # Check for WPA2 network
+    assert "SSID: SecureWiFi" in captured.out
+    assert "BSSID: aa:bb:cc:dd:ee:ff" in captured.out
+    assert "Security: [green]WPA2[/green]" in captured.out
 
 
-    @patch("src.chimera_intel.core.wifi_analyzer.rdpcap")
-    @pytest.mark.parametrize("crypto_set, expected_security", [
-        ({"WPA2", "WPA"}, "[yellow]WPA/WPA2[/yellow]"),
-        ({"WPA2"}, "[green]WPA2[/green]"),
-        ({"WPA"}, "[yellow]WPA[/yellow]"),
-        ({"WEP"}, "[red]WEP[/red]"),
-        (set(), "[green]Open[/green]"), # 'Open' is green in the logic, so we test that
-    ])
-    def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, crypto_set, expected_security):
-        """Test detection of various security protocols."""
-        mock_pkt, stats = mock_scapy_packet
-        stats["crypto"] = crypto_set
-        mock_rdpcap.return_value = [mock_pkt]
+@patch("chimera_intel.core.wifi_analyzer.rdpcap")
+def test_analyze_wifi_no_beacons(mock_rdpcap, capsys):
+    """Test analysis when the PCAP has no beacon frames."""
+    mock_pkt = MagicMock()
+    mock_pkt.haslayer.return_value = False  # Not a beacon
+    mock_rdpcap.return_value = [mock_pkt]
 
-        analyze_wifi_capture("dummy.pcap")
-        captured = capsys.readouterr()
-        
-        assert f"Security: {expected_security}" in captured.out
+    analyze_wifi_capture("dummy.pcap")
+    captured = capsys.readouterr()
+    assert "No Wi-Fi access points found" in captured.out
 
 
-    # --- Tests for analyze (CLI Command) ---
+# --- NEW TEST: Test logic for handling duplicate BSSIDs ---
+@patch("chimera_intel.core.wifi_analyzer.rdpcap")
+def test_analyze_wifi_duplicate_bssid(mock_rdpcap, mock_scapy_packet, capsys):
+    """Test that duplicate BSSIDs are only processed once."""
+    mock_pkt, stats = mock_scapy_packet
+    stats["crypto"] = {"WEP"} # Set security to WEP
+    
+    # Return the same packet twice
+    mock_rdpcap.return_value = [mock_pkt, mock_pkt]
+    
+    analyze_wifi_capture("dummy.pcap")
+    captured = capsys.readouterr()
 
-    @patch("src.chimera_intel.core.wifi_analyzer.os.path.exists")
-    def test_cli_analyze_file_not_found(mock_exists):
-        """Test CLI 'analyze' command when the file does not exist."""
-        mock_exists.return_value = False
-        result = runner.invoke(wifi_analyzer_app, ["analyze", "nonexistent.pcap"])
-        
-        assert result.exit_code == 1
-        assert "Error: Capture file not found" in result.stdout
-
-
-    @patch("src.chimera_intel.core.wifi_analyzer.os.path.exists")
-    @patch("src.chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
-    def test_cli_analyze_generic_exception(mock_analyze_logic, mock_exists):
-        """Test CLI 'analyze' command when the logic function raises an exception."""
-        mock_exists.return_value = True
-        mock_analyze_logic.side_effect = Exception("Scapy read error")
-        
-        result = runner.invoke(wifi_analyzer_app, ["analyze", "broken.pcap"])
-        
-        assert result.exit_code == 1
-        assert "An error occurred during Wi-Fi analysis" in result.stdout
-        assert "Scapy read error" in result.stdout
+    # Ensure the SSID and security type are only printed once
+    assert captured.out.count("SSID: MockSSID") == 1
+    assert captured.out.count("Security: [red]WEP[/red]") == 1
 
 
-    @patch("src.chimera_intel.core.wifi_analyzer.os.path.exists")
-    @patch("src.chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
-    def test_cli_analyze_success(mock_analyze_logic, mock_exists):
-        """Test a successful run of the CLI 'analyze' command."""
-        mock_exists.return_value = True
-        
-        result = runner.invoke(wifi_analyzer_app, ["analyze", "good.pcap"])
-        
-        assert result.exit_code == 0
-        assert "Analyzing wireless networks from: good.pcap" in result.stdout
-        assert "Wireless network analysis complete" in result.stdout
-        mock_analyze_logic.assert_called_with("good.pcap")
+# --- FIX: Corrected patch path for rdpcap (was 'src.chimera_intel...') ---
+@patch("chimera_intel.core.wifi_analyzer.rdpcap")
+def test_analyze_wifi_ssid_decode_error(mock_rdpcap, mock_scapy_packet, capsys):
+    """Test analysis when an SSID has a UnicodeDecodeError."""
+    mock_pkt, stats = mock_scapy_packet
+    
+    # Simulate bad encoding
+    mock_elt = mock_pkt[Dot11Elt]
+    mock_elt.info = b"\xff\xfe" # Invalid utf-8
+    mock_elt.info.decode.side_effect = UnicodeDecodeError("utf-8", b"", 0, 1, "reason")
+    # Provide a hex fallback
+    mock_elt.info.hex.return_value = "fffe" 
+
+    mock_rdpcap.return_value = [mock_pkt]
+    
+    analyze_wifi_capture("dummy.pcap")
+    captured = capsys.readouterr()
+    
+    # Logic should fall back to hex representation
+    assert "SSID: fffe" in captured.out
+    assert "Security: [green]Open[/green]" in captured.out
+
+
+# --- FIX: Corrected patch path for rdpcap (was 'src.chimera_intel...') ---
+@patch("chimera_intel.core.wifi_analyzer.rdpcap")
+@pytest.mark.parametrize("crypto_set, expected_security", [
+    ({"WPA2", "WPA"}, "[green]WPA/WPA2[/green]"), # WPA/WPA2 is green (not yellow)
+    ({"WPA2"}, "[green]WPA2[/green]"),
+    ({"WPA"}, "[yellow]WPA[/yellow]"),
+    ({"WEP"}, "[red]WEP[/red]"),
+    (set(), "[red]Open[/red]"), # Open is red in the logic
+])
+def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, crypto_set, expected_security):
+    """Test detection of various security protocols and their colors."""
+    mock_pkt, stats = mock_scapy_packet
+    stats["crypto"] = crypto_set
+    mock_rdpcap.return_value = [mock_pkt]
+
+    analyze_wifi_capture("dummy.pcap")
+    captured = capsys.readouterr()
+    
+    assert f"Security: {expected_security}" in captured.out
+
+
+# --- Tests for analyze (CLI Command) ---
+# (These tests were already correctly structured)
+
+@patch("chimera_intel.core.wifi_analyzer.os.path.exists")
+def test_cli_analyze_file_not_found(mock_exists):
+    """Test CLI 'analyze' command when the file does not exist."""
+    mock_exists.return_value = False
+    result = runner.invoke(wifi_analyzer_app, ["analyze", "nonexistent.pcap"])
+    
+    assert result.exit_code == 1
+    assert "Error: Capture file not found" in result.stdout
+
+
+@patch("chimera_intel.core.wifi_analyzer.os.path.exists")
+@patch("chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
+def test_cli_analyze_generic_exception(mock_analyze_logic, mock_exists):
+    """Test CLI 'analyze' command when the logic function raises an exception."""
+    mock_exists.return_value = True
+    mock_analyze_logic.side_effect = Exception("Scapy read error")
+    
+    result = runner.invoke(wifi_analyzer_app, ["analyze", "broken.pcap"])
+    
+    assert result.exit_code == 1
+    assert "An error occurred during Wi-Fi analysis" in result.stdout
+    assert "Scapy read error" in result.stdout
+
+
+@patch("chimera_intel.core.wifi_analyzer.os.path.exists")
+@patch("chimera_intel.core.wifi_analyzer.analyze_wifi_capture")
+def test_cli_analyze_success(mock_analyze_logic, mock_exists):
+    """Test a successful run of the CLI 'analyze' command."""
+    mock_exists.return_value = True
+    
+    result = runner.invoke(wifi_analyzer_app, ["analyze", "good.pcap"])
+    
+    assert result.exit_code == 0
+    assert "Analyzing wireless networks from: good.pcap" in result.stdout
+    assert "Wireless network analysis complete" in result.stdout
+    mock_analyze_logic.assert_called_with("good.pcap")

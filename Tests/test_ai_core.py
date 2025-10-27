@@ -298,6 +298,54 @@ class TestAiCore(unittest.TestCase):
         self.assertIn("API Error", result.error)
         self.assertEqual(result.narrative_text, "")
 
+    def test_detect_traffic_anomalies_empty_list(self):
+        """Tests anomaly detection with an empty list."""
+        traffic_data = []
+        result = detect_traffic_anomalies(traffic_data)
+        # An empty list is valid input, it just has no anomalies
+        self.assertEqual(result.detected_anomalies, [])
+        self.assertIsNone(result.error)
+
+    @patch("chimera_intel.core.ai_core.generate_swot_from_data")
+    @patch("chimera_intel.core.ai_core.build_and_save_graph")
+    @patch("os.path.exists", return_value=True)
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data='{"domain": "example.com", "footprint": {"dns_records": {"A": ["1.2.3.4"]}, "subdomains": {"results": [{"domain": "sub.example.com"}]}}, "web_analysis": {"tech_stack": {"results": [{"technology": "React"}]}}}',
+    )
+    def test_generate_narrative_from_graph_structure(
+        self, mock_file, mock_exists, mock_build_graph, mock_gen_swot
+    ):
+        """
+        Tests that the graph nodes and edges are constructed correctly
+        and passed to the SWOT generator.
+        """
+        mock_gen_swot.return_value = SWOTAnalysisResult(analysis_text="Test narrative")
+
+        result = generate_narrative_from_graph("example.com.json", "fake_api_key")
+
+        self.assertEqual(result.narrative_text, "Test narrative")
+        
+        # Check that the SWOT function was called with the correct graph data
+        self.assertEqual(mock_gen_swot.call_count, 1)
+        # Get the second argument (the JSON string) passed to generate_swot_from_data
+        prompt_json_str = mock_gen_swot.call_args[0][0] 
+        
+        self.assertIn('"nodes"', prompt_json_str)
+        self.assertIn('"edges"', prompt_json_str)
+        
+        # Check for specific nodes
+        self.assertIn('"id": "example.com"', prompt_json_str)
+        self.assertIn('"id": "sub.example.com"', prompt_json_str)
+        self.assertIn('"id": "1.2.3.4"', prompt_json_str)
+        self.assertIn('"id": "React"', prompt_json_str)
+        
+        # Check for specific edges
+        self.assertIn('"source": "example.com", "target": "sub.example.com", "label": "has_subdomain"', prompt_json_str)
+        self.assertIn('"source": "example.com", "target": "1.2.3.4", "label": "resolves_to"', prompt_json_str)
+        self.assertIn('"source": "example.com", "target": "React", "label": "uses_tech"', prompt_json_str)
+
 
 if __name__ == "__main__":
     unittest.main()
