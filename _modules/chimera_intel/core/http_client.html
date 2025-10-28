@@ -91,16 +91,17 @@
 <span class="c1"># Define reusable HTTP transports with a built-in retry mechanism for resilience.</span>
 <span class="c1"># This helps handle transient network errors automatically.</span>
 
+<span class="c1"># --- FIX: Removed global transport variables to prevent test conflicts ---</span>
+<span class="c1"># transport = httpx.HTTPTransport(retries=3)</span>
+<span class="c1"># async_transport = httpx.AsyncHTTPTransport(retries=3)</span>
 
-<span class="n">transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">HTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<span class="n">async_transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
 <span class="c1"># Global synchronous client for parts of the application that don&#39;t use async.</span>
 <span class="c1"># It&#39;s configured with the standard transport, timeout, and a custom User-Agent.</span>
 
-
 <span class="n">sync_client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span>
-    <span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">,</span>
+    <span class="c1"># FIX: Inline transport instantiation</span>
+    <span class="n">transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">HTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
     <span class="n">timeout</span><span class="o">=</span><span class="n">Timeout</span><span class="p">(</span><span class="n">NETWORK_TIMEOUT</span><span class="p">),</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="s2">&quot;Chimera-Intel/6.0&quot;</span><span class="p">},</span>
 <span class="p">)</span>
@@ -110,7 +111,8 @@
 
 
 <span class="n">async_client</span> <span class="o">=</span> <span class="n">AsyncClient</span><span class="p">(</span>
-    <span class="n">transport</span><span class="o">=</span><span class="n">async_transport</span><span class="p">,</span>
+    <span class="c1"># FIX: Inline transport instantiation</span>
+    <span class="n">transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
     <span class="n">timeout</span><span class="o">=</span><span class="n">Timeout</span><span class="p">(</span><span class="n">NETWORK_TIMEOUT</span><span class="p">),</span>
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="s2">&quot;Chimera-Intel/6.0&quot;</span><span class="p">},</span>
 <span class="p">)</span>
@@ -137,7 +139,8 @@
                 <span class="n">proxy</span><span class="o">=</span><span class="n">proxies</span><span class="p">[</span><span class="s2">&quot;http&quot;</span><span class="p">]</span>  
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">transport</span> <span class="o">=</span> <span class="n">async_transport</span> <span class="c1"># Use the default transport if no proxy is specified.</span>
+            <span class="c1"># FIX: If no proxy, explicitly create a new default transport with retries set.</span>
+            <span class="n">transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
         <span class="n">client</span> <span class="o">=</span> <span class="n">AsyncClient</span><span class="p">(</span>
             <span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">,</span>
