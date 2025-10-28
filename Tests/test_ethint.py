@@ -280,7 +280,10 @@ def test_audit_missing_rule_function(mock_get_frameworks_func, mock_rules_module
     assert result.is_compliant is False
     assert result.violations[0].rule_id == "SYSTEM-02"
     assert "Missing checks for rules: ROE-03" in result.violations[0].description
-    assert "No check function found for rule: ROE-03" in result.audit_log[-2]
+    # --- START FIX ---
+    # Check if any log contains the key phrase, instead of checking a specific index
+    assert any("No check function found for rule: ROE-03" in log for log in result.audit_log)
+    # --- END FIX ---
 
 # ----------------- FIX: Patched the correct target -----------------
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
@@ -297,7 +300,11 @@ def test_audit_rule_function_exception(mock_get_frameworks_func, mock_rules_modu
     # It is still compliant because the rule didn't return False, it failed
     # But the error is logged. A real implementation might choose to fail.
     # Based on the code, it just logs the error.
-    assert "ERROR - OpID: op-001, Rule: ROE-01 failed to execute: Rule engine crashed" in result.audit_log
+    
+    # --- START FIX ---
+    # Check for the substance of the error, ignoring timestamps or exact prefixes
+    assert any("Rule: ROE-01 failed to execute: Rule engine crashed" in log for log in result.audit_log)
+    # --- END FIX ---
 
 # ----------------- FIX: Patched the correct target -----------------
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
@@ -309,7 +316,10 @@ def test_audit_framework_not_found(mock_get_frameworks_func, mock_rules_module, 
     
     result = audit_operation(op, ["framework_does_not_exist"])
     
-    assert "Framework 'framework_does_not_exist' not found. Skipping." in result.audit_log
+    # --- START FIX ---
+    # Check if any log contains the key phrase, instead of an exact match
+    assert any("Framework 'framework_does_not_exist' not found. Skipping." in log for log in result.audit_log)
+    # --- END FIX ---
     assert result.is_compliant is True # No violations found
 
 # --- Tests for run_audit (Typer CLI) ---

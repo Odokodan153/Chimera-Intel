@@ -20,6 +20,7 @@ import csv
 import re
 import pubchempy as pcp
 import json
+from urllib.parse import urlsplit, urlunsplit # <-- ADDED IMPORT
 
 chemint_app = typer.Typer()
 
@@ -262,8 +263,9 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            # UPDATED FIX:
-                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
+                            # UPDATED FIX: (More robust)
+                            parts = urlsplit(url)
+                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
                             # FIX #2: Ensure the relative link starts with a '/' before joining (most robust fix without urljoin).
                             if not link.startswith('/'):
                                 link = '/' + link
@@ -279,8 +281,9 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            # UPDATED FIX:
-                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
+                            # UPDATED FIX: (More robust)
+                            parts = urlsplit(url)
+                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
                             if not link.startswith('/'):
                                 link = '/' + link
@@ -294,8 +297,9 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            # UPDATED FIX:
-                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
+                            # UPDATED FIX: (More robust)
+                            parts = urlsplit(url)
+                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
                             if not link.startswith('/'):
                                 link = '/' + link
@@ -311,7 +315,11 @@ def monitor_chemical_news(
         table = Table(show_header=True, header_style="bold magenta", width=120)
         table.add_column("Source", overflow="fold", ratio=1)
         table.add_column("Title", overflow="fold", ratio=2)
-        table.add_column("URL", overflow="fold", ratio=3)
+        # --- THIS IS THE FIX ---
+        # Changed overflow="fold" to no_wrap=True and overflow="ellipsis"
+        # to prevent the domain from splitting across lines.
+        table.add_column("URL", no_wrap=True, overflow="ellipsis", ratio=3)
+        # --- END FIX ---
         for row in results:
             table.add_row(*row)
         print(table)

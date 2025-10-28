@@ -550,7 +550,7 @@ def test_track_influence_full_run_with_results(
     assert len(printed_table.rows) == 2
     
     # --- FIX: A rich.table.Row object is iterable. Convert it to a tuple to check its contents. ---
-    row_cells = tuple(printed_table.rows[0])
+    row_cells = tuple(printed_table.rows[0].cells)
     assert row_cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
 
 

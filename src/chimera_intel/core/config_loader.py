@@ -15,8 +15,8 @@ from typing import Any, Dict, Optional
 
 import hvac
 import yaml
-# FIX: Import PostgresDsn
-from pydantic import Field, ValidationError, field_validator, PostgresDsn
+# FIX: Removed PostgresDsn import
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings
 
 from .schemas import AppConfig
@@ -140,8 +140,8 @@ class ApiKeys(BaseSettings):
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
 
-    # FIX: Change type hint from Optional[str] to Optional[PostgresDsn]
-    database_url: Optional[PostgresDsn] = None
+    # FIX: Change type hint from Optional[PostgresDsn] to Optional[str]
+    database_url: Optional[str] = None
 
     @field_validator("database_url", mode="before")
     def assemble_db_connection(cls, v: Optional[str], values: Any) -> Any:

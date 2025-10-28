@@ -495,12 +495,14 @@ class TestMonitorChemicalNews:
         # Check Chemistry World (handles absolute link)
         assert "Chemistry World" in result.stdout
         assert "Chemistry World Article" in result.stdout
-        assert "chemistryworld.com" in result.stdout # --- FIX ---
+        # --- FIX: Added 'www.' to match the URL in the mock HTML ---
+        assert "www.chemistryworld.com" in result.stdout 
 
         # Check ICIS (handles relative link)
         assert "ICIS" in result.stdout
         assert "ICIS Article" in result.stdout
-        assert "icis.com" in result.stdout # --- FIX ---
+        # --- FIX: Added 'www.' to match the base URL from the news_sources dict ---
+        assert "www.icis.com" in result.stdout 
 
     @patch("chimera_intel.core.chemint.requests.get")
     def test_monitor_news_no_results(self, mock_get, runner):

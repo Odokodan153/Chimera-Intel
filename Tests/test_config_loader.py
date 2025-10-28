@@ -128,14 +128,11 @@ def test_api_keys_assemble_db_connection(monkeypatch):
         # --- FIX: Use importlib.reload to re-instantiate module-level API_KEYS ---
         importlib.reload(config_loader)
     
-        # The str() of a PostgresDsn object redacts the password
-        # UPDATED FIX: Pydantic's PostgresDsn string representation *includes* the
-        # port if it was explicitly passed in the connection string,
-        # which our validator does when DB_PORT is set.
-        expected_url = "postgresql://postgres:***@localhost:5432/chimera_db"
+        # UPDATED FIX: Assert against the raw, un-redacted string which is now stored.
+        expected_url = "postgresql://postgres:mypassword@localhost:5432/chimera_db"
         
         # --- FIX: Assert against the reloaded module-level instance ---
-        assert str(config_loader.API_KEYS.database_url) == expected_url
+        assert config_loader.API_KEYS.database_url == expected_url
 
 def test_api_keys_assemble_db_connection_incomplete(monkeypatch):
     """Tests that DB URL is None if some connection vars are missing."""
@@ -152,14 +149,11 @@ def test_api_keys_direct_database_url_override(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://direct:url@host:1234/direct_db")
     
     # --- FIX: Do not set other DB_ vars. The clear_env fixture handles this.
-    # Setting them triggers the assembly validator, which (if incomplete)
-    # can overwrite the DATABASE_URL value.
     
     importlib.reload(config_loader)
     
-    # FIX: Assert the redacted string, as PostgresDsn will hide the password.
-    # The port (1234) is non-default, so it will be included.
-    assert str(config_loader.API_KEYS.database_url) == "postgresql://direct:***@host:1234/direct_db"
+    # FIX: Assert against the raw, un-redacted string.
+    assert config_loader.API_KEYS.database_url == "postgresql://direct:url@host:1234/direct_db"
 
 def test_api_keys_vault_priority(mock_hvac, monkeypatch):
     """

@@ -254,14 +254,16 @@ def test_main_call(mock_app_call):
         del sys.modules[module_name]
     # --- END FIX ---
 
-    # --- FIX: Catch the normal SystemExit(0) from Typer ---
-    with patch.dict("sys.modules", {"__main__": MagicMock()}), \
-         patch("sys.argv", test_args):
+    # --- START FIX: Remove the incorrect patch.dict for sys.modules["__main__"] ---
+    # The patch.dict(..., {"__main__": ...}) was preventing runpy
+    # from correctly setting __name__ = "__main__" in the module.
+    with patch("sys.argv", test_args):
         try:
             runpy.run_module(module_name, run_name="__main__")
         except SystemExit as e:
             # FIX: Ignore normal Typer exits (0)
             assert e.code == 0
+    # --- END FIX ---
             
     # The key check is that our mock app was called
     mock_app_call.assert_called_once()
