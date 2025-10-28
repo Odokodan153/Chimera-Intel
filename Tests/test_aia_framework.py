@@ -163,8 +163,11 @@ class TestLoadAvailableModules:
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
         
-        mock_mod = MagicMock()
-        del mock_mod.run  # Ensure it has no 'run' attribute
+        # --- FIX: Replaced MagicMock with a plain class ---
+        # del mock_mod.run doesn't work reliably on a MagicMock
+        class DummyModule: pass
+        mock_mod = DummyModule() # This object truly lacks a 'run' attribute
+        # --- End Fix ---
 
         # FIX: Use the correct module path
         mock_iter_modules.return_value = [
@@ -526,8 +529,8 @@ class TestCLI:
     def test_cli_execute_objective_success(self, mock_run_analysis, runner):
         """Tests the 'execute-objective' command on success."""
         
-        # --- FIX: Removed "execute-objective" ---
-        result = runner.invoke(aia_cli_app, ["Analyze example.com"])
+        # --- FIX: Added "execute-objective" command name ---
+        result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
         
         assert result.exit_code == 0
         assert "Objective Received" in result.stdout
@@ -545,10 +548,11 @@ class TestCLI:
     def test_cli_execute_objective_args_passed(self, mock_run_analysis, runner):
         """Tests that CLI arguments are correctly passed to the analysis function."""
         
-        # --- FIX: Removed "execute-objective" ---
+        # --- FIX: Added "execute-objective" command name ---
         result = runner.invoke(
             aia_cli_app,
             [
+                "execute-objective",
                 "Full test",
                 "--output",
                 "out.json",
@@ -575,8 +579,8 @@ class TestCLI:
         """Tests that the CLI exits with code 1 if the analysis fails."""
         mock_run_analysis.side_effect = Exception("A critical error")
         
-        # --- FIX: Removed "execute-objective" ---
-        result = runner.invoke(aia_cli_app, ["Test"])
+        # --- FIX: Added "execute-objective" command name ---
+        result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
         
         assert result.exit_code == 1
         assert "An unhandled error occurred" in result.stdout

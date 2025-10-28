@@ -108,7 +108,9 @@ def test_get_kpis_db_exception(mock_connect, mock_db_params):
 
 
 # FIX: Patch the API_KEYS object *where it is used* (in analytics_cli)
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(database_url=None))
+@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
+    db_name=None, db_user=None, db_password=None, db_host=None
+))
 # --- FIX: Remove unnecessary mocks for this validation test ---
 def test_plot_sentiment_missing_params():
     """Test plot command when DB parameters are missing from config."""
@@ -119,7 +121,7 @@ def test_plot_sentiment_missing_params():
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    database_url="postgresql://testuser:testpass@localhost/testdb"
+    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
 ))
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
@@ -135,7 +137,7 @@ def test_plot_sentiment_connection_error(mock_plt, mock_read_sql, mock_connect):
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    database_url="postgresql://testuser:testpass@localhost/testdb"
+    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
 ))
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
@@ -154,7 +156,7 @@ def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    database_url="postgresql://testuser:testpass@localhost/testdb"
+    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
 ))
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
@@ -188,7 +190,7 @@ def test_plot_sentiment_save_to_file(
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    database_url="postgresql://testuser:testpass@localhost/testdb"
+    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
 ))
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
@@ -216,7 +218,7 @@ def test_plot_sentiment_show_plot(
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    database_url="postgresql://testuser:testpass@localhost/testdb"
+    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
 ))
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
@@ -242,11 +244,14 @@ def test_main_call(mock_app_call):
     # FIX: Provide a valid command to prevent Typer from exiting with an error
     test_args = ["src/chimera_intel/core/analytics_cli.py", "plot-sentiment", "dummy-id"]
     
-    # --- FIX: Remove pytest.raises(SystemExit) ---
-    # The mock app shouldn't exit, so we don't expect an exception.
+    # --- FIX: Catch the normal SystemExit(0) from Typer ---
     with patch.dict("sys.modules", {"__main__": MagicMock()}), \
          patch("sys.argv", test_args):
-        runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
+        try:
+            runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
+        except SystemExit as e:
+            # FIX: Ignore normal Typer exits (0)
+            assert e.code == 0
             
     # The key check is that our mock app was called
     mock_app_call.assert_called_once()

@@ -497,14 +497,18 @@ def test_track_influence_full_run_with_results(
     table-printing logic.
     """
     # Arrange
-    # Mock httpx (for GNews and Reddit)
-    mock_http_instance = mock_httpx_client.return_value
+    # --- START FIX: Mock the client returned by the context manager ---
+    # This is the object that __enter__ returns
+    mock_http_instance = mock_httpx_client.return_value.__enter__.return_value
+    # --- END FIX ---
+
     mock_gnews_response = MagicMock()
     mock_gnews_response.json.return_value = MOCK_GNEWS_RESPONSE
     mock_reddit_response = MagicMock()
     mock_reddit_response.json.return_value = MOCK_REDDIT_RESPONSE
     
     # httpx.get will be called twice. First for GNews, second for Reddit.
+    # Set the side_effect on the correct mocked instance
     mock_http_instance.get.side_effect = [
         mock_gnews_response,
         mock_reddit_response,
@@ -525,7 +529,9 @@ def test_track_influence_full_run_with_results(
     
     # Check that httpx.Client was created and used
     mock_httpx_client.assert_called_once()
+    # --- START FIX: Assert call count on the correct mock instance ---
     assert mock_http_instance.get.call_count == 2
+    # --- END FIX ---
     
     # Check that tweepy.Client was created and used
     mock_tweepy_client.assert_called_once_with(API_KEYS.twitter_bearer_token)

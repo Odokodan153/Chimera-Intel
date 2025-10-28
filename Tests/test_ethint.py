@@ -137,11 +137,11 @@ def test_load_frameworks_generic_exception(caplog):
 # --- These tests now pass due to the reset_ethint_cache fixture ---
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_compliant_operation(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_compliant_operation(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests an operation that should pass all compliance checks."""
     # FIX: Set the return_value of the mock getter function.
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     
     compliant_op = Operation(
         operation_id="data-gather-001",
@@ -160,11 +160,11 @@ def test_compliant_operation(mock_get_frameworks, mock_rules_module, mock_framew
     assert len(result.violations) == 0
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_non_compliant_offensive_operation(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_non_compliant_offensive_operation(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests an offensive operation that targets civilian infrastructure."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     mock_rules_module.check_roe_01.return_value = False  # Trigger violation
     
     non_compliant_op = Operation(
@@ -183,11 +183,11 @@ def test_non_compliant_offensive_operation(mock_get_frameworks, mock_rules_modul
     assert result.violations[0].severity == "CRITICAL"
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_non_compliant_data_privacy_operation(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_non_compliant_data_privacy_operation(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests a data collection operation that violates GDPR rules."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     mock_rules_module.check_dp_01.return_value = False  # Trigger violation
     
     non_compliant_op = Operation(
@@ -206,11 +206,11 @@ def test_non_compliant_data_privacy_operation(mock_get_frameworks, mock_rules_mo
     assert result.violations[0].severity == "CRITICAL"
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_operation_with_insufficient_justification(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_operation_with_insufficient_justification(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests an operation that fails due to a weak justification."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     mock_rules_module.check_roe_02.return_value = False  # Trigger violation
     
     op_with_weak_justification = Operation(
@@ -233,21 +233,20 @@ def test_operation_with_insufficient_justification(mock_get_frameworks, mock_rul
 
 # FIX: Patched 'get_ethical_frameworks' to return {} directly.
 @patch("chimera_intel.core.ethint.get_ethical_frameworks", return_value={})
-def test_audit_no_frameworks_loaded(mock_get_frameworks): # mock_get_frameworks is injected by decorator
+def test_audit_no_frameworks_loaded(mock_get_frameworks_func): # mock_get_frameworks is injected by decorator
     """Tests that audit_operation raises RuntimeError if frameworks are not loaded."""
     op = Operation(operation_id="op-001", operation_type="test", justification="test")
     with pytest.raises(RuntimeError, match="No ethical frameworks were loaded"):
         audit_operation(op, ["data_privacy_gdpr"])
 
-# ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-# --- FIX: Patched target updated to where it is used ---
+# ----------------- FIX: Patched the correct targets -----------------
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
 @patch("chimera_intel.core.ethint.importlib.import_module", side_effect=ImportError)
 # --- FIX: Swapped mock arguments to match decorator order ---
-def test_audit_rules_module_import_error(mock_import, mock_get_frameworks, mock_frameworks_dict):
+def test_audit_rules_module_import_error(mock_import, mock_get_frameworks_func, mock_frameworks_dict):
     """Tests the SYSTEM-01 violation if ethint_rules.py fails to import."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     op = Operation(operation_id="op-001", operation_type="test", justification="test")
     
     result = audit_operation(op, ["data_privacy_gdpr"])
@@ -259,11 +258,11 @@ def test_audit_rules_module_import_error(mock_import, mock_get_frameworks, mock_
 # --- End Fix ---
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_audit_missing_rule_function(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_audit_missing_rule_function(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests the SYSTEM-02 violation if a rule function is missing."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     
     # Intentionally delete the function our mock module *should* have
     del mock_rules_module.check_roe_03 
@@ -279,11 +278,11 @@ def test_audit_missing_rule_function(mock_get_frameworks, mock_rules_module, moc
     assert "No check function found for rule: ROE-03" in result.audit_log[-2]
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_audit_rule_function_exception(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_audit_rule_function_exception(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests that an exception during a rule check is caught and logged."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     mock_rules_module.check_roe_01.side_effect = Exception("Rule engine crashed")
     
     op = Operation(operation_id="op-001", operation_type="test", justification="test")
@@ -296,11 +295,11 @@ def test_audit_rule_function_exception(mock_get_frameworks, mock_rules_module, m
     assert "ERROR - OpID: op-001, Rule: ROE-01 failed to execute: Rule engine crashed" in result.audit_log
 
 # ----------------- FIX: Patched the correct target -----------------
-@patch("chimera_intel.core.ethint.audit_operation.__globals__['get_ethical_frameworks']")
-def test_audit_framework_not_found(mock_get_frameworks, mock_rules_module, mock_frameworks_dict):
+@patch("chimera_intel.core.ethint.get_ethical_frameworks")
+def test_audit_framework_not_found(mock_get_frameworks_func, mock_rules_module, mock_frameworks_dict):
     """Tests that a missing framework is skipped and logged."""
     # FIX: Set the return_value
-    mock_get_frameworks.return_value = mock_frameworks_dict
+    mock_get_frameworks_func.return_value = mock_frameworks_dict
     op = Operation(operation_id="op-001", operation_type="test", justification="test")
     
     result = audit_operation(op, ["framework_does_not_exist"])

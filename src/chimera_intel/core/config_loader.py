@@ -139,7 +139,7 @@ class ApiKeys(BaseSettings):
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
 
-    database_url: Union[PostgresDsn, str, None] = None
+    database_url: Optional[str] = None
 
     @field_validator("database_url", mode="before")
     def assemble_db_connection(cls, v: Optional[str], values: Any) -> Any:
@@ -161,8 +161,9 @@ class ApiKeys(BaseSettings):
         db_port = str(db_port_raw) if db_port_raw else str(5432)
 
         if all([db_host, db_user, db_password, db_name, db_port]): # FIX: Added db_port to the check
-            # The port is now guaranteed to be a string
-            return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            # Always return a raw string to prevent PostgresDsn from redacting or truncating the database name
+            assembled = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            return assembled
         return v
 
     class Config:
