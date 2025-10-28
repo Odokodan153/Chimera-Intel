@@ -114,11 +114,11 @@ def get_wifi_app():
         help="Analyze a wireless network capture file."
     )
     def analyze(
-    # --- FIX: Removed stray comment line that was breaking Typer ---
-    # --- FIX REVERTED: Use standard typer.Argument syntax ---
+    # --- START SYNTAX FIX: Removed invalid comments from function signature ---
         capture_file: str = typer.Argument(
             ..., help="Path to the wireless capture file (.pcap or .pcapng)."
         ),
+    # --- END SYNTAX FIX ---
     ):
         """
         Analyzes wireless network capture files to identify, profile, and assess

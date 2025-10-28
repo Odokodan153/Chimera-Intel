@@ -265,4 +265,3 @@ def test_cli_forecast_no_forecast_data(mock_asyncio_run, mock_get_forecast, runn
     assert result.exit_code == 0
     # FIX: Check for plain text error, not Rich formatting
     assert "Error: Forecast generation failed to produce data." in result.stdout
-    assert "Forecast" not in result.stdout

@@ -183,7 +183,10 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         # FIX: Typer prints missing option errors to stderr, not stdout
         # --- FIX: Check for substrings because ANSI codes can break exact match ---
         self.assertIn("Missing option", result.stderr)
-        self.assertIn("--carrier", result.stderr)
+        
+        # --- THIS IS THE FIX ---
+        # Check for "carrier" instead of "--carrier" to avoid ANSI code issues
+        self.assertIn("carrier", result.stderr) 
 
 if __name__ == "__main__":
     unittest.main()

@@ -130,9 +130,9 @@ def test_process_message_df20_commb_exception(mock_cs20, interceptor, capsys):
 
 @patch("chimera_intel.core.sigint.socket.socket")
 @patch("chimera_intel.core.sigint.adsb.position_with_ref", return_value=(34.1, -118.1))
-# --- FIX: Swapped mock arguments to match decorator order (top-down) ---
-def test_run_sigint_analysis_success(mock_socket_class, mock_pos_ref):
-# --- End Fix ---
+# --- START FIX: Swapped mock arguments to match decorator order (bottom-up) ---
+def test_run_sigint_analysis_success(mock_pos_ref, mock_socket_class):
+# --- END FIX ---
     """Tests a successful live analysis run."""
     mock_socket = MagicMock()
     # Mock return values for calls to recv

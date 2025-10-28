@@ -69,7 +69,8 @@ def mock_rules_module():
     
     # Missing function: check_roe_03 is intentionally omitted
     
-    with patch("importlib.import_module", return_value=mock_module) :
+    # --- FIX: Patch the target where it is looked up (in the ethint module) ---
+    with patch("chimera_intel.core.ethint.importlib.import_module", return_value=mock_module) :
         yield mock_module
 
 @pytest.fixture
@@ -240,9 +241,10 @@ def test_audit_no_frameworks_loaded(mock_get_frameworks): # mock_get_frameworks 
 
 # FIX: Patched 'get_ethical_frameworks' correctly.
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
-@patch("importlib.import_module", side_effect=ImportError)
+# --- FIX: Patched target updated to where it is used ---
+@patch("chimera_intel.core.ethint.importlib.import_module", side_effect=ImportError)
 # --- FIX: Swapped mock arguments to match decorator order ---
-def test_audit_rules_module_import_error(mock_get_frameworks, mock_import, mock_frameworks_dict):
+def test_audit_rules_module_import_error(mock_import, mock_get_frameworks, mock_frameworks_dict):
     """Tests the SYSTEM-01 violation if ethint_rules.py fails to import."""
     # FIX: Set the return_value
     mock_get_frameworks.return_value = mock_frameworks_dict
@@ -314,7 +316,7 @@ def test_cli_compliant_run(mock_audit, runner, mock_operation_file):
     """Tests the CLI for a compliant operation."""
     mock_audit.return_value = MagicMock(is_compliant=True, violations=[], audit_log=["Log entry"])
     
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file])
+    result = runner.invoke(ethint_app, [mock_operation_file])
     
     assert result.exit_code == 0
     assert "is COMPLIANT" in result.stdout
@@ -327,7 +329,7 @@ def test_cli_non_compliant_run(mock_audit, runner, mock_operation_file):
     mock_violation = MagicMock(framework="Test", rule_id="TEST-01", severity="CRITICAL", description="Test violation")
     mock_audit.return_value = MagicMock(is_compliant=False, violations=[mock_violation], audit_log=[])
     
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file])
+    result = runner.invoke(ethint_app, [mock_operation_file])
     
     assert result.exit_code == 1
     assert "is NON-COMPLIANT" in result.stdout
@@ -337,14 +339,14 @@ def test_cli_non_compliant_run(mock_audit, runner, mock_operation_file):
 
 def test_cli_invalid_severity(runner, mock_operation_file):
     """Tests the CLI with an invalid severity level."""
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file, "--severity-level", "INVALID"])
+    result = runner.invoke(ethint_app, [mock_operation_file, "--severity-level", "INVALID"])
     
     assert result.exit_code == 4
     assert "Invalid severity level 'INVALID'" in result.stdout
 
 def test_cli_op_file_not_found(runner):
     """Tests the CLI with a non-existent operation file."""
-    result = runner.invoke(ethint_app, ["audit", "/fake/path/op.json"])
+    result = runner.invoke(ethint_app, ["/fake/path/op.json"])
     
     assert result.exit_code == 2
     assert "Error parsing operation file" in result.stdout
@@ -354,7 +356,7 @@ def test_cli_op_file_malformed(runner, tmp_path):
     bad_file = tmp_path / "bad.json"
     bad_file.write_text("{not_json: 'missing quotes'}")
     
-    result = runner.invoke(ethint_app, ["audit", str(bad_file)])
+    result = runner.invoke(ethint_app, [str(bad_file)])
     
     assert result.exit_code == 2
     assert "Error parsing operation file" in result.stdout
@@ -362,7 +364,7 @@ def test_cli_op_file_malformed(runner, tmp_path):
 @patch("chimera_intel.core.ethint.audit_operation", side_effect=RuntimeError("Frameworks failed to load"))
 def test_cli_audit_runtime_error(mock_audit, runner, mock_operation_file):
     """Tests the CLI when audit_operation raises a RuntimeError."""
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file])
+    result = runner.invoke(ethint_app, [mock_operation_file])
     
     assert result.exit_code == 3
     assert "Audit failed to run:" in result.stdout
@@ -375,7 +377,7 @@ def test_cli_severity_filtering_shows_violations(mock_audit, runner, mock_operat
     v_low = MagicMock(framework="F2", rule_id="T-002", severity="LOW", description="Low sev")
     mock_audit.return_value = MagicMock(is_compliant=False, violations=[v_high, v_low], audit_log=[])
     
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file, "-s", "HIGH"])
+    result = runner.invoke(ethint_app, [mock_operation_file, "-s", "HIGH"])
     
     assert result.exit_code == 1
     assert "Severity >= HIGH" in result.stdout
@@ -388,7 +390,7 @@ def test_cli_severity_filtering_hides_all(mock_audit, runner, mock_operation_fil
     v_low = MagicMock(framework="F2", rule_id="T-002", severity="LOW", description="Low sev")
     mock_audit.return_value = MagicMock(is_compliant=False, violations=[v_low], audit_log=[])
     
-    result = runner.invoke(ethint_app, ["audit", mock_operation_file, "-s", "CRITICAL"])
+    result = runner.invoke(ethint_app, [mock_operation_file, "-s", "CRITICAL"])
     
     assert result.exit_code == 1
     assert "is NON-COMPLIANT" in result.stdout

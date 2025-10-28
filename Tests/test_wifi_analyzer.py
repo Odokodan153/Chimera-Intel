@@ -30,7 +30,7 @@ def mock_wifi_pcap(tmp_path):
     )
 
     # Create a beacon frame for a WPA2 network
-    wpa2_net = (
+    wpa_net = (
         RadioTap()
         / Dot11(
             type=0,
@@ -57,7 +57,7 @@ def mock_wifi_pcap(tmp_path):
         # --- End Fix ---
     )
 
-    wrpcap(str(pcap_path), [open_net, wpa2_net])
+    wrpcap(str(pcap_path), [open_net, wpa_net])
     return str(pcap_path)
 
 
@@ -280,6 +280,11 @@ def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, cry
     mock_pkt, stats = mock_scapy_packet
     # stats["crypto"] = crypto_set # <-- This is obsolete
     
+    # --- START RECURSION FIX ---
+    # Get the original SSID mock *before* overriding the side_effect
+    original_ssid_mock = mock_pkt.getlayer(Dot11Elt, ID=0)
+    # --- END RECURSION FIX ---
+    
     # --- NEW FIX: Configure mocks based on the parametrized crypto_set ---
     mock_elt_rsn = MagicMock(ID=48)  # WPA2
     mock_elt_wpa = MagicMock(ID=221)  # WPA
@@ -290,8 +295,10 @@ def test_analyze_wifi_security_types(mock_rdpcap, mock_scapy_packet, capsys, cry
     def mock_getlayer_security(layer, ID=None):
         if layer == Dot11Elt:
             if ID == 0:
-                # Return the default SSID mock from the fixture
-                return mock_pkt.getlayer(Dot11Elt, ID=0) 
+                # --- START RECURSION FIX ---
+                # Return the saved mock, not the recursive call
+                return original_ssid_mock
+                # --- END RECURSION FIX ---
             if ID == 48 and "WPA2" in crypto_set:
                 return mock_elt_rsn
             if ID == 221 and "WPA" in crypto_set:
