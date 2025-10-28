@@ -61,7 +61,7 @@ MOCK_REDDIT_RESPONSE = {"data": {"children": MOCK_REDDIT_POSTS}}
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_success_high_level(
-    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key, mock_twitter_key
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the track-influence command with a successful API response
@@ -146,7 +146,7 @@ def test_track_influence_api_error(
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
 def test_track_influence_no_news_success(
-    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key, mock_twitter_key
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the scenario where no news articles are found, but other
@@ -204,7 +204,7 @@ def test_track_influence_no_twitter_key(
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_twitter_api_error(
-    mock_search_news, mock_search_reddit, mock_tweepy_client, mock_gnews_key, mock_twitter_key
+    mock_search_news, mock_search_reddit, mock_tweepy_client, mock_gnews_key
 ):
     """
     Tests that a non-HTTP error from the Twitter search is caught,
@@ -235,7 +235,7 @@ def test_track_influence_twitter_api_error(
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_reddit_api_error(
-    mock_search_news, mock_search_twitter, mock_httpx_get, mock_gnews_key, mock_twitter_key
+    mock_search_news, mock_search_twitter, mock_httpx_get, mock_gnews_key
 ):
     """
     Tests that a non-HTTP error from the Reddit search is caught,
@@ -300,7 +300,7 @@ def test_track_influence_no_narrative_arg():
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
 def test_track_influence_short_arg_and_empty_narrative(
-    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key, mock_twitter_key
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests using the short-form '-n' argument and provides an empty
@@ -495,7 +495,7 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 @patch("tweepy.Client")
 @patch("httpx.Client")
 def test_track_influence_full_run_with_results(
-    mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key, mock_twitter_key
+    mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key
 ):
     """
     Tests the 'track' command by mocking the underlying API clients.

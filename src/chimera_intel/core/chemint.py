@@ -262,7 +262,8 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            base_url = "/".join(url.split("/")[:3])
+                            # UPDATED FIX:
+                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
                             # FIX #2: Ensure the relative link starts with a '/' before joining (most robust fix without urljoin).
                             if not link.startswith('/'):
                                 link = '/' + link
@@ -278,7 +279,8 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            base_url = "/".join(url.split("/")[:3])
+                            # UPDATED FIX:
+                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
                             if not link.startswith('/'):
                                 link = '/' + link
@@ -292,7 +294,8 @@ def monitor_chemical_news(
                         title = title_tag.text.strip()
                         link = title_tag["href"]
                         if not link.startswith("http"):
-                            base_url = "/".join(url.split("/")[:3])
+                            # UPDATED FIX:
+                            base_url = f"{url.split('/')[0]}//{url.split('/')[2]}"
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
                             if not link.startswith('/'):
                                 link = '/' + link

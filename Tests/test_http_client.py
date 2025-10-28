@@ -34,11 +34,16 @@ def mock_pool_request():
     """
     # FIX: The patch target has changed in httpx >= 0.26.0
     # The transport logic is now in the 'httpcore' library.
-    with patch(
-        "httpcore._async.connection_pool.AsyncConnectionPool.handle_async_request",
+    # --- START FIX: Patch the method on the *existing instance* ---
+    # We patch the pool's method on the *actual transport instance*
+    # held by the global `async_client`.
+    with patch.object(
+        async_client._transport._pool,
+        "handle_async_request",
         new_callable=AsyncMock,
     ) as mock_handle:
         yield mock_handle
+    # --- END FIX ---
 
 
 # --- Helper to create a mock pool response ---
@@ -47,16 +52,20 @@ def create_mock_pool_response(status_code, content):
     headers = [(b"content-type", b"application/json")]
 
     # --- FIX: httpx.AsyncByteStream() constructor changed.
-    # Create a simple async generator and add the aclose() method
-    # that httpcore expects.
+    # Create a simple async generator for the content
     async def async_iterator():
         yield content
-
-    stream = async_iterator()
-    stream.aclose = AsyncMock()
+        
+    # --- START FIX: Create a mock stream object ---
+    # We can't assign to 'aclose' on a generator.
+    # Instead, create a MagicMock and assign the iterator
+    # and a new AsyncMock to its attributes.
+    stream_mock = MagicMock()
+    stream_mock.__aiter__ = async_iterator
+    stream_mock.aclose = AsyncMock()
     # --- END FIX ---
     
-    return (status_code, headers, stream, {})
+    return (status_code, headers, stream_mock, {})
 
 
 # --- Tests for global async_client ---

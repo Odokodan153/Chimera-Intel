@@ -140,7 +140,7 @@ def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(pcap_path)],
+        [str(pcap_path)],
         env={"COLUMNS": "120"},
     )
 
@@ -158,7 +158,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        ["analyze", str(non_existent_file)],
+        [str(non_existent_file)],
         env={"COLUMNS": "120"},
     )
 

@@ -143,7 +143,17 @@ def test_run_sigint_analysis_success(mock_pos_ref, mock_socket_class):
     ]
     mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-    with patch("time.time", side_effect=[1000.0, 1000.1, 1000.2, 1070.0]): 
+    # --- FIX: Added more time ticks to allow the loop to process both messages ---
+    with patch("time.time", side_effect=[
+        1000.0, # start_time
+        1000.1, # loop 1 check (processes msg 1)
+        1000.2, # process_message timestamp for msg 1
+        1000.3, # loop 2 check (processes msg 2)
+        1000.4, # process_message timestamp for msg 2
+        1000.5, # loop 3 check (hits socket.timeout)
+        1070.0  # loop 4 check (exits)
+    ]): 
+    # --- END FIX ---
         results = run_sigint_analysis(34.0, -118.0, "host", 123, duration_seconds=60)
 
     assert "4840D6" in results

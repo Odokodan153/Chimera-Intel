@@ -129,8 +129,10 @@ def test_api_keys_assemble_db_connection(monkeypatch):
         reloaded_keys = config_loader.ApiKeys()
     
         # The str() of a PostgresDsn object redacts the password
-        # FIX: Pydantic's PostgresDsn string representation omits the default port (5432).
-        expected_url = "postgresql://postgres:***@localhost/chimera_db"
+        # UPDATED FIX: Pydantic's PostgresDsn string representation *includes* the
+        # port if it was explicitly passed in the connection string,
+        # which our validator does when DB_PORT is set.
+        expected_url = "postgresql://postgres:***@localhost:5432/chimera_db"
         assert str(reloaded_keys.database_url) == expected_url
 
 def test_api_keys_assemble_db_connection_incomplete(monkeypatch):
