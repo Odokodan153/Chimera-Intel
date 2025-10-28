@@ -9,7 +9,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from typing_extensions import Annotated
 from typing import Optional # FIX: Import Optional
-import inspect  # <-- FIX: Added import
 from unittest.mock import MagicMock  # <-- FIX: Added import
 
 # FIX: Removed global console object
