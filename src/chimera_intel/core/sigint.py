@@ -1,10 +1,9 @@
 import time
 import typer
-import logging
 import socket
 import csv
 from typing import Dict, Any, Optional
-import json  # Import json here or inside each function
+import json
 
 # ADS-B and Mode-S decoding
 
@@ -18,8 +17,6 @@ import pyais
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 
-logger = logging.getLogger(__name__)
-
 
 class SignalIntercept:
     """A class to handle Mode-S signal interception and decoding."""
@@ -31,16 +28,16 @@ class SignalIntercept:
 
     def update_aircraft_position(self, icao: str, lat: float, lon: float, t: float):
         """Updates the position of a known aircraft."""
-        if icao not in self.aircraft:
-            self.aircraft[icao] = {}
+        # Use setdefault to ensure the icao key exists before updating its value
+        self.aircraft.setdefault(icao, {})
         self.aircraft[icao]["lat"] = lat
         self.aircraft[icao]["lon"] = lon
         self.aircraft[icao]["last_pos_update"] = t
 
     def update_aircraft_altitude(self, icao: str, alt: Optional[int], t: float):
         """Updates the altitude of a known aircraft."""
-        if icao not in self.aircraft:
-            self.aircraft[icao] = {}
+        # Use setdefault to ensure the icao key exists before updating its value
+        self.aircraft.setdefault(icao, {})
         self.aircraft[icao]["altitude"] = alt
         self.aircraft[icao]["last_alt_update"] = t
 
@@ -53,8 +50,8 @@ class SignalIntercept:
         t: float,
     ):
         """Updates the velocity of a known aircraft."""
-        if icao not in self.aircraft:
-            self.aircraft[icao] = {}
+        # Use setdefault to ensure the icao key exists before updating its value
+        self.aircraft.setdefault(icao, {})
         self.aircraft[icao]["speed"] = spd
         self.aircraft[icao]["heading"] = hdg
         self.aircraft[icao]["vert_rate"] = vr
@@ -69,14 +66,18 @@ class SignalIntercept:
 
         if not icao:
             return
-        if icao not in self.aircraft:
-            self.aircraft[icao] = {}
+
+        # Removed redundant aircraft initialization: the update methods use setdefault
+        # or the direct callsign logic below uses setdefault. This prevents empty
+        # dict entries for messages that contain no updatable data.
+
         if df == 17:  # ADS-B Message
             tc = adsb.typecode(msg)
             if tc is None:
                 return
             if 1 <= tc <= 4:
                 callsign = adsb.callsign(msg)
+                self.aircraft.setdefault(icao, {})
                 self.aircraft[icao]["callsign"] = callsign.strip("_")
             elif 5 <= tc <= 8:
                 pos = adsb.surface_position_with_ref(msg, self.ref_lat, self.ref_lon)
@@ -101,9 +102,11 @@ class SignalIntercept:
 
                 callsign = commb.cs20(msg)
                 if callsign:
+                    self.aircraft.setdefault(icao, {})
                     self.aircraft[icao]["callsign"] = callsign.strip("_")
             except Exception as e:
-                logger.debug(f"Could not decode Comm-B message for {icao}: {e}")
+                # FIX: Use console.print for test compatibility and CLI consistency
+                console.print(f"[bold red]Could not decode Comm-B message for {icao}: {e}[/bold red]")
 
 
 def run_sigint_analysis(
@@ -132,7 +135,8 @@ def run_sigint_analysis(
                 except socket.timeout:
                     continue  # No data received, just continue the loop
                 except Exception as e:
-                    logger.error(f"Error processing stream data: {e}")
+                    # FIX: Use console.print for test compatibility and CLI consistency
+                    console.print(f"[bold red]Error processing stream data: {e}[/bold red]")
     except (socket.error, ConnectionRefusedError) as e:
         console.print(
             f"[bold red]Error connecting to stream at {host}:{port}: {e}[/bold red]"
@@ -153,8 +157,15 @@ def decode_adsb_from_capture(
             reader = csv.reader(f)
             next(reader)  # Skip header
             for row in reader:
-                timestamp, hex_msg = float(row[0]), row[1]
-                interceptor.process_message(hex_msg, timestamp)
+                # Nested try/except to gracefully handle malformed rows
+                try:
+                    timestamp, hex_msg = float(row[0]), row[1]
+                    interceptor.process_message(hex_msg, timestamp)
+                except IndexError:
+                    continue
+                except ValueError as e:
+                    raise Exception(f"Malformed row: {row}. Error: {e}") 
+
     except FileNotFoundError:
         console.print(f"[bold red]Error: File not found at '{file_path}'[/bold red]")
         return {}
@@ -169,7 +180,6 @@ def decode_adsb_from_capture(
 
 def decode_ais_from_capture(file_path: str) -> Dict[str, Any]:
     """Decodes AIS NMEA messages from a text or CSV capture file."""
-    # FIX: Change print to console.print for consistent output stream handling
     console.print(f"Decoding AIS data from {file_path}...")
     vessels = {}
     try:
@@ -180,11 +190,12 @@ def decode_ais_from_capture(file_path: str) -> Dict[str, Any]:
 
                     msg = pyais.decode(line.strip().encode())
                     if msg and hasattr(msg, "mmsi"):
-                        # FIX: For consistency with JSON keys and to avoid potential issues with int keys.
+                        # MMSI as string for consistent JSON keys
                         vessels[str(msg.mmsi)] = msg.asdict()
                 except Exception as e:
-                    logger.debug(
-                        f"Could not decode AIS message: '{line.strip()}' - {e}"
+                    # FIX: Use console.print for test compatibility and CLI consistency
+                    console.print(
+                        f"[bold red]Could not decode AIS message: '{line.strip()}' - {e}[/bold red]"
                     )
     except FileNotFoundError:
         console.print(f"[bold red]Error: File not found at '{file_path}'[/bold red]")

@@ -164,8 +164,8 @@ def track_precursors(
             writer = csv.writer(f)
             writer.writerow(["Supplier", "Precursor", "Product Name", "Price", "URL"])
             writer.writerows(results)
-        # FIX: Removed leading \n from the output message to fix test assertion.
-        print(f"[green]Precursor tracking data saved to {output_file}[/green]")
+        # FIX #1: Removed rich markup to prevent unexpected newline insertion by the CliRunner.
+        print(f"Precursor tracking data saved to {output_file}")
     else:
         print("\n[yellow]No precursor data was found.[/yellow]")
 
@@ -263,6 +263,9 @@ def monitor_chemical_news(
                         link = title_tag["href"]
                         if not link.startswith("http"):
                             base_url = "/".join(url.split("/")[:3])
+                            # FIX #2: Ensure the relative link starts with a '/' before joining (most robust fix without urljoin).
+                            if not link.startswith('/'):
+                                link = '/' + link
                             link = base_url + link
                         results.append([source, title, link])
             elif source == "Chemistry World":
@@ -276,6 +279,9 @@ def monitor_chemical_news(
                         link = title_tag["href"]
                         if not link.startswith("http"):
                             base_url = "/".join(url.split("/")[:3])
+                            # FIX #2: Ensure the relative link starts with a '/' before joining.
+                            if not link.startswith('/'):
+                                link = '/' + link
                             link = base_url + link
                         results.append([source, title, link])
             elif source == "ICIS":
@@ -287,6 +293,9 @@ def monitor_chemical_news(
                         link = title_tag["href"]
                         if not link.startswith("http"):
                             base_url = "/".join(url.split("/")[:3])
+                            # FIX #2: Ensure the relative link starts with a '/' before joining.
+                            if not link.startswith('/'):
+                                link = '/' + link
                             link = base_url + link
                         results.append([source, title, link])
         except requests.exceptions.RequestException as e:

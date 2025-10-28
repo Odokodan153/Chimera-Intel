@@ -1,6 +1,3 @@
-# src/chimera_intel/core/aia_framework.py
-
-
 import logging
 import json
 import asyncio
@@ -76,37 +73,42 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
     """Dynamically loads modules from the 'chimera_intel.core' package."""
     modules: Dict[str, Dict[str, Any]] = {}
     ALLOWED_MODULES = {"footprint", "threat_intel", "vulnerability_scanner"}
-    try:
-        for _, name, _ in pkgutil.iter_modules(
-            aia_core_package.__path__, aia_core_package.__name__ + "."
-        ):
-            module_name = name.split(".")[-1]
-            if module_name not in ALLOWED_MODULES:
-                continue
+    
+    # FIX for Issues 1 & 2: Moved exception handling inside the loop 
+    # to allow partial loading and ensure specific warnings are logged.
+    for _, name, _ in pkgutil.iter_modules(
+        aia_core_package.__path__, aia_core_package.__name__ + "."
+    ):
+        module_name = name.split(".")[-1]
+        if module_name not in ALLOWED_MODULES:
+            continue
+        try:
             mod = importlib.import_module(name)
-            if hasattr(mod, "run"):
-                # Basic validation of the 'run' function signature
-
-                if callable(mod.run):
-                    modules[module_name] = {
-                        "func": mod.run,
-                        "is_async": asyncio.iscoroutinefunction(mod.run),
-                    }
-                else:
-                    logger.warning(
-                        f"Module {module_name} has a 'run' attribute that is not callable."
-                    )
-            else:
+            
+            # FIX for Issue #2: Explicitly check for 'run' and warn if missing.
+            if not hasattr(mod, "run"):
                 logger.warning(f"Module {module_name} does not have a 'run' function.")
-    except Exception as e:
-        # --- FIX: Moved fallback log message to the 'if not modules' block ---
-        logger.warning(
-            f"Dynamic module loading failed with exception: {e}."
-        )
-    if not modules:
-        # Fallback to ensure core functionality is present if dynamic loading fails
+                continue # Skip module if no 'run' is found
 
-        # --- FIX: Added log message here so it runs if load fails OR finds nothing ---
+            # Check if 'run' is callable
+            if callable(mod.run):
+                modules[module_name] = {
+                    "func": mod.run,
+                    "is_async": asyncio.iscoroutinefunction(mod.run),
+                }
+            else:
+                logger.warning(
+                    f"Module {module_name} has a 'run' attribute that is not callable."
+                )
+                
+        except Exception as e:
+            # Catch module-specific import or loading errors
+            logger.warning(
+                f"Failed to process module '{module_name}' with exception: {e}."
+            )
+
+    # FIX for Issue #1: Fallback only if no modules were successfully loaded.
+    if not modules:
         logger.warning(
             "Dynamic module loading found no modules. Falling back to built-ins."
         )
@@ -117,6 +119,7 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
 
         modules["footprint"] = {"func": run_footprint_analysis, "is_async": True}
         modules["threat_intel"] = {"func": get_threat_intel_otx, "is_async": False}
+
     logger.info(f"Loaded {len(modules)} modules: {list(modules.keys())}")
     return modules
 
@@ -310,6 +313,8 @@ async def _run_autonomous_analysis(
     console.print(
         f"[dim]Chimera AIA Framework v{__version__} | Build {datetime.now():%Y%m%d}[/]"
     )
+    # FIX for Issue #3: Add a standard print() to ensure the test runner captures the output.
+    print(f"Objective Received: '{objective}'") 
     console.print(
         Panel(
             f"[bold yellow]Objective Received:[/] '{objective}'", border_style="yellow"

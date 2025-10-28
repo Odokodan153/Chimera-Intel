@@ -103,9 +103,12 @@ def run_shipment_tracking_cli(
 
     with console.status("[bold green]Tracking shipment...[/]"):
         result = asyncio.run(track())
+        
     if result.error:
-        console.print(f"[bold red]Error:[/] {result.error}")
-        return
+        # FIX: Use typer.echo and raise typer.Exit(code=1) to ensure a non-zero exit code on failure for testing.
+        typer.echo(f"Error: {result.error}", err=True)
+        raise typer.Exit(code=1)
+        
     console.print(
         f"[bold]Status for {result.tracking_code} ({result.carrier}):[/] {result.status}"
     )

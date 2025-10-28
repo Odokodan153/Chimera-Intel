@@ -21,7 +21,11 @@ console = Console()
 
 
 PSYCHOLOGICAL_TRIGGERS = {
-    "fear": ["panic", "threat", "danger", "risk", "warning", "collapse", "afraid"],
+    "fear": [
+        "panic", "threat", "danger", "risk", "warning", "collapse", "afraid",
+        # FIX: Added 'fear' to ensure explicit mention is captured
+        "fear" 
+    ],
     "anger": [
         "outrage",
         "injustice",
@@ -38,6 +42,9 @@ PSYCHOLOGICAL_TRIGGERS = {
         "our people",
         "elite",
         "globalist",
+        # FIX: Added 'us' and 'them' for more robust, standalone keyword matching
+        "us",
+        "them",
     ],
     "hope": ["solution", "breakthrough", "promise", "future", "optimism", "unity"],
 }

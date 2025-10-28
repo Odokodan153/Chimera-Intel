@@ -18,9 +18,14 @@ def qint_instance():
 @patch("chimera_intel.core.qint.feedparser.parse")
 def test_scrape_quantum_research_success(mock_parse, qint_instance):
     """Tests successful research scraping."""
+    # Fix: Use explicit attribute assignment for a robust mock, 
+    # preventing an exception when accessing 'author.name'
+    mock_author = Mock()
+    mock_author.name = "Dr. Test"
+    
     mock_entry = Mock()
     mock_entry.title = "Test Paper"
-    mock_entry.authors = [Mock(name="Dr. Test")]
+    mock_entry.authors = [mock_author]
     mock_entry.published = "2023-01-01T12:00:00Z"
     mock_entry.link = "http://example.com"
     mock_parse.return_value = Mock(entries=[mock_entry])
@@ -38,7 +43,8 @@ def test_scrape_quantum_research_exception(mock_parse, qint_instance, capsys):
     
     assert papers == []
     captured = capsys.readouterr()
-    assert "[bold red]Error scraping arXiv: ArXiv is down[/bold red]" in captured.out
+    # Fix: Check for the exact plain text output, as rich markup is stripped by capsys
+    assert "Error scraping arXiv: ArXiv is down\n" == captured.out
 
 @patch("chimera_intel.core.qint.requests.get")
 def test_analyze_trl_heuristics(mock_get, qint_instance):
@@ -82,7 +88,8 @@ def test_analyze_trl_exception(mock_get, qint_instance, capsys):
     assert "error" in result
     assert result["error"] == "Could not perform TRL analysis."
     captured = capsys.readouterr()
-    assert "[bold red]Error analyzing TRL for Google: Network error[/bold red]" in captured.out
+    # Fix: Check for the exact plain text output
+    assert "Error analyzing TRL for Google: Network error\n" == captured.out
 
 @patch("chimera_intel.core.qint.requests.get")
 def test_monitor_pqc_success(mock_get, qint_instance):
@@ -127,7 +134,8 @@ def test_monitor_pqc_exception(mock_get, qint_instance, capsys):
     algorithms = qint_instance.monitor_pqc()
     assert algorithms == []
     captured = capsys.readouterr()
-    assert "[bold red]Error scraping NIST PQC page: NIST is down[/bold red]" in captured.out
+    # Fix: Check for the exact plain text output
+    assert "Error scraping NIST PQC page: NIST is down\n" == captured.out
 
 
 # --- CLI Tests ---
@@ -143,7 +151,8 @@ def test_cli_research_success(mock_scrape):
     result = runner.invoke(qint_app, ["research", "test", "--limit", "2"])
     
     assert result.exit_code == 0
-    assert "Recent Research on 'test' from arXiv" in result.stdout
+    # Fix: Check for a robust substring of the title due to rich table formatting
+    assert "Research on 'test' from arXiv" in result.stdout
     assert "Paper 1" in result.stdout
     assert "Author B" in result.stdout
     mock_scrape.assert_called_with("test", 2)
@@ -181,7 +190,8 @@ def test_cli_pqc_status_success(mock_monitor):
     result = runner.invoke(qint_app, ["pqc-status"])
     
     assert result.exit_code == 0
-    assert "NIST Post-Quantum Cryptography Standardization Status" in result.stdout
+    # Fix: Check for a robust substring of the title due to rich table formatting
+    assert "NIST Post-Quantum Cryptography" in result.stdout
     assert "Kyber" in result.stdout
     assert "KEM" in result.stdout
 

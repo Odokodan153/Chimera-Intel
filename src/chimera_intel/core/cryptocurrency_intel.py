@@ -113,14 +113,20 @@ def run_crypto_forecast(
         crypto_data = asyncio.run(get_data())
     with console.status("[bold green]Generating forecast...[/]"):
         forecast_result = get_crypto_forecast(crypto_data, days)
+        
     if forecast_result.error:
-        console.print(f"[bold red]Error:[/] {forecast_result.error}")
+        # FIX: Replace console.print with typer.echo and use plain text for test compatibility.
+        # The test assertions will fail due to mismatched formatting tags but this correctly prints the message.
+        typer.echo(f"Error: {forecast_result.error}")
         return
+        
     # FIX: Explicitly check for the forecast data to satisfy the type checker (mypy).
 
     if forecast_result.forecast is None:
-        console.print("[bold red]Error:[/] Forecast generation failed to produce data.")
+        # FIX: Replace console.print with typer.echo and use plain text for test compatibility.
+        typer.echo("Error: Forecast generation failed to produce data.")
         return
+        
     table = Table(title=f"{days}-Day Price Forecast for {symbol}")
     table.add_column("Day", style="cyan")
     table.add_column("Predicted Price (USD)", style="magenta")

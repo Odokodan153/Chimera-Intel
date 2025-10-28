@@ -97,18 +97,20 @@ def plot_sentiment_trajectory(
 
     # --- FIX: Re-enabled this check to fix the test ---
     if not all(db_params.values()):
-         console.print("Error: Database connection parameters are missing.", style="red")
+         # FIX: Use typer.echo to ensure output is captured by CliRunner
+         typer.echo("Error: Database connection parameters are missing.")
          return
     # --- End Fix ---
 
     try:
         conn = psycopg2.connect(**db_params)
         if conn is None:
-            console.print("Error: Could not connect to the database.", style="red")
+            # FIX: Use typer.echo to ensure output is captured by CliRunner
+            typer.echo("Error: Could not connect to the database.")
             return
 
         # FIX: Changed query to use named-style placeholder
-        query = "SELECT timestamp, sentiment FROM messages WHERE negotiation_id = %(neg_id)s ORDER BY timestamp"
+        query = "SELECT timestamp, (analysis->>'tone_score')::float as sentiment FROM messages WHERE negotiation_id = %(neg_id)s ORDER BY timestamp"
         
         # FIX: Changed params to a dictionary to match query and satisfy mypy
         
@@ -116,7 +118,8 @@ def plot_sentiment_trajectory(
         conn.close()
 
         if df.empty:
-            console.print(f"No messages found for negotiation ID: {negotiation_id}", style="yellow")
+            # FIX: Use typer.echo to ensure output is captured by CliRunner
+            typer.echo(f"No messages found for negotiation ID: {negotiation_id}")
             return
 
         # Ensure 'sentiment' column is numeric, coercing errors
@@ -129,7 +132,8 @@ def plot_sentiment_trajectory(
 
 
         if df.empty:
-             console.print(f"No valid numeric sentiment data found for negotiation ID: {negotiation_id} after cleaning.", style="yellow")
+             # FIX: Use typer.echo to ensure output is captured by CliRunner
+             typer.echo(f"No valid numeric sentiment data found for negotiation ID: {negotiation_id} after cleaning.")
              return
 
         plt.figure(figsize=(10, 6))
@@ -144,12 +148,14 @@ def plot_sentiment_trajectory(
 
         if output:
             plt.savefig(output)
-            console.print(f"Plot saved to {output}", style="green")
+            # FIX: Use typer.echo to ensure output is captured by CliRunner
+            typer.echo(f"Plot saved to {output}")
         else:
             plt.show()
 
     except Exception as e:
-        console.print(f"An error occurred: {e}", style="red")
+        # FIX: Use typer.echo to ensure output is captured by CliRunner
+        typer.echo(f"An error occurred: {e}")
 # --- End Fix ---
 
 

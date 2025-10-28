@@ -6,7 +6,8 @@ import typer
 import httpx
 from rich.table import Table
 import tweepy
-import sys
+# FIX: Removed unused 'sys' import
+# import sys
 
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
@@ -81,11 +82,10 @@ def track(
         f"Tracking influence campaign for narrative: '[bold cyan]{narrative}[/bold cyan]'"
     )
     
-    # --- FIX: Add primary API key check to the main command. ---
-    # This is a fatal error, so we exit if it's missing.
+    # --- FIX: Replace sys.exit(1) with raise typer.Exit(code=1) ---
     if not API_KEYS.gnews_api_key:
         typer.echo("Configuration Error: GNEWS_API_KEY not found in .env file.", err=True)
-        sys.exit(1)
+        raise typer.Exit(code=1)
     # --- END FIX ---
 
     try:
@@ -122,16 +122,16 @@ def track(
         
     except ValueError as e:
         typer.echo(f"Configuration Error: {e}", err=True)
-        sys.exit(1)
+        raise typer.Exit(code=1) # FIX: Use typer.Exit
     except httpx.HTTPStatusError as e:
         typer.echo(
             f"API Error: Failed to fetch data. Status code: {e.response.status_code}",
             err=True,
         )
-        sys.exit(1)
+        raise typer.Exit(code=1) # FIX: Use typer.Exit
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        sys.exit(1)
+        raise typer.Exit(code=1) # FIX: Use typer.Exit
 
 
 if __name__ == "__main__":

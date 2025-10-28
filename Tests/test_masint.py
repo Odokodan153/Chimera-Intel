@@ -68,14 +68,16 @@ def test_analyze_rf_pcap_empty(masint_instance, mock_empty_pcap_file, capsys):
     signature = masint_instance.analyze_rf_pcap(mock_empty_pcap_file)
     assert signature is None
     captured = capsys.readouterr()
-    assert "[yellow]PCAP file is empty" in captured.out
+    # Fix: Check for the exact plain text output, as rich markup is stripped by capsys.
+    assert "PCAP file is empty or could not be read.\n" == captured.out
 
 @patch("chimera_intel.core.masint.rdpcap", side_effect=Exception("Scapy error"))
 def test_analyze_rf_pcap_exception(mock_rdpcap, masint_instance, capsys):
     signature = masint_instance.analyze_rf_pcap("dummy.pcap")
     assert signature is None
     captured = capsys.readouterr()
-    assert "[bold red]Error processing PCAP file: Scapy error" in captured.out
+    # Fix: Check for the exact plain text output.
+    assert "Error processing PCAP file: Scapy error\n" == captured.out
 
 @pytest.mark.skipif(not librosa_installed, reason="librosa or soundfile not installed")
 def test_analyze_acoustic_signature_success(masint_instance, mock_audio_file):
@@ -90,7 +92,8 @@ def test_analyze_acoustic_signature_exception(mock_load, masint_instance, capsys
     signature = masint_instance.analyze_acoustic_signature("dummy.wav")
     assert signature is None
     captured = capsys.readouterr()
-    assert "[bold red]Error processing audio file: Corrupt audio file" in captured.out
+    # Fix: Check for the exact plain text output.
+    assert "Error processing audio file: Corrupt audio file\n" == captured.out
 
 @patch("chimera_intel.core.masint.librosa", new_callable=LibrosaPlaceholder)
 def test_analyze_acoustic_signature_not_installed(mock_librosa_placeholder, masint_instance, capsys):
@@ -98,6 +101,7 @@ def test_analyze_acoustic_signature_not_installed(mock_librosa_placeholder, masi
     signature = masint_instance.analyze_acoustic_signature("dummy.wav")
     assert signature is None
     captured = capsys.readouterr()
+    # This assertion already uses 'in' and is robust enough for the full message.
     assert "librosa library not installed" in captured.out
     
     # Also test the placeholder itself
@@ -117,14 +121,16 @@ def test_analyze_thermal_image_file_not_found(mock_imread, masint_instance, caps
     hotspots = masint_instance.analyze_thermal_image("bad.png")
     assert hotspots is None
     captured = capsys.readouterr()
-    assert "[bold red]Could not read image file" in captured.out
+    # Fix: Check for the exact plain text output.
+    assert "Could not read image file.\n" == captured.out
 
 @patch("chimera_intel.core.masint.cv2.imread", side_effect=Exception("OpenCV error"))
 def test_analyze_thermal_image_exception(mock_imread, masint_instance, capsys):
     hotspots = masint_instance.analyze_thermal_image("bad.png")
     assert hotspots is None
     captured = capsys.readouterr()
-    assert "[bold red]Error processing image file: OpenCV error" in captured.out
+    # Fix: Check for the exact plain text output.
+    assert "Error processing image file: OpenCV error\n" == captured.out
 
 # --- CLI Tests ---
 
@@ -161,6 +167,7 @@ def test_cli_acoustic_not_installed(mock_librosa_placeholder):
     """Tests the acoustic CLI command when librosa is not installed."""
     result = runner.invoke(masint_app, ["acoustic", "dummy.wav"])
     assert result.exit_code == 0
+    # Assertion is robust enough to not need modification
     assert "librosa library not installed" in result.stdout
 
 @patch("chimera_intel.core.masint.Masint.analyze_thermal_image")
@@ -176,4 +183,5 @@ def test_cli_thermal_success(mock_analyze, mock_thermal_image_file):
 def test_cli_thermal_no_hotspots(mock_analyze, mock_thermal_image_file):
     result = runner.invoke(masint_app, ["thermal", mock_thermal_image_file])
     assert result.exit_code == 0
+    # Assertion is robust enough to not need modification
     assert "No hotspots detected" in result.stdout

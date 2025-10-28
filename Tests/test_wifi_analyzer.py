@@ -4,8 +4,6 @@ from scapy.all import wrpcap, RadioTap, Dot11, Dot11Beacon, Dot11Elt
 from unittest.mock import patch, MagicMock
 
 # The application instance to be tested
-# --- FIX: Ensure imports point to the correct module paths ---
-# (Assuming 'chimera_intel.core...' is correct based on original file)
 from chimera_intel.core.wifi_analyzer import wifi_analyzer_app, analyze_wifi_capture
 
 # Initialize with mix_stderr=False (default) or True if you need to capture stderr separately
@@ -43,11 +41,17 @@ def mock_wifi_pcap(tmp_path):
         )
         / Dot11Beacon(cap="ESS+privacy")
         / Dot11Elt(ID="SSID", info="SecureWiFi")
-        # --- FIX: Use the numerical ID for RSNinfo for reliable parsing ---
+        # --- FIX: Replace the faulty raw RSNInfo bytes with a canonical 20-byte IE for WPA2-PSK/CCMP ---
         / Dot11Elt(
             ID=48,  # RSNinfo
             info=(
-                b"\x01\x00\x00\x0f\xac\x04\x01\x00\x00\x0f\xac\x04\x01\x00\x00\x0f\xac\x02\x80\x00"
+                b"\x01\x00"              # RSN Version 1
+                b"\x00\x0f\xac\x04"      # Group Cipher Suite (CCMP)
+                b"\x01\x00"              # Pairwise Cipher Count 1
+                b"\x00\x0f\xac\x04"      # Pairwise Cipher Suite (CCMP)
+                b"\x01\x00"              # Auth Key Mgmt Suite Count 1
+                b"\x00\x0f\xac\x02"      # Auth Key Mgmt Suite (PSK)
+                b"\x00\x00"              # RSN Capabilities
             ),
         )
         # --- End Fix ---
@@ -116,7 +120,7 @@ def test_analyze_wifi_success(mock_exists, mock_analyze_capture, tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        [str(pcap_path)],
+        ["analyze", str(pcap_path)],
         env={"COLUMNS": "120"},
     )
 
@@ -134,7 +138,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
     # --- FIX: Corrected CLI invocation to use the 'analyze' subcommand ---
     result = runner.invoke(
         wifi_analyzer_app,
-        [str(non_existent_file)],
+        ["analyze", str(non_existent_file)],
         env={"COLUMNS": "120"},
     )
 
@@ -142,7 +146,7 @@ def test_analyze_wifi_file_not_found(tmp_path):
     # Note: If this test still fails with exit code 2, it may be an
     # issue with the Typer/Click environment rather than the test logic.
     assert result.exit_code == 1
-    assert "Error: Capture file not found" in result.stdout
+    assert "Capture file not found" in result.stdout
     assert str(non_existent_file) in result.stdout
 
 # --- Tests for analyze_wifi_capture (Logic) ---

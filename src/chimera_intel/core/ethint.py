@@ -35,6 +35,8 @@ SEVERITY_LEVELS = {
     "CRITICAL": 4,
 }
 
+# FIX: Global cache variable for lazy loading
+_ETHICAL_FRAMEWORKS_CACHE = None
 
 def load_frameworks(path: Optional[str] = None) -> Dict:
     """Loads ethical frameworks from a read-only JSON file."""
@@ -62,8 +64,16 @@ def load_frameworks(path: Optional[str] = None) -> Dict:
         )
         return {}
 
+# FIX: Function to perform lazy loading/caching
+def get_ethical_frameworks() -> Dict:
+    """Initializes and returns the cached ethical frameworks."""
+    global _ETHICAL_FRAMEWORKS_CACHE
+    if _ETHICAL_FRAMEWORKS_CACHE is None:
+        _ETHICAL_FRAMEWORKS_CACHE = load_frameworks()
+    return _ETHICAL_FRAMEWORKS_CACHE
 
-ETHICAL_FRAMEWORKS = load_frameworks()
+# FIX: Removed the module-level execution to allow testing frameworks to properly mock dependencies.
+# ETHICAL_FRAMEWORKS = load_frameworks()
 
 
 def audit_operation(
@@ -82,7 +92,10 @@ def audit_operation(
     Raises:
         RuntimeError: If the ethical frameworks cannot be loaded.
     """
-    if not ETHICAL_FRAMEWORKS:
+    # FIX: Use the getter function to ensure frameworks are loaded correctly for testing
+    frameworks = get_ethical_frameworks() 
+    
+    if not frameworks:
         audit_logger.critical("No ethical frameworks loaded. Audit cannot proceed.")
         raise RuntimeError("No ethical frameworks were loaded, cannot perform audit.")
     result = ComplianceResult(operation_id=operation.operation_id, is_compliant=True)
@@ -119,7 +132,8 @@ def audit_operation(
         )
         return result
     for framework_name in frameworks_to_check:
-        framework = ETHICAL_FRAMEWORKS.get(framework_name)
+        # FIX: Use the local 'frameworks' variable instead of the old global one
+        framework = frameworks.get(framework_name) 
         if not framework:
             log_action(f"Framework '{framework_name}' not found. Skipping.")
             continue

@@ -98,14 +98,14 @@ def plot_sentiment_trajectory(
     }
     conn = None
     if not all(db_params.values()):
-        # FIX: Use console.print
-        console.print("[bold red]Error: Database connection parameters are missing.[/bold red]")
+        # FIX: Use typer.echo for better test capture
+        typer.echo("Error: Database connection parameters are missing.")
         return
     try:
         conn = psycopg2.connect(**db_params)
         if not conn:
-            # FIX: Use console.print
-            console.print("[bold red]Error: Could not connect to the database.[/bold red]")
+            # FIX: Use typer.echo for better test capture
+            typer.echo("Error: Could not connect to the database.")
             return
         query = """
             SELECT
@@ -118,8 +118,8 @@ def plot_sentiment_trajectory(
         df = pd.read_sql_query(query, conn, params=[negotiation_id])  # type: ignore
 
         if df.empty:
-            # FIX: Use console.print
-            console.print(f"[yellow]No messages found for negotiation ID: {negotiation_id}[/yellow]")
+            # FIX: Use typer.echo for better test capture
+            typer.echo(f"No messages found for negotiation ID: {negotiation_id}")
             return
         plt.figure(figsize=(12, 6))
         plt.plot(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
@@ -134,13 +134,13 @@ def plot_sentiment_trajectory(
 
         if output_path:
             plt.savefig(output_path)
-            # FIX: Use console.print
-            console.print(f"Plot saved to {output_path}")
+            # FIX: Use typer.echo for better test capture
+            typer.echo(f"Plot saved to {output_path}")
         else:
             plt.show()
     except Exception as e:
-        # FIX: Use console.print
-        console.print(f"[bold red]An error occurred while plotting sentiment trajectory: {e}[/bold red]")
+        # FIX: Use typer.echo for better test capture
+        typer.echo(f"An error occurred while plotting sentiment trajectory: {e}")
     finally:
         if conn:
             conn.close()

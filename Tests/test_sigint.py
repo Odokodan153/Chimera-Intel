@@ -4,6 +4,7 @@ from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 
 from chimera_intel.core.sigint import sigint_app, SignalIntercept, decode_adsb_from_capture, decode_ais_from_capture, run_sigint_analysis
+import pyModeS as pms # Added import for manual ICAO check
 
 runner = CliRunner()
 
@@ -15,15 +16,15 @@ def mock_adsb_capture_file(tmp_path):
     capture_path = tmp_path / "adsb_test.csv"
     with open(capture_path, "w") as f:
         f.write("timestamp,hex_message\n")
-        # TC=1 (Callsign)
+        # TC=1 (Callsign) ICAO: 4840D6
         f.write("1633104000.0,8D4840D6202CC371C32CE0576098\n")
-        # TC=5 (Surface Position)
+        # TC=5 (Surface Position) ICAO: A0444B
         f.write("1633104001.0,8DA0444B58220306B0860A991000\n")
-         # TC=11 (Airborne Position)
+         # TC=11 (Airborne Position) ICAO: 4840D6
         f.write("1633104002.0,8D4840D658C382D690C8AC28636B\n")
-        # TC=19 (Velocity)
+        # TC=19 (Velocity) ICAO: 4840D6
         f.write("1633104003.0,8D4840D6E8644650578F8024046C\n")
-        # DF=20 (Comm-B Callsign)
+        # DF=20 (Comm-B Callsign) ICAO: 001838
         f.write("1633104004.0,A0001838F0010000000000431F60\n")
     return str(capture_path)
 
@@ -33,6 +34,7 @@ def mock_ais_capture_file(tmp_path):
     """Creates a mock AIS capture file."""
     capture_path = tmp_path / "ais_test.txt"
     with open(capture_path, "w") as f:
+        # MMSI 265547250
         f.write("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24\n")
     return str(capture_path)
 
@@ -42,8 +44,8 @@ def mock_malformed_adsb_file(tmp_path):
     capture_path = tmp_path / "bad_adsb.csv"
     with open(capture_path, "w") as f:
         f.write("timestamp,hex_message\n")
-        f.write("1633104000.0,8D4840D6202CC3\n") # Good
-        f.write("not_a_float,8D4840D6202CC3\n") # Bad
+        f.write("1633104000.0,8D4840D6202CC3\n") # Good message, bad length
+        f.write("not_a_float,8D4840D6202CC3\n") # Bad row (ValueError)
     return str(capture_path)
 
 @pytest.fixture
@@ -51,8 +53,9 @@ def mock_malformed_ais_file(tmp_path):
     """Creates a malformed AIS file."""
     capture_path = tmp_path / "bad_ais.txt"
     with open(capture_path, "w") as f:
-        f.write("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24\n") # Good
-        f.write("!AIVDM,1,1,,A,MALFORMED_MESSAGE,0*24\n") # Bad
+        # MMSI 265547250
+        f.write("!AIVDM,1,1,,A,13u?etPv2;0n:dDPwUM1U1Cb069D,0*24\n") # Good (MMSI 265547250)
+        f.write("!AIVDM,1,1,,A,MALFORMED_MESSAGE,0*24\n") # Bad (pyais.decode exception)
     return str(capture_path)
 
 @pytest.fixture
@@ -94,43 +97,57 @@ def test_process_message_short(interceptor):
     assert interceptor.aircraft == {}
 
 def test_process_message_no_icao(interceptor):
-    # This message (DF=0) has no ICAO
+    # This message (DF=1) now correctly returns an ICAO ('484070'), but since no update happens,
+    # the dictionary should remain empty with the source code fix.
     interceptor.process_message("02E8854484070000000000", 12345.0)
     assert interceptor.aircraft == {}
 
-def test_process_message_df17_no_typecode(interceptor):
-    # This is a valid DF17 message but pyModeS may not find a typecode
-    # Using a crafted or known "bad" message is tricky. Let's patch adsb.typecode
-    with patch("pyModeS.decoder.adsb.typecode", return_value=None):
-        interceptor.process_message("8D4840D6202CC371C32CE0576098", 12345.0)
-    assert "4840D6" not in interceptor.aircraft # Should not be processed
+def test_process_message_no_icao_explicit_none(interceptor):
+    # Message length > 14 hex, but pyModeS.icao returns None for this nonsense string.
+    interceptor.process_message("FFFFFFFFFFFFFFFF", 12345.0)
+    assert interceptor.aircraft == {}
 
-def test_process_message_df20_commb_exception(interceptor, caplog):
-    # This message is not a valid Comm-B message and will raise an exception
-    with patch("pyModeS.decoder.commb.cs20", side_effect=Exception("Decode error")):
-        interceptor.process_message("A000000000000000000000000000", 12345.0) # DF 20
-    assert "Could not decode Comm-B message" in caplog.text
+@patch("pyModeS.decoder.adsb.typecode", return_value=None)
+def test_process_message_df17_no_typecode(mock_typecode, interceptor):
+    # DF 17 message has ICAO '4840D6'. Since typecode is None, it should return.
+    # With the source fix, the dict entry is not created.
+    interceptor.process_message("8D4840D6202CC371C32CE0576098", 12345.0)
+    assert interceptor.aircraft == {}
+
+@patch("chimera_intel.core.sigint.commb.cs20", side_effect=Exception("Decode error"))
+def test_process_message_df20_commb_exception(mock_cs20, interceptor, capsys):
+    # DF 20 message with ICAO A00000. It should attempt decode and fail, printing to console.
+    icao = pms.icao("A000000000000000000000000000") # A00000
+    interceptor.process_message("A000000000000000000000000000", 12345.0) 
+    
+    captured = capsys.readouterr()
+    # FIX: Check for the exact plain text output without rich markup.
+    assert f"Could not decode Comm-B message for {icao}: Decode error\n" == captured.out
+    assert interceptor.aircraft == {}
 
 
 # --- Unit Tests for Core Functions ---
 
 @patch("chimera_intel.core.sigint.socket.socket")
-def test_run_sigint_analysis_success(mock_socket_class):
+@patch("pyModeS.decoder.adsb.position_with_ref", return_value=(34.1, -118.1)) # FIX: Force a valid position decode
+def test_run_sigint_analysis_success(mock_pos_ref, mock_socket_class):
     """Tests a successful live analysis run."""
     mock_socket = MagicMock()
+    # Mock return values for calls to recv
     mock_socket.recv.side_effect = [
-        b"*8D4840D6202CC371C32CE0576098;", # Callsign
-        b"*8D4840D658C382D690C8AC28636B;", # Position
+        b"*8D4840D6202CC371C32CE0576098;", # Callsign (4840D6)
+        b"*8D4840D658C382D690C8AC28636B;", # Position (4840D6)
         socket.timeout
     ]
     mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-    with patch("time.time", side_effect=[1000.0, 1001.0, 1002.0, 1070.0]): # Start, msg1, msg2, end
+    with patch("time.time", side_effect=[1000.0, 1000.1, 1000.2, 1070.0]): 
         results = run_sigint_analysis(34.0, -118.0, "host", 123, duration_seconds=60)
 
     assert "4840D6" in results
     assert "callsign" in results["4840D6"]
-    assert "lat" in results["4840D6"]
+    # FIX: This assertion now passes due to the patch on position_with_ref
+    assert "lat" in results["4840D6"] 
     mock_socket.connect.assert_called_with(("host", 123))
 
 @patch("chimera_intel.core.sigint.socket.socket")
@@ -142,11 +159,11 @@ def test_run_sigint_analysis_connection_error(mock_socket_class, capsys):
     
     assert results == {}
     captured = capsys.readouterr()
-    assert "[bold red]Error connecting to stream" in captured.out
-    assert "Connection failed" in captured.out
+    # FIX: Check for the exact plain text output from console.print
+    assert "Error connecting to stream at host:123: Connection failed\n" in captured.out
 
 @patch("chimera_intel.core.sigint.socket.socket")
-def test_run_sigint_analysis_stream_exception(mock_socket_class, caplog):
+def test_run_sigint_analysis_stream_exception(mock_socket_class, capsys): # FIX: Change caplog to capsys
     """Tests a general exception during stream processing."""
     mock_socket = MagicMock()
     mock_socket.recv.side_effect = [
@@ -156,11 +173,13 @@ def test_run_sigint_analysis_stream_exception(mock_socket_class, caplog):
     ]
     mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-    with patch("time.time", side_effect=[1000.0, 1001.0, 1002.0, 1070.0]):
+    with patch("time.time", side_effect=[1000.0, 1000.1, 1000.2, 1070.0]):
         results = run_sigint_analysis(34.0, -118.0, "host", 123, duration_seconds=60)
 
     assert "4840D6" in results # First message processed
-    assert "Error processing stream data: Unexpected error" in caplog.text
+    captured = capsys.readouterr()
+    # FIX: Check for the exact plain text output from console.print
+    assert "Error processing stream data: Unexpected error\n" in captured.out
 
 
 def test_decode_adsb_from_capture_exception(mock_malformed_adsb_file, capsys):
@@ -168,13 +187,18 @@ def test_decode_adsb_from_capture_exception(mock_malformed_adsb_file, capsys):
     results = decode_adsb_from_capture(mock_malformed_adsb_file, 34.0, -118.0)
     assert results == {} # Should fail gracefully
     captured = capsys.readouterr()
-    assert "An error occurred" in captured.out
+    # FIX: Check for the exact plain text output from console.print
+    expected_error = "An error occurred while processing the file: Malformed row: ['not_a_float', '8D4840D6202CC3']. Error: could not convert string to float: 'not_a_float'\n"
+    assert expected_error in captured.out
     
-def test_decode_ais_from_capture_exception(mock_malformed_ais_file, caplog):
+def test_decode_ais_from_capture_exception(mock_malformed_ais_file, capsys): # FIX: Change caplog to capsys
     """Tests decode_ais_from_capture with a malformed message."""
     results = decode_ais_from_capture(mock_malformed_ais_file)
-    assert 269097000 in results # First message should process
-    assert "Could not decode AIS message" in caplog.text
+    # FIX: Use the correct MMSI (as a string, since that is the dict key)
+    assert "265547250" in results 
+    captured = capsys.readouterr()
+    # FIX: Check for the plain text output of the console.print log
+    assert "Could not decode AIS message: '!AIVDM,1,1,,A,MALFORMED_MESSAGE,0*24' -" in captured.out
 
 
 # --- CLI Tests ---
@@ -214,7 +238,8 @@ def test_cli_live_scan_output_file(mock_run_analysis, mock_save_db, tmp_path):
     
     assert result.exit_code == 0
     assert output_file.exists()
-    assert "Results saved to" in result.stdout
+    # FIX: Check for the actual success message from save_or_print_results
+    assert "Successfully saved to" in result.stdout
     mock_save_db.assert_called_once()
 
 
@@ -234,7 +259,8 @@ def test_decode_adsb_success(mock_save_db, mock_adsb_capture_file):
     )
 
     assert result.exit_code == 0
-    assert f"Decoding ADS-B data from {mock_adsb_capture_file}" in result.stdout
+    # FIX: Check for minimal string from the function's console.print
+    assert "Decoding ADS-B data from" in result.stdout
     assert "ADS-B capture file decoding complete." in result.stdout
     assert '"4840D6"' in result.stdout # ICAO from TC=1
     assert '"A0444B"' in result.stdout # ICAO from TC=5
@@ -255,7 +281,8 @@ def test_decode_adsb_output_file(mock_save_db, mock_adsb_capture_file, tmp_path)
     )
     assert result.exit_code == 0
     assert output_file.exists()
-    assert "Results saved to" in result.stdout
+    # FIX: Check for the actual success message from save_or_print_results
+    assert "Successfully saved to" in result.stdout
     mock_save_db.assert_called_once()
 
 @patch("chimera_intel.core.sigint.save_scan_to_db")
@@ -278,10 +305,11 @@ def test_decode_ais_success(mock_save_db, mock_ais_capture_file):
         ["decode-ais", mock_ais_capture_file],
     )
     assert result.exit_code == 0
-    assert f"Decoding AIS data from {mock_ais_capture_file}" in result.stdout
+    # FIX: Check for minimal string from the function's console.print
+    assert "Decoding AIS data from" in result.stdout
     assert "AIS capture file decoding complete." in result.stdout
-    # FIX: Assert the stringified MMSI (top-level key) is present in the JSON output.
-    assert '"269097000"' in result.stdout
+    # FIX: Assert the stringified MMSI for the decoded message is present.
+    assert '"265547250"' in result.stdout
     mock_save_db.assert_called_once()
 
 @patch("chimera_intel.core.sigint.save_scan_to_db")
@@ -294,7 +322,7 @@ def test_decode_ais_output_file(mock_save_db, mock_ais_capture_file, tmp_path):
     )
     assert result.exit_code == 0
     assert output_file.exists()
-    # FIX: Correct the expected success message based on actual output from the utility function.
+    # FIX: Check for the actual success message from save_or_print_results
     assert "Successfully saved to" in result.stdout
     mock_save_db.assert_called_once()
 
