@@ -3,7 +3,6 @@ from typing import Dict, Any, Optional
 import matplotlib.pyplot as plt
 import pandas as pd
 import typer
-from rich.console import Console  # FIX: Import Console
 
 analytics_app = typer.Typer()
 
@@ -86,8 +85,6 @@ def plot_sentiment_trajectory(
     """
     Retrieves the sentiment scores for a given negotiation and plots them over time.
     """
-    # FIX: Instantiate Console inside the function
-    console = Console()
     from .config_loader import API_KEYS
 
     db_params = {

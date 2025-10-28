@@ -87,7 +87,7 @@ def plot_sentiment_trajectory(
     """
     Plots the sentiment trajectory over time for a negotiation.
     """
-    console = Console()
+    
     db_params = {
         "dbname": getattr(API_KEYS, "db_name", None),
         "user": getattr(API_KEYS, "db_user", None),
