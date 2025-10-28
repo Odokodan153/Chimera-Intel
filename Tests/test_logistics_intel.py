@@ -169,8 +169,9 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         )
         
         self.assertEqual(result.exit_code, 1) # CLI should exit with 1 on error
-        self.assertIn("Error:", result.stdout)
-        self.assertIn("No API key", result.stdout)
+        # --- FIX: Error messages are printed to stderr, not stdout ---
+        self.assertIn("Error:", result.stderr)
+        self.assertIn("No API key", result.stderr)
         self.assertNotIn("Tracking History", result.stdout) # Table should not be printed
 
     def test_cli_track_missing_carrier(self):
@@ -180,8 +181,9 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         
         self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
         # FIX: Typer prints missing option errors to stderr, not stdout
-        # This assertion should now pass
-        self.assertIn("Missing option '--carrier'", result.stderr)
+        # --- FIX: Check for substrings because ANSI codes can break exact match ---
+        self.assertIn("Missing option", result.stderr)
+        self.assertIn("--carrier", result.stderr)
 
 if __name__ == "__main__":
     unittest.main()

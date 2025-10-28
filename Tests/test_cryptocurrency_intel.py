@@ -186,7 +186,7 @@ def test_cli_forecast_success(mock_asyncio_run, mock_get_forecast, runner, mock_
     
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["--symbol", "BTC", "--days", "2"])
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC", "--days", "2"])
 
     # Assert
     assert result.exit_code == 0
@@ -214,13 +214,14 @@ def test_cli_forecast_data_fetch_error(mock_asyncio_run, mock_get_forecast, runn
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0 # CLI command handles the error gracefully
     mock_asyncio_run.assert_called_once()
     mock_get_forecast.assert_called_with(error_data, 7) # 7 is the default
-    assert "[bold red]Error:[/] API key invalid" in result.stdout
+    # FIX: Check for plain text error, not Rich formatting
+    assert "Error: API key invalid" in result.stdout
     assert "Forecast" not in result.stdout # No table printed
 
 
@@ -235,13 +236,14 @@ def test_cli_forecast_model_error(mock_asyncio_run, mock_get_forecast, runner, m
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
     mock_asyncio_run.assert_called_once()
     mock_get_forecast.assert_called_with(mock_successful_crypto_data, 7)
-    assert "[bold red]Error:[/] ARIMA failed" in result.stdout
+    # FIX: Check for plain text error, not Rich formatting
+    assert "Error: ARIMA failed" in result.stdout
     assert "Forecast" not in result.stdout
 
 
@@ -257,9 +259,10 @@ def test_cli_forecast_no_forecast_data(mock_asyncio_run, mock_get_forecast, runn
 
     # Act
     # FIX: Pass 'BTC' as an option --symbol 'BTC'
-    result = runner.invoke(crypto_app, ["--symbol", "BTC"])
+    result = runner.invoke(crypto_app, ["forecast", "--symbol", "BTC"])
 
     # Assert
     assert result.exit_code == 0
-    assert "[bold red]Error:[/] Forecast generation failed to produce data." in result.stdout
+    # FIX: Check for plain text error, not Rich formatting
+    assert "Error: Forecast generation failed to produce data." in result.stdout
     assert "Forecast" not in result.stdout

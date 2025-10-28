@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 import pandas as pd
 from typing import Optional, List
+import re  # FIX: Import the regular expression module
 from .narrative_analyzer import track_narrative
 from .social_media_monitor import monitor_twitter_stream
 
@@ -142,9 +143,18 @@ class CognitiveWarfareEngine:
     def _identify_triggers(self, content: str) -> List[str]:
         """Identifies psychological triggers in a text."""
         triggers_found = []
+        content_lower = content.lower() # Check against lowercase content
         for trigger, keywords in PSYCHOLOGICAL_TRIGGERS.items():
-            if any(keyword in content.lower() for keyword in keywords):
-                triggers_found.append(trigger)
+            # FIX: Use regex with word boundaries (\b) to match whole words
+            # This prevents matching "us" in "must"
+            try:
+                # Escape keywords that might have regex special characters
+                pattern = r'\b(' + '|'.join(re.escape(k) for k in keywords) + r')\b'
+                if re.search(pattern, content_lower, re.IGNORECASE):
+                    triggers_found.append(trigger)
+            except re.error as e:
+                # Log potential regex errors, e.g., if a keyword is just punctuation
+                console.print(f"[red]Regex error for trigger '{trigger}': {e}[/red]")
         return triggers_found
 
     def generate_narrative_shield(self):

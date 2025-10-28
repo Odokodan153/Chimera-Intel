@@ -14,8 +14,15 @@ from pyModeS.decoder import adsb, commb
 
 import pyais
 
-from chimera_intel.core.utils import console, save_or_print_results
+# --- FIX: Import Console locally and remove from utils import ---
+from rich.console import Console
+from chimera_intel.core.utils import save_or_print_results
+# --- End Fix ---
 from chimera_intel.core.database import save_scan_to_db
+
+# --- FIX: Create local console instance for proper capsys capture ---
+console = Console()
+# --- End Fix ---
 
 
 class SignalIntercept:

@@ -151,8 +151,12 @@ def test_cli_research_success(mock_scrape):
     result = runner.invoke(qint_app, ["research", "test", "--limit", "2"])
     
     assert result.exit_code == 0
-    # Fix: Check for a robust substring of the title due to rich table formatting
-    assert "Research on 'test' from arXiv" in result.stdout
+    
+    # --- FIX: Check for substrings, as rich.Table formats the title ---
+    assert "Recent Research on 'test'" in result.stdout
+    assert "arXiv" in result.stdout
+    # --- End Fix ---
+    
     assert "Paper 1" in result.stdout
     assert "Author B" in result.stdout
     mock_scrape.assert_called_with("test", 2)

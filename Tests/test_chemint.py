@@ -274,7 +274,10 @@ class TestTrackPrecursors:
         assert "Scraped Sigma-Aldrich for acetone" in result.stdout
         assert "Scraped Fisher Scientific for acetone" in result.stdout
         assert "Scraped VWR for acetone" in result.stdout
-        assert f"Precursor tracking data saved to {output_file}" in result.stdout
+        
+        # FIX: Split assertion to be robust to newlines in the output
+        assert "Precursor tracking data saved to" in result.stdout
+        assert str(output_file) in result.stdout
 
         # Check CSV content
         with open(output_file, "r") as f:

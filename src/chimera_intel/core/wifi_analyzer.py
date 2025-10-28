@@ -34,11 +34,30 @@ def analyze_wifi_capture(pcap_path: str):
             # --- End Fix ---
 
             if bssid not in aps:
-                stats = packet[Dot11Beacon].network_stats()
-                crypto = stats.get("crypto")
+                # --- START FIX: Manually parse crypto, network_stats() is unreliable ---
+                stats = packet[Dot11Beacon].network_stats()  # Still use for channel
+                
+                crypto_set = set()
+                
+                # Check for RSN (WPA2/WPA3) - ID 48
+                rsn_elt = packet.getlayer(Dot11Elt, ID=48)
+                if rsn_elt:
+                    crypto_set.add("WPA2")
+                
+                # Check for WPA1 (Vendor Specific) - ID 221
+                # OUI for WPA is 00:50:F2, type 1
+                wpa_elt = packet.getlayer(Dot11Elt, ID=221)
+                if wpa_elt and wpa_elt.info.startswith(b'\x00P\xf2\x01\x01\x00'):
+                     crypto_set.add("WPA")
+
+                # Check for WEP (only if WPA/WPA2 not found)
+                if packet[Dot11Beacon].cap.privacy and not crypto_set:
+                    crypto_set.add("WEP")
+
+                crypto = crypto_set
+                # --- END FIX ---
 
                 # Determine security protocol
-
                 security = "Open"
                 if crypto:
                     if "WPA2" in crypto and "WPA" in crypto:
@@ -49,6 +68,7 @@ def analyze_wifi_capture(pcap_path: str):
                         security = "WPA"
                     elif "WEP" in crypto:
                         security = "WEP"
+                
                 aps[bssid] = {
                     "ssid": ssid,
                     "security": security,
@@ -94,7 +114,7 @@ def get_wifi_app():
         help="Analyze a wireless network capture file."
     )
     def analyze(
-    # --- End Fix ---
+    # --- FIX: Removed stray comment line that was breaking Typer ---
     # --- FIX REVERTED: Use standard typer.Argument syntax ---
         capture_file: str = typer.Argument(
             ..., help="Path to the wireless capture file (.pcap or .pcapng)."

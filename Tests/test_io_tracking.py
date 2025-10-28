@@ -54,11 +54,13 @@ MOCK_REDDIT_RESPONSE = {"data": {"children": MOCK_REDDIT_POSTS}}
 # --- ORIGINAL TESTS (Corrected) ---
 # These tests are kept as they are good integration-level tests for the CLI command.
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_success_high_level(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the track-influence command with a successful API response
@@ -95,6 +97,7 @@ def test_track_influence_no_api_key(
     This should cause a Configuration Error and exit code 1.
     """
     # Arrange
+    # This test is *supposed* to fail the check, so no "fake_key" patch here.
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
         result = runner.invoke(
@@ -107,11 +110,13 @@ def test_track_influence_no_api_key(
     mock_search_news.assert_not_called()  # Fails before calling
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
 def test_track_influence_api_error(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the track-influence command when the GNews API (the primary one)
@@ -130,11 +135,13 @@ def test_track_influence_api_error(
     assert "API Error: Failed to fetch data. Status code: 500" in result.output
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[{"data": "reddit post"}])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
 def test_track_influence_no_news_success(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the scenario where no news articles are found, but other
@@ -156,10 +163,12 @@ def test_track_influence_no_news_success(
     mock_search_reddit.assert_called_once()
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_no_twitter_key(
-    mock_search_news, mock_search_reddit
+    mock_search_news, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests that a missing Twitter key prints a warning to stderr
@@ -181,11 +190,13 @@ def test_track_influence_no_twitter_key(
     assert "Tech News Today" in result.output
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("tweepy.Client")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_twitter_api_error(
-    mock_search_news, mock_search_reddit, mock_tweepy_client
+    mock_search_news, mock_search_reddit, mock_tweepy_client, mock_gnews_key
 ):
     """
     Tests that a non-HTTP error from the Twitter search is caught,
@@ -208,11 +219,13 @@ def test_track_influence_twitter_api_error(
     assert "Business Insider" in result.output
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("httpx.Client.get", side_effect=httpx.RequestError("Reddit is down"))
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_reddit_api_error(
-    mock_search_news, mock_search_twitter, mock_httpx_get
+    mock_search_news, mock_search_twitter, mock_httpx_get, mock_gnews_key
 ):
     """
     Tests that a non-HTTP error from the Reddit search is caught,
@@ -231,11 +244,13 @@ def test_track_influence_reddit_api_error(
     assert "Business Insider" in result.output
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=RuntimeError("A generic unexpected error"))
 def test_track_influence_generic_exception(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests the main command's generic 'except Exception' block.
@@ -257,7 +272,8 @@ def test_track_influence_no_narrative_arg():
     Typer should handle this and exit with code 2.
     """
     # Act
-    result = runner.invoke(io_tracking_app, [])  # No arguments for "track"
+    # FIX: Added env={"NO_COLOR": "1"} to prevent ANSI codes in output
+    result = runner.invoke(io_tracking_app, [], env={"NO_COLOR": "1"})
 
     # Assert
     assert result.exit_code == 2  # Typer's exit code for missing options
@@ -265,11 +281,13 @@ def test_track_influence_no_narrative_arg():
     assert "--narrative" in result.output
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
 def test_track_influence_short_arg_and_empty_narrative(
-    mock_search_news, mock_search_twitter, mock_search_reddit
+    mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
     """
     Tests using the short-form '-n' argument and provides an empty
@@ -456,11 +474,13 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 
 # --- Comprehensive Test for 'track' command ---
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.console")
 @patch("tweepy.Client")
 @patch("httpx.Client")
 def test_track_influence_full_run_with_results(
-    mock_httpx_client, mock_tweepy_client, mock_console
+    mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key
 ):
     """
     Tests the 'track' command by mocking the underlying API clients.
@@ -515,8 +535,10 @@ def test_track_influence_full_run_with_results(
     assert printed_table.rows[0].cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
 
 
+# FIX: Added patch for gnews_api_key to bypass the initial check
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
 @patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=ValueError("Test value error"))
-def test_track_influence_value_error(mock_search_news):
+def test_track_influence_value_error(mock_search_news, mock_gnews_key):
     """
     Tests the main command's 'except ValueError' block.
     This should be caught and cause an exit code 1.

@@ -1,7 +1,8 @@
 import logging
 import json
 from typing import List, Dict, Optional
-from .schemas import Operation, ComplianceResult, ComplianceViolation
+# FIX: Changed relative import to absolute import to fix Typer CLI execution.
+from chimera_intel.core.schemas import Operation, ComplianceResult, ComplianceViolation
 import typer
 from rich.console import Console
 from rich.table import Table

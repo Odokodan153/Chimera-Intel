@@ -115,7 +115,7 @@ class ApiKeys(BaseSettings):
     youtube_api_key: Optional[str] = Field(None, alias="YOUTUBE_API_KEY")
     alpha_vantage_api_key: Optional[str] = Field(None, alias="ALPHA_VANTAGE_API_KEY")
     easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEY")
-    finnhub_api_key: Optional[str] = os.getenv("FINNHUB_API_KEY")
+    finnhub_api_key: Optional[str] = Field(None, alias="FINNHUB_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
 
@@ -146,16 +146,22 @@ class ApiKeys(BaseSettings):
         if isinstance(v, str):
             return v
         
-        # FIX: Use os.getenv as a fallback for the raw environment variables
-        # in case pydantic-settings hasn't fully populated `values.data` in 'before' mode.
-        db_host = values.data.get("DB_HOST") or os.getenv("DB_HOST")
-        db_user = values.data.get("DB_USER") or os.getenv("DB_USER")
-        db_port = values.data.get("DB_PORT") or os.getenv("DB_PORT")
-        db_password = values.data.get("DB_PASSWORD") or os.getenv("DB_PASSWORD")
-        db_name = values.data.get("DB_NAME") or os.getenv("DB_NAME")
+        # FIX: Rely on environment variables (raw strings) and use an explicit default for port
+        # This is more robust in a `mode="before"` validator where field parsing isn't guaranteed
+        db_host = os.getenv("DB_HOST")
+        db_user = os.getenv("DB_USER")
+        db_password = os.getenv("DB_PASSWORD")
+        db_name = os.getenv("DB_NAME")
         
-        if all([db_host, db_user, db_port, db_password, db_name]):
-            # db_port is an integer field, but here it's read as string from env/data, which is fine for the f-string URL.
+        # Get DB_PORT as a string from environment, or use the field default "5432" as fallback
+        # values.data.get('DB_PORT') is for the alias, os.getenv('DB_PORT') is the raw env var.
+        db_port_raw = values.data.get("DB_PORT") or os.getenv("DB_PORT")
+        
+        # Fallback to the default value (5432) as a string if no env value is found
+        db_port = str(db_port_raw) if db_port_raw else str(5432)
+
+        if all([db_host, db_user, db_password, db_name, db_port]): # FIX: Added db_port to the check
+            # The port is now guaranteed to be a string
             return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
         return v
 

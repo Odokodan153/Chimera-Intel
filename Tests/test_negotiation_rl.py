@@ -217,7 +217,12 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         # Mock the tensor returned by target_net(...) and its .max() method
         # .max(1) returns a tuple (values, indices)
         mock_target_output = MagicMock(spec=torch.Tensor)
-        mock_target_output.max.return_value = (torch.rand(self.agent.batch_size, 1), None)
+        
+        # --- FIX for RuntimeError ---
+        # The return value for .max(1)[0] must be shape [128], not [128, 1],
+        # to match the shape of the masked next_state_values tensor it's being assigned to.
+        mock_target_output.max.return_value = (torch.rand(self.agent.batch_size), None)
+        
         self.mock_target_net.return_value = mock_target_output
         # --- END FIX ---
 
