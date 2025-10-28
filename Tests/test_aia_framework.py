@@ -140,7 +140,8 @@ class TestLoadAvailableModules:
             (None, "chimera_intel.core.footprint", None),
             (None, "chimera_intel.core.some_other", None), # This one is not in ALLOWED_MODULES
         ]
-        mock_import.return_value = mock_mod
+        # FIX: Use side_effect to match successful test pattern
+        mock_import.side_effect = [mock_mod]
 
         modules = load_available_modules()
 
@@ -169,7 +170,8 @@ class TestLoadAvailableModules:
         mock_iter_modules.return_value = [
             (None, "chimera_intel.core.footprint", None)
         ]
-        mock_import.return_value = mock_mod
+        # FIX: Use side_effect to match successful test pattern
+        mock_import.side_effect = [mock_mod]
 
         modules = load_available_modules()
         

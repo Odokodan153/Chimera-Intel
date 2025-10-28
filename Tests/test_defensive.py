@@ -510,12 +510,13 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.search_github_leaks")
     @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
-    def test_cli_leaks_command(self, mock_pat: MagicMock, mock_search: MagicMock):
+    # --- FIX: Swapped argument order ---
+    def test_cli_leaks_command(self, mock_search: MagicMock, mock_pat: MagicMock):
         """Tests a successful 'leaks' CLI command.
 
         Args:
-            mock_pat (MagicMock): A mock for the patched `github_pat`.
             mock_search (MagicMock): A mock for `search_github_leaks`.
+            mock_pat (MagicMock): A mock for the patched `github_pat`.
         """
         mock_search.return_value.model_dump.return_value = {"total_count": 0}
         result = runner.invoke(defensive_app, ["leaks", "query"])
@@ -558,12 +559,13 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_apk_mobsf")
     @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", "fake_key")
-    def test_cli_mobsf_command_success(self, mock_key: MagicMock, mock_analyze: MagicMock):
+    # --- FIX: Swapped argument order ---
+    def test_cli_mobsf_command_success(self, mock_analyze: MagicMock, mock_key: MagicMock):
         """Tests a successful 'mobsf' CLI command.
 
         Args:
-            mock_key (MagicMock): A mock for the patched `mobsf_api_key`.
             mock_analyze (MagicMock): A mock for `analyze_apk_mobsf`.
+            mock_key (MagicMock): A mock for the patched `mobsf_api_key`.
         """
         mock_analyze.return_value.model_dump.return_value = {
             "report": {"app_name": "TestApp"}
@@ -582,12 +584,13 @@ class TestDefensive(unittest.TestCase):
 
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
     @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
-    def test_cli_surface_command(self, mock_key: MagicMock, mock_analyze: MagicMock):
+    # --- FIX: Swapped argument order ---
+    def test_cli_surface_command(self, mock_analyze: MagicMock, mock_key: MagicMock):
         """Tests a successful 'surface' CLI command.
 
         Args:
-            mock_key (MagicMock): A mock for the patched `shodan_api_key`.
             mock_analyze (MagicMock): A mock for `analyze_attack_surface_shodan`.
+            mock_key (MagicMock): A mock for the patched `shodan_api_key`.
         """
         mock_analyze.return_value.model_dump.return_value = {"total_results": 1}
         result = runner.invoke(defensive_app, ["surface", "query"])

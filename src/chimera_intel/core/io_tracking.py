@@ -92,7 +92,7 @@ def track(
         with httpx.Client() as client:
             news_articles = search_news_narrative(narrative, client)
             
-            # --- FIX: Add non-fatal Twitter key check to the main command. ---
+           
             if not API_KEYS.twitter_bearer_token:
                 typer.echo(
                     "Warning: TWITTER_BEARER_TOKEN not found. Skipping Twitter search.",
@@ -100,7 +100,6 @@ def track(
                 )
             else:
                 search_twitter_narrative(narrative)
-            # --- END FIX ---
             
             search_reddit_narrative(narrative, client)
             
@@ -122,16 +121,16 @@ def track(
         
     except ValueError as e:
         typer.echo(f"Configuration Error: {e}", err=True)
-        raise typer.Exit(code=1) # FIX: Use typer.Exit
+        raise typer.Exit(code=1) 
     except httpx.HTTPStatusError as e:
         typer.echo(
             f"API Error: Failed to fetch data. Status code: {e.response.status_code}",
             err=True,
         )
-        raise typer.Exit(code=1) # FIX: Use typer.Exit
+        raise typer.Exit(code=1) 
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1) # FIX: Use typer.Exit
+        raise typer.Exit(code=1) 
 
 
 if __name__ == "__main__":

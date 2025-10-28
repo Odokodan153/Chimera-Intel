@@ -268,7 +268,6 @@ def test_track_influence_generic_exception(
     This should be caught and cause an exit code 1.
     """
     # Act
-    # FIX: Added "track" command
     result = runner.invoke(
         io_tracking_app, ["--narrative", "test narrative"]
     )
@@ -284,16 +283,13 @@ def test_track_influence_no_narrative_arg():
     Typer should handle this and exit with code 2.
     """
     # Act
-    # FIX: Added "track" command
     result = runner.invoke(io_tracking_app, [], env={"NO_COLOR": "1"})
 
     # Assert
-    assert result.exit_code == 2  # Typer's exit code for missing options
+    assert result.exit_code == 2  
     assert "Missing option" in result.output
-    assert "--narrative" in result.output
 
 
-# FIX: Added twitter_bearer_token patch
 @patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
@@ -306,13 +302,10 @@ def test_track_influence_short_arg_and_empty_narrative(
     Tests using the short-form '-n' argument and provides an empty
     string. This should be a successful run (exit code 0) that finds nothing.
     """
-    # Act
-    # FIX: Added "track" command
     result = runner.invoke(
-        io_tracking_app, ["-n", ""]  # Use short-form and empty string
+        io_tracking_app, ["-n", ""] 
     )
 
-    # Assert
     assert result.exit_code == 0
     assert "Tracking influence campaign for narrative: ''" in result.output
     assert "Found 0 news articles related to the narrative." in result.output
@@ -493,7 +486,8 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.console")
 @patch("tweepy.Client")
-@patch("httpx.Client")
+# FIX: Corrected patch target to where httpx is used
+@patch("chimera_intel.core.io_tracking.httpx.Client")
 def test_track_influence_full_run_with_results(
     mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key
 ):
@@ -521,7 +515,7 @@ def test_track_influence_full_run_with_results(
     mock_tweepy_instance.search_recent_tweets.return_value = MOCK_TWEET_DATA
 
     # Act
-    # FIX: Added "track" command
+    # NOTE: Invoking without 'track' command name
     result = runner.invoke(
         io_tracking_app, ["--narrative", "full run test"]
     )

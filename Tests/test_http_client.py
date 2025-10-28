@@ -28,18 +28,17 @@ def mock_network_timeout():
 @pytest.fixture
 def mock_pool_request():
     """
-    Mocks the underlying pool request method, which is called
-    by the transport's handle_async_request. This allows the
-    transport's *own* retry logic to execute.
+    Mocks the underlying pool request method ('request'), which is called
+    by the pool's 'handle_async_request'. This allows the
+    pool's *own* retry logic to execute.
     """
-    # FIX: The patch target has changed in httpx >= 0.26.0
-    # The transport logic is now in the 'httpcore' library.
-    # --- START FIX: Patch the method on the *existing instance* ---
-    # We patch the pool's method on the *actual transport instance*
-    # held by the global `async_client`.
+    # FIX: The patch target was 'handle_async_request', which *contains*
+    # the retry logic. We need to patch the 'request' method *called by*
+    # the retry logic.
+    # --- START FIX ---
     with patch.object(
         async_client._transport._pool,
-        "handle_async_request",
+        "request",  # <-- FIX: Patch 'request', not 'handle_async_request'
         new_callable=AsyncMock,
     ) as mock_handle:
         yield mock_handle
@@ -48,7 +47,10 @@ def mock_pool_request():
 
 # --- Helper to create a mock pool response ---
 def create_mock_pool_response(status_code, content):
-    """Creates a mock (status, headers, stream, extensions) tuple."""
+    """
+    Creates a mock (status, headers, stream, extensions) tuple.
+    This is the format returned by the pool's 'request' method.
+    """
     headers = [(b"content-type", b"application/json")]
 
     # --- FIX: httpx.AsyncByteStream() constructor changed.
@@ -65,6 +67,7 @@ def create_mock_pool_response(status_code, content):
     stream_mock.aclose = AsyncMock()
     # --- END FIX ---
     
+    # This tuple is the correct return type for the 'request' method
     return (status_code, headers, stream_mock, {})
 
 
@@ -113,15 +116,14 @@ async def test_global_client_retry_on_server_error(mock_pool_request, status_cod
 
     # The final response should be the error
     assert response.status_code == status_code
-    # The pool's handle_async_request should be called 4 times
+    # The pool's 'request' method should be called 4 times by the retry loop
     assert mock_pool_request.call_count == 4
 
 
 async def test_global_client_retry_on_timeout(mock_pool_request):
-    """Test that the client retries on httpx.TimeoutException."""
-    # The transport's underlying call will raise TimeoutException
+    """Test that the client retries on httpcore.ReadTimeout."""
+    # The transport's underlying 'request' call will raise TimeoutException
     # Note: httpx's *transport* retries on httpcore exceptions.
-    # To trigger a retry, we must raise the httpcore equivalent.
     # We raise httpcore.ReadTimeout, as this is what the httpcore
     # transport retry logic is designed to catch.
     mock_pool_request.side_effect = httpcore.ReadTimeout("Timeout")

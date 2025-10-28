@@ -109,12 +109,8 @@ def test_get_kpis_db_exception(mock_connect, mock_db_params):
 
 # FIX: Patch the API_KEYS object *where it is used* (in analytics_cli)
 @patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(database_url=None))
-# --- FIX: Update patch targets to point to analytics_cli ---
-@patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
-@patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
-@patch("src.chimera_intel.core.analytics_cli.plt")
-# --- End Fix ---
-def test_plot_sentiment_missing_params(mock_plt, mock_read_sql, mock_connect):
+# --- FIX: Remove unnecessary mocks for this validation test ---
+def test_plot_sentiment_missing_params():
     """Test plot command when DB parameters are missing from config."""
     # The patch decorator above already sets database_url to None
     result = runner.invoke(analytics_app, ["plot-sentiment", "neg-123"])
@@ -246,12 +242,11 @@ def test_main_call(mock_app_call):
     # FIX: Provide a valid command to prevent Typer from exiting with an error
     test_args = ["src/chimera_intel/core/analytics_cli.py", "plot-sentiment", "dummy-id"]
     
-    # Catch the SystemExit that Typer raises, as the mock app doesn't
-    # fully prevent Typer's argument parsing logic.
-    with pytest.raises(SystemExit):
-        with patch.dict("sys.modules", {"__main__": MagicMock()}), \
-             patch("sys.argv", test_args):
-            runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
+    # --- FIX: Remove pytest.raises(SystemExit) ---
+    # The mock app shouldn't exit, so we don't expect an exception.
+    with patch.dict("sys.modules", {"__main__": MagicMock()}), \
+         patch("sys.argv", test_args):
+        runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
             
-    # The key check is that our mock app was called before Typer exited
+    # The key check is that our mock app was called
     mock_app_call.assert_called_once()

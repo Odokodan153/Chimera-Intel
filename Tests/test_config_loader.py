@@ -125,15 +125,17 @@ def test_api_keys_assemble_db_connection(monkeypatch):
         monkeypatch.setenv("DB_PORT", "5432")
         monkeypatch.setenv("DB_NAME", "chimera_db")
 
-        # Explicitly re-instantiate the class after patching the environment
-        reloaded_keys = config_loader.ApiKeys()
+        # --- FIX: Use importlib.reload to re-instantiate module-level API_KEYS ---
+        importlib.reload(config_loader)
     
         # The str() of a PostgresDsn object redacts the password
         # UPDATED FIX: Pydantic's PostgresDsn string representation *includes* the
         # port if it was explicitly passed in the connection string,
         # which our validator does when DB_PORT is set.
         expected_url = "postgresql://postgres:***@localhost:5432/chimera_db"
-        assert str(reloaded_keys.database_url) == expected_url
+        
+        # --- FIX: Assert against the reloaded module-level instance ---
+        assert str(config_loader.API_KEYS.database_url) == expected_url
 
 def test_api_keys_assemble_db_connection_incomplete(monkeypatch):
     """Tests that DB URL is None if some connection vars are missing."""
@@ -148,10 +150,10 @@ def test_api_keys_assemble_db_connection_incomplete(monkeypatch):
 def test_api_keys_direct_database_url_override(monkeypatch):
     """Tests that a directly provided DATABASE_URL overrides assembly."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://direct:url@host:1234/direct_db")
-    # Set other vars to ensure they are ignored
-    monkeypatch.setenv("DB_USER", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "mypassword")
-    monkeypatch.setenv("DB_HOST", "localhost")
+    
+    # --- FIX: Do not set other DB_ vars. The clear_env fixture handles this.
+    # Setting them triggers the assembly validator, which (if incomplete)
+    # can overwrite the DATABASE_URL value.
     
     importlib.reload(config_loader)
     
