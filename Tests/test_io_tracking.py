@@ -481,22 +481,18 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 
 # --- Comprehensive Test for 'track' command ---
 
-# FIX: Added twitter_bearer_token patch
-# FIXED VERSION — works across all Rich versions
 @patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.console")
 @patch("tweepy.Client")
 @patch("chimera_intel.core.io_tracking.httpx.Client")
+@patch("chimera_intel.core.io_tracking.Table")
 def test_track_influence_full_run_with_results(
-    mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key
+    mock_table, mock_httpx_client, mock_tweepy_client, mock_console, mock_gnews_key
 ):
-    """
-    Tests the 'track' command by mocking the underlying API clients.
-    This allows the search functions to execute and tests the
-    table-printing logic.
-    """
-    # Arrange
+    mock_table_instance = MagicMock()
+    mock_table.return_value = mock_table_instance
+
     mock_http_instance = mock_httpx_client.return_value.__enter__.return_value
 
     mock_gnews_response = MagicMock()
@@ -509,44 +505,22 @@ def test_track_influence_full_run_with_results(
     mock_tweepy_instance = mock_tweepy_client.return_value
     mock_tweepy_instance.search_recent_tweets.return_value = MOCK_TWEET_DATA
 
-    # Act
     result = runner.invoke(io_tracking_app, ["--narrative", "full run test"])
 
-    # Assert
     assert result.exit_code == 0
     mock_httpx_client.assert_called_once()
     assert mock_http_instance.get.call_count == 2
-    mock_tweepy_client.assert_called_once_with(API_KEYS.twitter_bearer_token)
+    mock_tweepy_client.assert_called_once_with("fake_twitter_key")
     mock_tweepy_instance.search_recent_tweets.assert_called_once()
 
-    printed_table = None
-    for call in mock_console.print.call_args_list:
-        if isinstance(call.args[0], Table):
-            printed_table = call.args[0]
-            break
+    # --- Check that add_row got correct data ---
+    add_row_calls = [c.args for c in mock_table_instance.add_row.call_args_list]
+    assert len(add_row_calls) == 2
+    assert add_row_calls[0] == (
+        "Tech News Today",
+        "Rumors of Failure Swirl Around New Product",
+    )
 
-    assert printed_table is not None
-    assert printed_table.title == "News Narrative Analysis"
-    assert len(printed_table.rows) == 2
-
-    # --- FIX: Handle all Rich versions safely ---
-    first_row = printed_table.rows[0]
-    if hasattr(first_row, "cells"):
-        # Older Rich versions
-        row_cells = tuple(first_row.cells)
-    elif hasattr(first_row, "_cells"):
-        # Some intermediate versions store data in _cells
-        row_cells = tuple(first_row._cells)
-    else:
-        # Newer Rich versions — Row is iterable
-        try:
-            row_cells = tuple(first_row)
-        except Exception:
-            # Last fallback: extract via str parsing (guaranteed safe)
-            row_cells = tuple(str(first_row).split("|")[1:-1])
-            row_cells = tuple(cell.strip() for cell in row_cells)
-
-    assert row_cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
 
 
 
