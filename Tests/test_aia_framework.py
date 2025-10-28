@@ -14,7 +14,7 @@ sys.path.insert(
 )
 
 from chimera_intel.core.aia_framework import (
-    app as aia_cli_app,
+    # app as aia_cli_app,  <- REMOVED THIS LINE TO FIX LINTING ERRORS
     load_available_modules,
     create_initial_plans,
     execute_plan,
@@ -537,6 +537,16 @@ class TestCLI:
         result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
         
         assert result.exit_code == 0
+        assert "Objective Received" in result.stdout
+        # FIX: Make assertion more robust to check for generated filename
+        mock_run_analysis.assert_called_once_with(
+            "Analyze example.com",
+            unittest.mock.ANY, # For the generated filename
+            5, # default
+            60, # default
+            300 # default
+        )
+
 
     @patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock)
     def test_cli_execute_objective_args_passed(self, mock_run_analysis, runner):
@@ -587,6 +597,7 @@ class TestCLI:
         result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
         
         assert result.exit_code == 1
+        assert "An unhandled error occurred" in result.stdout
 
 
 if __name__ == "__main__":
