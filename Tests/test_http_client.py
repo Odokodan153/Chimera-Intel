@@ -53,8 +53,9 @@ async def event_loop_client(mock_network_timeout):
     await client.aclose()
 
 
+# --- FIX: Made this fixture async to correctly await event_loop_client ---
 @pytest.fixture
-def mock_pool_request(event_loop_client): # <-- Depends on the new event_loop_client
+async def mock_pool_request(event_loop_client): # <-- Depends on the new event_loop_client
     """
     Mocks the underlying pool request method ('request'), which is called
     by the pool's 'handle_async_request'. This allows the

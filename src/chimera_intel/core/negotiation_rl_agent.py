@@ -180,9 +180,14 @@ class QLearningLLMAgent:
             device=self.device,
             dtype=torch.bool,
         )
-        non_final_next_states = torch.cat(
-            [s for s in batch.next_state if s is not None]
-        )
+        
+        # --- FIX: Do not concatenate here. We must check non_final_mask first
+        # to prevent torch.cat on an empty list if all states are terminal.
+        #
+        # non_final_next_states = torch.cat(
+        #     [s for s in batch.next_state if s is not None]
+        # )
+        
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
@@ -201,9 +206,16 @@ class QLearningLLMAgent:
 
         next_state_values = torch.zeros(self.batch_size, device=self.device)
         with torch.no_grad():
-            next_state_values[non_final_mask] = self.target_net(
-                non_final_next_states
-            ).max(1)[0]
+            # --- FIX: Check if any non-final states exist *before*
+            # concatenating and passing to the target network.
+            if non_final_mask.any():
+                non_final_next_states = torch.cat(
+                    [s for s in batch.next_state if s is not None]
+                )
+                next_state_values[non_final_mask] = self.target_net(
+                    non_final_next_states
+                ).max(1)[0]
+        
         # Compute the expected Q values
 
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch

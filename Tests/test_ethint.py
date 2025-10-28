@@ -69,8 +69,9 @@ def mock_rules_module():
     
     # Missing function: check_roe_03 is intentionally omitted
     
-    # --- FIX: Patch the target where it is looked up (in the ethint module) ---
-    with patch("chimera_intel.core.ethint.importlib.import_module", return_value=mock_module) :
+    # --- FIX: Patch 'importlib' object and set return_value on its 'import_module' method ---
+    with patch("chimera_intel.core.ethint.importlib") as mock_importlib:
+        mock_importlib.import_module.return_value = mock_module
         yield mock_module
 
 @pytest.fixture
@@ -241,10 +242,14 @@ def test_audit_no_frameworks_loaded(mock_get_frameworks_func): # mock_get_framew
 
 # ----------------- FIX: Patched the correct targets -----------------
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
-@patch("chimera_intel.core.ethint.importlib.import_module", side_effect=ImportError)
+# --- FIX: Patch 'importlib' object itself, not its method ---
+@patch("chimera_intel.core.ethint.importlib")
 # --- FIX: Swapped mock arguments to match decorator order ---
-def test_audit_rules_module_import_error(mock_import, mock_get_frameworks_func, mock_frameworks_dict):
+def test_audit_rules_module_import_error(mock_importlib, mock_get_frameworks_func, mock_frameworks_dict):
     """Tests the SYSTEM-01 violation if ethint_rules.py fails to import."""
+    # FIX: Set the side_effect on the method of the mocked module
+    mock_importlib.import_module.side_effect = ImportError("Mock import fail")
+
     # FIX: Set the return_value
     mock_get_frameworks_func.return_value = mock_frameworks_dict
     op = Operation(operation_id="op-001", operation_type="test", justification="test")

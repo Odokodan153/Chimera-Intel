@@ -234,21 +234,31 @@ def test_plot_sentiment_db_exception(mock_read_sql, mock_connect):
 
 # --- Test for __main__ block ---
 
-# --- FIX: Update patch and runpy targets to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.analytics_app")
 def test_main_call(mock_app_call):
     """Test that the main block calls the typer app."""
     # This uses runpy to execute the module as if it were the main script
     import runpy
+    import sys  # <-- Import sys
 
     # FIX: Provide a valid command to prevent Typer from exiting with an error
     test_args = ["src/chimera_intel/core/analytics_cli.py", "plot-sentiment", "dummy-id"]
     
+    module_name = "src.chimera_intel.core.analytics_cli"
+
+    # --- START FIX ---
+    # Remove the module from the cache if it was imported by other tests.
+    # This ensures runpy will fully execute the script, including the
+    # __name__ == "__main__" block.
+    if module_name in sys.modules:
+        del sys.modules[module_name]
+    # --- END FIX ---
+
     # --- FIX: Catch the normal SystemExit(0) from Typer ---
     with patch.dict("sys.modules", {"__main__": MagicMock()}), \
          patch("sys.argv", test_args):
         try:
-            runpy.run_module("src.chimera_intel.core.analytics_cli", run_name="__main__")
+            runpy.run_module(module_name, run_name="__main__")
         except SystemExit as e:
             # FIX: Ignore normal Typer exits (0)
             assert e.code == 0

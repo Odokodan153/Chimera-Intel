@@ -306,11 +306,12 @@ def monitor_chemical_news(
         except Exception as e:
             print(f"[red]Error parsing {source} data: {e}[/red]")
     if results:
-        # FIX: prevent URL truncation so full domains like "chemistryworld.com" appear in test output
-        table = Table(show_header=True, header_style="bold magenta", expand=True)
-        table.add_column("Source", overflow="fold")
-        table.add_column("Title", overflow="fold")
-        table.add_column("URL", overflow="fold")
+        # FIX: Replaced expand=True with a fixed width and column ratios 
+        # to prevent URL truncation in test environments.
+        table = Table(show_header=True, header_style="bold magenta", width=120)
+        table.add_column("Source", overflow="fold", ratio=1)
+        table.add_column("Title", overflow="fold", ratio=2)
+        table.add_column("URL", overflow="fold", ratio=3)
         for row in results:
             table.add_row(*row)
         print(table)

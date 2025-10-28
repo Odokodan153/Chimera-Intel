@@ -548,7 +548,10 @@ def test_track_influence_full_run_with_results(
     assert printed_table is not None
     assert printed_table.title == "News Narrative Analysis"
     assert len(printed_table.rows) == 2
-    assert printed_table.rows[0].cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
+    
+    # --- FIX: A rich.table.Row object is iterable. Convert it to a tuple to check its contents. ---
+    row_cells = tuple(printed_table.rows[0])
+    assert row_cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
 
 
 # FIX: Removed "fake_key" to allow the patch to pass the mock argument
