@@ -198,8 +198,10 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
         # Populate memory
         state_tensor = self.agent._state_to_tensor({"turn": 1})
         next_state_tensor = self.agent._state_to_tensor({"turn": 2})
-        action_tensor = torch.tensor([[1]], dtype=torch.long)
-        reward_tensor = torch.tensor([0.5], dtype=torch.float32)
+        # --- FIX: Ensure all tensors are created on the correct device ---
+        action_tensor = torch.tensor([[1]], dtype=torch.long, device=self.agent.device)
+        reward_tensor = torch.tensor([0.5], dtype=torch.float32, device=self.agent.device)
+        # --- END FIX ---
         
         transitions = [
             Transition(state_tensor, action_tensor, next_state_tensor, reward_tensor)

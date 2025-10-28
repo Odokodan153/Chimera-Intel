@@ -5,7 +5,8 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from httpx import Timeout
 
 # Import the actual objects from the source file
-from src.chimera_intel.core.http_client import async_client, get_async_http_client
+# --- FIX: Relative import for pytest compatibility ---
+from chimera_intel.core.http_client import async_client, get_async_http_client
 
 # Mark all tests in this module as asyncio
 pytestmark = pytest.mark.asyncio
@@ -20,7 +21,7 @@ def mock_network_timeout():
     # The global async_client is created at import time, so we can't
     # patch its timeout easily. But we can patch the constant
     # for the get_async_http_client function which reads it dynamically.
-    with patch("src.chimera_intel.core.http_client.NETWORK_TIMEOUT", 30.0) as mock_timeout:
+    with patch("chimera_intel.core.http_client.NETWORK_TIMEOUT", 30.0) as mock_timeout:
         yield mock_timeout
 
 
@@ -45,16 +46,15 @@ def create_mock_pool_response(status_code, content):
     """Creates a mock (status, headers, stream, extensions) tuple."""
     headers = [(b"content-type", b"application/json")]
 
-    # Create a real async generator for the stream content
+    # --- FIX: httpx.AsyncByteStream() constructor changed.
+    # Create a simple async generator and add the aclose() method
+    # that httpcore expects.
     async def async_iterator():
         yield content
 
-    # Use httpx.AsyncByteStream to wrap the generator.
-    # This correctly implements the async stream protocol httpcore expects.
-    stream = httpx.AsyncByteStream(async_iterator())
-
-    # We still mock aclose to ensure it can be awaited without issue
+    stream = async_iterator()
     stream.aclose = AsyncMock()
+    # --- END FIX ---
     
     return (status_code, headers, stream, {})
 
@@ -143,12 +143,16 @@ async def test_global_client_no_retry_on_client_error(mock_pool_request):
 # or a new proxy-configured transport.
 
 
-@patch("src.chimera_intel.core.http_client.AsyncClient")
-@patch("src.chimera_intel.core.http_client.async_transport")  # Patch the global instance
+@patch("chimera_intel.core.http_client.AsyncClient")
+# --- FIX: Patch the class, not the non-existent global variable ---
+@patch("chimera_intel.core.http_client.httpx.AsyncHTTPTransport") 
 async def test_get_client_no_proxy(
-    mock_global_transport, mock_client_class_call, mock_network_timeout
+    mock_transport_class_call, mock_client_class_call, mock_network_timeout # <-- Args swapped to match decorators
 ):
     """Test get_async_http_client without proxies uses the global transport."""
+
+    mock_transport_instance = MagicMock(name="TransportInstance")
+    mock_transport_class_call.return_value = mock_transport_instance
 
     mock_client_instance = MagicMock(name="ClientInstance")
     mock_client_instance.aclose = AsyncMock()
@@ -157,22 +161,25 @@ async def test_get_client_no_proxy(
     async with get_async_http_client() as client:
         assert client == mock_client_instance
 
-    # Check that the global transport was used
+    # Check that a *new* transport was created with default retries
+    mock_transport_class_call.assert_called_once_with(retries=3)
+    
+    # Check that the client was created with this new transport
     mock_client_class_call.assert_called_once()
     call_kwargs = mock_client_class_call.call_args[1]
 
-    assert call_kwargs["transport"] == mock_global_transport
+    assert call_kwargs["transport"] == mock_transport_instance # Check new transport was used
     assert isinstance(call_kwargs["timeout"], Timeout)
-    # FIX: Access .read (or .connect, .write) instead of .timeout
     assert call_kwargs["timeout"].read == 30.0  # From mock_network_timeout
     assert call_kwargs["headers"] == {"User-Agent": "Chimera-Intel/6.0"}
 
     mock_client_instance.aclose.assert_called_once()
+# --- END FIX ---
 
 
-@patch("src.chimera_intel.core.http_client.AsyncClient")
+@patch("chimera_intel.core.http_client.AsyncClient")
 @patch(
-    "src.chimera_intel.core.http_client.httpx.AsyncHTTPTransport"
+    "chimera_intel.core.http_client.httpx.AsyncHTTPTransport"
 )  # FIX: Patch the correct path
 async def test_get_client_with_proxy(
     mock_transport_class_call, mock_client_class_call, mock_network_timeout
@@ -202,7 +209,6 @@ async def test_get_client_with_proxy(
 
     assert call_kwargs["transport"] == mock_transport_instance
     assert isinstance(call_kwargs["timeout"], Timeout)
-    # FIX: Access .read (or .connect, .write) instead of .timeout
     assert call_kwargs["timeout"].read == 30.0  # From mock_network_timeout
     assert call_kwargs["headers"] == {"User-Agent": "Chimera-Intel/6.0"}
 

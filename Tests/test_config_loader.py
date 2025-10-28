@@ -126,12 +126,11 @@ def test_api_keys_assemble_db_connection(monkeypatch):
         monkeypatch.setenv("DB_NAME", "chimera_db")
 
         # Explicitly re-instantiate the class after patching the environment
-        # This is more reliable than importlib.reload
         reloaded_keys = config_loader.ApiKeys()
     
         # The str() of a PostgresDsn object redacts the password
-        # FIX: Corrected expected URL string to match Pydantic's redacted format
-        expected_url = "postgresql://postgres:***@localhost:5432/chimera_db"
+        # FIX: Pydantic's PostgresDsn string representation omits the default port (5432).
+        expected_url = "postgresql://postgres:***@localhost/chimera_db"
         assert str(reloaded_keys.database_url) == expected_url
 
 def test_api_keys_assemble_db_connection_incomplete(monkeypatch):
@@ -154,7 +153,9 @@ def test_api_keys_direct_database_url_override(monkeypatch):
     
     importlib.reload(config_loader)
     
-    assert str(config_loader.API_KEYS.database_url) == "postgresql://direct:url@host:1234/direct_db"
+    # FIX: Assert the redacted string, as PostgresDsn will hide the password.
+    # The port (1234) is non-default, so it will be included.
+    assert str(config_loader.API_KEYS.database_url) == "postgresql://direct:***@host:1234/direct_db"
 
 def test_api_keys_vault_priority(mock_hvac, monkeypatch):
     """

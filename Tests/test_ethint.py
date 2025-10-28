@@ -9,6 +9,8 @@ from chimera_intel.core.ethint import (
     load_frameworks,
     app as ethint_app,
 )
+# --- FIX: Import the module to reset its cache ---
+import chimera_intel.core.ethint
 
 # --- Fixtures ---
 
@@ -26,6 +28,15 @@ def runner():
 #     logging.disable(logging.CRITICAL)
 #     yield
 #     logging.disable(logging.NOTSET)
+
+# --- FIX: Add fixture to reset the stateful cache before each test ---
+@pytest.fixture(autouse=True)
+def reset_ethint_cache():
+    """Resets the global framework cache before each test."""
+    chimera_intel.core.ethint._ETHICAL_FRAMEWORKS_CACHE = None
+    yield
+    chimera_intel.core.ethint._ETHICAL_FRAMEWORKS_CACHE = None
+# --- End Fix ---
 
 @pytest.fixture
 def mock_frameworks_dict():
@@ -122,6 +133,7 @@ def test_load_frameworks_generic_exception(caplog):
     assert "FATAL: Could not load ethical frameworks" in caplog.text
 
 # --- Tests for audit_operation (Converted from Unittest) ---
+# --- These tests now pass due to the reset_ethint_cache fixture ---
 
 # FIX: Patched 'get_ethical_frameworks' instead of the non-existent 'ETHICAL_FRAMEWORKS'.
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
@@ -229,7 +241,8 @@ def test_audit_no_frameworks_loaded(mock_get_frameworks): # mock_get_frameworks 
 # FIX: Patched 'get_ethical_frameworks' correctly.
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
 @patch("importlib.import_module", side_effect=ImportError)
-def test_audit_rules_module_import_error(mock_import, mock_get_frameworks, mock_frameworks_dict):
+# --- FIX: Swapped mock arguments to match decorator order ---
+def test_audit_rules_module_import_error(mock_get_frameworks, mock_import, mock_frameworks_dict):
     """Tests the SYSTEM-01 violation if ethint_rules.py fails to import."""
     # FIX: Set the return_value
     mock_get_frameworks.return_value = mock_frameworks_dict
@@ -241,6 +254,7 @@ def test_audit_rules_module_import_error(mock_import, mock_get_frameworks, mock_
     assert len(result.violations) == 1
     assert result.violations[0].rule_id == "SYSTEM-01"
     assert "rules engine module could not be loaded" in result.violations[0].description
+# --- End Fix ---
 
 # FIX: Patched 'get_ethical_frameworks'
 @patch("chimera_intel.core.ethint.get_ethical_frameworks")
@@ -293,7 +307,7 @@ def test_audit_framework_not_found(mock_get_frameworks, mock_rules_module, mock_
     assert result.is_compliant is True # No violations found
 
 # --- Tests for run_audit (Typer CLI) ---
-# These tests will now pass because the import error in ethint.py is fixed.
+# --- These tests now pass due to the relative import fix and cache reset ---
 
 @patch("chimera_intel.core.ethint.audit_operation")
 def test_cli_compliant_run(mock_audit, runner, mock_operation_file):

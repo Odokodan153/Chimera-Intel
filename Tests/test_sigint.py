@@ -129,9 +129,9 @@ def test_process_message_df20_commb_exception(mock_cs20, interceptor, capsys):
 # --- Unit Tests for Core Functions ---
 
 @patch("chimera_intel.core.sigint.socket.socket")
-# --- FIX: Corrected patch path to target the imported 'adsb' object ---
 @patch("chimera_intel.core.sigint.adsb.position_with_ref", return_value=(34.1, -118.1))
-def test_run_sigint_analysis_success(mock_pos_ref, mock_socket_class):
+# --- FIX: Swapped mock arguments to match decorator order (top-down) ---
+def test_run_sigint_analysis_success(mock_socket_class, mock_pos_ref):
 # --- End Fix ---
     """Tests a successful live analysis run."""
     mock_socket = MagicMock()
@@ -175,8 +175,17 @@ def test_run_sigint_analysis_stream_exception(mock_socket_class, capsys): # FIX:
     ]
     mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-    with patch("time.time", side_effect=[1000.0, 1000.1, 1000.2, 1070.0]):
+    # --- FIX: Add more time.time() ticks to allow the loop to run and hit the exception ---
+    with patch("time.time", side_effect=[
+        1000.0, # start_time
+        1000.1, # loop 1 check
+        1000.2, # process_message timestamp
+        1000.3, # loop 2 check (hits Exception)
+        1000.4, # loop 3 check (hits socket.timeout)
+        1070.0  # loop 4 check (exits)
+    ]):
         results = run_sigint_analysis(34.0, -118.0, "host", 123, duration_seconds=60)
+    # --- End Fix ---
 
     assert "4840D6" in results # First message processed
     captured = capsys.readouterr()
@@ -190,6 +199,8 @@ def test_decode_adsb_from_capture_exception(mock_malformed_adsb_file, capsys):
     assert results == {} # Should fail gracefully
     captured = capsys.readouterr()
     # FIX: Check for the exact plain text output from console.print
+    # This test now passes because the Console(width=200) in sigint.py
+    # prevents the error message from being wrapped with a '\n'.
     expected_error = "An error occurred while processing the file: Malformed row: ['not_a_float', '8D4840D6202CC3']. Error: could not convert string to float: 'not_a_float'\n"
     assert expected_error in captured.out
     

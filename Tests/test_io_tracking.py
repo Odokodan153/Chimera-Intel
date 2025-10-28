@@ -54,8 +54,8 @@ MOCK_REDDIT_RESPONSE = {"data": {"children": MOCK_REDDIT_POSTS}}
 # --- ORIGINAL TESTS (Corrected) ---
 # These tests are kept as they are good integration-level tests for the CLI command.
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
@@ -110,8 +110,8 @@ def test_track_influence_no_api_key(
     mock_search_news.assert_not_called()  # Fails before calling
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative")
@@ -135,8 +135,8 @@ def test_track_influence_api_error(
     assert "API Error: Failed to fetch data. Status code: 500" in result.output
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[{"data": "reddit post"}])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
@@ -163,8 +163,8 @@ def test_track_influence_no_news_success(
     mock_search_reddit.assert_called_once()
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
 def test_track_influence_no_twitter_key(
@@ -190,8 +190,8 @@ def test_track_influence_no_twitter_key(
     assert "Tech News Today" in result.output
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("tweepy.Client")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
@@ -219,8 +219,8 @@ def test_track_influence_twitter_api_error(
     assert "Business Insider" in result.output
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("httpx.Client.get", side_effect=httpx.RequestError("Reddit is down"))
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
@@ -244,8 +244,8 @@ def test_track_influence_reddit_api_error(
     assert "Business Insider" in result.output
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=RuntimeError("A generic unexpected error"))
@@ -281,8 +281,8 @@ def test_track_influence_no_narrative_arg():
     assert "--narrative" in result.output
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
@@ -474,8 +474,8 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 
 # --- Comprehensive Test for 'track' command ---
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.console")
 @patch("tweepy.Client")
 @patch("httpx.Client")
@@ -535,8 +535,8 @@ def test_track_influence_full_run_with_results(
     assert printed_table.rows[0].cells == ("Tech News Today", "Rumors of Failure Swirl Around New Product")
 
 
-# FIX: Added patch for gnews_api_key to bypass the initial check
-@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", "fake_key")
+# FIX: Removed "fake_key" to allow the patch to pass the mock argument
+@patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=ValueError("Test value error"))
 def test_track_influence_value_error(mock_search_news, mock_gnews_key):
     """

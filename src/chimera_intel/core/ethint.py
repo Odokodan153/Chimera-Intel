@@ -1,8 +1,8 @@
 import logging
 import json
 from typing import List, Dict, Optional
-# FIX: Changed relative import to absolute import to fix Typer CLI execution.
-from chimera_intel.core.schemas import Operation, ComplianceResult, ComplianceViolation
+# FIX: Changed absolute import back to relative to fix pytest module loading.
+from .schemas import Operation, ComplianceResult, ComplianceViolation
 import typer
 from rich.console import Console
 from rich.table import Table

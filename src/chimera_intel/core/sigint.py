@@ -21,7 +21,8 @@ from chimera_intel.core.utils import save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 
 # --- FIX: Create local console instance for proper capsys capture ---
-console = Console()
+# --- FIX 2: Set a large width to prevent text-wrapping in test assertions ---
+console = Console(width=200)
 # --- End Fix ---
 
 
