@@ -3,7 +3,6 @@ from typer.testing import CliRunner
 import httpx
 from unittest.mock import patch, MagicMock, ANY
 import tweepy
-from rich.table import Table
 
 from chimera_intel.core.config_loader import API_KEYS
 
