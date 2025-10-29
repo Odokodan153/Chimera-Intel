@@ -527,21 +527,19 @@ class TestCLI:
     def test_cli_execute_objective_success(self, runner):
         """Tests the 'execute-objective' command on success."""
         
-        # --- FIX: Mock the module that fails import *before* reloading ---
+        # --- FIX: Mock the module that fails import *before* importing aia_framework ---
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-        # --- END FIX ---
             
-            from importlib import reload
-            import chimera_intel.core.aia_framework
-            reloaded_module = reload(chimera_intel.core.aia_framework)
-            aia_cli_app = reloaded_module.app
+            # Import the module *after* the dependency is mocked
+            from chimera_intel.core.aia_framework import app as aia_cli_app
 
-            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            # Patch the analysis function using its fully qualified name
+            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
                 
                 assert result.exit_code == 0, result.output # Show output on failure
-                assert "Objective Received" in result.stdout
+                assert "Objective Received" in result.output
                 mock_run_analysis.assert_called_once_with(
                     "Analyze example.com",
                     unittest.mock.ANY, # For the generated filename
@@ -554,17 +552,15 @@ class TestCLI:
     def test_cli_execute_objective_args_passed(self, runner):
         """Tests that CLI arguments are correctly passed to the analysis function."""
         
-        # --- FIX: Mock the module that fails import *before* reloading ---
+        # --- FIX: Mock the module that fails import *before* importing aia_framework ---
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-        # --- END FIX ---
 
-            from importlib import reload
-            import chimera_intel.core.aia_framework
-            reloaded_module = reload(chimera_intel.core.aia_framework)
-            aia_cli_app = reloaded_module.app
+            # Import the module *after* the dependency is mocked
+            from chimera_intel.core.aia_framework import app as aia_cli_app
 
-            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            # Patch the analysis function using its fully qualified name
+            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 result = runner.invoke(
                     aia_cli_app,
                     [
@@ -593,23 +589,22 @@ class TestCLI:
     def test_cli_execute_objective_exception(self, runner):
         """Tests that the CLI exits with code 1 if the analysis fails."""
         
-        # --- FIX: Mock the module that fails import *before* reloading ---
+        # --- FIX: Mock the module that fails import *before* importing aia_framework ---
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-        # --- END FIX ---
 
-            from importlib import reload
-            import chimera_intel.core.aia_framework
-            reloaded_module = reload(chimera_intel.core.aia_framework)
-            aia_cli_app = reloaded_module.app
+            # Import the module *after* the dependency is mocked
+            from chimera_intel.core.aia_framework import app as aia_cli_app
             
-            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            # Patch the analysis function using its fully qualified name
+            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 mock_run_analysis.side_effect = Exception("A critical error")
                 
+                # The command with the single-word "Test" argument will now be parsed correctly
                 result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
                 
                 assert result.exit_code == 1, result.output
-                assert "An unhandled error occurred" in result.stdout
+                assert "An unhandled error occurred" in result.output
 
 
 if __name__ == "__main__":
