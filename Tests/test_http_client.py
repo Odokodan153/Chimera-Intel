@@ -41,7 +41,8 @@ def mocked_global_client(mock_handler, mock_network_timeout):
     mock_transport = httpx.MockTransport(mock_handler)
     
     # 2. Get the patched timeout value
-    timeout_value = mock_network_timeout.return_value  # This is 30.0
+    # --- FIX: The fixture yields the float 30.0 directly, not a mock ---
+    timeout_value = mock_network_timeout  # This is 30.0
     
     # 3. Create a new client configured to use our MOCK transport
     client = AsyncClient(

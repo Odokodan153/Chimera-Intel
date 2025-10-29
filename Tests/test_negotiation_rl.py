@@ -195,35 +195,43 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
     @patch("random.sample")
     def test_optimize_model_step(self, mock_sample):
         """Tests a full optimization step."""
-        # Populate memory
+        # Populate memory with non-final and final states
         state_tensor = self.agent._state_to_tensor({"negotiation_turn_number": 1})
         next_state_tensor = self.agent._state_to_tensor({"negotiation_turn_number": 2})
-        # --- FIX: Ensure all tensors are created on the correct device ---
         action_tensor = torch.tensor([[1]], dtype=torch.long, device=self.agent.device)
         reward_tensor = torch.tensor([0.5], dtype=torch.float32, device=self.agent.device)
-        # --- END FIX ---
+        
+        final_state_tensor = self.agent._state_to_tensor({"negotiation_turn_number": 3})
+        final_action_tensor = torch.tensor([[0]], dtype=torch.long, device=self.agent.device)
+        final_reward_tensor = torch.tensor([-1.0], dtype=torch.float32, device=self.agent.device)
+        
+        # --- FIX: Create a batch with at least one final state (None) ---
+        num_non_final = self.agent.batch_size - 1
         
         transitions = [
             Transition(state_tensor, action_tensor, next_state_tensor, reward_tensor)
-        ] * self.agent.batch_size
+        ] * num_non_final
+        
+        transitions.append(
+            Transition(final_state_tensor, final_action_tensor, None, final_reward_tensor)
+        )
         
         self.agent.memory = transitions
         mock_sample.return_value = transitions
         
-        # --- FIX: Mock the *output* of the network calls ---
-        # Mock the tensor returned by policy_net(...) and its .gather() method
+        # --- Mock network outputs ---
+
+        # Mock policy net (called with full batch [128, 4])
         mock_policy_output = MagicMock(spec=torch.Tensor)
-        mock_policy_output.gather.return_value = torch.rand(self.agent.batch_size, 1)
+        mock_policy_output.gather.return_value = torch.rand(self.agent.batch_size, 1, device=self.agent.device)
         self.mock_policy_net.return_value = mock_policy_output
 
-        # Mock the tensor returned by target_net(...) and its .max() method
-        # .max(1) returns a tuple (values, indices)
+        # Mock target net (called with non-final states only [127, 4])
         mock_target_output = MagicMock(spec=torch.Tensor)
         
-        # --- FIX for RuntimeError ---
-        # The return value for .max(1)[0] must be shape [128], not [128, 1],
-        # to match the shape of the masked next_state_values tensor it's being assigned to.
-        mock_target_output.max.return_value = (torch.rand(self.agent.batch_size), None)
+        # --- FIX for shape mismatch ---
+        # .max(1)[0] must return shape [num_non_final], e.g. [127]
+        mock_target_output.max.return_value = (torch.rand(num_non_final, device=self.agent.device), None)
         
         self.mock_target_net.return_value = mock_target_output
         # --- END FIX ---
@@ -243,6 +251,14 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
             self.agent.optimizer.zero_grad.assert_called_once()
             mock_loss.backward.assert_called_once()
             self.agent.optimizer.step.assert_called_once()
+            
+            # Check that policy_net was called with full batch
+            self.mock_policy_net.assert_called_once()
+            self.assertEqual(self.mock_policy_net.call_args[0][0].shape[0], self.agent.batch_size)
+            
+            # Check that target_net was called with non-final batch
+            self.mock_target_net.assert_called_once()
+            self.assertEqual(self.mock_target_net.call_args[0][0].shape[0], num_non_final)
             
     @patch("torch.save")
     def test_save_model(self, mock_torch_save):
