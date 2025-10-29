@@ -520,7 +520,6 @@ class TestCLI:
         # Patch before importing the CLI app
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
             from chimera_intel.core.aia_framework import app as aia_cli_app
-            from chimera_intel.core.aia_framework import _run_autonomous_analysis
 
             with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
@@ -541,7 +540,6 @@ class TestCLI:
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
             from chimera_intel.core.aia_framework import app as aia_cli_app
-            from chimera_intel.core.aia_framework import _run_autonomous_analysis
 
             with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 result = runner.invoke(
@@ -574,7 +572,6 @@ class TestCLI:
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
             from chimera_intel.core.aia_framework import app as aia_cli_app
-            from chimera_intel.core.aia_framework import _run_autonomous_analysis
 
             with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
                 mock_run_analysis.side_effect = Exception("A critical error")
