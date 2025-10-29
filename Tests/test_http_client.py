@@ -44,7 +44,7 @@ async def event_loop_client(mock_network_timeout):
 
 # --- FIXED mock_pool_request fixture ---
 @pytest.fixture
-async def mock_pool_request(event_loop_client):
+def mock_pool_request(event_loop_client):  # No 'async'
     """
     Patches the transport pool's 'request' method and yields an AsyncMock
     object so tests can directly configure `.return_value` and `.side_effect`.

@@ -313,7 +313,13 @@ def monitor_chemical_news(
         # FIX: Replaced expand=True with a fixed width and column ratios 
         # to prevent URL truncation in test environments.
         table = Table(show_header=True, header_style="bold magenta", width=120)
-        table.add_column("Source", overflow="fold", ratio=1)
+        
+        # --- THIS IS THE FIX ---
+        # Changed overflow="fold" to no_wrap=True and overflow="ellipsis"
+        # to prevent the "Source" string from wrapping, which breaks the test.
+        table.add_column("Source", no_wrap=True, overflow="ellipsis", ratio=1)
+        # --- END FIX ---
+        
         table.add_column("Title", overflow="fold", ratio=2)
         # --- THIS IS THE FIX ---
         # Changed overflow="fold" to no_wrap=True and overflow="ellipsis"

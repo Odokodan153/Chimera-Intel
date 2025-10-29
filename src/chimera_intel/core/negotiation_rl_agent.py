@@ -166,48 +166,29 @@ class QLearningLLMAgent:
         if len(self.memory) < self.batch_size:
             return
         transitions = random.sample(self.memory, self.batch_size)
-        # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-        # detailed explanation). This converts batch-array of Transitions
-        # to Transition of batch-arrays.
-
+        # Transpose the batch
         batch = Transition(*zip(*transitions))
 
-        # Compute a mask of non-final states and concatenate the batch elements
-        # (a final state would've been the one after which simulation ended)
-
+        # Compute a mask of non-final states
         non_final_mask = torch.tensor(
             tuple(map(lambda s: s is not None, batch.next_state)),
             device=self.device,
             dtype=torch.bool,
         )
         
-        # --- FIX: Do not concatenate here. We must check non_final_mask first
-        # to prevent torch.cat on an empty list if all states are terminal.
-        #
-        # non_final_next_states = torch.cat(
-        #     [s for s in batch.next_state if s is not None]
-        # )
+        # --- FIX: The unconditional torch.cat on next_state is removed from here ---
         
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
 
-        # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-        # columns of actions taken. These are the actions which would've been taken
-        # for each batch state according to policy_net
-
+        # Compute Q(s_t, a)
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
         # Compute V(s_{t+1}) for all next states.
-        # Expected values of actions for non_final_next_states are computed based
-        # on the "older" target_net; selecting their best reward with max(1)[0].
-        # This is merged based on the mask, such that we'll have either the expected
-        # state value or 0 in case of a final state.
-
         next_state_values = torch.zeros(self.batch_size, device=self.device)
         with torch.no_grad():
-            # --- FIX: Check if any non-final states exist *before*
-            # concatenating and passing to the target network.
+            # --- FIX: Only concatenate and compute if non-final states exist ---
             if non_final_mask.any():
                 non_final_next_states = torch.cat(
                     [s for s in batch.next_state if s is not None]
@@ -217,16 +198,13 @@ class QLearningLLMAgent:
                 ).max(1)[0]
         
         # Compute the expected Q values
-
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
         # Compute Huber loss
-
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
-
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
