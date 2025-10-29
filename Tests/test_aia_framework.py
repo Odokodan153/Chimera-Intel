@@ -87,16 +87,14 @@ class TestLoadAvailableModules:
         mock_pkg.__name__ = "chimera_intel.core"
         return mock_pkg
 
-    @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    # FIX: Patch the new import 'aia_core_package'
-    @patch("chimera_intel.core.aia_framework.aia_core_package") 
-    # --- FIX: Corrected argument order ---
-    def test_load_success(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
+    @patch("pkgutil.iter_modules")
+    @patch("importlib.import_module")
     # --- END FIX ---
+    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    def test_load_success(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests successful loading of allowed sync and async modules."""
         # Configure the mock package
-        # FIX: Use the correct mock object
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
 
@@ -107,7 +105,6 @@ class TestLoadAvailableModules:
         mock_mod_sync.run = MagicMock()
 
         # Simulate finding two allowed modules
-        # FIX: Use the correct module paths
         mock_iter_modules.return_value = [
             (None, "chimera_intel.core.footprint", None),
             (None, "chimera_intel.core.threat_intel", None),
@@ -122,16 +119,14 @@ class TestLoadAvailableModules:
         assert modules["threat_intel"]["is_async"] is False
         assert "Loaded 2 modules" in caplog.text
 
-    @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    # FIX: Patch the new import 'aia_core_package'
-    @patch("chimera_intel.core.aia_framework.aia_core_package") 
-    # --- FIX: Corrected argument order ---
-    def test_load_skip_non_allowed(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
+    @patch("pkgutil.iter_modules")
+    @patch("importlib.import_module")
     # --- END FIX ---
+    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    def test_load_skip_non_allowed(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests that modules not in ALLOWED_MODULES are skipped."""
         # Configure the mock package
-        # FIX: Use the correct mock object
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
 
@@ -139,12 +134,10 @@ class TestLoadAvailableModules:
         mock_mod.run = MagicMock()
 
         # Simulate finding one allowed and one non-allowed module
-        # FIX: Use the correct module paths
         mock_iter_modules.return_value = [
             (None, "chimera_intel.core.footprint", None),
             (None, "chimera_intel.core.some_other", None), # This one is not in ALLOWED_MODULES
         ]
-        # FIX: Use side_effect to match successful test pattern
         mock_import.side_effect = [mock_mod]
 
         modules = load_available_modules()
@@ -153,19 +146,16 @@ class TestLoadAvailableModules:
         assert "some_other" not in modules
         assert "Loaded 1 modules" in caplog.text
         # Ensure import was only called for the allowed module
-        # FIX: Use the correct module path
         mock_import.assert_called_once_with("chimera_intel.core.footprint")
 
-    @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    @patch("chimera_intel.core.aia_framework.importlib.import_module")
-    # FIX: Patch the new import 'aia_core_package'
-    @patch("chimera_intel.core.aia_framework.aia_core_package")
-    # --- FIX: Corrected argument order ---
-    def test_load_no_run_attr(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
+    @patch("pkgutil.iter_modules")
+    @patch("importlib.import_module")
     # --- END FIX ---
+    @patch("chimera_intel.core.aia_framework.aia_core_package")
+    def test_load_no_run_attr(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests warning if a module has no 'run' attribute."""
         # Configure the mock package
-        # FIX: Use the correct mock object
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
         
@@ -174,30 +164,25 @@ class TestLoadAvailableModules:
             pass
         mock_mod = DummyModule() 
 
-        # FIX: Use the correct module path
         mock_iter_modules.return_value = [
             (None, "chimera_intel.core.footprint", None)
         ]
-        # FIX: Use side_effect to match successful test pattern
         mock_import.side_effect = [mock_mod]
 
         modules = load_available_modules()
         
-        # --- FIX: Corrected assertions ---
-        # The test *should* log the warning, then fail to load, then hit the fallback.
+        # We expect the log, but then the function should find no modules and hit the fallback
         assert "Module footprint does not have a 'run' function" in caplog.text
         assert "Falling back to built-ins" in caplog.text
         assert "footprint" in modules # The module *is* present from the fallback.
-        # --- End Fix ---
 
-
-    @patch("chimera_intel.core.aia_framework.pkgutil.iter_modules")
-    # FIX: Patch the new import 'aia_core_package'
+    # --- FIX: Changed patch target from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
+    @patch("pkgutil.iter_modules")
+    # --- END FIX ---
     @patch("chimera_intel.core.aia_framework.aia_core_package") 
     def test_load_fallback(self, mock_aia_core_package, mock_iter_modules, caplog):
         """Tests fallback to built-ins if dynamic loading finds nothing."""
         # Configure the mock package
-        # FIX: Use the correct mock object
         mock_aia_core_package.__path__ = ["dummy/path"]
         mock_aia_core_package.__name__ = "chimera_intel.core"
         
@@ -311,7 +296,6 @@ class TestExecutePlan:
     async def test_execute_plan_task_timeout(self, mock_console, mock_modules):
         """Tests failure when a module times out."""
         
-        # FIX: Use a real async function for the side_effect
         async def long_sleep(*args, **kwargs):
             await asyncio.sleep(2)
             return "Should not return"
@@ -327,7 +311,6 @@ class TestExecutePlan:
         result_plan = await execute_plan(plan, mock_console, mock_modules, timeout=1) 
 
         assert result_plan.tasks[0].status == "failed"
-        # FIX: Changed assertion from "1.0s" to "1s" to match code output
         assert "TimeoutError: Task execution exceeded 1s" in result_plan.tasks[0].result["error"]
 
 
@@ -519,104 +502,101 @@ class TestRunAutonomousAnalysis:
         """Tests that the run exits if no initial plan can be created."""
         mock_create_plans.return_value = [] # No plan
         
-        # FIX: Catch the specific typer.Exit exception
         with pytest.raises(typer.Exit) as e:
             await _run_autonomous_analysis("Test", None, 5, 30, 300)
         
-        # FIX: Check for 'exit_code' attribute
         assert e.value.exit_code == 1
 
 
 class TestCLI:
     """Tests the Typer CLI commands."""
 
-    # --- FIX: Removed @patch decorator ---
     def test_cli_execute_objective_success(self, runner):
-    # --- END FIX ---
         """Tests the 'execute-objective' command on success."""
         
-        # FIX: Reload the module to ensure a clean app state
-        from importlib import reload
-        import chimera_intel.core.aia_framework
-        # --- FIX: Reload module and patch *after* reload ---
-        reloaded_module = reload(chimera_intel.core.aia_framework)
-        aia_cli_app = reloaded_module.app
-
-        with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+        # --- FIX: Mock the module that fails import *before* reloading ---
+        mock_are = MagicMock()
+        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
         # --- END FIX ---
-            result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
             
-            assert result.exit_code == 0
-            assert "Objective Received" in result.stdout
-            # FIX: Make assertion more robust to check for generated filename
-            mock_run_analysis.assert_called_once_with(
-                "Analyze example.com",
-                unittest.mock.ANY, # For the generated filename
-                5, # default
-                60, # default
-                300 # default
-            )
+            from importlib import reload
+            import chimera_intel.core.aia_framework
+            reloaded_module = reload(chimera_intel.core.aia_framework)
+            aia_cli_app = reloaded_module.app
+
+            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+                result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
+                
+                assert result.exit_code == 0, result.output # Show output on failure
+                assert "Objective Received" in result.stdout
+                mock_run_analysis.assert_called_once_with(
+                    "Analyze example.com",
+                    unittest.mock.ANY, # For the generated filename
+                    5, # default
+                    60, # default
+                    300 # default
+                )
 
 
-    # --- FIX: Removed @patch decorator ---
     def test_cli_execute_objective_args_passed(self, runner):
-    # --- END FIX ---
         """Tests that CLI arguments are correctly passed to the analysis function."""
         
-        # FIX: Reload the module to ensure a clean app state
-        from importlib import reload
-        import chimera_intel.core.aia_framework
-        # --- FIX: Reload module and patch *after* reload ---
-        reloaded_module = reload(chimera_intel.core.aia_framework)
-        aia_cli_app = reloaded_module.app
-
-        with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+        # --- FIX: Mock the module that fails import *before* reloading ---
+        mock_are = MagicMock()
+        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
         # --- END FIX ---
-            result = runner.invoke(
-                aia_cli_app,
-                [
-                    "execute-objective",
-                    "Full test",
-                    "--output",
-                    "out.json",
-                    "--max-runs",
-                    "3",
-                    "--timeout",
-                    "90",
-                    "--max-runtime",
-                    "600",
-                ],
-            )
-            
-            assert result.exit_code == 0
-            mock_run_analysis.assert_called_once_with(
-                "Full test",
-                "out.json", # The CLI passes the specified name
-                3,
-                90,
-                600,
-            )
 
-    # --- FIX: Removed @patch decorator ---
+            from importlib import reload
+            import chimera_intel.core.aia_framework
+            reloaded_module = reload(chimera_intel.core.aia_framework)
+            aia_cli_app = reloaded_module.app
+
+            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+                result = runner.invoke(
+                    aia_cli_app,
+                    [
+                        "execute-objective",
+                        "Full test",
+                        "--output",
+                        "out.json",
+                        "--max-runs",
+                        "3",
+                        "--timeout",
+                        "90",
+                        "--max-runtime",
+                        "600",
+                    ],
+                )
+                
+                assert result.exit_code == 0, result.output
+                mock_run_analysis.assert_called_once_with(
+                    "Full test",
+                    "out.json", # The CLI passes the specified name
+                    3,
+                    90,
+                    600,
+                )
+
     def test_cli_execute_objective_exception(self, runner):
-    # --- END FIX ---
         """Tests that the CLI exits with code 1 if the analysis fails."""
         
-        # FIX: Reload the module to ensure a clean app state
-        from importlib import reload
-        import chimera_intel.core.aia_framework
-        # --- FIX: Reload module and patch *after* reload ---
-        reloaded_module = reload(chimera_intel.core.aia_framework)
-        aia_cli_app = reloaded_module.app
-        
-        with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
-            mock_run_analysis.side_effect = Exception("A critical error")
+        # --- FIX: Mock the module that fails import *before* reloading ---
+        mock_are = MagicMock()
+        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
         # --- END FIX ---
+
+            from importlib import reload
+            import chimera_intel.core.aia_framework
+            reloaded_module = reload(chimera_intel.core.aia_framework)
+            aia_cli_app = reloaded_module.app
             
-            result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
-            
-            assert result.exit_code == 1
-            assert "An unhandled error occurred" in result.stdout
+            with patch.object(reloaded_module, "_run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+                mock_run_analysis.side_effect = Exception("A critical error")
+                
+                result = runner.invoke(aia_cli_app, ["execute-objective", "Test"])
+                
+                assert result.exit_code == 1, result.output
+                assert "An unhandled error occurred" in result.stdout
 
 
 if __name__ == "__main__":

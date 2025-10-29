@@ -196,8 +196,8 @@ class TestQLearningLLMAgent(unittest.IsolatedAsyncioTestCase):
     def test_optimize_model_step(self, mock_sample):
         """Tests a full optimization step."""
         # Populate memory
-        state_tensor = self.agent._state_to_tensor({"turn": 1})
-        next_state_tensor = self.agent._state_to_tensor({"turn": 2})
+        state_tensor = self.agent._state_to_tensor({"negotiation_turn_number": 1})
+        next_state_tensor = self.agent._state_to_tensor({"negotiation_turn_number": 2})
         # --- FIX: Ensure all tensors are created on the correct device ---
         action_tensor = torch.tensor([[1]], dtype=torch.long, device=self.agent.device)
         reward_tensor = torch.tensor([0.5], dtype=torch.float32, device=self.agent.device)

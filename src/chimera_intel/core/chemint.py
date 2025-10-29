@@ -315,9 +315,8 @@ def monitor_chemical_news(
         table = Table(show_header=True, header_style="bold magenta", width=120)
         
         # --- THIS IS THE FIX ---
-        # Changed overflow="fold" to no_wrap=True and overflow="ellipsis"
-        # to prevent the "Source" string from wrapping, which breaks the test.
-        table.add_column("Source", no_wrap=True, overflow="ellipsis", ratio=1)
+        # Changed ratio from 1 to 2 to prevent truncation of "Chemical & Engineering News"
+        table.add_column("Source", no_wrap=True, overflow="ellipsis", ratio=2)
         # --- END FIX ---
         
         table.add_column("Title", overflow="fold", ratio=2)
