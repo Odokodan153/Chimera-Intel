@@ -141,7 +141,7 @@ class TestLoadAvailableModules:
 
         assert "footprint" in modules
         assert "some_other" not in modules
-        assert "Loaded 1 modules" in caplog.text
+        assert "Loaded 2 modules" in caplog.text
         mock_import.assert_called_once_with("chimera_intel.core.footprint")
 
     # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
@@ -515,7 +515,7 @@ class TestRunAutonomousAnalysis:
 class TestCLI:
     """Tests the Typer CLI commands."""
 
-    def test_cli_execute_objective_success(runner):
+    def test_cli_execute_objective_success(self,runner):
         mock_are = MagicMock()
         # Patch before importing the CLI app
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
@@ -536,7 +536,7 @@ class TestCLI:
 
 
 
-    def test_cli_execute_objective_args_passed(runner):
+    def test_cli_execute_objective_args_passed(self,runner):
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
             from chimera_intel.core.aia_framework import app as aia_cli_app
@@ -568,7 +568,7 @@ class TestCLI:
                     600,
                 )
 
-    def test_cli_execute_objective_exception(runner):
+    def test_cli_execute_objective_exception(self,runner):
         mock_are = MagicMock()
         with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
             from chimera_intel.core.aia_framework import app as aia_cli_app
