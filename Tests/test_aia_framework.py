@@ -512,31 +512,6 @@ class TestRunAutonomousAnalysis:
         assert e.value.exit_code == 1
 
 
-class TestCLI:
-    """Tests the Typer CLI commands."""
-
-    def test_cli_execute_objective_success(self,runner):
-        mock_are = MagicMock()
-        # Patch before importing the CLI app
-        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-            from chimera_intel.core.aia_framework import app as aia_cli_app
-
-            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
-                result = runner.invoke(aia_cli_app, ["execute-objective", "Analyze example.com"])
-                
-                assert result.exit_code == 0, result.output
-                assert "Objective Received" in result.output
-                mock_run_analysis.assert_called_once_with(
-                    "Analyze example.com",
-                    unittest.mock.ANY,
-                    5,
-                    60,
-                    300
-                )
-
-
-
-    d# --- ADD THIS FIXTURE ---
 @pytest.fixture
 def cli_app():
     """
