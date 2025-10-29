@@ -25,7 +25,7 @@ from chimera_intel.core.advanced_reasoning_engine import generate_reasoning, dec
 # --- Version Info ---
 
 
-__version__ = "1.3.2"
+__version__ = "1.3.2"\
 
 # --- Logger with RotatingFileHandler ---
 
@@ -112,7 +112,6 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
         logger.warning(
             "Dynamic module loading found no modules. Falling back to built-ins."
         )
-        
         # FIX: Changed relative imports to absolute
         from chimera_intel.core.footprint import run_footprint_analysis
         from chimera_intel.core.threat_intel import get_threat_intel_otx
