@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock, mock_open, ANY
 from chimera_intel.core.negotiation_rl_agent import (
     QLearningAgent,
     QLearningLLMAgent,
-    Transition,
 )
 from chimera_intel.core.llm_interface import MockLLMInterface
 from chimera_intel.core.ethical_guardrails import EthicalFramework
