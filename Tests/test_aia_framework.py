@@ -536,53 +536,83 @@ class TestCLI:
 
 
 
-    def test_cli_execute_objective_args_passed(self,runner):
-        mock_are = MagicMock()
-        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-            from chimera_intel.core.aia_framework import app as aia_cli_app
+    d# --- ADD THIS FIXTURE ---
+@pytest.fixture
+def cli_app():
+    """
+    Provides the Typer app, importing it within the necessary mock context
+    to prevent module-level errors during initialization.
+    """
+    # This mock is required because 'advanced_reasoning_engine'
+    # is imported at module level in aia_framework.py
+    mock_are = MagicMock()
+    with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
+        from chimera_intel.core.aia_framework import app
+        yield app
 
-            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
-                result = runner.invoke(
-                    aia_cli_app,
-                    [
-                        "execute-objective",
-                        "--",
-                        "Full test",
-                        "--output",
-                        "out.json",
-                        "--max-runs",
-                        "3",
-                        "--timeout",
-                        "90",
-                        "--max-runtime",
-                        "600",
-                    ],
-                )
+# --- REPLACE THE OLD TestCLI CLASS WITH THIS ONE ---
+class TestCLI:
+    """Tests the Typer CLI commands."""
 
-                assert result.exit_code == 0, result.output
-                mock_run_analysis.assert_called_once_with(
+    def test_cli_execute_objective_success(self, runner, cli_app):
+        """Tests the CLI success case, using the app fixture."""
+        with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            # Pass the fixture 'cli_app' to runner.invoke
+            result = runner.invoke(cli_app, ["execute-objective", "Analyze example.com"])
+            
+            assert result.exit_code == 0, result.output
+            assert "Objective Received" in result.output
+            mock_run_analysis.assert_called_once_with(
+                "Analyze example.com",
+                unittest.mock.ANY, # Checks for the default output file
+                5,
+                60,
+                300
+            )
+
+    def test_cli_execute_objective_args_passed(self, runner, cli_app):
+        """Tests that all CLI arguments are correctly passed."""
+        with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            result = runner.invoke(
+                cli_app,
+                [
+                    "execute-objective",
+                    # FIX: Removed the "--" which was confusing the parser
                     "Full test",
+                    "--output",
                     "out.json",
-                    3,
-                    90,
-                    600,
-                )
+                    "--max-runs",
+                    "3",
+                    "--timeout",
+                    "90",
+                    "--max-runtime",
+                    "600",
+                ],
+            )
 
-    def test_cli_execute_objective_exception(self,runner):
-        mock_are = MagicMock()
-        with patch.dict("sys.modules", {"chimera_intel.core.advanced_reasoning_engine": mock_are}):
-            from chimera_intel.core.aia_framework import app as aia_cli_app
+            assert result.exit_code == 0, result.output
+            mock_run_analysis.assert_called_once_with(
+                "Full test",
+                "out.json",
+                3,
+                90,
+                600,
+            )
 
-            with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
-                mock_run_analysis.side_effect = Exception("A critical error")
+    def test_cli_execute_objective_exception(self, runner, cli_app):
+        """Tests the global exception handler in the CLI."""
+        with patch("chimera_intel.core.aia_framework._run_autonomous_analysis", new_callable=AsyncMock) as mock_run_analysis:
+            mock_run_analysis.side_effect = Exception("A critical error")
 
-                result = runner.invoke(
-                    aia_cli_app,
-                    ["execute-objective", "--", "Test"]
-                )
+            result = runner.invoke(
+                cli_app,
+                ["execute-objective", "Test"] # FIX: Removed "--"
+            )
 
-                assert result.exit_code == 1, result.output
-                assert "An unhandled error occurred" in result.output
+            # This now correctly tests the 'except Exception as e:'
+            # block in your 'run_autonomous_analysis_cli' function
+            assert result.exit_code == 1, result.output
+            assert "An unhandled error occurred" in result.output
 
 
 if __name__ == "__main__":
