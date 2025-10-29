@@ -188,14 +188,16 @@ class QLearningLLMAgent:
         # Compute V(s_{t+1}) for all next states.
         next_state_values = torch.zeros(self.batch_size, device=self.device)
         with torch.no_grad():
-            # --- FIX: Only concatenate and compute if non-final states exist ---
-            if non_final_mask.any():
-                non_final_next_states = torch.cat(
-                    [s for s in batch.next_state if s is not None]
-                )
+            # --- START FIX: Check for non-empty list before torch.cat ---
+            non_final_next_states_list = [
+                s for s in batch.next_state if s is not None
+            ]
+            if non_final_next_states_list:
+                non_final_next_states = torch.cat(non_final_next_states_list)
                 next_state_values[non_final_mask] = self.target_net(
                     non_final_next_states
                 ).max(1)[0]
+            # --- END FIX ---
         
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch

@@ -76,7 +76,7 @@ async def test_global_client_transport_success(mocked_global_client, mock_handle
     mock_handler.assert_called_once()
     called_request = mock_handler.call_args[0][0]
     assert called_request.method == "GET"
-    assert str(called_request.url) == "https://example.com/"
+    assert str(called_request.url) == "https://example.com"
 
 
 async def test_global_client_handles_server_error(mocked_global_client, mock_handler):

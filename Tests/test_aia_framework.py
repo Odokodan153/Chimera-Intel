@@ -7,6 +7,7 @@ import asyncio
 import json
 import typer  # Import typer
 from typer.testing import CliRunner
+import logging # <-- Import logging to use for caplog.set_level
 
 # Add the project's root directory to the Python path to ensure imports work correctly
 sys.path.insert(
@@ -131,7 +132,9 @@ class TestLoadAvailableModules:
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
 
         mock_mod = MagicMock()
-        mock_mod.run = MagicMock()
+        # --- FIX: Changed MagicMock() to AsyncMock() to correctly simulate the async 'footprint' module ---
+        mock_mod.run = AsyncMock()
+        # --- END FIX ---
 
         # Simulate finding one allowed and one non-allowed module
         mock_iter_modules.return_value = [
@@ -150,11 +153,20 @@ class TestLoadAvailableModules:
 
     # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
     @patch("pkgutil.iter_modules")
+    # --- FIX: Add the missing patch for importlib.import_module ---
     @patch("importlib.import_module")
+    # --- END FIX ---
     # --- END FIX ---
     @patch("chimera_intel.core.aia_framework.aia_core_package")
     def test_load_no_run_attr(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
         """Tests warning if a module has no 'run' attribute."""
+        
+        # --- FIX: Explicitly set the log capture level ---
+        # This ensures that all logs, including WARNING, are captured
+        # just in case the default level is being overridden.
+        caplog.set_level(logging.WARNING)
+        # --- END FIX ---
+        
         # Configure the mock package
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
