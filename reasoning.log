@@ -49,3 +49,54 @@
   "recommendations": [],
   "next_steps": []
 }
+2025-10-30 08:40:14,324 - REASONING - {
+  "analytical_summary": "Summary",
+  "hypotheses": [],
+  "recommendations": [],
+  "next_steps": [
+    {
+      "module": "new_module",
+      "params": {
+        "p": 1
+      }
+    },
+    {
+      "module": "another_module",
+      "params": {
+        "p": 2
+      }
+    }
+  ]
+}
+2025-10-30 08:40:14,328 - REASONING - {
+  "analytical_summary": "Summary",
+  "hypotheses": [],
+  "recommendations": [],
+  "next_steps": [
+    {
+      "module": "new_module",
+      "params": {
+        "p": 1
+      }
+    }
+  ]
+}
+2025-10-30 08:40:14,330 - REASONING - {
+  "analytical_summary": "Summary",
+  "hypotheses": [],
+  "recommendations": [],
+  "next_steps": [
+    {
+      "module": "recursive_module",
+      "params": {
+        "p": 1
+      }
+    }
+  ]
+}
+2025-10-30 08:40:14,332 - REASONING - {
+  "analytical_summary": "Summary based on fallback.",
+  "hypotheses": [],
+  "recommendations": [],
+  "next_steps": []
+}
