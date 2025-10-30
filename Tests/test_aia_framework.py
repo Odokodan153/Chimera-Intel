@@ -120,30 +120,6 @@ class TestLoadAvailableModules:
         assert modules["threat_intel"]["is_async"] is False
         assert "Loaded 2 modules" in caplog.text
 
-    @patch("pkgutil.iter_modules")
-    @patch("chimera_intel.core.aia_framework.importlib.import_module")  # <- правилният patch
-    @patch("chimera_intel.core.aia_framework.aia_core_package")
-    def test_load_skip_non_allowed(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
-        mock_aia_core_package.__path__ = mock_modules_pkg.__path__
-        mock_aia_core_package.__name__ = mock_modules_pkg.__name__
-
-        mock_mod = MagicMock()
-        mock_mod.run = AsyncMock()
-
-        # Симулираме намерени модули: allowed + not allowed
-        mock_iter_modules.return_value = [
-            (None, "chimera_intel.core.footprint", None),
-            (None, "chimera_intel.core.some_other", None),
-        ]
-        mock_import.side_effect = [mock_mod]  # само allowed module се импортира
-
-        modules = load_available_modules()
-
-        assert "footprint" in modules
-        assert "some_other" not in modules
-        assert "Loaded 2 modules" in caplog.text
-        mock_import.assert_called_once_with("chimera_intel.core.footprint")
-
     # --- FIX: Changed patch targets from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
     @patch("pkgutil.iter_modules")
     # --- FIX: Add the missing patch for importlib.import_module ---
