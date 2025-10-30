@@ -132,12 +132,9 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">client</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">try</span><span class="p">:</span>
-<span class="c1"># If proxies are provided, create a new client with the specified proxy settings.</span>
+        <span class="c1"># If proxies are provided, create a new client with the specified proxy settings.</span>
         <span class="k">if</span> <span class="n">proxies</span> <span class="ow">and</span> <span class="s2">&quot;http&quot;</span> <span class="ow">in</span> <span class="n">proxies</span><span class="p">:</span>
-            <span class="n">transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span>
-                <span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-                <span class="n">proxy</span><span class="o">=</span><span class="n">proxies</span><span class="p">[</span><span class="s2">&quot;http&quot;</span><span class="p">]</span>  
-            <span class="p">)</span>
+            <span class="n">transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">proxy</span><span class="o">=</span><span class="n">proxies</span><span class="p">[</span><span class="s2">&quot;http&quot;</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># FIX: If no proxy, explicitly create a new default transport with retries set.</span>
             <span class="n">transport</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(</span><span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>

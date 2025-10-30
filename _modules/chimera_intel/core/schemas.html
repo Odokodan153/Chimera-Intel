@@ -80,11 +80,11 @@
     <span class="n">JSON</span><span class="p">,</span>
     <span class="n">Boolean</span><span class="p">,</span>
     <span class="n">LargeBinary</span><span class="p">,</span>
-    <span class="n">Enum</span> <span class="k">as</span> <span class="n">SQLAlchemyEnum</span>
+    <span class="n">Enum</span> <span class="k">as</span> <span class="n">SQLAlchemyEnum</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">relationship</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.ext.declarative</span><span class="w"> </span><span class="kn">import</span> <span class="n">declarative_base</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">validator</span><span class="p">,</span> <span class="n">EmailStr</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
@@ -92,6 +92,7 @@
 <span class="c1"># --- General Purpose Models ---</span>
 
 <span class="n">Base</span> <span class="o">=</span> <span class="n">declarative_base</span><span class="p">()</span>
+
 
 <div class="viewcode-block" id="ScoredResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ScoredResult">[docs]</a>
@@ -103,6 +104,7 @@
     <span class="n">confidence</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">threat_intel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;ThreatIntelResult&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="ScanData">
@@ -155,12 +157,14 @@
     <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ScoredResult</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="DnssecInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.DnssecInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DnssecInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">dnssec_enabled</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">spf_record</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">dmarc_record</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="TlsCertInfo">
@@ -173,6 +177,7 @@
     <span class="n">not_after</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="AsnInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.AsnInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AsnInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -182,12 +187,14 @@
     <span class="n">prefix</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="HistoricalDns">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.HistoricalDns">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HistoricalDns</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">a_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">aaaa_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">mx_records</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
 
 
 <div class="viewcode-block" id="IpGeolocation">
@@ -199,6 +206,7 @@
     <span class="n">provider</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="BreachInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.BreachInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BreachInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -206,10 +214,12 @@
     <span class="n">breaches</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="PortScanResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PortScanResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PortScanResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">open_ports</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></div>
+
 
 
 <div class="viewcode-block" id="WebTechInfo">
@@ -221,10 +231,12 @@
     <span class="n">js_library</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="PersonnelInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PersonnelInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PersonnelInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">employees</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span></div>
+
 
 
 <div class="viewcode-block" id="SocialMediaPresence">
@@ -235,11 +247,13 @@
     <span class="n">github</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="KnowledgeGraph">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.KnowledgeGraph">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">KnowledgeGraph</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
     <span class="n">edges</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span></div>
+
 
 
 <div class="viewcode-block" id="FootprintData">
@@ -263,6 +277,7 @@
     <span class="n">knowledge_graph</span><span class="p">:</span> <span class="n">KnowledgeGraph</span></div>
 
 
+
 <div class="viewcode-block" id="FootprintResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.FootprintResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">FootprintResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -272,12 +287,12 @@
     <span class="n">footprint</span><span class="p">:</span> <span class="n">FootprintData</span></div>
 
 
+
 <div class="viewcode-block" id="IpInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IpInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IpInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">asn</span><span class="p">:</span> <span class="n">AsnInfo</span>
     <span class="n">geolocation</span><span class="p">:</span> <span class="n">IpGeolocation</span></div>
-
 
 
 
@@ -734,6 +749,7 @@
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">cvss_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="s2">&quot;cvss&quot;</span><span class="p">)</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="PortDetail">
@@ -1617,6 +1633,7 @@
     <span class="n">pdf</span><span class="p">:</span> <span class="n">ConfigPDF</span> <span class="o">=</span> <span class="n">ConfigPDF</span><span class="p">()</span></div>
 
 
+
 <div class="viewcode-block" id="ConfigModules">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ConfigModules">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ConfigModules</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -1640,6 +1657,7 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ConfigNotifications">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ConfigNotifications</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for notifications from config.yaml.&quot;&quot;&quot;</span>
+
     <span class="n">slack_webhook_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">teams_webhook_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
@@ -1649,9 +1667,11 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ConfigGraphDB">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ConfigGraphDB</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for the graph database from config.yaml.&quot;&quot;&quot;</span>
+
     <span class="n">uri</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bolt://localhost:7687&quot;</span>
     <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;neo4j&quot;</span>
     <span class="n">password</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;password&quot;</span></div>
+
 
 
 <span class="c1"># --- Blockchain &amp; Cryptocurrency OSINT Models ---</span>
@@ -2510,7 +2530,6 @@
 
 
 
-
 <span class="c1"># ---: User Management Models ---</span>
 <div class="viewcode-block" id="Project">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Project">[docs]</a>
@@ -2548,7 +2567,9 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- Industry Intelligence Models ---</span>
+
 
 <div class="viewcode-block" id="IndustryIntelResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IndustryIntelResult">[docs]</a>
@@ -2559,6 +2580,7 @@
     <span class="n">country</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">analysis_text</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="MonopolyAnalysisResult">
@@ -2572,7 +2594,9 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- Aviation Intelligence (AVINT) Models ---</span>
+
 
 <div class="viewcode-block" id="FlightInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.FlightInfo">[docs]</a>
@@ -2594,11 +2618,12 @@
     <span class="n">position_source</span><span class="p">:</span> <span class="nb">int</span></div>
 
 
+
 <div class="viewcode-block" id="AVINTResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.AVINTResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AVINTResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The main, top-level result model for an AVINT scan.&quot;&quot;&quot;</span>
-    
+
     <span class="n">total_flights</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">flights</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FlightInfo</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
@@ -2608,7 +2633,7 @@
 <span class="c1"># --- ORM Models ---</span>
 <div class="viewcode-block" id="ScanResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ScanResult">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ScanResult</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScanResult</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single scan result from any module.&quot;&quot;&quot;</span>
 
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;scan_results&quot;</span>
@@ -2623,7 +2648,7 @@
 
 <div class="viewcode-block" id="PageSnapshot">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PageSnapshot">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">PageSnapshot</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PageSnapshot</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single snapshot of a monitored web page.&quot;&quot;&quot;</span>
 
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;page_snapshots&quot;</span>
@@ -2635,6 +2660,7 @@
     <span class="n">content</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">LargeBinary</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
 
 
+
 <span class="c1"># --- Humint ---</span>
 <div class="viewcode-block" id="HumintScenario">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.HumintScenario">[docs]</a>
@@ -2644,9 +2670,11 @@
     <span class="n">scenario_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">target</span><span class="p">:</span> <span class="nb">str</span></div>
 
+
+
 <div class="viewcode-block" id="HumintSource">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.HumintSource">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HumintSource</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HumintSource</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;humint_sources&quot;</span>
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">name</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -2658,7 +2686,7 @@
 
 <div class="viewcode-block" id="HumintReport">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.HumintReport">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">HumintReport</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HumintReport</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;humint_reports&quot;</span>
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">content</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Text</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -2670,7 +2698,7 @@
 
 <div class="viewcode-block" id="ResponseRule">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ResponseRule">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ResponseRule</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResponseRule</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;response_rules&quot;</span>
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">name</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">unique</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -2685,7 +2713,7 @@
 
 <div class="viewcode-block" id="ForecastPerformance">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ForecastPerformance">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">ForecastPerformance</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ForecastPerformance</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;forecast_performance&quot;</span>
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">Integer</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">scenario</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -2695,28 +2723,35 @@
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="Token">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Token">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Token</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for a JWT access token.&quot;&quot;&quot;</span>
+
     <span class="n">access_token</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">token_type</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="TokenData">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TokenData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TokenData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for the data encoded in a JWT.&quot;&quot;&quot;</span>
+
     <span class="n">username</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="DashboardData">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.DashboardData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DashboardData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for the data to be displayed on the main dashboard.&quot;&quot;&quot;</span>
+
     <span class="n">total_projects</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">total_scans</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">recent_scans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span></div>
+
 
 
 <span class="c1"># --- MASINT Core Models ---</span>
@@ -2769,21 +2804,31 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- CHEMINT Core Models ---</span>
 <div class="viewcode-block" id="ChemInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ChemInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ChemInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for a single chemical intelligence hit from PubChem/Patents.&quot;&quot;&quot;</span>
-    <span class="n">cid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;PubChem Compound ID (CID).&quot;</span><span class="p">)</span>
-    <span class="n">iupac_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The IUPAC systematic chemical name.&quot;</span><span class="p">)</span>
-    <span class="n">molecular_weight</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The molecular weight in g/mol.&quot;</span><span class="p">)</span>
-    <span class="n">canonical_smiles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The Canonical SMILES string (molecular structure).&quot;</span><span class="p">)</span></div>
 
-    
+    <span class="n">cid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;PubChem Compound ID (CID).&quot;</span><span class="p">)</span>
+    <span class="n">iupac_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The IUPAC systematic chemical name.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">molecular_weight</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The molecular weight in g/mol.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">canonical_smiles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The Canonical SMILES string (molecular structure).&quot;</span>
+    <span class="p">)</span></div>
+
+
+
 <div class="viewcode-block" id="PatentInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PatentInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PatentInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for intelligence gathered from patent and research analysis.&quot;&quot;&quot;</span>
+
     <span class="n">patent_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">applicant</span><span class="p">:</span> <span class="nb">str</span>
@@ -2792,24 +2837,33 @@
     <span class="n">country</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="s2">&quot;EP&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Country code (e.g., US, EP, WO).&quot;</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="SDSData">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SDSData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SDSData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for key data extracted from Safety Data Sheets (or equivalent sources).&quot;&quot;&quot;</span>
+
     <span class="n">cas_number</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">autoignition_temp_C</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">flash_point_C</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">nfpa_fire_rating</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;NFPA 704 fire hazard rating (0-4).&quot;</span><span class="p">)</span>
-    <span class="n">toxicology_summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="s2">&quot;N/A&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A brief summary of health hazards.&quot;</span><span class="p">)</span></div>
+    <span class="n">nfpa_fire_rating</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;NFPA 704 fire hazard rating (0-4).&quot;</span>
+    <span class="p">)</span>
+    <span class="n">toxicology_summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="s2">&quot;N/A&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A brief summary of health hazards.&quot;</span>
+    <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="CHEMINTResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.CHEMINTResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CHEMINTResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Container for Chemical Intelligence results.&quot;&quot;&quot;</span>
+
     <span class="n">total_results</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ChemInfo</span> <span class="o">|</span> <span class="n">PatentInfo</span> <span class="o">|</span> <span class="n">SDSData</span><span class="p">]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <span class="c1"># --- SPACEINT Core Models ---</span>
@@ -2817,19 +2871,23 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TLEData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TLEData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Schema for raw Two-Line Element (TLE) data.&quot;&quot;&quot;</span>
+
     <span class="n">norad_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">line1</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">line2</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="SPACEINTResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SPACEINTResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SPACEINTResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Container for Space Intelligence results.&quot;&quot;&quot;</span>
+
     <span class="n">total_satellites</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">satellites</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TLEData</span><span class="p">]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <span class="c1"># --- Historical Analysis ---</span>
@@ -2846,6 +2904,7 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="Node">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Node">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Node</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -2857,6 +2916,7 @@
     <span class="n">properties</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span></div>
 
 
+
 <div class="viewcode-block" id="Edge">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Edge">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Edge</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -2866,6 +2926,7 @@
     <span class="n">target</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># ID of the target node</span>
     <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g., &quot;Resolves To&quot;, &quot;Registered By&quot;, &quot;Uses Technology&quot;</span>
     <span class="n">properties</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span></div>
+
 
 
 <div class="viewcode-block" id="GraphResult">
@@ -2881,32 +2942,55 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- Deep Research ---</span>
 <div class="viewcode-block" id="IntelFinding">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IntelFinding">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">IntelFinding</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single piece of structured intelligence.&quot;&quot;&quot;</span>
-    <span class="n">source_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).&quot;</span><span class="p">)</span>
+
+    <span class="n">source_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">summary</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A concise summary of the key finding.&quot;</span><span class="p">)</span>
-    <span class="n">reference</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A URL or source reference for verification.&quot;</span><span class="p">)</span>
-    <span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Assessed risk: Low, Medium, High, or Critical.&quot;</span><span class="p">)</span>
-    <span class="n">confidence</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Confidence level of the finding: Low, Medium, High.&quot;</span><span class="p">)</span></div>
+    <span class="n">reference</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;A URL or source reference for verification.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Assessed risk: Low, Medium, High, or Critical.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Confidence level of the finding: Low, Medium, High.&quot;</span>
+    <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="PESTAnalysis">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PESTAnalysis">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PESTAnalysis</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a Political, Economic, Social, and Technological analysis.&quot;&quot;&quot;</span>
-    <span class="n">political</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Political factors affecting the target.&quot;</span><span class="p">)</span>
-    <span class="n">economic</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Economic factors and trends affecting the target.&quot;</span><span class="p">)</span>
-    <span class="n">social</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Social and cultural trends relevant to the target.&quot;</span><span class="p">)</span>
-    <span class="n">technological</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Technological landscape and disruptions affecting the target.&quot;</span><span class="p">)</span></div>
+
+    <span class="n">political</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Political factors affecting the target.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">economic</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Economic factors and trends affecting the target.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">social</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Social and cultural trends relevant to the target.&quot;</span>
+    <span class="p">)</span>
+    <span class="n">technological</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Technological landscape and disruptions affecting the target.&quot;</span>
+    <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="DeepResearchResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.DeepResearchResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DeepResearchResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The final, structured output of a deep research operation.&quot;&quot;&quot;</span>
+
     <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">target_profile</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="n">strategic_summary</span><span class="p">:</span> <span class="nb">str</span>
@@ -2915,6 +2999,7 @@
     <span class="n">recommended_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">intelligence_findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">IntelFinding</span><span class="p">]</span>
     <span class="n">knowledge_graph</span><span class="p">:</span> <span class="n">KnowledgeGraph</span></div>
+
 
 
 <span class="c1"># --- Economics ---</span>
@@ -2926,13 +3011,16 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="TrackingUpdate">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TrackingUpdate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrackingUpdate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Details of a single tracking event.&quot;&quot;&quot;</span>
+
     <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">message</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <span class="c1"># --- Logistics ---</span>
@@ -2940,12 +3028,14 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ShipmentDetails">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ShipmentDetails</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Comprehensive details of a tracked shipment.&quot;&quot;&quot;</span>
+
     <span class="n">tracking_code</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">carrier</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">estimated_delivery_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">updates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TrackingUpdate</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <span class="c1"># --- Crypto ---</span>
@@ -2959,6 +3049,8 @@
     <span class="n">history</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
+
+
 <div class="viewcode-block" id="CryptoForecast">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.CryptoForecast">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CryptoForecast</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -2967,6 +3059,7 @@
     <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">forecast</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <span class="c1"># --- Cyber-Physical Systems Intelligence ---</span>
@@ -2978,6 +3071,7 @@
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">node_type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g., &#39;PLC&#39;, &#39;SCADA Server&#39;, &#39;Substation&#39;, &#39;GPS Satellite&#39;</span>
     <span class="n">attributes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span></div>
+
 
 
 <div class="viewcode-block" id="CascadingFailurePath">
@@ -2994,9 +3088,11 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.CPSAnalysisResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CPSAnalysisResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The result of a Cyber-Physical System analysis (without the graph object).&quot;&quot;&quot;</span>
+
     <span class="n">critical_nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">failure_paths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CascadingFailurePath</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="GeoLocation">
@@ -3032,6 +3128,7 @@
     <span class="n">severity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- Systemic Intelligence ---</span>
 <div class="viewcode-block" id="OTAsset">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.OTAsset">[docs]</a>
@@ -3039,6 +3136,7 @@
     <span class="n">device_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">location</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">vulnerabilities</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="MacroIndicators">
@@ -3074,30 +3172,37 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="SystemNode">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SystemNode">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SystemNode</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A node in the systemic intelligence graph.&quot;&quot;&quot;</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">layer</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">attributes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="EmergentProperty">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.EmergentProperty">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EmergentProperty</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents an emergent property of the system.&quot;&quot;&quot;</span>
+
     <span class="n">property_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="SYSINTAnalysisResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SYSINTAnalysisResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SYSINTAnalysisResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;The result of a Systemic Intelligence analysis (without the graph object).&quot;&quot;&quot;</span>
+
     <span class="n">emergent_properties</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">EmergentProperty</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <span class="c1"># --- Ethical Governance ---</span>
@@ -3105,14 +3210,17 @@
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Target">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Target</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a target in an operation.&quot;&quot;&quot;</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">category</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="Operation">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Operation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Operation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Defines the structure for an intelligence operation to be audited.&quot;&quot;&quot;</span>
+
     <span class="n">operation_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">operation_type</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">targets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Target</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
@@ -3120,29 +3228,35 @@
     <span class="n">is_offensive</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">targets_eu_citizen</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">has_legal_basis</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
     <span class="c1"># Allows for extra fields that are not explicitly defined</span>
     <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
         <span class="n">extra</span> <span class="o">=</span> <span class="s2">&quot;allow&quot;</span></div>
+
 
 
 <div class="viewcode-block" id="ComplianceViolation">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ComplianceViolation">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ComplianceViolation</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single rule violation.&quot;&quot;&quot;</span>
+
     <span class="n">rule_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">framework</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">description</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="ComplianceResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ComplianceResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ComplianceResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Contains the full result of a compliance audit.&quot;&quot;&quot;</span>
+
     <span class="n">operation_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">is_compliant</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">violations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ComplianceViolation</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">audit_log</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
 
 
 <span class="c1"># --- Metacognition &amp; Systemic Evolution ---</span>
@@ -3201,6 +3315,7 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <span class="c1"># --- Dissemination &amp; Actionable Output ---</span>
 <div class="viewcode-block" id="IntelligenceFinding">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.IntelligenceFinding">[docs]</a>
@@ -3226,6 +3341,7 @@
     <span class="n">key_findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">IntelligenceFinding</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="Task">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Task">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3239,7 +3355,9 @@
     <span class="n">severity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span></div>
 
 
+
 <span class="c1"># --- Autonomous Intelligence Agent ---</span>
+
 
 <div class="viewcode-block" id="AnalysisResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.AnalysisResult">[docs]</a>
@@ -3281,6 +3399,8 @@
     <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Recommendation</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">next_steps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
 
+
+
 <div class="viewcode-block" id="Plan">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Plan">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Plan</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3302,6 +3422,7 @@
     <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Recommendation</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">key_findings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">raw_outputs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
 
 
 <span class="c1"># --- Risk Assessment---</span>
@@ -3347,6 +3468,7 @@
     <span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="CredibilityResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.CredibilityResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CredibilityResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3369,6 +3491,7 @@
     <span class="p">)</span></div>
 
 
+
 <span class="c1"># --- Negotiation---</span>
 <div class="viewcode-block" id="PartyType">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PartyType">[docs]</a>
@@ -3377,6 +3500,7 @@
     <span class="n">INDIVIDUAL</span> <span class="o">=</span> <span class="s2">&quot;individual&quot;</span>
     <span class="n">GOVERNMENT</span> <span class="o">=</span> <span class="s2">&quot;government&quot;</span>
     <span class="n">OTHER</span> <span class="o">=</span> <span class="s2">&quot;other&quot;</span></div>
+
 
 
 <div class="viewcode-block" id="Channel">
@@ -3389,7 +3513,9 @@
     <span class="n">CLI</span> <span class="o">=</span> <span class="s2">&quot;cli&quot;</span></div>
 
 
+
 <span class="c1"># --- Main Data Models ---</span>
+
 
 <div class="viewcode-block" id="Party">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Party">[docs]</a>
@@ -3402,6 +3528,7 @@
     <span class="n">created_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="Offer">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Offer">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Offer</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3411,7 +3538,7 @@
     <span class="n">message_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">amount_terms</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
-    <span class="n">accepted</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;pending&#39;</span>  <span class="c1"># pending, accepted, rejected</span>
+    <span class="n">accepted</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>  <span class="c1"># pending, accepted, rejected</span>
     <span class="n">accepted_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">currency</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;USD&quot;</span>
     <span class="n">valid_until</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -3420,12 +3547,14 @@
     <span class="n">previous_offer_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationStatus">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationStatus">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NegotiationStatus</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
     <span class="n">ONGOING</span> <span class="o">=</span> <span class="s2">&quot;ongoing&quot;</span>
     <span class="n">CLOSED</span> <span class="o">=</span> <span class="s2">&quot;closed&quot;</span>
     <span class="n">CANCELLED</span> <span class="o">=</span> <span class="s2">&quot;cancelled&quot;</span></div>
+
 
 
 <div class="viewcode-block" id="ChannelType">
@@ -3437,6 +3566,7 @@
     <span class="n">MEETING</span> <span class="o">=</span> <span class="s2">&quot;meeting&quot;</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationParty">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationParty">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NegotiationParty</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3445,6 +3575,7 @@
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="nb">type</span><span class="p">:</span> <span class="n">PartyType</span>
     <span class="n">role</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># e.g., &#39;buyer&#39;, &#39;seller&#39;</span></div>
+
 
 
 <div class="viewcode-block" id="Message">
@@ -3466,20 +3597,24 @@
         <span class="n">orm_mode</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationModel">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationModel">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;negotiations&quot;</span>
 
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">subject</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">SQLAlchemyEnum</span><span class="p">(</span><span class="n">NegotiationStatus</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">NegotiationStatus</span><span class="o">.</span><span class="n">ONGOING</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span>
+        <span class="n">SQLAlchemyEnum</span><span class="p">(</span><span class="n">NegotiationStatus</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="n">NegotiationStatus</span><span class="o">.</span><span class="n">ONGOING</span>
+    <span class="p">)</span>
     <span class="n">created_at</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
-    
+
+
 <div class="viewcode-block" id="OfferModel">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.OfferModel">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">OfferModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OfferModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;offers&quot;</span>
 
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -3487,21 +3622,26 @@
     <span class="n">party_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">amount_terms</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span>
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
-    <span class="n">accepted</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;pending&#39;</span><span class="p">)</span>
-    
+    <span class="n">accepted</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;pending&quot;</span><span class="p">)</span>
+
     <span class="n">session</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;NegotiationSession&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;offers&quot;</span><span class="p">)</span></div>
+
+
 
 <div class="viewcode-block" id="MessageModel">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.MessageModel">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MessageModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MessageModel</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
     <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;messages&quot;</span>
 
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">negotiation_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiation_sessions.id&quot;</span><span class="p">))</span> <span class="c1"># Changed ForeignKey</span>
+    <span class="n">negotiation_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span>
+        <span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiation_sessions.id&quot;</span><span class="p">)</span>
+    <span class="p">)</span>  <span class="c1"># Changed ForeignKey</span>
     <span class="n">sender_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">content</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
-    <span class="n">analysis</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span> 
+    <span class="n">analysis</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">JSON</span><span class="p">)</span>
     <span class="n">timestamp</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="MessageBase">
@@ -3511,16 +3651,19 @@
     <span class="n">content</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="MessageCreate">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.MessageCreate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MessageCreate</span><span class="p">(</span><span class="n">MessageBase</span><span class="p">):</span>
     <span class="k">pass</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationBase">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationBase">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NegotiationBase</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span></div>
+
 
 
 <div class="viewcode-block" id="Negotiation">
@@ -3540,6 +3683,7 @@
         <span class="n">orm_mode</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 
+
 <div class="viewcode-block" id="SimulationScenario">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.SimulationScenario">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SimulationScenario</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3548,42 +3692,49 @@
     <span class="n">their_min</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">their_max</span><span class="p">:</span> <span class="nb">float</span>
 
-    <span class="nd">@validator</span><span class="p">(</span><span class="s1">&#39;our_max&#39;</span><span class="p">)</span>
+    <span class="nd">@validator</span><span class="p">(</span><span class="s2">&quot;our_max&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">our_max_must_be_greater_than_our_min</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="s1">&#39;our_min&#39;</span> <span class="ow">in</span> <span class="n">values</span> <span class="ow">and</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="n">values</span><span class="p">[</span><span class="s1">&#39;our_min&#39;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;our_max must be greater than our_min&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;our_min&quot;</span> <span class="ow">in</span> <span class="n">values</span> <span class="ow">and</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="n">values</span><span class="p">[</span><span class="s2">&quot;our_min&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;our_max must be greater than our_min&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">v</span></div>
+
 
 
 <div class="viewcode-block" id="NegotiationSession">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationSession">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationSession</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s1">&#39;negotiation_sessions&#39;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationSession</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;negotiation_sessions&quot;</span>
     <span class="nb">id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">subject</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
     <span class="n">start_time</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span>
     <span class="n">end_time</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">DateTime</span><span class="p">)</span>
-    <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;ongoing&#39;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;ongoing&quot;</span><span class="p">)</span>
     <span class="n">outcome</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
-    <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;MessageModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span> <span class="c1"># Corrected relationship</span>
-    <span class="n">offers</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;OfferModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span> </div>
+    <span class="n">messages</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
+        <span class="s2">&quot;MessageModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span>
+    <span class="p">)</span>  <span class="c1"># Corrected relationship</span>
+    <span class="n">offers</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="s2">&quot;OfferModel&quot;</span><span class="p">,</span> <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span></div>
 
-    
+
+
 <div class="viewcode-block" id="BehavioralProfile">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.BehavioralProfile">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BehavioralProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for the behavioral profile of a negotiation party.&quot;&quot;&quot;</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
     <span class="n">party_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">communication_style</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># e.g., &quot;Formal&quot;, &quot;Informal&quot;</span>
-    <span class="n">risk_appetite</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>      <span class="c1"># e.g., &quot;Risk-averse&quot;, &quot;Risk-seeking&quot;</span>
+    <span class="n">communication_style</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># e.g., &quot;Formal&quot;, &quot;Informal&quot;</span>
+    <span class="n">risk_appetite</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># e.g., &quot;Risk-averse&quot;, &quot;Risk-seeking&quot;</span>
     <span class="n">key_motivators</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="Counterparty">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Counterparty">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Counterparty</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for a counterparty in a negotiation.&quot;&quot;&quot;</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">industry</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -3592,10 +3743,12 @@
     <span class="n">behavioral_profile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BehavioralProfile</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="MarketIndicator">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.MarketIndicator">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MarketIndicator</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for a relevant market indicator.&quot;&quot;&quot;</span>
+
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()))</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
@@ -3603,13 +3756,16 @@
     <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">)</span></div>
 
 
+
 <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
-        <span class="n">orm_mode</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">orm_mode</span> <span class="o">=</span> <span class="kc">True</span>
+
 
 <div class="viewcode-block" id="VoiceAnalysis">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.VoiceAnalysis">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">VoiceAnalysis</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents the analysis of vocal tone from an audio message.&quot;&quot;&quot;</span>
+
     <span class="n">vocal_sentiment</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">confidence_score</span><span class="p">:</span> <span class="nb">float</span>
     <span class="n">pace</span><span class="p">:</span> <span class="nb">str</span>
@@ -3651,6 +3807,7 @@
     <span class="n">reward</span><span class="p">:</span> <span class="nb">float</span></div>
 
 
+
 <div class="viewcode-block" id="AnalysisResponse">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.AnalysisResponse">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AnalysisResponse</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3660,6 +3817,7 @@
     <span class="n">simulation</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationParticipantCreate">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationParticipantCreate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NegotiationParticipantCreate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3667,11 +3825,13 @@
     <span class="n">participant_name</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="NegotiationCreate">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationCreate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NegotiationCreate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">subject</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">participants</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">NegotiationParticipantCreate</span><span class="p">]</span></div>
+
 
 
 <div class="viewcode-block" id="SimulationMode">
@@ -3684,11 +3844,12 @@
 
 <div class="viewcode-block" id="NegotiationParticipant">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NegotiationParticipant">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationParticipant</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span> <span class="c1"># type: ignore</span>
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s1">&#39;negotiation_participants&#39;</span>
-    <span class="n">session_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s1">&#39;negotiation_sessions.id&#39;</span><span class="p">),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">NegotiationParticipant</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>  <span class="c1"># type: ignore</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;negotiation_participants&quot;</span>
+    <span class="n">session_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;negotiation_sessions.id&quot;</span><span class="p">),</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">participant_id</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">participant_name</span> <span class="o">=</span> <span class="n">Column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span></div>
+
 
 
 <span class="c1"># --- Application Configuration ---</span>
@@ -3711,12 +3872,14 @@
     <span class="n">enable_mlops_automation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 
+
 <span class="c1"># --- Role Definitions ---</span>
 <div class="viewcode-block" id="UserRole">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.UserRole">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserRole</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
     <span class="n">USER</span> <span class="o">=</span> <span class="s2">&quot;user&quot;</span>
     <span class="n">ADMIN</span> <span class="o">=</span> <span class="s2">&quot;admin&quot;</span></div>
+
 
 
 <span class="c1"># --- User Schemas ---</span>
@@ -3726,11 +3889,13 @@
     <span class="n">username</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <span class="c1"># --- Application Configuration Schemas ---</span>
 <div class="viewcode-block" id="NetworkConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.NetworkConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NetworkConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span></div>
+
 
 
 <div class="viewcode-block" id="FootprintModuleConfig">
@@ -3739,10 +3904,12 @@
     <span class="n">dns_records_to_query</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;AAAA&quot;</span><span class="p">,</span> <span class="s2">&quot;MX&quot;</span><span class="p">,</span> <span class="s2">&quot;TXT&quot;</span><span class="p">,</span> <span class="s2">&quot;NS&quot;</span><span class="p">,</span> <span class="s2">&quot;CNAME&quot;</span><span class="p">]</span></div>
 
 
+
 <div class="viewcode-block" id="WebAnalyzerModuleConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.WebAnalyzerModuleConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WebAnalyzerModuleConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">placeholder</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
 
 
 <div class="viewcode-block" id="DarkWebModuleConfig">
@@ -3751,10 +3918,12 @@
     <span class="n">tor_proxy_url</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;socks5://127.0.0.1:9150&quot;</span></div>
 
 
+
 <div class="viewcode-block" id="MarintModuleConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.MarintModuleConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MarintModuleConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">placeholder</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
 
 
 <div class="viewcode-block" id="NegotiationModuleConfig">
@@ -3763,14 +3932,20 @@
     <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;models/negotiation_intent_model&quot;</span></div>
 
 
+
 <div class="viewcode-block" id="ModulesConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ModulesConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ModulesConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">footprint</span><span class="p">:</span> <span class="n">FootprintModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FootprintModuleConfig</span><span class="p">)</span>
-    <span class="n">web_analyzer</span><span class="p">:</span> <span class="n">WebAnalyzerModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">WebAnalyzerModuleConfig</span><span class="p">)</span>
+    <span class="n">web_analyzer</span><span class="p">:</span> <span class="n">WebAnalyzerModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="n">WebAnalyzerModuleConfig</span>
+    <span class="p">)</span>
     <span class="n">dark_web</span><span class="p">:</span> <span class="n">DarkWebModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">DarkWebModuleConfig</span><span class="p">)</span>
     <span class="n">marint</span><span class="p">:</span> <span class="n">MarintModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">MarintModuleConfig</span><span class="p">)</span>
-    <span class="n">negotiation</span><span class="p">:</span> <span class="n">NegotiationModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">NegotiationModuleConfig</span><span class="p">)</span></div>
+    <span class="n">negotiation</span><span class="p">:</span> <span class="n">NegotiationModuleConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="n">NegotiationModuleConfig</span>
+    <span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="ReportingGraphConfig">
@@ -3792,6 +3967,7 @@
     <span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="ReportingPdfConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ReportingPdfConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportingPdfConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3800,12 +3976,18 @@
     <span class="n">footer_text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Confidential | Prepared by Chimera Intel&quot;</span></div>
 
 
+
 <div class="viewcode-block" id="ReportingConfig">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.ReportingConfig">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReportingConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-    <span class="n">project_report_scans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;footprint&quot;</span><span class="p">,</span> <span class="s2">&quot;web_analyzer&quot;</span><span class="p">,</span> <span class="s2">&quot;defensive_breaches&quot;</span><span class="p">]</span>
+    <span class="n">project_report_scans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;footprint&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;web_analyzer&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;defensive_breaches&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
     <span class="n">graph</span><span class="p">:</span> <span class="n">ReportingGraphConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ReportingGraphConfig</span><span class="p">)</span>
     <span class="n">pdf</span><span class="p">:</span> <span class="n">ReportingPdfConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ReportingPdfConfig</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="AppConfig">
@@ -3823,6 +4005,7 @@
     <span class="n">graph_db</span><span class="p">:</span> <span class="n">ConfigGraphDB</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ConfigGraphDB</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="User">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.User">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3837,6 +4020,7 @@
         <span class="n">orm_mode</span> <span class="o">=</span> <span class="kc">True</span></div>
 
 
+
 <div class="viewcode-block" id="UserCreate">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.UserCreate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserCreate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3847,10 +4031,12 @@
     <span class="n">password</span><span class="p">:</span> <span class="nb">str</span></div>
 
 
+
 <div class="viewcode-block" id="Event">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.Event">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Event</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a security event.&quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event_type</span> <span class="o">=</span> <span class="n">event_type</span>
@@ -3858,10 +4044,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">details</span> <span class="o">=</span> <span class="n">details</span></div>
 
 
+
 <div class="viewcode-block" id="WhoisInfo">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.WhoisInfo">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">WhoisInfo</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A model for WHOIS information.&quot;&quot;&quot;</span>
+
     <span class="n">domain_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">registrar</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">creation_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -3869,14 +4057,17 @@
     <span class="n">name_servers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span></div>
 
 
+
 <div class="viewcode-block" id="PageMonitorResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.PageMonitorResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PageMonitorResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Model for the result of a page monitor check.&quot;&quot;&quot;</span>
+
     <span class="n">target</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">url</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">has_changed</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">diff</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
 
 
 <div class="viewcode-block" id="InsiderTransactionResult">
@@ -3890,6 +4081,7 @@
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
 
 
+
 <div class="viewcode-block" id="TwitterStreamResult">
 <a class="viewcode-back" href="../../../modules.html#chimera_intel.core.schemas.TwitterStreamResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TwitterStreamResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
@@ -3899,7 +4091,6 @@
     <span class="n">total_tweets_found</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">tweets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tweet</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
-
 
 </pre></div>
 

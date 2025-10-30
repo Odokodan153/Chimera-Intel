@@ -518,7 +518,9 @@
         <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">TlsCertInfo</span><span class="p">(</span>
+                <span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+            <span class="p">)</span>
         <span class="n">latest_cert</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">cert_info</span> <span class="o">=</span> <span class="n">TlsCertInfo</span><span class="p">(</span>
             <span class="n">issuer</span><span class="o">=</span><span class="n">latest_cert</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;issuer_name&quot;</span><span class="p">),</span>
@@ -530,7 +532,9 @@
         <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">cert_info</span><span class="p">}</span>
         <span class="k">return</span> <span class="n">cert_info</span>
     <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching TLS certificate info from crt.sh for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Error fetching TLS certificate info from crt.sh for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span></div>
 
 
@@ -558,7 +562,6 @@
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking DNSSEC for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-
     <span class="k">try</span><span class="p">:</span>
         <span class="n">spf_response</span> <span class="o">=</span> <span class="n">dns</span><span class="o">.</span><span class="n">resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="s2">&quot;TXT&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">spf_response</span><span class="p">:</span>
@@ -580,7 +583,6 @@
         <span class="k">pass</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error checking DMARC for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
 
     <span class="k">return</span> <span class="n">DnssecInfo</span><span class="p">(</span>
         <span class="n">dnssec_enabled</span><span class="o">=</span><span class="n">dnssec_enabled</span><span class="p">,</span>
@@ -753,7 +755,9 @@
         <span class="n">API_CACHE</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">personnel_info</span><span class="p">}</span>
         <span class="k">return</span> <span class="n">personnel_info</span>
     <span class="k">except</span> <span class="p">(</span><span class="n">HTTPStatusError</span><span class="p">,</span> <span class="n">RequestError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching personnel info from Hunter.io for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Error fetching personnel info from Hunter.io for &#39;</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
         <span class="k">return</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span></div>
 
 
@@ -782,19 +786,43 @@
     <span class="n">hunter_api_key</span> <span class="o">=</span> <span class="n">API_KEYS</span><span class="o">.</span><span class="n">hunter_api_key</span>
 
     <span class="n">initial_tasks</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">get_subdomains_virustotal</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">vt_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[]),</span>
+        <span class="p">(</span>
+            <span class="n">get_subdomains_virustotal</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">vt_api_key</span>
+            <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[])</span>
+        <span class="p">),</span>
         <span class="n">get_subdomains_dnsdumpster</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
         <span class="n">get_subdomains_threatminer</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
         <span class="n">get_subdomains_urlscan</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
-        <span class="n">get_subdomains_shodan</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">shodan_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">shodan_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[]),</span>
+        <span class="p">(</span>
+            <span class="n">get_subdomains_shodan</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">shodan_api_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">shodan_api_key</span>
+            <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="p">[])</span>
+        <span class="p">),</span>
         <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">get_whois_info</span><span class="p">,</span> <span class="n">domain</span><span class="p">),</span>
         <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">get_dns_records</span><span class="p">,</span> <span class="n">domain</span><span class="p">),</span>
-        <span class="n">get_passive_dns</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">vt_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])),</span>
+        <span class="p">(</span>
+            <span class="n">get_passive_dns</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">vt_api_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">vt_api_key</span>
+            <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
         <span class="n">get_tls_cert_info</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
         <span class="n">check_dnssec</span><span class="p">(</span><span class="n">domain</span><span class="p">),</span>
-        <span class="n">get_breach_info</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hibp_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">hibp_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])),</span>
+        <span class="p">(</span>
+            <span class="n">get_breach_info</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hibp_api_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">hibp_api_key</span>
+            <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
         <span class="n">get_web_technologies</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;https://</span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">),</span>
-        <span class="n">discover_personnel</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hunter_api_key</span><span class="p">)</span> <span class="k">if</span> <span class="n">hunter_api_key</span> <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])),</span>
+        <span class="p">(</span>
+            <span class="n">discover_personnel</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">hunter_api_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">hunter_api_key</span>
+            <span class="k">else</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[]))</span>
+        <span class="p">),</span>
     <span class="p">]</span>
     <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">initial_tasks</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="p">(</span>
@@ -814,13 +842,36 @@
     <span class="p">)</span> <span class="o">=</span> <span class="n">results</span>
 
     <span class="c1"># --- Stage 1.5: Data Validation and Defaulting ---</span>
-    <span class="n">passive_dns_data</span> <span class="o">=</span> <span class="n">passive_dns_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">passive_dns_data_res</span><span class="p">,</span> <span class="n">HistoricalDns</span><span class="p">)</span> <span class="k">else</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span>
-    <span class="n">tls_cert_data</span> <span class="o">=</span> <span class="n">tls_cert_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tls_cert_data_res</span><span class="p">,</span> <span class="n">TlsCertInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="n">dnssec_data</span> <span class="o">=</span> <span class="n">dnssec_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dnssec_data_res</span><span class="p">,</span> <span class="n">DnssecInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">DnssecInfo</span><span class="p">(</span><span class="n">dnssec_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spf_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">dmarc_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
-    <span class="n">breach_data</span> <span class="o">=</span> <span class="n">breach_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">breach_data_res</span><span class="p">,</span> <span class="n">BreachInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span>
-    <span class="n">web_tech_data</span> <span class="o">=</span> <span class="n">web_tech_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">web_tech_data_res</span><span class="p">,</span> <span class="n">WebTechInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">WebTechInfo</span><span class="p">()</span>
-    <span class="n">personnel_data</span> <span class="o">=</span> <span class="n">personnel_data_res</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">personnel_data_res</span><span class="p">,</span> <span class="n">PersonnelInfo</span><span class="p">)</span> <span class="k">else</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span>
-
+    <span class="n">passive_dns_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">passive_dns_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">passive_dns_data_res</span><span class="p">,</span> <span class="n">HistoricalDns</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">HistoricalDns</span><span class="p">(</span><span class="n">a_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">aaaa_records</span><span class="o">=</span><span class="p">[],</span> <span class="n">mx_records</span><span class="o">=</span><span class="p">[])</span>
+    <span class="p">)</span>
+    <span class="n">tls_cert_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">tls_cert_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tls_cert_data_res</span><span class="p">,</span> <span class="n">TlsCertInfo</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">TlsCertInfo</span><span class="p">(</span><span class="n">issuer</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">sans</span><span class="o">=</span><span class="p">[],</span> <span class="n">not_before</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">not_after</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">dnssec_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">dnssec_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dnssec_data_res</span><span class="p">,</span> <span class="n">DnssecInfo</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">DnssecInfo</span><span class="p">(</span><span class="n">dnssec_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spf_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">dmarc_record</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">breach_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">breach_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">breach_data_res</span><span class="p">,</span> <span class="n">BreachInfo</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">BreachInfo</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">&quot;HaveIBeenPwned&quot;</span><span class="p">,</span> <span class="n">breaches</span><span class="o">=</span><span class="p">[])</span>
+    <span class="p">)</span>
+    <span class="n">web_tech_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">web_tech_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">web_tech_data_res</span><span class="p">,</span> <span class="n">WebTechInfo</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">WebTechInfo</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">personnel_data</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">personnel_data_res</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">personnel_data_res</span><span class="p">,</span> <span class="n">PersonnelInfo</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">PersonnelInfo</span><span class="p">(</span><span class="n">employees</span><span class="o">=</span><span class="p">[])</span>
+    <span class="p">)</span>
 
     <span class="c1"># --- Stage 2: Consolidate and Prepare for Enrichment ---</span>
 
@@ -855,9 +906,13 @@
         <span class="n">ip_enrichment_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">get_reverse_ip_lookup</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
         <span class="n">ip_enrichment_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">perform_port_scan</span><span class="p">(</span><span class="n">ip</span><span class="p">)))</span>
 
-    <span class="n">ip_enrichment_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="n">ip</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">}</span>
+    <span class="n">ip_enrichment_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ip</span><span class="p">:</span> <span class="p">{}</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span>
+    <span class="p">}</span>
     <span class="k">if</span> <span class="n">ip_enrichment_tasks</span><span class="p">:</span>
-        <span class="n">ip_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">task</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">ip_enrichment_tasks</span><span class="p">],</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">ip_results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
+            <span class="o">*</span><span class="p">[</span><span class="n">task</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">ip_enrichment_tasks</span><span class="p">],</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
         <span class="k">for</span> <span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">_</span><span class="p">),</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ip_enrichment_tasks</span><span class="p">,</span> <span class="n">ip_results</span><span class="p">):</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">IpInfo</span><span class="p">):</span>
                 <span class="n">ip_enrichment_results</span><span class="p">[</span><span class="n">ip</span><span class="p">][</span><span class="s2">&quot;ip_info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
@@ -910,10 +965,11 @@
             <span class="n">ip_geolocation_dict</span><span class="p">[</span><span class="n">ip</span><span class="p">]</span> <span class="o">=</span> <span class="n">ip_info</span><span class="o">.</span><span class="n">geolocation</span>
 
     <span class="n">port_scan_results_dict</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;port_scan&quot;</span><span class="p">,</span> <span class="n">PortScanResult</span><span class="p">(</span><span class="n">open_ports</span><span class="o">=</span><span class="p">{}))</span>
+        <span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">&quot;port_scan&quot;</span><span class="p">,</span> <span class="n">PortScanResult</span><span class="p">(</span><span class="n">open_ports</span><span class="o">=</span><span class="p">{})</span>
+        <span class="p">)</span>
         <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span>
     <span class="p">}</span>
-
 
     <span class="n">footprint_data</span> <span class="o">=</span> <span class="n">FootprintData</span><span class="p">(</span>
         <span class="n">whois_info</span><span class="o">=</span><span class="n">whois_data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">whois_data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{},</span>
@@ -921,7 +977,10 @@
         <span class="n">subdomains</span><span class="o">=</span><span class="n">subdomain_report</span><span class="p">,</span>
         <span class="n">ip_threat_intelligence</span><span class="o">=</span><span class="n">ip_threat_intelligence</span><span class="p">,</span>
         <span class="n">historical_dns</span><span class="o">=</span><span class="n">passive_dns_data</span><span class="p">,</span>
-        <span class="n">reverse_ip</span><span class="o">=</span><span class="p">{</span><span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reverse_ip&quot;</span><span class="p">,</span> <span class="p">[])</span> <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span><span class="p">},</span>
+        <span class="n">reverse_ip</span><span class="o">=</span><span class="p">{</span>
+            <span class="n">ip</span><span class="p">:</span> <span class="n">ip_enrichment_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reverse_ip&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">for</span> <span class="n">ip</span> <span class="ow">in</span> <span class="n">main_domain_ips</span>
+        <span class="p">},</span>
         <span class="n">asn_info</span><span class="o">=</span><span class="n">asn_info_dict</span><span class="p">,</span>
         <span class="n">tls_cert_info</span><span class="o">=</span><span class="n">tls_cert_data</span><span class="p">,</span>
         <span class="n">dnssec_info</span><span class="o">=</span><span class="n">dnssec_data</span><span class="p">,</span>

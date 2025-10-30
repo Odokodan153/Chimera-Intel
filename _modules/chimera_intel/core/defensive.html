@@ -717,7 +717,7 @@
         <span class="p">)</span>
         <span class="c1"># --- FIX: Changed &#39;return&#39; to &#39;raise typer.Exit(code=1)&#39; ---</span>
         <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="n">code</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting HIBP breach check for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">domain</span><span class="p">)</span>
     <span class="n">results</span> <span class="o">=</span> <span class="n">check_hibp_breaches</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">api_key</span><span class="p">)</span>
     <span class="n">save_or_print_results</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span> <span class="n">output_file</span><span class="p">)</span>
