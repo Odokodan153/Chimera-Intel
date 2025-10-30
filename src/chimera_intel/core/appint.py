@@ -12,7 +12,6 @@ import os
 import shutil
 import re
 from typing import Optional, List
-
 from .schemas import StaticAppAnalysisResult, FoundSecret
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
@@ -30,7 +29,7 @@ def analyze_apk_static(file_path: str) -> StaticAppAnalysisResult:
         file_path (str): The path to the .apk file to analyze.
 
     Returns:
-        StaticAppAnalysisResult: A Pydantic model with the analysis results.
+        StaticAppAnalysisResult: A Pantic model with the analysis results.
     """
     if not os.path.exists(file_path):
         return StaticAppAnalysisResult(file_path=file_path, error="APK file not found.")
@@ -99,7 +98,9 @@ appint_app = typer.Typer()
 
 @appint_app.command("static")
 def run_static_apk_analysis(
+    # --- FIX REVERTED: Use standard typer.Argument syntax ---
     file_path: str = typer.Argument(..., help="Path to the .apk file to analyze."),
+    # --------------------------------------------------
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
@@ -107,9 +108,25 @@ def run_static_apk_analysis(
     """
     Performs static analysis on an Android APK file.
     """
-    results_model = analyze_apk_static(file_path)
-    results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(
-        target=os.path.basename(file_path), module="appint_static", data=results_dict
-    )
+    try:
+        results_model = analyze_apk_static(file_path)
+        if results_model.error:
+            console.print(f"[red]Static analysis failed: {results_model.error}[/red]")
+            raise typer.Exit(code=1)
+
+        results_dict = results_model.model_dump(exclude_none=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=os.path.basename(file_path),
+            module="appint_static",
+            data=results_dict,
+        )
+    # --- FIX APPLIED ---
+    # Catch typer.Exit and re-raise it immediately so it's not
+    # caught by the generic 'except Exception' block.
+    except typer.Exit:
+        raise
+    # --- END FIX ---
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred: {e}[/red]")
+        raise typer.Exit(code=1)

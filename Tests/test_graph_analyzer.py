@@ -3,6 +3,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 from chimera_intel.core.graph_analyzer import graph_app
 from chimera_intel.core.graph_schemas import EntityGraphResult, GraphNarrativeResult
+import json
 
 runner = CliRunner()
 
@@ -16,9 +17,14 @@ class TestGraphAnalyzer(unittest.TestCase):
         mock_build_and_save.return_value = EntityGraphResult(
             target="example.com", total_nodes=10, total_edges=9
         )
-        result = runner.invoke(graph_app, ["build", "example.com"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertIn("Successfully built graph", result.stdout)
+
+        with runner.isolated_filesystem():
+            with open("test.json", "w") as f:
+                json.dump({"domain": "example.com"}, f)
+            result = runner.invoke(graph_app, ["build", "test.json"])
+
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("Successfully built graph", result.stdout)
 
     @patch("chimera_intel.core.graph_analyzer.generate_narrative_from_graph")
     def test_narrate_graph_command_success(self, mock_generate_narrative):

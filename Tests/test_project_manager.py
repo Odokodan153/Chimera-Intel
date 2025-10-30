@@ -37,7 +37,10 @@ class TestProjectManager(unittest.TestCase):
     def test_create_project_success(self, mock_get_conn, mock_get_user):
         """Tests the successful creation of a new project."""
         mock_get_user.return_value = User(
-            id=1, username="testadmin", hashed_password=""
+            id=1,
+            username="testadmin",
+            hashed_password="",
+            email="testadmin@example.com",
         )
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -52,7 +55,9 @@ class TestProjectManager(unittest.TestCase):
     @patch("chimera_intel.core.project_manager.get_db_connection")
     def test_list_projects(self, mock_get_conn, mock_get_user):
         """Tests listing projects for a user."""
-        mock_get_user.return_value = User(id=1, username="testuser", hashed_password="")
+        mock_get_user.return_value = User(
+            id=1, username="testuser", hashed_password="", email="testuser@example.com"
+        )
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
         mock_get_conn.return_value = mock_conn

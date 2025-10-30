@@ -11,6 +11,7 @@ import hashlib
 import re
 import os
 import csv
+import sys  # <-- FIX: Added sys import
 from typing import Optional, List, Dict
 
 try:
@@ -142,9 +143,13 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
     try:
         analyzeMFT.main(filename=file_path, output_filename=dummy_output)
 
+        # --- FIX: Make CSV parsing robust to mock 'open' calls ---
         with open(dummy_output, "r", encoding="utf-8") as f:
+            # Pass the file handle f directly to DictReader
             reader = csv.DictReader(f)
             for row in reader:
+                if not row:  # Skip empty rows that might result
+                    continue
                 entries.append(
                     MFTEntry(
                         record_number=int(row.get("Record Number", -1)),
@@ -154,6 +159,8 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
                         is_directory=row.get("is_directory", "false").lower() == "true",
                     )
                 )
+        # --- END OF FIX ---
+
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"
@@ -179,6 +186,10 @@ def run_log_analysis(
 ):
     """Parses log files for suspicious activities."""
     results = analyze_log_file(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -192,6 +203,10 @@ def run_static_analysis(
 ):
     """Performs static analysis on a file to extract hashes and strings."""
     results = perform_static_analysis(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
 
@@ -205,5 +220,9 @@ def run_mft_parsing(
 ):
     """Parses a Master File Table to reconstruct file activity."""
     results = parse_mft(file_path)
+    if results.error:
+        typer.echo(f"Error: {results.error}", err=True)
+        # FIX: Use sys.exit(1) instead of typer.Exit
+        sys.exit(1)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)

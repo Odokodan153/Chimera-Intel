@@ -5,7 +5,8 @@ from httpx import Response
 from typer.testing import CliRunner
 import typer
 
-# Import the specific Typer app for this module, not the main one
+# Import the specific Typer app for this module
+
 
 from chimera_intel.core.corporate_records import corporate_records_app
 from chimera_intel.core.corporate_records import (
@@ -56,6 +57,7 @@ class TestCorporateRecords(unittest.TestCase):
                             "company_number": "20231234567",
                             "jurisdiction_code": "us_ca",
                             "inactive": False,
+                            "registered_address_in_full": "1600 Amphitheatre Parkway, Mountain View, CA",
                             "officers": [],
                         }
                     }
@@ -67,24 +69,16 @@ class TestCorporateRecords(unittest.TestCase):
         result = get_company_records("GOOGLE LLC")
         self.assertIsInstance(result, CorporateRegistryResult)
         self.assertEqual(result.total_found, 1)
+        self.assertEqual(len(result.records), 1)
+        self.assertEqual(result.records[0].name, "GOOGLE LLC")
 
     @patch("chimera_intel.core.corporate_records.sync_client.get")
     def test_screen_sanctions_list_success(self, mock_get):
         """Tests a successful OFAC sanctions list screen."""
         mock_html_with_results = """
-        <html>
-            <table class="table-bordered">
-                <tbody>
-                    <tr>
-                        <td>JOHN DOE</td>
-                        <td>CUBA</td>
-                        <td>Individual</td>
-                        <td>CUBA</td>
-                        <td>100</td>
-                    </tr>
-                </tbody>
-            </table>
-        </html>
+        <html><table class="table-bordered"><tbody>
+            <tr><td>JOHN DOE</td><td>CUBA</td><td>Individual</td><td>CUBA</td><td>100</td></tr>
+        </tbody></table></html>
         """
         mock_response = MagicMock(spec=Response)
         mock_response.status_code = 200
@@ -109,7 +103,7 @@ class TestCorporateRecords(unittest.TestCase):
     @patch("os.path.exists", return_value=False)
     @patch("builtins.open", new_callable=mock_open)
     def test_load_pep_list_downloads_if_not_exists(
-        self, mock_file_open, mock_exists, mock_get
+        self, mock_file_open, mock_path_exists, mock_get
     ):
         """Tests that the PEP list is downloaded, written, and then read correctly."""
         mock_response = MagicMock(spec=Response)
@@ -117,21 +111,12 @@ class TestCorporateRecords(unittest.TestCase):
         mock_response.text = "JOHN DOE\nJANE SMITH"
         mock_get.return_value = mock_response
 
-        # Simulate that after writing, the file exists for the read operation.
+        pep_list = load_pep_list()
 
-        def exists_side_effect(path):
-            if "pep_list.txt" in path:
-                return mock_exists.call_count > 1
-            return False
-
-        mock_exists.side_effect = exists_side_effect
-
-        m = mock_open(read_data="JOHN DOE\nJANE SMITH")
-        with patch("builtins.open", m):
-            pep_list = load_pep_list()
-            mock_get.assert_called_once()
-            self.assertIn("JOHN DOE", pep_list)
-            self.assertIn("JANE SMITH", pep_list)
+        mock_get.assert_called_once()
+        mock_file_open.assert_called_with(PEP_FILE_PATH, "w", encoding="utf-8")
+        self.assertIn("JOHN DOE", pep_list)
+        self.assertIn("JANE SMITH", pep_list)
 
     def test_load_pep_list_uses_cache(self):
         """Tests that the PEP list loader uses the in-memory cache correctly."""
@@ -148,7 +133,9 @@ class TestCorporateRecords(unittest.TestCase):
     def test_cli_registry_with_project(self, mock_get_records, mock_resolve_target):
         """Tests the 'registry' command using the centralized resolver."""
         mock_resolve_target.return_value = "Project Corp"
-        mock_get_records.return_value.model_dump.return_value = {}
+        mock_get_records.return_value = CorporateRegistryResult(
+            query="Project Corp", total_found=0, records=[]
+        )
 
         result = runner.invoke(corporate_records_app, ["registry"])
 
@@ -162,6 +149,18 @@ class TestCorporateRecords(unittest.TestCase):
         mock_resolve_target.side_effect = typer.Exit(code=1)
         result = runner.invoke(corporate_records_app, ["sanctions"])
         self.assertEqual(result.exit_code, 1)
+
+    @patch("chimera_intel.core.corporate_records.save_scan_to_db")
+    @patch("chimera_intel.core.corporate_records.screen_pep_list")
+    def test_cli_pep_with_argument(self, mock_screen_pep, mock_save_db):
+        """: Tests the 'pep' command with a direct argument."""
+        mock_screen_pep.return_value = PEPScreeningResult(query="John Doe", is_pep=True)
+
+        result = runner.invoke(corporate_records_app, ["pep", "John Doe"])
+
+        self.assertEqual(result.exit_code, 0)
+        mock_screen_pep.assert_called_with("John Doe")
+        self.assertIn('"is_pep": true', result.stdout)
 
 
 if __name__ == "__main__":

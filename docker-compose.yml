@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: chimera_db
+    environment:
+      POSTGRES_USER: chimera
+      POSTGRES_PASSWORD: your_strong_password
+      POSTGRES_DB: chimera_intel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    networks:
+      - chimera-net
+
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@chimera.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - chimera-net
+    depends_on:
+      - db
+
+  app:
+    container_name: chimera_app
+    build: .
+    command: uvicorn webapp.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://chimera:your_strong_password@db:5432/chimera_intel
+      - VAULT_ADDR=https://your-vault-server.com
+      - VAULT_TOKEN=your-vault-access-token
+      - VAULT_SECRET_PATH=kv/data/chimera-intel
+    depends_on:
+      - db
+    networks:
+      - chimera-net
+
+networks:
+  chimera-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

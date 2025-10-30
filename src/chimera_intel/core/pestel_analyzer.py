@@ -61,7 +61,6 @@ def generate_pestel_analysis(
 
     try:
         # Re-using the generic text generation function from ai_core
-
         result = generate_swot_from_data(prompt, api_key)
         if result.error:
             raise Exception(result.error)
@@ -83,8 +82,11 @@ pestel_analyzer_app = typer.Typer()
 
 @pestel_analyzer_app.command("run")
 def run_pestel_analysis(
-    target: Optional[str] = typer.Argument(
-        None, help="The target to analyze. Uses active project if not provided."
+    target: Optional[str] = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="The target to analyze. Uses active project if not provided.",
     ),
 ):
     """
@@ -99,21 +101,30 @@ def run_pestel_analysis(
             f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
         )
         raise typer.Exit(code=1)
+
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
             "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
         )
+
         raise typer.Exit(code=1)
+
     with console.status(
         "[bold cyan]Synthesizing data with AI for PESTEL analysis...[/bold cyan]"
     ):
         pestel_result = generate_pestel_analysis(aggregated_data, api_key)
+
     console.print(f"\n--- [bold]PESTEL Analysis for {target_name}[/bold] ---\n")
     if pestel_result.error:
         console.print(
             f"[bold red]Error generating analysis:[/bold red] {pestel_result.error}"
         )
+
         raise typer.Exit(code=1)
     else:
         console.print(Markdown(pestel_result.analysis_text or "No analysis generated."))
+
+
+if __name__ == "__main__":
+    pestel_analyzer_app()

@@ -2,7 +2,7 @@ import json
 import re
 from rich.console import Console
 from rich.json import JSON
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 import logging
 
 from .http_client import sync_client
@@ -126,3 +126,35 @@ def send_teams_notification(webhook_url: str, title: str, message: str) -> None:
         logger.info("Successfully sent Teams notification.")
     except Exception as e:
         logger.error("Failed to send Teams notification: %s", e)
+
+
+def get_zopa(
+    history: List[Dict[str, Any]], default_zopa: Tuple[float, float] = (8000, 12000)
+) -> Tuple[float, float]:
+    """
+    Calculates the Zone of Possible Agreement (ZOPA) from the negotiation history.
+    If no offers have been made, it returns a default ZOPA.
+    """
+    our_offers = [
+        msg["analysis"].get("offer_amount", 0)
+        for msg in history
+        if msg.get("sender_id") == "ai_negotiator"
+        and msg["analysis"].get("offer_amount")
+    ]
+    their_offers = [
+        msg["analysis"].get("offer_amount", 0)
+        for msg in history
+        if msg.get("sender_id") == "them" and msg["analysis"].get("offer_amount")
+    ]
+
+    if not our_offers or not their_offers:
+        return default_zopa
+
+    # The ZOPA is the range between the highest price the buyer is willing to pay
+    # and the lowest price the seller is willing to accept.
+    # In this simulation, we'll define it as the range between our highest offer
+    # and their lowest offer.
+    zopa_min = max(min(our_offers), min(their_offers))
+    zopa_max = min(max(our_offers), max(their_offers))
+
+    return (zopa_min, zopa_max)

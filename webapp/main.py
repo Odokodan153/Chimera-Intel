@@ -1,155 +1,289 @@
-"""
-Main FastAPI application for the Chimera Intel web dashboard.
-"""
-
-import os
-import asyncio
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    FastAPI,
+)
+from sqlalchemy.orm import Session
+from typing import Dict
+import uuid
 import logging
-from chimera_intel.core.footprint import gather_footprint_data
-from chimera_intel.core.web_analyzer import gather_web_analysis_data
-from chimera_intel.core.utils import is_valid_domain
-from chimera_intel.core.database import get_scan_history_for_target, save_scan_to_db
-from chimera_intel.core.project_manager import (
-    list_projects,
-    get_project_config_by_name,
-)
-from chimera_intel.core.reporter import (
-    generate_graph_report,
-)
-from chimera_intel.core.graph_actions import (
-    run_graph_action,
-)  # Import the new graph actions
+from functools import lru_cache
 
+# Core Chimera Intel imports
+
+from chimera_intel.core.database import get_db_connection as get_db
+from chimera_intel.core import schemas
+from chimera_intel.core.negotiation import NegotiationEngine
+
+
+# This is a placeholder for auth, you'll need to implement it
+def get_current_user():
+    return None
+
+
+# Configure structured logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Chimera Intel API")
 
-# --- Setup for Static Files and Templates ---
-# Ensures that the web app can find the CSS, JS, and HTML files.
-
-
-app.mount("/static", StaticFiles(directory="webapp/static"), name="static")
-templates = Jinja2Templates(directory="webapp/templates")
-
-
-# --- HTML Page Routes ---
-
-
-@app.get("/", response_class=HTMLResponse)
-async def read_dashboard(request: Request):
-    """Serves the main project dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get("/project/{project_name}", response_class=HTMLResponse)
-async def read_project_view(request: Request, project_name: str):
-    """Serves the detailed view page for a single project."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return templates.TemplateResponse(
-        "project_detail.html",
-        {"request": request, "project": project_config.model_dump()},
-    )
-
-
-# --- API Endpoints ---
-
-
-@app.get("/api/projects", response_class=JSONResponse)
-async def api_get_projects():
-    """API endpoint to fetch all project names."""
-    return JSONResponse(content={"projects": list_projects()})
-
-
-@app.get("/api/project/{project_name}/history", response_class=JSONResponse)
-async def api_get_project_history(project_name: str):
-    """API endpoint to fetch scan history for a specific project."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config or not project_config.domain:
-        return JSONResponse(content=[])
-    # A project's history is tied to its primary domain target
-
-    history = get_scan_history_for_target(project_config.domain)
-    return JSONResponse(content=history)
-
-
-@app.post("/api/scan", response_class=JSONResponse)
-async def api_run_scan(request: Request):
-    """API endpoint to initiate a new scan for a project."""
+@lru_cache()
+def get_engine():
+    """
+    Initializes and returns a cached instance of the NegotiationEngine.
+    The model is loaded only once to avoid performance bottlenecks.
+    """
+    model_path = "models/negotiation_intent_model"  # Example path
     try:
-        data = await request.json()
-        domain = data.get("domain")
-        scan_type = data.get("scan_type")
+        # Attempt to load a potentially fine-tuned transformer model
 
-        logger.info(f"Received web API request for '{scan_type}' on '{domain}'")
-
-        if not domain or not is_valid_domain(domain):
-            raise HTTPException(status_code=400, detail="Invalid domain provided.")
-        scan_results_model = None
-        if scan_type == "footprint":
-            scan_results_model = await gather_footprint_data(domain)
-        elif scan_type == "web_analyzer":
-            scan_results_model = await gather_web_analysis_data(domain)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid scan type.")
-        # Save to database and return
-
-        results_dict = scan_results_model.model_dump(exclude_none=True)
-        save_scan_to_db(target=domain, module=scan_type, data=results_dict)
-
-        return JSONResponse(content={"status": "success", "scan_type": scan_type})
-    except HTTPException as http_exc:
-        # Re-raise HTTP exceptions to let FastAPI handle them
-
-        raise http_exc
+        return NegotiationEngine(model_path=model_path)
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred in api_run_scan: {e}", exc_info=True
+        logger.error(f"FATAL: Could not load transformer model at {model_path}: {e}")
+        logger.warning(
+            "Resilience Alert: Falling back to the placeholder Naive Bayes model."
         )
+        # Fallback to the simpler, non-model-dependent engine
+
+        return NegotiationEngine()
+
+
+router = APIRouter()
+
+
+@router.post(
+    "/negotiations",
+    response_model=schemas.Negotiation,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_negotiation(
+    negotiation: schemas.NegotiationCreate,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    """Initializes a new negotiation session with multiple participants."""
+    try:
+        session_id = str(uuid.uuid4())
+        db_negotiation = schemas.NegotiationSession(
+            id=session_id, subject=negotiation.subject
+        )
+        db.add(db_negotiation)
+
+        # Add participants to the new table
+
+        for participant in negotiation.participants:
+            db_participant = schemas.NegotiationParticipant(
+                session_id=session_id,
+                participant_id=participant.participant_id,
+                participant_name=participant.participant_name,
+            )
+            db.add(db_participant)
+        db.commit()
+        db.refresh(db_negotiation)
+        logger.info(
+            f"Multi-party negotiation session created successfully with ID: {session_id}"
+        )
+        return db_negotiation
+    except Exception as e:
+        logger.error(f"Database error while creating negotiation session: {e}")
         raise HTTPException(
-            status_code=500, detail="An internal server error occurred."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create negotiation session.",
         )
 
 
-@app.get("/api/project/{project_name}/graph", response_class=FileResponse)
-async def api_get_project_graph(project_name: str):
-    """API endpoint to generate and return the project's entity graph."""
-    project_config = get_project_config_by_name(project_name)
-    if not project_config or not project_config.domain:
-        raise HTTPException(status_code=404, detail="Project target not found.")
-    output_dir = "temp_reports"
-    os.makedirs(output_dir, exist_ok=True)
-    graph_path = os.path.join(
-        output_dir, f"{project_name.replace(' ', '_')}_graph.html"
+@router.post(
+    "/negotiations/{negotiation_id}/messages",
+    response_model=schemas.AnalysisResponse,
+)
+def analyze_new_message(
+    negotiation_id: str,
+    message: schemas.MessageCreate,
+    simulation_scenario: Dict[str, int],
+    db: Session = Depends(get_db),
+    engine: NegotiationEngine = Depends(get_engine),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    """
+    Analyzes a new message and returns a structured response including
+    analysis, recommendation, and simulation.
+    """
+    db_negotiation = (
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
+        .first()
     )
-
-    # This is a synchronous function, so we run it in a thread to avoid blocking
-
-    await asyncio.to_thread(generate_graph_report, project_config.domain, graph_path)
-
-    if not os.path.exists(graph_path):
+    if not db_negotiation:
         raise HTTPException(
-            status_code=500, detail="Failed to generate the graph report."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Negotiation session not found",
         )
-    return FileResponse(graph_path)
+    try:
+        analysis = engine.analyze_message(message.content)
+
+        db_message = schemas.Message(
+            id=str(uuid.uuid4()),
+            negotiation_id=negotiation_id,
+            sender_id=message.sender_id,
+            content=message.content,
+            analysis=analysis,
+        )
+        db.add(db_message)
+        db.commit()
+
+        # Fetch recent messages to provide context for the recommendation
+
+        recent_messages = (
+            db.query(schemas.Message)
+            .filter(schemas.Message.negotiation_id == negotiation_id)
+            .order_by(schemas.Message.timestamp.desc())
+            .limit(20)
+            .all()
+        )
+        history = [
+            {
+                "sender_id": msg.sender_id,
+                "content": msg.content,
+                "analysis": msg.analysis,
+            }
+            for msg in reversed(recent_messages)
+        ]
+
+        recommendation = engine.recommend_tactic(history)
+
+        simulation = engine.simulate_outcome(simulation_scenario)
+
+        logger.info(f"Message in negotiation {negotiation_id} analyzed successfully.")
+
+        return {
+            "message_id": db_message.id,
+            "analysis": analysis,
+            "recommended_tactic": recommendation,
+            "simulation": simulation,
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing message for negotiation {negotiation_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while analyzing the message.",
+        )
 
 
-@app.post("/api/graph/pivot", response_class=JSONResponse)
-async def api_graph_pivot(request: Request):
+@router.get("/negotiations/{negotiation_id}", response_model=schemas.Negotiation)
+def get_negotiation_history(
+    negotiation_id: str,
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    current_user: schemas.User = Depends(get_current_user),
+):
     """
-    API endpoint to perform a 'visual pivot' from the graph.
-    This will run a new scan on a node and update the graph.
+    Fetches the full history of a negotiation session with robust pagination.
     """
-    data = await request.json()
-    node_id = data.get("node_id")
-    node_type = data.get("node_type")
-    action = data.get("action")
+    db_negotiation = (
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
+        .offset(skip)
+        .limit(limit)
+        .first()
+    )
+    if not db_negotiation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Negotiation session not found",
+        )
+    return db_negotiation
 
-    result = await run_graph_action(node_id, node_type, action)
 
-    return JSONResponse(content=result)
+@router.websocket("/ws/{negotiation_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    negotiation_id: str,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+    engine: NegotiationEngine = Depends(get_engine),
+):
+    """Handles real-time negotiation chat via WebSocket."""
+    await websocket.accept()
+    # You will need a way to validate the token passed in the query parameters
+    # For simplicity, this is not shown here, but in a real-world application,
+    # you would validate the token before proceeding.
+
+    db_negotiation = (
+        db.query(schemas.NegotiationSession)
+        .filter(schemas.NegotiationSession.id == negotiation_id)
+        .first()
+    )
+    if not db_negotiation:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    try:
+        while True:
+            user_message = await websocket.receive_text()
+            analysis = engine.analyze_message(user_message)
+
+            # Save user message
+
+            db_user_message = schemas.Message(
+                id=str(uuid.uuid4()),
+                negotiation_id=negotiation_id,
+                sender_id="user",  # Replace with actual user ID
+                content=user_message,
+                analysis=analysis,
+            )
+            db.add(db_user_message)
+            db.commit()
+
+            # Generate and send bot reply
+
+            history = [
+                {
+                    "sender_id": msg.sender_id,
+                    "content": msg.content,
+                    "analysis": msg.analysis,
+                }
+                for msg in db_negotiation.messages
+            ]
+            recommendation = await engine.recommend_tactic_async(history)
+            bot_reply = recommendation.get(
+                "bot_response", "I'm not sure how to respond to that."
+            )
+
+            await websocket.send_json(
+                {
+                    "sender": "ai_negotiator",
+                    "text": bot_reply,
+                    "tactic": recommendation.get("tactic", "Unknown"),
+                }
+            )
+
+            # Save bot message
+
+            bot_analysis = engine.analyze_message(bot_reply)
+            db_bot_message = schemas.Message(
+                id=str(uuid.uuid4()),
+                negotiation_id=negotiation_id,
+                sender_id="ai_negotiator",
+                content=bot_reply,
+                analysis=bot_analysis,
+            )
+            db.add(db_bot_message)
+            db.commit()
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for negotiation {negotiation_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for negotiation {negotiation_id}: {e}")
+    finally:
+        db.close()
+        logger.info(f"Closed DB session for WebSocket negotiation {negotiation_id}")
+
+
+app = FastAPI()
+app.include_router(router)

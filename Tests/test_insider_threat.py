@@ -1,0 +1,74 @@
+import pytest
+from typer.testing import CliRunner
+import pandas as pd
+import typer  # Import typer
+
+from chimera_intel.core.insider_threat import insider_threat_app
+
+runner = CliRunner()
+
+# --- FIX APPLIED ---
+# Wrap the insider_threat_app in a parent Typer app
+# to correctly test the subcommand invocation.
+app = typer.Typer()
+app.add_typer(insider_threat_app, name="insider")
+# --- END FIX ---
+
+
+@pytest.fixture
+def mock_vpn_log(tmp_path):
+    """Creates a mock VPN log file (CSV) for testing."""
+    log_path = tmp_path / "vpn.log"
+    log_data = {
+        "timestamp": [
+            "2023-10-27 03:30:00",
+            "2023-10-27 09:05:00",
+            "2023-10-27 09:10:00",
+        ],
+        "user": ["user_a", "user_b", "user_a"],
+        "ip_address": ["10.0.0.5", "192.168.1.10", "8.8.8.8"],
+        "action": ["login", "login", "login"],
+    }
+    df = pd.DataFrame(log_data)
+    df.to_csv(log_path, index=False)
+    return str(log_path)
+
+
+def test_analyze_vpn_logs_flag_anomalies(mock_vpn_log):
+    """
+    Tests the analyze-vpn-logs command with the --flag-anomalies option.
+    """
+    # --- FIX APPLIED ---
+    # Call the parent 'app' and use the full subcommand path "insider analyze-vpn-logs"
+    result = runner.invoke(
+        app,
+        ["insider", "analyze-vpn-logs", mock_vpn_log, "--flag-anomalies"],
+    )
+    # --- END FIX ---
+
+    assert (
+        result.exit_code == 0
+    ), f"CLI exited with code {result.exit_code}: {result.output}"
+    assert "Analyzing VPN logs from:" in result.output
+    assert "Potential Insider Threat Anomalies Detected" in result.output
+    assert "Unusual Login Time" in result.output
+    assert "user_a" in result.output
+    assert "Multiple Locations" in result.output
+
+
+def test_analyze_vpn_logs_file_not_found():
+    """
+    Tests the command when the specified log file does not exist.
+    """
+    # --- FIX APPLIED ---
+    # Call the parent 'app' and use the full subcommand path "insider analyze-vpn-logs"
+    result = runner.invoke(
+        app,
+        ["insider", "analyze-vpn-logs", "non_existent.log"],
+    )
+    # --- END FIX ---
+
+    assert (
+        result.exit_code == 1
+    ), f"CLI exited with code {result.exit_code}: {result.output}"
+    assert "Error: Log file not found at 'non_existent.log'" in result.output

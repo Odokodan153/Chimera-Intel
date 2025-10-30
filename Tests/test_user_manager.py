@@ -32,8 +32,6 @@ class TestUserManager(unittest.TestCase):
 
     def test_password_hashing_and_verification(self):
         """Tests that password hashing and verification work correctly without truncation."""
-        # This password is longer than 72 bytes to test that Argon2 handles it correctly
-
         password = "a_very_long_and_secure_password_that_would_definitely_fail_with_the_bcrypt_limit_of_72_bytes"
         hashed_password = get_password_hash(password)
         self.assertTrue(verify_password(password, hashed_password))
@@ -43,8 +41,13 @@ class TestUserManager(unittest.TestCase):
     def test_get_active_user(self, mock_get_user_from_db):
         """Tests retrieving the active user."""
         set_active_user("testuser")
+        # Add email to the mock User object
+
         mock_get_user_from_db.return_value = User(
-            id=1, username="testuser", hashed_password="hashed_password"
+            id=1,
+            username="testuser",
+            email="test@example.com",
+            hashed_password="hashed_password",
         )
 
         user = get_active_user()
@@ -65,10 +68,12 @@ class TestUserManager(unittest.TestCase):
     def test_cli_add_user(self, mock_get_user, mock_create_user):
         """Tests the 'user add' CLI command."""
         mock_get_user.return_value = None
-        # Use `input` to provide the password to the prompt
+        # Provide both username and email to the command
 
         result = runner.invoke(
-            user_app, ["add", "newuser"], input="password\npassword\n"
+            user_app,
+            ["add", "newuser", "new@example.com"],
+            input="password\npassword\n",
         )
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Successfully created user 'newuser'", result.stdout)
@@ -77,11 +82,20 @@ class TestUserManager(unittest.TestCase):
     @patch("chimera_intel.core.user_manager.get_user_from_db")
     def test_cli_add_user_already_exists(self, mock_get_user):
         """Tests adding a user that already exists."""
+        # Add email to the mock User object
+
         mock_get_user.return_value = User(
-            id=1, username="existinguser", hashed_password=""
+            id=1,
+            username="existinguser",
+            email="existing@example.com",
+            hashed_password="",
         )
+        # Provide both username and email to the command
+
         result = runner.invoke(
-            user_app, ["add", "existinguser"], input="password\npassword\n"
+            user_app,
+            ["add", "existinguser", "existing@example.com"],
+            input="password\npassword\n",
         )
         self.assertEqual(result.exit_code, 1)
         self.assertIn("User 'existinguser' already exists", result.stdout)
@@ -90,8 +104,13 @@ class TestUserManager(unittest.TestCase):
     @patch("chimera_intel.core.user_manager.verify_password", return_value=True)
     def test_cli_login_success(self, mock_verify, mock_get_user):
         """Tests the 'user login' CLI command with correct credentials."""
+        # Add email to the mock User object
+
         mock_get_user.return_value = User(
-            id=1, username="testuser", hashed_password="hashed_password"
+            id=1,
+            username="testuser",
+            email="test@example.com",
+            hashed_password="hashed_password",
         )
         result = runner.invoke(user_app, ["login", "testuser"], input="password\n")
         self.assertEqual(result.exit_code, 0)
@@ -101,8 +120,13 @@ class TestUserManager(unittest.TestCase):
     @patch("chimera_intel.core.user_manager.verify_password", return_value=False)
     def test_cli_login_failure(self, mock_verify, mock_get_user):
         """Tests the 'user login' CLI command with incorrect credentials."""
+        # Add email to the mock User object
+
         mock_get_user.return_value = User(
-            id=1, username="testuser", hashed_password="hashed_password"
+            id=1,
+            username="testuser",
+            email="test@example.com",
+            hashed_password="hashed_password",
         )
         result = runner.invoke(user_app, ["login", "testuser"], input="wrongpassword\n")
         self.assertEqual(result.exit_code, 1)
@@ -119,8 +143,10 @@ class TestUserManager(unittest.TestCase):
     @patch("chimera_intel.core.user_manager.get_active_user")
     def test_cli_status_logged_in(self, mock_get_active_user):
         """Tests the 'user status' command when a user is logged in."""
+        # Add email to the mock User object
+
         mock_get_active_user.return_value = User(
-            id=1, username="testuser", hashed_password=""
+            id=1, username="testuser", email="test@example.com", hashed_password=""
         )
         result = runner.invoke(user_app, ["status"])
         self.assertEqual(result.exit_code, 0)

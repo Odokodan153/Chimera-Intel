@@ -1,9 +1,3 @@
-"""
-Module for Physical Security OSINT.
-
-Identifies and gathers intelligence on a target's physical locations.
-"""
-
 import typer
 import logging
 import googlemaps  # type: ignore
@@ -70,7 +64,7 @@ physical_osint_app = typer.Typer()
 
 @physical_osint_app.command("locations")
 def run_location_search(
-    query: Optional[str] = typer.Argument(
+    target: Optional[str] = typer.Argument(
         None,
         help="The company name or search query. Uses active project's company name if not provided.",
     ),
@@ -79,7 +73,7 @@ def run_location_search(
     ),
 ):
     """Finds physical office locations related to a target."""
-    target_query = resolve_target(query, required_assets=["company_name", "domain"])
+    target_query = resolve_target(target, required_assets=["company_name", "domain"])
 
     results_model = find_physical_locations(target_query)
     results_dict = results_model.model_dump(exclude_none=True)

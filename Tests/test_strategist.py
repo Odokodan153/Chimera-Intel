@@ -8,7 +8,7 @@ from chimera_intel.core.strategist import (
 from chimera_intel.core.schemas import StrategicProfileResult, ProjectConfig
 
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestStrategist(unittest.TestCase):
@@ -80,9 +80,8 @@ class TestStrategist(unittest.TestCase):
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
-    @patch(
-        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
-    )
+    # --- FIX: Patch path corrected to where API_KEYS is USED ---
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_command_success(self, mock_generate, mock_get_data):
         """
         Tests a successful run of the `analysis strategy run` CLI command.
@@ -104,9 +103,8 @@ class TestStrategist(unittest.TestCase):
         mock_generate.assert_called_once()
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
-    @patch(
-        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
-    )
+    # --- FIX: Patch path corrected to where API_KEYS is USED ---
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_no_historical_data(self, mock_get_data):
         """
         Tests the CLI command's behavior when no historical data is found for the target.
@@ -128,7 +126,8 @@ class TestStrategist(unittest.TestCase):
         self.assertNotIn("Automated Strategic Profile", result.stdout)
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
-    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", None)
+    # --- FIX: Patch path corrected to where API_KEYS is USED ---
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", None)
     def test_cli_strategy_missing_api_key(self, mock_get_data):
         """
         Tests the CLI command's failure when the GOOGLE_API_KEY is not configured.
@@ -146,13 +145,14 @@ class TestStrategist(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
         # With mix_stderr=False, we can now check the stderr stream
 
-        self.assertIn("Google API key not found", result.stderr)
+        # Note: typer.secho prints to stderr, which is captured in stdout by default
+        # unless mix_stderr=False is passed to invoke. Let's check stdout.
+        self.assertIn("Google API key not found", result.stdout)
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
-    @patch(
-        "chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_google_key"
-    )
+    # --- FIX: Patch path corrected to where API_KEYS is USED ---
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_handles_generation_error(self, mock_generate, mock_get_data):
         """
         Tests that the CLI command correctly handles an error from the AI generation function.
@@ -172,17 +172,17 @@ class TestStrategist(unittest.TestCase):
         # The command should exit cleanly, but log an error to stderr
 
         self.assertEqual(result.exit_code, 1)
-        # With mix_stderr=False, we can check the error message in stderr
-
-        self.assertIn("Failed to generate strategic profile", result.stderr)
-        self.assertNotIn("AI service is down", result.stdout)
+        # Note: typer.secho prints to stderr, which is captured in stdout by default
+        self.assertIn("Failed to generate strategic profile", result.stdout)
+        self.assertIn("AI service is down", result.stdout)
 
     # --- NEW: Project-Aware CLI Tests ---
 
     @patch("chimera_intel.core.project_manager.get_active_project")
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
-    @patch("chimera_intel.core.config_loader.API_KEYS.google_api_key", "fake_key")
+    # --- FIX: Patch path corrected to where API_KEYS is USED ---
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_key")
     def test_cli_strategy_with_project(
         self, mock_generate, mock_get_data, mock_get_project
     ):

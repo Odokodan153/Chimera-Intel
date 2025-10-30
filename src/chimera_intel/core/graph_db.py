@@ -1,81 +1,227 @@
+import typer
 import json
-from .database import get_all_scans_for_target, get_db_connection
-from .graph_schemas import GraphNode, GraphEdge, EntityGraphResult
+from pyvis.network import Network  # type: ignore
+import os
+from typing import Dict, Any, List, Optional
+import logging
+from .config_loader import CONFIG
+from .utils import console
+from .graph_schemas import GraphNode, GraphEdge, EntityGraphResult  # Corrected imports
+from neo4j import GraphDatabase as Neo4jGraphDatabase
+from neo4j.exceptions import ServiceUnavailable
+
+logger = logging.getLogger(__name__)
 
 
-def build_and_save_graph(target: str) -> EntityGraphResult:
-    """Builds and saves an entity relationship graph for a target."""
-    nodes: dict[str, GraphNode] = {}
-    edges: list[GraphEdge] = []
+class GraphDatabase:
+    """
+    Manages the connection to a Neo4j graph database.
+    """
 
-    scans = get_all_scans_for_target(target)
-    if not scans:
+    def __init__(self, uri, user, password):
+        try:
+            self._driver = Neo4jGraphDatabase.driver(uri, auth=(user, password))
+            logger.info("Successfully connected to Neo4j database.")
+        except ServiceUnavailable as e:
+            logger.error("Could not connect to Neo4j database at %s: %s", uri, e)
+            self._driver = None
+
+    def execute_query(
+        self, query: str, parameters: Optional[Dict[str, Any]] = None  # Added Optional
+    ) -> List[Dict[str, Any]]:
+        """
+        Executes a Cypher query against the database.
+        """
+        if not self._driver:
+            logger.error("Cannot execute query: database driver is not available.")
+            return []
+        try:
+            with self._driver.session() as session:
+                parameters = parameters or {}  # Handle optional None
+                result = session.run(query, parameters)
+                return [record.data() for record in result]
+        except Exception as e:
+            logger.error("An error occurred while executing the query: %s", e)
+            return []
+
+    def close(self):
+        if self._driver:
+            self._driver.close()
+            logger.info("Neo4j database connection closed.")
+
+
+# --- Singleton instance of the graph database connection ---
+# The CLI will import and use this instance to run queries.
+# Connection details are populated from the config.
+
+# Corrected configuration access to match the schema definition
+
+
+graph_db_instance = GraphDatabase(
+    uri=CONFIG.graph_db.uri,
+    user=CONFIG.graph_db.username,
+    password=CONFIG.graph_db.password,
+)
+
+
+def build_and_save_graph(
+    json_data: Dict[str, Any], output_path: str
+) -> EntityGraphResult:
+    """Builds and saves an interactive HTML knowledge graph from a JSON scan result."""
+    nodes = []
+    edges = []
+    try:
+        net = Network(
+            height="900px",
+            width="100%",
+            bgcolor="#222222",
+            font_color="white",
+            notebook=False,
+            directed=True,
+        )
+
+        target = json_data.get("domain") or json_data.get("company", "Unknown Target")
+        net.add_node(
+            target,
+            label=target,
+            color="#ff4757",
+            size=30,
+            shape="dot",
+            title="Main Target",
+        )
+        nodes.append(
+            GraphNode(
+                id=target, label=target, node_type="Main Target", properties={}
+            )  # Corrected Node to GraphNode
+        )
+
+        footprint_data = json_data.get("footprint", {})
+        for sub_item in footprint_data.get("subdomains", {}).get("results", []):
+            subdomain = sub_item.get("domain")
+            if subdomain:
+                net.add_node(
+                    subdomain,
+                    label=subdomain,
+                    color="#1e90ff",
+                    size=15,
+                    shape="dot",
+                    title="Subdomain",
+                )
+                net.add_edge(target, subdomain)
+                nodes.append(
+                    GraphNode(  # Corrected Node to GraphNode
+                        id=subdomain,
+                        label=subdomain,
+                        node_type="Subdomain",
+                        properties={},
+                    )
+                )
+                edges.append(
+                    GraphEdge(  # Corrected Edge to GraphEdge
+                        source=target,
+                        target=subdomain,
+                        label="has_subdomain",
+                        properties={},
+                    )
+                )
+        for ip in footprint_data.get("dns_records", {}).get("A", []):
+            if "Error" not in str(ip):
+                net.add_node(
+                    ip,
+                    label=ip,
+                    color="#feca57",
+                    size=20,
+                    shape="triangle",
+                    title="IP Address",
+                )
+                net.add_edge(target, ip)
+                nodes.append(
+                    GraphNode(
+                        id=ip, label=ip, node_type="IP Address", properties={}
+                    )  # Corrected Node to GraphNode
+                )
+                edges.append(
+                    GraphEdge(
+                        source=target, target=ip, label="resolves_to", properties={}
+                    )  # Corrected Edge to GraphEdge
+                )
+        web_data = json_data.get("web_analysis", {})
+        for tech_item in web_data.get("tech_stack", {}).get("results", []):
+            tech = tech_item.get("technology")
+            if tech:
+                net.add_node(
+                    tech,
+                    label=tech,
+                    color="#576574",
+                    size=12,
+                    shape="square",
+                    title="Technology",
+                )
+                net.add_edge(target, tech)
+                nodes.append(
+                    GraphNode(
+                        id=tech, label=tech, node_type="Technology", properties={}
+                    )  # Corrected Node to GraphNode
+                )
+                edges.append(
+                    GraphEdge(
+                        source=target, target=tech, label="uses_tech", properties={}
+                    )  # Corrected Edge to GraphEdge
+                )
+        # Apply physics options from config.yaml
+
+        # Corrected access for the 'graph' dictionary
+
+        physics_options = None
+        if CONFIG.reporting and CONFIG.reporting.graph:
+            physics_options = CONFIG.reporting.graph.physics_options
+        if physics_options:
+            net.set_options(physics_options)
+        net.save_graph(output_path)
+        logger.info(
+            "Successfully generated interactive graph at: %s",
+            os.path.abspath(output_path),
+        )
+        console.print("   [dim]Open this HTML file in your browser to explore.[/dim]")
         return EntityGraphResult(
             target=target,
-            total_nodes=0,
-            total_edges=0,
-            error="No scans found for target.",
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+            nodes=nodes,
+            edges=edges,
         )
-    # Add the central target node
-
-    nodes[target] = GraphNode(id=target, node_type="Target", label=target)
-
-    for scan in scans:
-        module = scan.get("module")
-        if not module:
-            continue
-        data = json.loads(scan.get("scan_data", "{}"))
-
-        if module == "footprint":
-            # Extract IPs and subdomains
-
-            ips = data.get("footprint", {}).get("dns_records", {}).get("A", [])
-            for ip in ips:
-                nodes[ip] = GraphNode(id=ip, node_type="IPAddress", label=ip)
-                edges.append(GraphEdge(source=target, target=ip, label="HAS_IP"))
-            subdomains = (
-                data.get("footprint", {}).get("subdomains", {}).get("results", [])
-            )
-            for sub in subdomains:
-                subdomain = sub.get("domain")
-                if subdomain:
-                    nodes[subdomain] = GraphNode(
-                        id=subdomain, node_type="Domain", label=subdomain
-                    )
-                    edges.append(
-                        GraphEdge(
-                            source=target, target=subdomain, label="HAS_SUBDOMAIN"
-                        )
-                    )
-    # Save to a new table (using PostgreSQL)
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS entity_graphs (
-            id SERIAL PRIMARY KEY,
-            target TEXT NOT NULL,
-            graph_data JSONB NOT NULL,
-            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    except Exception as e:
+        logger.error("An error occurred during graph generation: %s", e)
+        return EntityGraphResult(
+            target="", total_nodes=0, total_edges=0, nodes=[], edges=[], error=str(e)
         )
-    """
-    )
-    graph_data = {
-        "nodes": [node.model_dump() for node in nodes.values()],
-        "edges": [edge.model_dump() for edge in edges],
-    }
-    cursor.execute(
-        "INSERT INTO entity_graphs (target, graph_data) VALUES (%s, %s)",
-        (target, json.dumps(graph_data)),
-    )
-    conn.commit()
-    conn.close()
 
-    return EntityGraphResult(
-        target=target,
-        total_nodes=len(nodes),
-        total_edges=len(edges),
-        nodes=list(nodes.values()),
-        edges=edges,
-    )
+
+# --- Typer CLI Application ---
+
+
+graph_app = typer.Typer()
+
+
+@graph_app.command("create")
+def create_knowledge_graph(
+    json_file: str = typer.Argument(..., help="Path to the JSON scan result file."),
+    output_file: str = typer.Option(
+        None, "--output", "-o", help="Path to save the HTML graph."
+    ),
+):
+    """Creates an interactive knowledge graph from a saved JSON scan file."""
+    logger.info("Generating knowledge graph from: %s", json_file)
+
+    try:
+        with open(json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error("Error reading file '%s' for graph generation: %s", json_file, e)
+        raise typer.Exit(code=1)
+    if not output_file:
+        target_name = data.get("domain") or data.get("company", "graph")
+        output_path = f"{target_name.replace('.', '_')}_graph.html"
+    else:
+        output_path = output_file
+    build_and_save_graph(data, output_path)

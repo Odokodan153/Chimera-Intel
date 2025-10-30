@@ -19,75 +19,170 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-# Core dependencies required for the framework to run
+# --- CORE DEPENDENCIES ---
+# Essential packages for the application to run.
 dependencies = [
-    "typer[all]>=0.9.0,<0.10.0",
-    "click<8.2.0",
-    "python-dotenv>=1.0.0,<2.0.0",
-    "beautifulsoup4>=4.12.2,<5.0.0",
-    "httpx>=0.24.1,<0.25.0",
-    "PyYAML>=6.0.1,<7.0.0",
+    "typer[standard]>=0.19.2,<0.20.0",
+    "pydantic[email]>=2.11.9,<3.0.0",
+    "pydantic-settings>=2.10.1,<3.0.0",
+    "pyyaml>=6.0.3,<7.0.0",
+    "requests>=2.31.0",
+    "httpx[socks]>=0.28.1,<0.29.0",
+    "websockets>=15.0.1,<16.0.0",
+    "aiohttp>=3.12.15,<4.0.0",
+    "networkx>=3.2,<4.0",
+    "docker>=7.0.0,<8.0.0",
+    "statsmodels>=0.14.0,<0.15.0",
+    "biopython>=1.81,<2.0.0",
     "fastapi>=0.103.1,<0.104.0",
     "uvicorn[standard]>=0.23.2,<0.24.0",
-    "jinja2>=3.1.2,<4.0.0",
-    "pydantic>=2.4.2,<3.0.0",
-    "pydantic-settings>=2.0.3,<3.0.0",
     "rich>=13.0.0,<14.0.0",
-    "lxml>=5.2.2,<6.0.0",
     "stix2>=3.0.1,<4.0.0",
     "psycopg2-binary>=2.9.9,<3.0.0",
     "passlib[bcrypt]>=1.7.4,<2.0.0",
     "argon2-cffi>=21.3.0,<22.0.0",
-    "playwright>=1.44.0,<2.0.0",
-    "dnspython>=2.4.2,<3.0.0",
-    "SpeechRecognition>=3.10.0,<4.0.0",
-    "Pillow>=10.0.0,<11.0.0",
     "joblib>=1.4.2,<2.0.0",
     "numpy>=1.26.4,<2.0.0",
     "scikit-learn>=1.5.0,<2.0.0",
-    "sec-api>=1.0.17,<2.0.0",
-    "python-nmap>=0.7.1,<0.8.0",
-    "reportlab>=4.2.0,<5.0.0",
-    "pyvis>=0.3.2,<0.4.0",
     "feedparser>=6.0.10,<7.0.0",
     "python-whois>=0.8.0,<0.9.0",
     "GitPython>=3.1.43,<4.0.0",
     "jsondiff==2.0.0",
     "google-generativeai>=0.2.2,<0.3.0",
-    "shodan>=1.28.0,<2.0.0",
-    "sherlock-project>=0.14.3,<0.15.0",
-    "tweepy>=4.14.0,<5.0.0",
-    "googlemaps>=4.10.0,<5.0.0",
     "mitreattack-python>=2.1.0,<3.0.0",
-    "folium>=0.15.1,<0.16.0",
     "kaggle>=1.5.12,<2.0.0",
     "google-api-python-client>=2.52.0,<3.0.0",
     "google-play-scraper>=1.2.4,<2.0.0",
-    "httpx-socks>=0.8.0,<0.9.0",
-    "yfinance>=0.2.28,<0.3.0",
-    # Associated types for core libraries
-    "types-PyYAML>=6.0.12.12,<7.0.0.0",
-    "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
-    "types-psycopg2>=2.9.21.20240523,<2.10.0.0",
-    "types-passlib>=1.7.4.20240106,<1.8.0.0",
-    "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
-    "types-reportlab~=4.2.0",
+    "tensorflow==2.14.1",
+    "neo4j>=5.14.0,<6.0.0",
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "python-app-store-scraper>=1.1.1",
+    "textblob>=0.17.1,<0.18.0",
+    "reportlab",
+    "yfinance",
+    "sec-api",
+    "python-nmap",
+    "apscheduler",
+    "httpx-socks",
+    "wbdata",
+    "folium",
+    "googlemaps",
+    "SpeechRecognition",
+    "python-Wappalyzer",
+    "pyModeS>=2.0.0",
+    "python-louvain",
+    "alembic",
+    "hvac",
+    "dnspython>=2.6.1,<3.0.0",
+    "hibpwned",
+    "shodan",
+    "python-dotenv",
+    "googlesearch-python",
+    "sherlock-project>=0.14.3,<0.15.0",
+    "pyais>=2.0.0",
+    "wbgapi",
+    "pubchempy>=1.0.4"
 ]
 
 [project.optional-dependencies]
+# --- LIGHTWEIGHT TESTING DEPENDENCIES ---
+# Packages for core testing, linting, and type analysis.
 test = [
     "pytest",
     "pytest-cov",
     "pytest-asyncio",
     "ruff",
     "black",
-    "mypy"
+    "mypy",
+    "pip-audit",
+    "pytest-mock",
+    # Missing dependencies identified from logs
+    "python-json-logger",
+    "matplotlib",
+    # Type Stubs
+    "pandas-stubs",
+    "scikit-learn-stubs",
+    "types-networkx",
+    "types-requests",
+    "types-docker",
+    "types-PyYAML>=6.0.12.12,<7.0.0.0",
+    "types-beautifulsoup4>=4.12.0.20250516,<4.13.0.0",
+    "types-psycopg2>=2.9.21.20240523,<2.10.0.0",
+    "types-passlib>=1.7.4.20240106,<1.8.0.0",
+    "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
+    "types-reportlab~=4.2.0",
+    "types-sqlalchemy",
 ]
 
-# This is the entry point that creates the 'chimera' command
+# --- HEAVYWEIGHT TESTING DEPENDENCIES ---
+# Large packages for ML, data processing, and browser automation.
+test-heavy = [
+    "pyvis",
+    "tweepy",
+    "playwright",
+    "beautifulsoup4",
+    "torch",
+    "torchvision",
+    "scikit-image",
+    "geopy",
+    "SQLAlchemy",
+    "opencv-python",
+    "scapy",
+    "librosa",
+    "pypatent",
+    "scholarly",
+    "pdfplumber",
+    "python-docx",
+    "overpy",
+    "sgp4",
+    "skyfield",
+]
+
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
 [project.scripts]
 chimera = "chimera_intel.cli:app"
 
 [project.urls]
 "Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
 "Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "sgp4.api",
+    "skyfield.api",
+    "pandas.*",
+    "sklearn.*",
+    "networkx.*",
+    "dns.*",
+    "whois.*",
+    "pyvis.*",
+    "tweepy.*",
+    "playwright.*",
+    "bs4.*",
+    "torch.*",
+    "torchvision.*",
+    "shodan.*",
+    "skimage.*",
+    "geopy.*",
+    "sqlalchemy.*",
+    "cv2.*",
+    "scapy.*",
+    "librosa.*",
+    "pymodes.*",
+    "pypatent.*",
+    "scholarly.*",
+    "requests.*",
+    "pdfplumber.*",
+    "docx.*",
+    "docker.*",
+    "overpy.*",
+    "Wappalyzer.*",
+]
+ignore_missing_imports = true

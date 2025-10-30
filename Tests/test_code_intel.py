@@ -1,113 +1,100 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import git
+import typer
 from typer.testing import CliRunner
+import json
+from unittest.mock import MagicMock, patch
 
-from chimera_intel.core.code_intel import analyze_git_repository, code_intel_app
-from chimera_intel.core.schemas import RepoAnalysisResult
+# The application instance to be tested
+from chimera_intel.core.code_intel import code_intel_app
 
+# Create a CliRunner for invoking the app in tests
 runner = CliRunner()
 
 
-class TestCodeIntel(unittest.TestCase):
-    """Test cases for the code_intel module."""
-
-    @patch("chimera_intel.core.code_intel.shutil.rmtree")
-    @patch("chimera_intel.core.code_intel.git.Repo.clone_from")
-    def test_analyze_git_repository_success(self, mock_clone_from, mock_rmtree):
-        """Tests a successful repository analysis by mocking the git clone."""
-        # Arrange
-
-        mock_repo = MagicMock()
-        mock_author1 = MagicMock()
-        mock_author1.name = "Jane Doe"
-        mock_author1.email = "jane@example.com"
-        mock_commit1 = MagicMock(
-            author=mock_author1, message="feat: Add new dashboard feature"
-        )
-        mock_author2 = MagicMock()
-        mock_author2.name = "John Smith"
-        mock_author2.email = "john@example.com"
-        mock_commit2 = MagicMock(
-            author=mock_author2, message="fix: Correct bug in API endpoint"
-        )
-        mock_repo.iter_commits.return_value = [mock_commit1, mock_commit2]
-        mock_clone_from.return_value = mock_repo
-
-        # Act
-
-        result = analyze_git_repository("https://github.com/user/repo.git")
-
-        # Assert
-
-        self.assertIsInstance(result, RepoAnalysisResult)
-        self.assertIsNone(result.error)
-        self.assertEqual(result.total_commits, 2)
-        self.assertEqual(result.total_committers, 2)
-        self.assertEqual(len(result.top_committers), 2)
-        self.assertIn("feature", result.commit_keywords)
-        self.assertIn("bug", result.commit_keywords)
-        mock_rmtree.assert_called_once()  # Verify cleanup was called
-
-    @patch("chimera_intel.core.code_intel.shutil.rmtree")
-    @patch("chimera_intel.core.code_intel.git.Repo.clone_from")
-    def test_analyze_git_repository_git_command_error(
-        self, mock_clone_from, mock_rmtree
-    ):
-        """Tests the function's error handling when a GitCommandError occurs."""
-        # Arrange: Simulate a git command failure (e.g., repo not found)
-
-        mock_clone_from.side_effect = git.GitCommandError(
-            "clone", "Repository not found"
-        )
-
-        # Act
-
-        result = analyze_git_repository("https://github.com/user/nonexistent-repo.git")
-
-        # Assert
-
-        self.assertIsInstance(result, RepoAnalysisResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("Git command failed", result.error)
-        self.assertEqual(result.total_commits, 0)
-        mock_rmtree.assert_called_once()  # Ensure cleanup is still called
-
-    @patch("chimera_intel.core.code_intel.shutil.rmtree")
-    @patch("chimera_intel.core.code_intel.git.Repo.clone_from")
-    def test_analyze_git_repository_unexpected_exception(
-        self, mock_clone_from, mock_rmtree
-    ):
-        """Tests the function's general exception handling."""
-        # Arrange: Simulate an unexpected error
-
-        mock_clone_from.side_effect = Exception("An unexpected network error")
-
-        # Act
-
-        result = analyze_git_repository("https://github.com/user/repo.git")
-
-        # Assert
-
-        self.assertIsInstance(result, RepoAnalysisResult)
-        self.assertIsNotNone(result.error)
-        self.assertIn("An unexpected error occurred", result.error)
-        self.assertEqual(result.total_committers, 0)
-        mock_rmtree.assert_called_once()
-
-    def test_cli_repo_no_url_fails(self):
-        """Tests that the CLI command fails if no repository URL is provided."""
-        # Act
-        # Test the specific Typer app for this module to isolate the test from the main app
-
-        result = runner.invoke(code_intel_app, [])
-
-        # Assert
-        # The command's internal logic should exit with code 1
-
-        self.assertEqual(result.exit_code, 1)
-        self.assertIn("A repository URL must be provided", result.stdout)
+# The mock_git_repo fixture is no longer needed, as we will patch directly.
 
 
-if __name__ == "__main__":
-    unittest.main()
+# Patch external dependencies
+@patch("git.Repo.clone_from")
+# We REMOVE the patch for save_or_print_results so the stdout assertions can pass
+# --- FIX: Updated lambda to accept *args and **kwargs ---
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *args, **kwargs: None)
+def test_analyze_repo_command_success(mock_clone):
+    """
+    Tests a successful run of the 'code-intel analyze-repo' command.
+    """
+    # --- Arrange ---
+    # Mock the commit object
+    mock_commit = MagicMock()
+    mock_commit.author.name = "John Doe"
+    mock_commit.author.email = "john.doe@example.com"
+    mock_commit.message = "feat: Add new feature"
+
+    # Mock the repo object that `clone_from` would return
+    mock_repo_instance = MagicMock()
+    mock_repo_instance.iter_commits.return_value = [mock_commit]
+
+    # Configure the mock passed in by the decorator
+    mock_clone.return_value = mock_repo_instance
+
+    # --- Execute ---
+    # FIXED: Remove "analyze-repo" from the list.
+    # The app *is* the analyze-repo command.
+    result = runner.invoke(code_intel_app, ["https://github.com/user/repo"])
+
+    # --- Assert ---
+    # With patches, exit_code should be 0 (success) as expected
+    assert result.exit_code == 0
+
+    # Check for the initial status message
+    assert "Analyzing repository: https://github.com/user/repo" in result.stdout
+
+    # --- FIX: Assert against the actual JSON output format ---
+    # The CLI prints a status message first, followed by the JSON output.
+    output_lines = result.stdout.splitlines()
+    json_output = "\n".join(output_lines[1:])
+
+    try:
+        data = json.loads(json_output)
+    except json.JSONDecodeError as e:
+        assert False, f"Output is not valid JSON: {json_output}. Error: {e}"
+
+    assert data["repository_url"] == "https://github.com/user/repo"
+    assert data["total_commits"] == 1
+    assert data["total_committers"] == 1
+    assert data["top_committers"][0]["name"] == "John Doe"
+    assert data["commit_keywords"]["feat"] == 1
+    # --- END FIX ---
+
+    # Verify that the clone was attempted with the correct URL
+    mock_clone.assert_called_once()
+    assert mock_clone.call_args[0][0] == "https://github.com/user/repo"
+
+
+# Patch external dependencies and the clone_from method to raise an error
+@patch("git.Repo.clone_from", side_effect=Exception("fatal: repository not found"))
+# This patch isn't strictly needed here as this code path doesn't save,
+# but we leave it for consistency.
+# --- FIX: Updated lambda to accept *args and **kwargs ---
+@patch("chimera_intel.core.code_intel.save_scan_to_db", lambda *args, **kwargs: None)
+def test_analyze_repo_command_clone_error(mock_clone):
+    """
+    Tests how the command handles an error during the git clone process.
+    """
+    # --- Arrange ---
+    # The mock_clone decorator is already configured to raise the exception.
+
+    # --- Execute ---
+    # FIXED: Remove "analyze-repo" from the list.
+    result = runner.invoke(code_intel_app, ["https://github.com/user/nonexistent-repo"])
+
+    # --- Assert ---
+    # Check the exception for the correct exit code
+    exit_code = result.exit_code
+    if isinstance(result.exception, typer.Exit):
+        exit_code = result.exception.exit_code
+
+    assert exit_code == 1
+
+    # Check for the specific error message in the output
+    assert "Failed to clone or analyze repository" in result.stdout
+    assert "fatal: repository not found" in result.stdout

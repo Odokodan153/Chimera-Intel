@@ -71,19 +71,31 @@ legint_app = typer.Typer()
 
 @legint_app.command("docket-search")
 def run_docket_search(
-    company_name: Optional[str] = typer.Argument(
-        None, help="The company name to search. Uses active project if not provided."
+    company_name: Optional[str] = typer.Option(
+        None,
+        "--company-name",
+        "-n",
+        help="The company name to search. Uses active project if not provided.",
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """Searches court records for dockets related to a company."""
-    target_company = resolve_target(company_name, required_assets=["company_name"])
+    try:
+        target_company = resolve_target(company_name, required_assets=["company_name"])
 
-    results_model = search_court_dockets(target_company)
-    results_dict = results_model.model_dump(exclude_none=True, by_alias=True)
-    save_or_print_results(results_dict, output_file)
-    save_scan_to_db(
-        target=target_company, module="legint_docket_search", data=results_dict
-    )
+        results_model = search_court_dockets(target_company)
+        if results_model.error:
+            typer.echo(f"Error: {results_model.error}", err=True)
+            raise typer.Exit(code=1)
+        results_dict = results_model.model_dump(exclude_none=True, by_alias=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=target_company, module="legint_docket_search", data=results_dict
+        )
+    except Exception as e:
+        # Catch any other unexpected errors
+
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)

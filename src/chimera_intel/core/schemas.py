@@ -1,8 +1,26 @@
 from typing import Any, Dict, List, Optional, Union
-
-from pydantic import BaseModel, Field
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Boolean,
+    LargeBinary,
+    Enum as SQLAlchemyEnum,
+)
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+from pydantic import BaseModel, Field, validator, EmailStr
+import uuid
+from enum import Enum
 
 # --- General Purpose Models ---
+
+Base = declarative_base()
 
 
 class ScoredResult(BaseModel):
@@ -13,6 +31,14 @@ class ScoredResult(BaseModel):
     confidence: str
     sources: List[str]
     threat_intel: Optional["ThreatIntelResult"] = None
+
+
+class ScanData(BaseModel):
+    """A model for a single scan result."""
+
+    id: int
+    module: str
+    data: Dict[str, Any]
 
 
 # --- Threat Intelligence Models ---
@@ -46,13 +72,88 @@ class SubdomainReport(BaseModel):
     results: List[ScoredResult]
 
 
-class FootprintData(BaseModel):
-    """A model for the nested data within the footprint module."""
+class DnssecInfo(BaseModel):
+    dnssec_enabled: bool
+    spf_record: str
+    dmarc_record: str
 
+
+class TlsCertInfo(BaseModel):
+    issuer: str
+    subject: str
+    sans: List[str]
+    not_before: str
+    not_after: str
+
+
+class AsnInfo(BaseModel):
+    asn: Optional[str] = None
+    owner: Optional[str] = None
+    country: Optional[str] = None
+    prefix: Optional[str] = None
+
+
+class HistoricalDns(BaseModel):
+    a_records: List[str]
+    aaaa_records: List[str]
+    mx_records: List[str]
+
+
+class IpGeolocation(BaseModel):
+    ip: str
+    city: Optional[str] = None
+    country: Optional[str] = None
+    provider: Optional[str] = None
+
+
+class BreachInfo(BaseModel):
+    source: str
+    breaches: List[str]
+
+
+class PortScanResult(BaseModel):
+    open_ports: Dict[int, str]
+
+
+class WebTechInfo(BaseModel):
+    cms: Optional[str] = None
+    framework: Optional[str] = None
+    web_server: Optional[str] = None
+    js_library: Optional[str] = None
+
+
+class PersonnelInfo(BaseModel):
+    employees: List[Dict[str, str]]
+
+
+class SocialMediaPresence(BaseModel):
+    twitter: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+
+
+class KnowledgeGraph(BaseModel):
+    nodes: List[Dict[str, Any]]
+    edges: List[Dict[str, Any]]
+
+
+class FootprintData(BaseModel):
     whois_info: Dict[str, Any]
     dns_records: Dict[str, Any]
     subdomains: SubdomainReport
-    ip_threat_intelligence: List[ThreatIntelResult]
+    ip_threat_intelligence: List[Any]
+    historical_dns: HistoricalDns
+    reverse_ip: Dict[str, List[str]]
+    asn_info: Dict[str, AsnInfo]
+    tls_cert_info: TlsCertInfo
+    dnssec_info: DnssecInfo
+    ip_geolocation: Dict[str, IpGeolocation]
+    cdn_provider: Optional[str] = None
+    breach_info: BreachInfo
+    port_scan_results: Dict[str, PortScanResult]
+    web_technologies: WebTechInfo
+    personnel_info: PersonnelInfo
+    knowledge_graph: KnowledgeGraph
 
 
 class FootprintResult(BaseModel):
@@ -60,6 +161,11 @@ class FootprintResult(BaseModel):
 
     domain: str
     footprint: FootprintData
+
+
+class IpInfo(BaseModel):
+    asn: AsnInfo
+    geolocation: IpGeolocation
 
 
 # --- Web Analyzer Module Models ---
@@ -1098,12 +1204,19 @@ class ConfigNetwork(BaseModel):
     timeout: float = 20.0
 
 
-class AppConfig(BaseModel):
-    """The main model for validating the entire config.yaml file."""
+class ConfigNotifications(BaseModel):
+    """Configuration for notifications from config.yaml."""
 
-    network: ConfigNetwork
-    modules: ConfigModules
-    reporting: ConfigReporting = ConfigReporting()
+    slack_webhook_url: Optional[str] = None
+    teams_webhook_url: Optional[str] = None
+
+
+class ConfigGraphDB(BaseModel):
+    """Configuration for the graph database from config.yaml."""
+
+    uri: str = "bolt://localhost:7687"
+    username: str = "neo4j"
+    password: str = "password"
 
 
 # --- Blockchain & Cryptocurrency OSINT Models ---
@@ -1345,14 +1458,17 @@ class InsiderTransaction(BaseModel):
     insiderName: str
     transactionType: str
     transactionDate: str
-    shares: int
+    transactionShares: int
+    transactionCode: str
+    price: float
+    change: int
     value: Optional[int] = None
 
 
 class InsiderTradingResult(BaseModel):
     """The main, top-level result model for an insider trading scan."""
 
-    ticker: str
+    stock_symbol: str
     total_transactions: int = 0
     transactions: List[InsiderTransaction] = []
     error: Optional[str] = None
@@ -1439,6 +1555,7 @@ class LeadSuggestionResult(BaseModel):
 class BriefingResult(BaseModel):
     """Model for a full, AI-generated intelligence briefing."""
 
+    title: Optional[str] = None
     briefing_text: str
     error: Optional[str] = None
 
@@ -1769,50 +1886,13 @@ class PodcastAnalysisResult(BaseModel):
     error: Optional[str] = None
 
 
-# --- Graph & Entity Models ---
-
-
-class GraphNode(BaseModel):
-    """Model for a single node in an intelligence graph."""
-
-    id: str  # e.g., "megacorp.com", "1.2.3.4"
-    node_type: str  # e.g., "Domain", "IP Address", "Company", "Email"
-    label: str
-    properties: Dict[str, Any] = {}
-
-
-class GraphEdge(BaseModel):
-    """Model for a relationship (edge) between two nodes in the graph."""
-
-    source: str  # ID of the source node
-    target: str  # ID of the target node
-    label: str  # e.g., "Resolves To", "Registered By", "Uses Technology"
-    properties: Dict[str, Any] = {}
-
-
-class EntityGraphResult(BaseModel):
-    """The main, top-level result model for an entity reconciliation and graph build process."""
-
-    target: str
-    total_nodes: int
-    total_edges: int
-    nodes: List[GraphNode] = []
-    edges: List[GraphEdge] = []
-    error: Optional[str] = None
-
-
-class GraphNarrativeResult(BaseModel):
-    narrative_text: str
-    error: Optional[str] = None
-
-
 # ---: User Management Models ---
-class User(BaseModel):
-    """Model for a user in the database."""
-
-    id: int
-    username: str
-    hashed_password: str
+class Project(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: Optional[str] = None
+    owner_id: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # --- Threat Hunter Models ---
@@ -1832,4 +1912,1173 @@ class ThreatHuntResult(BaseModel):
     total_iocs_found: int
     detected_iocs: List[DetectedIOC] = []
     message: Optional[str] = None
+    error: Optional[str] = None
+
+
+# --- Industry Intelligence Models ---
+
+
+class IndustryIntelResult(BaseModel):
+    """Model for the result of an industry intelligence analysis."""
+
+    industry: str
+    country: Optional[str] = None
+    analysis_text: str
+    error: Optional[str] = None
+
+
+class MonopolyAnalysisResult(BaseModel):
+    """Model for the result of a monopoly analysis."""
+
+    company_name: str
+    industry: str
+    analysis_text: str
+    error: Optional[str] = None
+
+
+# --- Aviation Intelligence (AVINT) Models ---
+
+
+class FlightInfo(BaseModel):
+    """Model for a single aircraft's state vector from OpenSky Network."""
+
+    icao24: str
+    callsign: str
+    origin_country: str
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    baro_altitude: Optional[float] = None
+    on_ground: bool
+    velocity: Optional[float] = None
+    true_track: Optional[float] = None
+    vertical_rate: Optional[float] = None
+    geo_altitude: Optional[float] = None
+    spi: bool
+    position_source: int
+
+
+class AVINTResult(BaseModel):
+    """The main, top-level result model for an AVINT scan."""
+
+    total_flights: int
+    flights: List[FlightInfo] = []
+    error: Optional[str] = None
+
+
+# --- ORM Models ---
+class ScanResult(Base):  # type: ignore
+    """Represents a single scan result from any module."""
+
+    __tablename__ = "scan_results"
+    id = Column(Integer, primary_key=True, index=True)
+    project_name = Column(String, index=True, nullable=False)
+    module = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    # The result is stored as a JSON string in the database.
+    result = Column(Text, nullable=False)
+
+
+class PageSnapshot(Base):  # type: ignore
+    """Represents a single snapshot of a monitored web page."""
+
+    __tablename__ = "page_snapshots"
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, index=True, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    content_hash = Column(String, nullable=False)
+    # Storing the full content allows for detailed diffing later.
+    content = Column(LargeBinary, nullable=False)
+
+
+# --- Humint ---
+class HumintScenario(BaseModel):
+    """Pydantic model for a HUMINT scenario to be run by the engine."""
+
+    scenario_type: str
+    target: str
+
+
+class HumintSource(Base):  # type: ignore
+    __tablename__ = "humint_sources"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    reliability = Column(String)  # e.g., 'A1', 'B2'
+    expertise = Column(String)
+    reports = relationship("HumintReport", back_populates="source")
+
+
+class HumintReport(Base):  # type: ignore
+    __tablename__ = "humint_reports"
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    source_id = Column(Integer, ForeignKey("humint_sources.id"))
+    source = relationship("HumintSource", back_populates="reports")
+
+
+class ResponseRule(Base):  # type: ignore
+    __tablename__ = "response_rules"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    trigger = Column(
+        String, nullable=False, index=True
+    )  # e.g., "dark-monitor:credential-leak"
+    actions = Column(
+        JSON, nullable=False
+    )  # e.g., ["iam:reset-password", "edr:quarantine-host"]
+
+
+class ForecastPerformance(Base):  # type: ignore
+    __tablename__ = "forecast_performance"
+    id = Column(Integer, primary_key=True, index=True)
+    scenario = Column(String, index=True)
+    prediction = Column(Text)  # The AI's generated forecast
+    outcome = Column(Text)  # The real-world result, logged later
+    is_correct = Column(Boolean)  # Was the prediction accurate?
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class Token(BaseModel):
+    """Model for a JWT access token."""
+
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    """Model for the data encoded in a JWT."""
+
+    username: Optional[str] = None
+
+
+class DashboardData(BaseModel):
+    """Model for the data to be displayed on the main dashboard."""
+
+    total_projects: int
+    total_scans: int
+    recent_scans: List[Dict[str, Any]] = []
+
+
+# --- MASINT Core Models ---
+class RFEmission(BaseModel):
+    """Model for a single detected Radio Frequency emission."""
+
+    frequency_mhz: float
+    power_dbm: float
+    modulation_type: Optional[str] = None
+    source_device_guess: Optional[str] = None
+    confidence: str
+
+
+class AcousticSignature(BaseModel):
+    """Model for a single detected acoustic signature."""
+
+    dominant_frequency_hz: float
+    decibel_level: float
+    signature_type: str  # e.g., "Machinery", "Vehicle", "Power Grid"
+    source_object_guess: Optional[str] = None
+
+
+class ThermalSignature(BaseModel):
+    """Model for a single detected thermal signature from multi-spectral imagery."""
+
+    max_temperature_celsius: float
+    dominant_infrared_band: str
+    activity_level_guess: str  # "Low", "Medium", "High"
+    source_object_guess: Optional[str] = None
+
+
+class MASINTResult(BaseModel):
+    """The main, top-level result model for a MASINT analysis."""
+
+    target_identifier: str  # Could be a file path, a coordinate, etc.
+    rf_emissions: List[RFEmission] = []
+    acoustic_signatures: List[AcousticSignature] = []
+    thermal_signatures: List[ThermalSignature] = []
+    error: Optional[str] = None
+
+
+# --- CHEMINT Core Models ---
+class ChemInfo(BaseModel):
+    """Schema for a single chemical intelligence hit from PubChem/Patents."""
+
+    cid: int = Field(..., description="PubChem Compound ID (CID).")
+    iupac_name: Optional[str] = Field(
+        None, description="The IUPAC systematic chemical name."
+    )
+    molecular_weight: Optional[float] = Field(
+        None, description="The molecular weight in g/mol."
+    )
+    canonical_smiles: Optional[str] = Field(
+        None, description="The Canonical SMILES string (molecular structure)."
+    )
+
+
+class PatentInfo(BaseModel):
+    """Schema for intelligence gathered from patent and research analysis."""
+
+    patent_id: str
+    title: str
+    applicant: str
+    publication_date: str
+    summary: str
+    country: str = Field("EP", description="Country code (e.g., US, EP, WO).")
+
+
+class SDSData(BaseModel):
+    """Schema for key data extracted from Safety Data Sheets (or equivalent sources)."""
+
+    cas_number: str
+    autoignition_temp_C: Optional[float] = None
+    flash_point_C: Optional[float] = None
+    nfpa_fire_rating: Optional[int] = Field(
+        None, description="NFPA 704 fire hazard rating (0-4)."
+    )
+    toxicology_summary: str = Field(
+        "N/A", description="A brief summary of health hazards."
+    )
+
+
+class CHEMINTResult(BaseModel):
+    """Container for Chemical Intelligence results."""
+
+    total_results: int
+    results: List[ChemInfo | PatentInfo | SDSData]
+    error: Optional[str] = None
+
+
+# --- SPACEINT Core Models ---
+class TLEData(BaseModel):
+    """Schema for raw Two-Line Element (TLE) data."""
+
+    norad_id: str
+    name: Optional[str] = None
+    line1: str
+    line2: str
+
+
+class SPACEINTResult(BaseModel):
+    """Container for Space Intelligence results."""
+
+    total_satellites: int
+    satellites: List[TLEData]
+    error: Optional[str] = None
+
+
+# --- Historical Analysis ---
+class HistoricalAnalysisResult(BaseModel):
+    """Model for the result of a historical analysis."""
+
+    domain: str
+    from_timestamp: Optional[str] = None
+    to_timestamp: Optional[str] = None
+    diff: Optional[str] = None
+    ai_summary: Optional[str] = None
+    error: Optional[str] = None
+
+
+class Node(BaseModel):
+    """Model for a single node in an intelligence graph."""
+
+    id: str  # e.g., "megacorp.com", "1.2.3.4"
+    type: str  # e.g., "Domain", "IP Address", "Company", "Email"
+    label: str
+    properties: Dict[str, Any] = {}
+
+
+class Edge(BaseModel):
+    """Model for a relationship (edge) between two nodes in the graph."""
+
+    source: str  # ID of the source node
+    target: str  # ID of the target node
+    label: str  # e.g., "Resolves To", "Registered By", "Uses Technology"
+    properties: Dict[str, Any] = {}
+
+
+class GraphResult(BaseModel):
+    """The main, top-level result model for an entity reconciliation and graph build process."""
+
+    target: str
+    total_nodes: int
+    total_edges: int
+    nodes: List[Node] = []
+    edges: List[Edge] = []
+    error: Optional[str] = None
+
+
+# --- Deep Research ---
+class IntelFinding(BaseModel):
+    """Represents a single piece of structured intelligence."""
+
+    source_type: str = Field(
+        ...,
+        description="The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).",
+    )
+    summary: str = Field(..., description="A concise summary of the key finding.")
+    reference: str = Field(
+        ..., description="A URL or source reference for verification."
+    )
+    risk_level: str = Field(
+        ..., description="Assessed risk: Low, Medium, High, or Critical."
+    )
+    confidence: str = Field(
+        ..., description="Confidence level of the finding: Low, Medium, High."
+    )
+
+
+class PESTAnalysis(BaseModel):
+    """Represents a Political, Economic, Social, and Technological analysis."""
+
+    political: List[str] = Field(
+        ..., description="Political factors affecting the target."
+    )
+    economic: List[str] = Field(
+        ..., description="Economic factors and trends affecting the target."
+    )
+    social: List[str] = Field(
+        ..., description="Social and cultural trends relevant to the target."
+    )
+    technological: List[str] = Field(
+        ..., description="Technological landscape and disruptions affecting the target."
+    )
+
+
+class DeepResearchResult(BaseModel):
+    """The final, structured output of a deep research operation."""
+
+    topic: str
+    target_profile: Dict[str, Any]
+    strategic_summary: str
+    pest_analysis: PESTAnalysis
+    intelligence_gaps: List[str]
+    recommended_actions: List[str]
+    intelligence_findings: List[IntelFinding]
+    knowledge_graph: KnowledgeGraph
+
+
+# --- Economics ---
+class EconomicIndicators(BaseModel):
+    country: str
+    indicators: Dict[str, Any] = Field(default_factory=dict)
+    error: Optional[str] = None
+
+
+class TrackingUpdate(BaseModel):
+    """Details of a single tracking event."""
+
+    status: str
+    message: str
+    timestamp: str
+
+
+# --- Logistics ---
+class ShipmentDetails(BaseModel):
+    """Comprehensive details of a tracked shipment."""
+
+    tracking_code: str
+    carrier: str
+    status: str
+    estimated_delivery_date: Optional[str] = None
+    updates: List[TrackingUpdate] = []
+    error: Optional[str] = None
+
+
+# --- Crypto ---
+class CryptoData(BaseModel):
+    """Represents historical data for a cryptocurrency."""
+
+    symbol: str
+    market: str
+    history: Optional[Dict[str, Dict[str, str]]] = None
+    error: Optional[str] = None
+
+
+class CryptoForecast(BaseModel):
+    """Represents a price forecast for a cryptocurrency."""
+
+    symbol: str
+    forecast: Optional[List[float]] = None
+    error: Optional[str] = None
+
+
+# --- Cyber-Physical Systems Intelligence ---
+class CyberPhysicalSystemNode(BaseModel):
+    """A node in the cyber-physical system graph."""
+
+    id: str
+    node_type: str  # e.g., 'PLC', 'SCADA Server', 'Substation', 'GPS Satellite'
+    attributes: Dict[str, Any] = {}
+
+
+class CascadingFailurePath(BaseModel):
+    """Represents a potential path of cascading failure."""
+
+    path: List[str]
+    description: str
+
+
+class CPSAnalysisResult(BaseModel):
+    """The result of a Cyber-Physical System analysis (without the graph object)."""
+
+    critical_nodes: List[str] = Field(default_factory=list)
+    failure_paths: List[CascadingFailurePath] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+class GeoLocation(BaseModel):
+    """Model for a geographic location used in CPS modeling."""
+
+    name: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class SignalIntercept(BaseModel):
+    """Model for a single signal intercept observation used in CPS modeling."""
+
+    signal_id: str
+    frequency: Optional[float] = None
+    timestamp: Optional[str] = None
+
+
+class Vulnerability(BaseModel):
+    """Model for a single system vulnerability, simplifying usage in c_pint.py."""
+
+    cve: str = Field(..., description="The CVE ID or equivalent identifier.")
+    cvss_score: Optional[float] = None
+    description: Optional[str] = None
+    severity: Optional[str] = None
+
+
+# --- Systemic Intelligence ---
+class OTAsset(BaseModel):
+    device_id: str
+    location: str
+    vulnerabilities: List[str] = Field(default_factory=list)
+
+
+class MacroIndicators(BaseModel):
+    """Represents key macroeconomic indicators for a country."""
+
+    country: str
+    gdp_latest: Optional[float] = Field(
+        None, description="Most recent Gross Domestic Product (in current US$)."
+    )
+    inflation_latest: Optional[float] = Field(
+        None, description="Most recent inflation rate (annual %)."
+    )
+    unemployment_latest: Optional[float] = Field(
+        None, description="Most recent unemployment rate (%)."
+    )
+    error: Optional[str] = None
+
+
+class MicroIndicators(BaseModel):
+    """Represents key microeconomic indicators for a company."""
+
+    symbol: str
+    latest_price: Optional[float] = Field(None, description="Latest stock price.")
+    market_cap: Optional[str] = Field(
+        None, description="Company's market capitalization."
+    )
+    pe_ratio: Optional[float] = Field(None, description="Price-to-Earnings ratio.")
+    error: Optional[str] = None
+
+
+class SystemNode(BaseModel):
+    """A node in the systemic intelligence graph."""
+
+    id: str
+    layer: str
+    attributes: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EmergentProperty(BaseModel):
+    """Represents an emergent property of the system."""
+
+    property_type: str
+    nodes: List[str] = Field(default_factory=list)
+    description: str
+
+
+class SYSINTAnalysisResult(BaseModel):
+    """The result of a Systemic Intelligence analysis (without the graph object)."""
+
+    emergent_properties: List[EmergentProperty] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+# --- Ethical Governance ---
+class Target(BaseModel):
+    """Represents a target in an operation."""
+
+    id: str
+    category: str
+
+
+class Operation(BaseModel):
+    """Defines the structure for an intelligence operation to be audited."""
+
+    operation_id: str
+    operation_type: str
+    targets: List[Target] = Field(default_factory=list)
+    justification: str = ""
+    is_offensive: bool = False
+    targets_eu_citizen: bool = False
+    has_legal_basis: bool = False
+
+    # Allows for extra fields that are not explicitly defined
+    class Config:
+        extra = "allow"
+
+
+class ComplianceViolation(BaseModel):
+    """Represents a single rule violation."""
+
+    rule_id: str
+    framework: str
+    severity: str
+    description: str
+
+
+class ComplianceResult(BaseModel):
+    """Contains the full result of a compliance audit."""
+
+    operation_id: str
+    is_compliant: bool
+    violations: List[ComplianceViolation] = Field(default_factory=list)
+    audit_log: List[str] = Field(default_factory=list)
+
+
+# --- Metacognition & Systemic Evolution ---
+class OperationLog(BaseModel):
+    """Represents a log of a single intelligence-gathering action."""
+
+    module_name: str
+    success: bool
+    resource_cost: float  # e.g., API credits, CPU time, etc.
+    intelligence_tags: List[str] = Field(default_factory=list)
+
+
+class ModulePerformance(BaseModel):
+    """Analyzed performance of a single module."""
+
+    module_name: str
+    success_rate: float
+    average_cost: float
+    efficiency_score: float
+
+
+class OptimizationRecommendation(BaseModel):
+    """A recommendation for optimizing future operations."""
+
+    recommendation: str
+    justification: str
+
+
+class IntelligenceGap(BaseModel):
+    """An identified gap in the current intelligence picture."""
+
+    gap_description: str
+    generated_collection_requirement: str
+
+
+class MetacognitionReport(BaseModel):
+    """A complete report from the metacognitive analysis."""
+
+    performance_analysis: List[ModulePerformance] = Field(default_factory=list)
+    optimizations: List[OptimizationRecommendation] = Field(default_factory=list)
+    gaps: List[IntelligenceGap] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+# --- Dissemination & Actionable Output ---
+class IntelligenceFinding(BaseModel):
+    """A single finding within an intelligence report."""
+
+    finding_id: str
+    description: str
+    severity: str  # e.g., 'Low', 'Medium', 'High', 'Critical'
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    raw_data: Optional[Dict[str, Any]] = None
+
+
+class IntelligenceReport(BaseModel):
+    """A complete, finalized intelligence report."""
+
+    report_id: str
+    title: str
+    strategic_summary: str
+    key_findings: List[IntelligenceFinding] = Field(default_factory=list)
+
+
+class Task(BaseModel):
+    """Represents a single task for a module to execute."""
+
+    id: int
+    module: str
+    params: Dict[str, Any]
+    status: str = "pending"
+    result: Optional[Any] = None
+    severity: int = 1
+
+
+# --- Autonomous Intelligence Agent ---
+
+
+class AnalysisResult(BaseModel):
+    """Represents the output from a single intelligence module."""
+
+    module_name: str
+    data: Any
+
+
+class Hypothesis(BaseModel):
+    """Represents a hypothesis generated by the reasoning engine."""
+
+    statement: str
+    confidence: float
+
+
+class Recommendation(BaseModel):
+    """Represents a recommended course of action."""
+
+    action: str
+    priority: str  # e.g., 'Low', 'Medium', 'High'
+
+
+class ReasoningOutput(BaseModel):
+    """The output of the Reasoning Engine's analysis."""
+
+    analytical_summary: str
+    hypotheses: List[Hypothesis] = Field(default_factory=list)
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    next_steps: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class Plan(BaseModel):
+    """Represents the sequence of tasks to achieve an objective."""
+
+    objective: str  # Each plan now has its own objective
+    tasks: List[Task] = Field(default_factory=list)
+
+
+class SynthesizedReport(BaseModel):
+    """The final, synthesized report for the human analyst."""
+
+    objective: str
+    summary: str
+    hypotheses: List[Hypothesis] = Field(default_factory=list)
+    recommendations: List[Recommendation] = Field(default_factory=list)
+    key_findings: List[str] = Field(default_factory=list)
+    raw_outputs: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# --- Risk Assessment---
+class RiskAssessmentResult(BaseModel):
+    """
+    Represents the result of a risk assessment.
+    """
+
+    asset: str = Field(..., description="The asset at risk.")
+    threat: str = Field(..., description="The threat to the asset.")
+    probability: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="The probability of the threat occurring (0.0 to 1.0).",
+    )
+    impact: float = Field(
+        ...,
+        ge=0.0,
+        le=10.0,
+        description="The impact of the threat if it occurs (0.0 to 10.0).",
+    )
+    risk_score: float = Field(
+        ..., ge=0.0, le=10.0, description="The calculated risk score."
+    )
+    risk_level: str = Field(
+        ..., description="The qualitative risk level (e.g., Low, Medium, High)."
+    )
+    details: Optional[ThreatIntelResult] = Field(
+        None, description="Threat intelligence details."
+    )
+    vulnerabilities: List[Vulnerability] = Field(  # Changed from Vulnerability to CVE
+        [], description="Vulnerabilities associated with the asset."
+    )
+    threat_actors: List[ThreatActor] = Field(
+        [], description="Threat actors associated with the threat."
+    )
+    mitigation: List[str] = Field([], description="Suggested mitigation actions.")
+    error: Optional[str] = Field(
+        None, description="Any error that occurred during the assessment."
+    )
+
+
+class CredibilityResult(BaseModel):
+    """
+    Represents the result of a credibility assessment.
+    """
+
+    url: str = Field(..., description="The URL that was assessed.")
+    credibility_score: float = Field(
+        ...,
+        ge=0.0,
+        le=10.0,
+        description="A score from 0 (not credible) to 10 (highly credible).",
+    )
+    factors: List[str] = Field(
+        ..., description="A list of factors that contributed to the score."
+    )
+    error: Optional[str] = Field(
+        None, description="Any error that occurred during the assessment."
+    )
+
+
+# --- Negotiation---
+class PartyType(str, Enum):
+    COMPANY = "company"
+    INDIVIDUAL = "individual"
+    GOVERNMENT = "government"
+    OTHER = "other"
+
+
+class Channel(str, Enum):
+    EMAIL = "email"
+    CHAT = "chat"
+    VOICE = "voice"
+    MEETING = "meeting"
+    CLI = "cli"
+
+
+# --- Main Data Models ---
+
+
+class Party(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    type: PartyType
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Offer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    negotiation_id: str
+    party_id: str
+    message_id: Optional[str] = None
+    amount_terms: Dict[str, Any]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    accepted: Optional[str] = "pending"  # pending, accepted, rejected
+    accepted_at: Optional[datetime] = None
+    currency: Optional[str] = "USD"
+    valid_until: Optional[datetime] = None
+    confidence_score: Optional[float] = None
+    revision: int = 1
+    previous_offer_id: Optional[str] = None
+
+
+class NegotiationStatus(str, Enum):
+    ONGOING = "ongoing"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"
+
+
+class ChannelType(str, Enum):
+    EMAIL = "email"
+    CHAT = "chat"
+    VOICE = "voice"
+    MEETING = "meeting"
+
+
+class NegotiationParty(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    party_id: str
+    name: str
+    type: PartyType
+    role: str  # e.g., 'buyer', 'seller'
+
+
+class Message(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    negotiation_id: str
+    sender_id: str
+    content: str
+    channel: ChannelType
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    analysis: Optional[dict]
+    tone_score: Optional[float] = None
+    sentiment_label: Optional[str] = None
+    intent_label: Optional[str] = None
+    language: Optional[str] = "en"
+
+    class Config:
+        orm_mode = True
+
+
+class NegotiationModel(Base):  # type: ignore
+    __tablename__ = "negotiations"
+
+    id = Column(String, primary_key=True, index=True)
+    subject = Column(String, index=True)
+    status = Column(
+        SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING
+    )
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class OfferModel(Base):  # type: ignore
+    __tablename__ = "offers"
+
+    id = Column(String, primary_key=True, index=True)
+    negotiation_id = Column(String, ForeignKey("negotiation_sessions.id"))
+    party_id = Column(String)
+    amount_terms = Column(JSON)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    accepted = Column(String, default="pending")
+
+    session = relationship("NegotiationSession", back_populates="offers")
+
+
+class MessageModel(Base):  # type: ignore
+    __tablename__ = "messages"
+
+    id = Column(String, primary_key=True, index=True)
+    negotiation_id = Column(
+        String, ForeignKey("negotiation_sessions.id")
+    )  # Changed ForeignKey
+    sender_id = Column(String)
+    content = Column(String)
+    analysis = Column(JSON)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class MessageBase(BaseModel):
+    sender_id: str
+    content: str
+
+
+class MessageCreate(MessageBase):
+    pass
+
+
+class NegotiationBase(BaseModel):
+    subject: str
+
+
+class Negotiation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subject: str
+    start_time: datetime = Field(default_factory=datetime.utcnow)
+    status: NegotiationStatus = NegotiationStatus.ONGOING
+    created_by: str
+    end_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    participants: List[Party] = Field(default_factory=list)
+    messages: List[Message] = []
+
+    class Config:
+        orm_mode = True
+
+
+class SimulationScenario(BaseModel):
+    our_min: float
+    our_max: float
+    their_min: float
+    their_max: float
+
+    @validator("our_max")
+    def our_max_must_be_greater_than_our_min(cls, v, values, **kwargs):
+        if "our_min" in values and v <= values["our_min"]:
+            raise ValueError("our_max must be greater than our_min")
+        return v
+
+
+class NegotiationSession(Base):  # type: ignore
+    __tablename__ = "negotiation_sessions"
+    id = Column(String, primary_key=True)
+    subject = Column(String)
+    start_time = Column(DateTime, default=datetime.utcnow)
+    end_time = Column(DateTime)
+    status = Column(String, default="ongoing")
+    outcome = Column(String)
+    messages = relationship(
+        "MessageModel", back_populates="session"
+    )  # Corrected relationship
+    offers = relationship("OfferModel", back_populates="session")
+
+
+class BehavioralProfile(BaseModel):
+    """Model for the behavioral profile of a negotiation party."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    party_id: str
+    communication_style: Optional[str] = None  # e.g., "Formal", "Informal"
+    risk_appetite: Optional[str] = None  # e.g., "Risk-averse", "Risk-seeking"
+    key_motivators: List[str] = Field(default_factory=list)
+
+
+class Counterparty(BaseModel):
+    """Model for a counterparty in a negotiation."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    historical_deals: List[Dict[str, Any]] = Field(default_factory=list)
+    behavioral_profile: Optional[BehavioralProfile] = None
+
+
+class MarketIndicator(BaseModel):
+    """Model for a relevant market indicator."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    value: float
+    source: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Config:
+    orm_mode = True
+
+
+class VoiceAnalysis(BaseModel):
+    """Represents the analysis of vocal tone from an audio message."""
+
+    vocal_sentiment: str
+    confidence_score: float
+    pace: str
+    pitch_variation: str
+
+
+# --- Negotiation & Simulation ---
+class NegotiationMessage(BaseModel):
+    negotiation_id: str
+    sender_id: str
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    analysis: Dict[str, Any]
+
+
+class LLMLog(BaseModel):
+    model_name: str
+    prompt: str
+    response: str
+    ethical_flags: List[str]
+    cultural_context: Dict[str, Any]
+    state: Dict[str, Any]
+    action: int
+    reward: float
+
+
+class RLLog(BaseModel):
+    state: Dict[str, Any]
+    action: int
+    reward: float
+
+
+class AnalysisResponse(BaseModel):
+    message_id: str
+    analysis: Dict[str, Any]
+    recommended_tactic: Dict[str, str]
+    simulation: Dict[str, Any]
+
+
+class NegotiationParticipantCreate(BaseModel):
+    participant_id: str
+    participant_name: str
+
+
+class NegotiationCreate(BaseModel):
+    subject: str
+    participants: List[NegotiationParticipantCreate]
+
+
+class SimulationMode(str, Enum):
+    training = "training"
+    inference = "inference"
+
+
+class NegotiationParticipant(Base):  # type: ignore
+    __tablename__ = "negotiation_participants"
+    session_id = Column(String, ForeignKey("negotiation_sessions.id"), primary_key=True)
+    participant_id = Column(String, primary_key=True)
+    participant_name = Column(String)
+
+
+# --- Application Configuration ---
+class IntelSourceConfig(BaseModel):
+    enabled: bool = True
+    api_key_required: bool = False
+
+
+class FeatureFlags(BaseModel):
+    """Defines the feature flags for enabling or disabling modules."""
+
+    enable_offensive_modules: bool = True
+    enable_defensive_modules: bool = True
+    enable_ai_core: bool = True
+    enable_mlops_automation: bool = True
+
+
+# --- Role Definitions ---
+class UserRole(str, Enum):
+    USER = "user"
+    ADMIN = "admin"
+
+
+# --- User Schemas ---
+class UserBase(BaseModel):
+    username: str
+
+
+# --- Application Configuration Schemas ---
+class NetworkConfig(BaseModel):
+    timeout: float = 20.0
+
+
+class FootprintModuleConfig(BaseModel):
+    dns_records_to_query: List[str] = ["A", "AAAA", "MX", "TXT", "NS", "CNAME"]
+
+
+class WebAnalyzerModuleConfig(BaseModel):
+    placeholder: bool = True
+
+
+class DarkWebModuleConfig(BaseModel):
+    tor_proxy_url: str = "socks5://127.0.0.1:9150"
+
+
+class MarintModuleConfig(BaseModel):
+    placeholder: bool = True
+
+
+class NegotiationModuleConfig(BaseModel):
+    model_path: str = "models/negotiation_intent_model"
+
+
+class ModulesConfig(BaseModel):
+    footprint: FootprintModuleConfig = Field(default_factory=FootprintModuleConfig)
+    web_analyzer: WebAnalyzerModuleConfig = Field(
+        default_factory=WebAnalyzerModuleConfig
+    )
+    dark_web: DarkWebModuleConfig = Field(default_factory=DarkWebModuleConfig)
+    marint: MarintModuleConfig = Field(default_factory=MarintModuleConfig)
+    negotiation: NegotiationModuleConfig = Field(
+        default_factory=NegotiationModuleConfig
+    )
+
+
+class ReportingGraphConfig(BaseModel):
+    physics_options: str = Field(
+        default="""
+      var options = {
+        "physics": {
+          "barnesHut": {
+            "gravitationalConstant": -40000,
+            "centralGravity": 0.4,
+            "springLength": 180
+          },
+          "minVelocity": 0.75
+        }
+      }
+    """
+    )
+
+
+class ReportingPdfConfig(BaseModel):
+    logo_path: str = "src/chimera_intel/assets/my_logo.png"
+    title_text: str = "Chimera Intel - Intelligence Report"
+    footer_text: str = "Confidential | Prepared by Chimera Intel"
+
+
+class ReportingConfig(BaseModel):
+    project_report_scans: List[str] = [
+        "footprint",
+        "web_analyzer",
+        "defensive_breaches",
+    ]
+    graph: ReportingGraphConfig = Field(default_factory=ReportingGraphConfig)
+    pdf: ReportingPdfConfig = Field(default_factory=ReportingPdfConfig)
+
+
+class AppConfig(BaseModel):
+    app_name: str = "Chimera Intel"
+    version: str = "1.0.0"
+    log_level: str = "INFO"
+    network: NetworkConfig = Field(default_factory=NetworkConfig)
+    modules: ModulesConfig = Field(default_factory=ModulesConfig)
+    reporting: ReportingConfig = Field(default_factory=ReportingConfig)
+    intel_sources: Dict[str, IntelSourceConfig] = Field(default_factory=dict)
+    feature_flags: FeatureFlags = Field(default_factory=FeatureFlags)
+    notifications: ConfigNotifications = Field(default_factory=ConfigNotifications)
+    graph_db: ConfigGraphDB = Field(default_factory=ConfigGraphDB)
+
+
+class User(BaseModel):
+    """User model for authentication and context."""
+
+    id: Optional[int] = None
+    username: str
+    email: EmailStr
+    hashed_password: str
+
+    class Config:
+        orm_mode = True
+
+
+class UserCreate(BaseModel):
+    """Schema for creating a new user."""
+
+    username: str
+    email: EmailStr
+    password: str
+
+
+class Event:
+    """Represents a security event."""
+
+    def __init__(self, event_type: str, source: str, details: Dict[str, Any]):
+        self.id = ""
+        self.event_type = event_type
+        self.source = source
+        self.details = details
+
+
+class WhoisInfo(BaseModel):
+    """A model for WHOIS information."""
+
+    domain_name: Optional[str] = None
+    registrar: Optional[str] = None
+    creation_date: Optional[datetime] = None
+    expiration_date: Optional[datetime] = None
+    name_servers: List[str] = []
+
+
+class PageMonitorResult(BaseModel):
+    """Model for the result of a page monitor check."""
+
+    target: str
+    url: str
+    has_changed: bool
+    diff: Optional[str] = None
+
+
+class InsiderTransactionResult(BaseModel):
+    """The main, top-level result model for an insider trading scan."""
+
+    stock_symbol: str = ""
+    total_transactions: int = 0
+    transactions: List[InsiderTransaction] = []
+    error: Optional[str] = None
+
+
+class TwitterStreamResult(BaseModel):
+    """The main, top-level result model for a real-time social media monitoring session."""
+
+    query: str
+    total_tweets_found: int = 0
+    tweets: List[Tweet] = []
     error: Optional[str] = None

@@ -188,6 +188,21 @@ class TestFootprint(unittest.TestCase):
         result = asyncio.run(get_subdomains_dnsdumpster("example.com"))
         self.assertIn("sub1.example.com", result)
 
+    # --- NEW ---
+    @patch("chimera_intel.core.http_client.async_client.get", new_callable=AsyncMock)
+    def test_get_subdomains_dnsdumpster_get_fail(self, mock_async_get):
+        """
+        Tests a failed scrape of DNSDumpster due to a network error on the GET request.
+
+        Args:
+            mock_async_get (AsyncMock): A mock for `async_client.get`.
+        """
+        mock_async_get.side_effect = RequestError("Network error")
+        result = asyncio.run(get_subdomains_dnsdumpster("example.com"))
+        self.assertEqual(result, [])
+
+    # --- END NEW ---
+
     @patch("chimera_intel.core.http_client.async_client.get", new_callable=AsyncMock)
     def test_get_subdomains_threatminer_api_error(self, mock_async_get):
         """

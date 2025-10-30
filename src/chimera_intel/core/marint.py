@@ -1,0 +1,89 @@
+"""
+Maritime & Shipping Intelligence (MARINT) Module for Chimera Intel.
+"""
+
+import typer
+from typing_extensions import Annotated
+import asyncio
+import websockets
+import json
+import sys
+from chimera_intel.core.config_loader import API_KEYS
+
+# Create a new Typer application for MARINT commands
+marint_app = typer.Typer(
+    name="marint",
+    help="Maritime & Shipping Intelligence (MARINT)",
+)
+
+
+async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):
+    """
+    Connects to the aisstream.io websocket and retrieves data for the specified vessel.
+    """
+    # MODIFIED: Removed API key check, as it's now done in the CLI function
+    async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
+        subscribe_message = {
+            "APIKey": api_key,
+            "BoundingBoxes": [[[-180, -90], [180, 90]]],
+            "FiltersShipMMSI": [],
+            "FilterMessageTypes": ["PositionReport"],
+        }
+        await websocket.send(json.dumps(subscribe_message))
+
+        async for message_json in websocket:
+            message = json.loads(message_json)
+            message_type = message["MessageType"]
+
+            if message_type == "PositionReport":
+                position_report = message["Message"]["PositionReport"]
+                if str(position_report.get("ImoNumber")) == imo:
+                    typer.echo("--- Live Vessel Data ---")
+                    typer.echo(f"IMO: {position_report.get('ImoNumber')}")
+                    typer.echo(f"Latitude: {position_report['Latitude']}")
+                    typer.echo(f"Longitude: {position_report['Longitude']}")
+                    typer.echo(f"Speed Over Ground: {position_report['Sog']} knots")
+                    typer.echo(f"Course Over Ground: {position_report['Cog']} degrees")
+                    typer.echo("----------------------")
+                    if test_mode:
+                        break
+
+
+@marint_app.command(help="Track a vessel by its IMO number.")
+def track_vessel(
+    imo: Annotated[
+        str,
+        typer.Argument(help="The IMO number of the vessel to track."),
+    ],
+    test: bool = typer.Option(False, "--test"),
+):
+    """
+    Tracks a vessel using its IMO number by connecting to a live AIS data stream.
+    """
+    # --- MODIFIED: API key check moved here ---
+    api_key = API_KEYS.aisstream_api_key
+    if not api_key:
+        typer.echo("Error: AISSTREAM_API_KEY not found in .env file.", err=True)
+
+        sys.exit(1)
+
+    typer.echo(f"Starting live tracking for vessel with IMO: {imo}...")
+    try:
+        asyncio.run(get_vessel_data(imo, api_key=api_key, test_mode=test))
+
+    except ValueError as e:
+
+        typer.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        typer.echo("\nStopping vessel tracking.")
+
+        sys.exit(0)
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    marint_app()

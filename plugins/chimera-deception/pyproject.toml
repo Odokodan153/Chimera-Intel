@@ -5,8 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-deception"
 version = "1.0.0"
-description = "Corporate Deception & Mimicry analysis plugin for Chimera Intel."
+description = "Deception & Honeypot Operations plugin for Chimera Intel."
 requires-python = ">=3.9"
 
+# This section registers the package as a Chimera Intel plugin
 [project.entry-points."chimera_intel.plugins"]
 deception = "chimera_deception.main:DeceptionPlugin"

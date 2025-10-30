@@ -148,7 +148,7 @@ def run_wsa_analysis(
         console.print(
             "[bold yellow]No combination of weak signals met the threshold for amplification.[/bold yellow]"
         )
-        raise typer.Exit()
+        raise typer.Exit(code=0)
     console.print(
         f"\n[bold green]🔥 Amplified Intelligence Events for {target_name}[/bold green]"
     )

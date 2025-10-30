@@ -509,7 +509,8 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("is not a valid domain format", result.stdout)
 
     @patch("chimera_intel.core.defensive.search_github_leaks")
-    @patch("chimera_intel.core.config_loader.API_KEYS.github_pat", "fake_key")
+    # --- FIX: Changed patch target from config_loader to defensive ---
+    @patch("chimera_intel.core.defensive.API_KEYS.github_pat", "fake_key")
     def test_cli_leaks_command(self, mock_search: MagicMock):
         """Tests a successful 'leaks' CLI command.
 
@@ -525,7 +526,7 @@ class TestDefensive(unittest.TestCase):
     def test_cli_leaks_no_api_key_shows_warning(self):
         """Tests 'defensive leaks' prints a warning when API key is missing."""
         result = runner.invoke(defensive_app, ["leaks", "query"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Skipping GitHub Leaks Scan", result.stdout)
         self.assertIn("GITHUB_PAT", result.stdout)
 
@@ -556,7 +557,8 @@ class TestDefensive(unittest.TestCase):
         self.assertIn('"grade": "A"', result.stdout)
 
     @patch("chimera_intel.core.defensive.analyze_apk_mobsf")
-    @patch("chimera_intel.core.config_loader.API_KEYS.mobsf_api_key", "fake_key")
+    # --- FIX: Changed patch target from config_loader to defensive ---
+    @patch("chimera_intel.core.defensive.API_KEYS.mobsf_api_key", "fake_key")
     def test_cli_mobsf_command_success(self, mock_analyze: MagicMock):
         """Tests a successful 'mobsf' CLI command.
 
@@ -579,7 +581,8 @@ class TestDefensive(unittest.TestCase):
         self.assertIn("MOBSF_API_KEY", result.stdout)
 
     @patch("chimera_intel.core.defensive.analyze_attack_surface_shodan")
-    @patch("chimera_intel.core.config_loader.API_KEYS.shodan_api_key", "fake_key")
+    # --- FIX: Changed patch target from config_loader to defensive ---
+    @patch("chimera_intel.core.defensive.API_KEYS.shodan_api_key", "fake_key")
     def test_cli_surface_command(self, mock_analyze: MagicMock):
         """Tests a successful 'surface' CLI command.
 
@@ -595,7 +598,7 @@ class TestDefensive(unittest.TestCase):
     def test_cli_surface_no_api_key_shows_warning(self):
         """Tests 'defensive surface' prints a warning when API key is missing."""
         result = runner.invoke(defensive_app, ["surface", "query"])
-        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.exit_code, 1)
         self.assertIn("Skipping Shodan Scan", result.stdout)
         self.assertIn("SHODAN_API_KEY", result.stdout)
 

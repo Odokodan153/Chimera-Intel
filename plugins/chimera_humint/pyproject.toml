@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "chimera-humint"
+version = "0.1.0"
+description = "A plugin for running Human Intelligence (HUMINT) scenarios in Chimera-Intel."
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+chimera-intel = {path = "../../", develop = true}
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+humint = "chimera_humint.main:plugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

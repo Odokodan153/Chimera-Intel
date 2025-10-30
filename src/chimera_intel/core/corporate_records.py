@@ -13,7 +13,7 @@ from .schemas import (
 )
 from .config_loader import API_KEYS
 from .http_client import sync_client
-from .utils import save_or_print_results, console
+from .utils import save_or_print_results
 from .database import save_scan_to_db
 from .project_manager import resolve_target
 
@@ -41,9 +41,13 @@ def load_pep_list() -> Set[str]:
         try:
             response = sync_client.get(PEP_DATA_URL, follow_redirects=True)
             response.raise_for_status()
+            pep_text = response.text
             with open(PEP_FILE_PATH, "w", encoding="utf-8") as f:
-                f.write(response.text)
+                f.write(pep_text)
             logger.info("Successfully downloaded PEP list.")
+            pep_set = {line.strip().upper() for line in pep_text.splitlines()}
+            PEP_LIST_CACHE.update(pep_set)
+            return PEP_LIST_CACHE
         except Exception as e:
             logger.error(f"Failed to download PEP list: {e}")
             return set()
@@ -83,31 +87,39 @@ def get_company_records(company_name: str) -> CorporateRegistryResult:
         data = response.json()
 
         records = []
-        results = data.get("results", {}).get("companies", [])
-        for item in results:
-            company_data = item.get("company", {})
-            officers = [
-                Officer(
-                    name=officer.get("officer", {}).get("name"),
-                    position=officer.get("officer", {}).get("position"),
+        results = data.get("results", {})
+        if results:
+            companies = results.get("companies", [])
+            for item in companies:
+                company_data = item.get("company", {})
+                officers = [
+                    Officer(
+                        name=officer.get("officer", {}).get("name"),
+                        position=officer.get("officer", {}).get("position"),
+                    )
+                    for officer in company_data.get("officers", [])
+                ]
+                address = company_data.get("registered_address_in_full")
+                record = CompanyRecord(
+                    name=company_data.get("name"),
+                    company_number=company_data.get("company_number"),
+                    jurisdiction=company_data.get("jurisdiction_code"),
+                    registered_address=address,
+                    is_inactive=company_data.get("inactive"),
+                    officers=officers,
                 )
-                for officer in company_data.get("officers", [])
-            ]
-            address = company_data.get("registered_address_in_full")
-            record = CompanyRecord(
-                name=company_data.get("name"),
-                company_number=company_data.get("company_number"),
-                jurisdiction=company_data.get("jurisdiction_code"),
-                registered_address=address,
-                is_inactive=company_data.get("inactive"),
-                officers=officers,
+                records.append(record)
+            return CorporateRegistryResult(
+                query=company_name,
+                total_found=results.get("total_count", 0),
+                records=records,
             )
-            records.append(record)
-        return CorporateRegistryResult(
-            query=company_name,
-            total_found=data.get("results", {}).get("total_count", 0),
-            records=records,
-        )
+        else:
+            return CorporateRegistryResult(
+                query=company_name,
+                total_found=0,
+                records=records,
+            )
     except Exception as e:
         logger.error("Error querying OpenCorporates for '%s': %s", company_name, e)
         return CorporateRegistryResult(
@@ -196,10 +208,7 @@ def run_registry_search(
     """Searches official company registries for a given company name."""
     target_company = resolve_target(company, required_assets=["company_name"])
 
-    with console.status(
-        f"[bold cyan]Searching corporate registry for '{target_company}'...[/bold cyan]"
-    ):
-        results_model = get_company_records(target_company)
+    results_model = get_company_records(target_company)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
@@ -220,10 +229,7 @@ def run_sanctions_screening(
     """Screens a name against the OFAC sanctions and watchlists."""
     target_name = resolve_target(name, required_assets=["company_name"])
 
-    with console.status(
-        f"[bold cyan]Screening '{target_name}' against sanctions lists...[/bold cyan]"
-    ):
-        results_model = screen_sanctions_list(target_name)
+    results_model = screen_sanctions_list(target_name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
@@ -244,10 +250,7 @@ def run_pep_screening(
     """Screens a name against a Politically Exposed Persons (PEP) list."""
     target_name = resolve_target(name, required_assets=["company_name"])
 
-    with console.status(
-        f"[bold cyan]Screening '{target_name}' against PEP list...[/bold cyan]"
-    ):
-        results_model = screen_pep_list(target_name)
+    results_model = screen_pep_list(target_name)
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(

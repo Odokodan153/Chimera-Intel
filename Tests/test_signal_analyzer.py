@@ -14,7 +14,7 @@ from chimera_intel.core.signal_analyzer import (
 )
 from chimera_intel.core.schemas import JobPostingsResult
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 class TestSignalAnalyzer(unittest.TestCase):

@@ -29,6 +29,7 @@ class TestDatabase(unittest.TestCase):
         initialize_database()
 
         # Check that the connection was opened and closed
+
         mock_get_conn.assert_called_once()
         self.assertTrue(mock_cursor.execute.called)
         self.assertTrue(mock_conn.commit.called)
@@ -47,19 +48,26 @@ class TestDatabase(unittest.TestCase):
     def test_create_and_get_user(self, mock_get_conn):
         """Tests creating a new user and retrieving them from the database."""
         # Mock for create_user_in_db
+
         mock_conn_create = MagicMock()
         mock_cursor_create = MagicMock()
         mock_get_conn.return_value = mock_conn_create
         mock_conn_create.cursor.return_value = mock_cursor_create
 
-        create_user_in_db("testuser", "hashed_password")
+        create_user_in_db("testuser", "test@example.com", "hashed_password")
 
         # Mock for get_user_from_db
+
         mock_conn_get = MagicMock()
         mock_cursor_get = MagicMock()
         mock_get_conn.return_value = mock_conn_get
         mock_conn_get.cursor.return_value = mock_cursor_get
-        mock_cursor_get.fetchone.return_value = (1, "testuser", "hashed_password")
+        mock_cursor_get.fetchone.return_value = (
+            1,
+            "testuser",
+            "test@example.com",
+            "hashed_password",
+        )
 
         user = get_user_from_db("testuser")
 
@@ -81,6 +89,7 @@ class TestDatabase(unittest.TestCase):
         save_scan_to_db("example.com", "footprint", test_data, user_id=user_id)
 
         # Verify the INSERT call
+
         mock_cursor.execute.assert_called_with(
             "INSERT INTO scans (target, module, scan_data, user_id, project_id) VALUES (%s, %s, %s, %s, %s)",
             (
@@ -109,6 +118,7 @@ class TestDatabase(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
 
         # Simulate fetching footprint and web_analyzer data
+
         mock_cursor.fetchone.side_effect = [
             ({"footprint_key": "v1"},),  # For footprint
             ({"web_key": "v2"},),  # For web_analyzer
@@ -168,6 +178,7 @@ class TestDatabase(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
         now = datetime.datetime.now()
         # FIX: Return a dict instead of a JSON string to correctly mock psycopg2's JSONB deserialization
+
         mock_cursor.fetchall.return_value = [
             ({"step": 1}, now),
             ({"step": 2}, now + datetime.timedelta(seconds=1)),

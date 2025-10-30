@@ -2,6 +2,7 @@ import typer
 import asyncio
 import logging
 from typing import cast, Optional
+from rich.console import Console
 from .schemas import (
     CloudOSINTResult,
     S3Bucket,
@@ -9,11 +10,12 @@ from .schemas import (
     GCSBucket,
 )
 from .http_client import async_client
-from .utils import save_or_print_results, console
+from .utils import save_or_print_results
 from .database import save_scan_to_db
 from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)
+console = Console()
 
 
 async def check_s3_bucket(bucket_name: str) -> S3Bucket | None:
@@ -157,7 +159,7 @@ def run_cloud_scan(
         if active_project and active_project.company_name:
             target_keyword = active_project.company_name.lower().replace(" ", "")
             console.print(
-                f"[bold cyan]Using keyword '{target_keyword}' from active project '{active_project.project_name}'.[/bold cyan]"
+                f"Using keyword '{target_keyword}' from active project '{active_project.project_name}'."
             )
         else:
             console.print(
@@ -174,4 +176,4 @@ def run_cloud_scan(
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=target_keyword, module="cloud_osint", data=results_dict)
-    logger.info("Cloud asset scan complete for keyword: %s", target_keyword)
+    console.print(f"Cloud asset scan complete for keyword: {target_keyword}")

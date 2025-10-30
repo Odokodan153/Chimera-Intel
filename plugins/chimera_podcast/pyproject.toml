@@ -12,6 +12,5 @@ dependencies = [
     "feedparser>=6.0.10,<7.0.0",
 ]
 
-# Тази секция регистрира пакета като Chimera Intel плъгин
 [project.entry-points."chimera_intel.plugins"]
 podcast = "chimera_podcast.main:PodcastPlugin"

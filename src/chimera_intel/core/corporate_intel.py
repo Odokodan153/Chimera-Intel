@@ -248,15 +248,16 @@ def get_lobbying_data(company_name: str) -> LobbyingResult:
         response.raise_for_status()
         data = response.json()
 
-        records = [
-            LobbyingRecord(
-                issue=record.get("specific_issue"),
-                amount=int(record.get("amount", 0)),
-                year=int(record.get("year", 0)),
-            )
-            for record in data.get("results", [{}])[0].get("lobbying_represents", [])
-        ]
-
+        records = []
+        for result in data.get("results", []):
+            for record in result.get("lobbying_represents", []):
+                records.append(
+                    LobbyingRecord(
+                        issue=record.get("specific_issue"),
+                        amount=int(float(record.get("amount", 0))),
+                        year=int(record.get("year", 0)),
+                    )
+                )
         total_spent = sum(r.amount for r in records)
 
         return LobbyingResult(total_spent=total_spent, records=records)

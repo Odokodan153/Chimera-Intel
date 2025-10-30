@@ -1,0 +1,21 @@
+2025-10-30 07:48:27,139 - chimera_intel.core.aia_framework - WARNING - Dynamic module loading found no modules. Falling back to built-ins.
+2025-10-30 07:48:27,139 - chimera_intel.core.aia_framework - INFO - Loaded 2 modules: ['footprint', 'threat_intel']
+2025-10-30 07:48:27,143 - chimera_intel.core.aia_framework - WARNING - Dynamic module loading found no modules. Falling back to built-ins.
+2025-10-30 07:48:27,144 - chimera_intel.core.aia_framework - INFO - Loaded 2 modules: ['footprint', 'threat_intel']
+2025-10-30 07:48:27,146 - chimera_intel.core.aia_framework - WARNING - Dynamic module loading found no modules. Falling back to built-ins.
+2025-10-30 07:48:27,146 - chimera_intel.core.aia_framework - INFO - Loaded 2 modules: ['footprint', 'threat_intel']
+2025-10-30 07:48:27,151 - chimera_intel.core.aia_framework - WARNING - Objective decomposition failed. Attempting fallback domain extraction.
+2025-10-30 07:48:27,152 - chimera_intel.core.aia_framework - INFO - Fallback initiated: Found domain 'example.com' and starting footprint.
+2025-10-30 07:48:27,154 - chimera_intel.core.aia_framework - WARNING - Objective decomposition failed. Attempting fallback domain extraction.
+2025-10-30 07:48:27,155 - chimera_intel.core.aia_framework - ERROR - Fallback failed: No recognizable domain found in the objective.
+2025-10-30 07:48:27,164 - chimera_intel.core.aia_framework - INFO - [COMPLETED] Task 1 (async_module)
+2025-10-30 07:48:27,164 - chimera_intel.core.aia_framework - INFO - [COMPLETED] Task 2 (sync_module)
+2025-10-30 07:48:27,181 - chimera_intel.core.aia_framework - INFO - [FAILED] Task 1 (fail_module)
+2025-10-30 07:48:28,191 - chimera_intel.core.aia_framework - INFO - [FAILED] Task 1 (timeout_module)
+2025-10-30 07:48:28,195 - chimera_intel.core.aia_framework - INFO - New tasks added: 2
+2025-10-30 07:48:28,201 - chimera_intel.core.aia_framework - WARNING - Skipping ('recursive_module', '{"p": 1}') due to repeated execution limit.
+2025-10-30 07:48:28,240 - chimera_intel.core.aia_framework - WARNING - Module footprint does not have a 'run' function.
+2025-10-30 07:48:28,241 - chimera_intel.core.aia_framework - WARNING - Module threat_intel does not have a 'run' function.
+2025-10-30 07:48:28,241 - chimera_intel.core.aia_framework - WARNING - Module vulnerability_scanner does not have a 'run' function.
+2025-10-30 07:48:28,241 - chimera_intel.core.aia_framework - WARNING - Dynamic module loading found no modules. Falling back to built-ins.
+2025-10-30 07:48:28,241 - chimera_intel.core.aia_framework - INFO - Loaded 2 modules: ['footprint', 'threat_intel']

@@ -15,11 +15,9 @@ from typer.testing import CliRunner
 
 # Import the specific Typer app for this module, not the main one
 
-
 from chimera_intel.core.geo_osint import geo_osint_app
 
 # Import the functions and schemas to be tested
-
 
 from chimera_intel.core.geo_osint import (
     get_geolocation_data,
@@ -29,7 +27,6 @@ from chimera_intel.core.geo_osint import (
 from chimera_intel.core.schemas import GeoIntelData, GeoIntelResult
 
 # Initialize the Typer test runner
-
 
 runner = CliRunner()
 
@@ -162,9 +159,11 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
             locations=[GeoIntelData(query="8.8.8.8", country="USA")]
         )
 
-        result = runner.invoke(geo_osint_app, ["run", "8.8.8.8"])
+        # FIX: Removed "run" from the list
 
-        self.assertEqual(result.exit_code, 0)
+        result = runner.invoke(geo_osint_app, ["8.8.8.8"])
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn('"country": "USA"', result.stdout)
 
     @patch("chimera_intel.core.geo_osint.asyncio.run")
@@ -178,22 +177,27 @@ class TestGeoOsint(unittest.IsolatedAsyncioTestCase):
         mock_result = GeoIntelResult(locations=[])
         mock_asyncio_run.return_value = mock_result
 
-        result = runner.invoke(geo_osint_app, ["run", "1.1.1.1", "--map", "map.html"])
+        # FIX: Removed "run" from the list
 
-        self.assertEqual(result.exit_code, 0)
+        result = runner.invoke(geo_osint_app, ["1.1.1.1", "--map", "map.html"])
+
+        self.assertEqual(result.exit_code, 0, msg=result.output)
         # Verify that the map creation function was called with the correct arguments
 
         mock_create_map.assert_called_once_with(mock_result, "map.html")
 
     def test_cli_geo_osint_no_ips_provided(self):
         """Tests that the CLI command exits if no IP addresses are provided."""
-        # Typer will handle this and show a "Missing argument" error
-        # FIX: The command name 'run' was being misinterpreted. Invoking just the app
-        # without the command name correctly triggers Typer's argument validation.
+        # This test ensures that Typer's argument validation is working as expected.
+
+        # FIX: Removed "run". Now the app is invoked with no args,
+        # which correctly triggers the "Missing argument" error.
 
         result = runner.invoke(geo_osint_app, [])
-        self.assertNotEqual(result.exit_code, 0)
-        self.assertIn("Missing argument", result.stdout)
+
+        self.assertEqual(result.exit_code, 2)
+        # MODIFIED LINE: Check stderr instead of stdout
+        self.assertIn("Missing argument", result.stderr)
 
 
 if __name__ == "__main__":

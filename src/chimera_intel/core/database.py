@@ -1,10 +1,25 @@
 import psycopg2
 import json
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, field
+import datetime
 
 from .schemas import User
 from .config_loader import API_KEYS
 from .utils import console
+
+
+@dataclass
+class Scans:
+    """Represents a scan record in the database."""
+
+    id: int
+    target: str
+    module: str
+    scan_data: Dict[str, Any]
+    timestamp: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
+    user_id: Optional[int] = None
+    project_id: Optional[int] = None
 
 
 def get_db_connection():
@@ -38,11 +53,14 @@ def initialize_database() -> None:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Existing Chimera Intel Tables
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
                 hashed_password TEXT NOT NULL
             );
             """
@@ -82,6 +100,156 @@ def initialize_database() -> None:
             );
             """
         )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS forecasts (
+                id SERIAL PRIMARY KEY,
+                scenario TEXT NOT NULL,
+                likelihood TEXT,
+                impact TEXT,
+                indicators JSONB,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                user_id INTEGER REFERENCES users(id)
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS page_snapshots (
+                id SERIAL PRIMARY KEY,
+                url TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
+                content BYTEA NOT NULL,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+
+        # New Tables for the Negotiation Engine
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_sessions (
+                id TEXT PRIMARY KEY,
+                subject TEXT,
+                start_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                status TEXT NOT NULL DEFAULT 'ongoing'
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                id TEXT PRIMARY KEY,
+                negotiation_id TEXT REFERENCES negotiation_sessions(id),
+                sender_id TEXT,
+                content TEXT,
+                analysis JSONB,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS counterparties (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                industry TEXT,
+                country TEXT,
+                notes TEXT
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_counterparties (
+                negotiation_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,
+                counterparty_id TEXT REFERENCES counterparties(id) ON DELETE CASCADE,
+                PRIMARY KEY (negotiation_id, counterparty_id)
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS behavioral_profiles (
+                id TEXT PRIMARY KEY,
+                counterparty_id TEXT UNIQUE REFERENCES counterparties(id) ON DELETE CASCADE,
+                communication_style TEXT,
+                risk_appetite TEXT,
+                key_motivators JSONB
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS market_indicators (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                value REAL,
+                source TEXT,
+                timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cultural_profiles (
+                country_code TEXT PRIMARY KEY,
+                country_name TEXT NOT NULL,
+                directness INTEGER, -- Scale of 1-10 (Indirect to Direct)
+                formality INTEGER, -- Scale of 1-10 (Informal to Formal)
+                power_distance INTEGER, -- Hofstede's Power Distance
+                individualism INTEGER, -- Hofstede's Individualism vs. Collectivism
+                uncertainty_avoidance INTEGER -- Hofstede's Uncertainty Avoidance
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS negotiation_participants (
+                session_id TEXT REFERENCES negotiation_sessions(id) ON DELETE CASCADE,
+                participant_id TEXT NOT NULL,
+                participant_name TEXT NOT NULL,
+                PRIMARY KEY (session_id, participant_id)
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS llm_logs (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT NOW(),
+                model_name TEXT,
+                prompt TEXT,
+                response TEXT,
+                ethical_flags TEXT,
+                cultural_context JSONB
+            );
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rl_logs (
+                log_id SERIAL PRIMARY KEY,
+                state JSONB,
+                action INTEGER,
+                reward REAL,
+                timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -91,14 +259,14 @@ def initialize_database() -> None:
         )
 
 
-def create_user_in_db(username: str, hashed_password: str) -> None:
+def create_user_in_db(username: str, email: str, hashed_password: str) -> None:
     """Creates a new user in the database."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO users (username, hashed_password) VALUES (%s, %s)",
-            (username, hashed_password),
+            "INSERT INTO users (username, email, hashed_password) VALUES (%s, %s, %s)",
+            (username, email, hashed_password),
         )
         conn.commit()
         cursor.close()
@@ -115,14 +283,19 @@ def get_user_from_db(username: str) -> Optional[User]:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, username, hashed_password FROM users WHERE username = %s",
+            "SELECT id, username, email, hashed_password FROM users WHERE username = %s",
             (username,),
         )
         record = cursor.fetchone()
         cursor.close()
         conn.close()
         if record:
-            return User(id=record[0], username=record[1], hashed_password=record[2])
+            return User(
+                id=record[0],
+                username=record[1],
+                email=record[2],
+                hashed_password=record[3],
+            )
         return None
     except (psycopg2.Error, ConnectionError) as e:
         console.print(f"[bold red]Database Error:[/bold red] Could not fetch user: {e}")
@@ -160,6 +333,34 @@ def save_scan_to_db(
     except Exception as e:
         console.print(
             f"[bold red]An unexpected error occurred while saving to the database:[/] {e}"
+        )
+
+
+def save_forecast_to_db(
+    scenario: str,
+    likelihood: str,
+    impact: str,
+    indicators: List[str],
+    user_id: Optional[int] = None,
+) -> None:
+    """Saves a strategic forecast to the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        indicators_json = json.dumps(indicators)
+        cursor.execute(
+            "INSERT INTO forecasts (scenario, likelihood, impact, indicators, user_id) VALUES (%s, %s, %s, %s, %s)",
+            (scenario, likelihood, impact, indicators_json, user_id),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        console.print(
+            f" [dim cyan]>[/dim cyan] [dim]Forecast for '{scenario}' saved to database.[/dim]"
+        )
+    except (psycopg2.Error, ConnectionError) as e:
+        console.print(
+            f"[bold red]Database Error:[/bold red] Could not save forecast to database: {e}"
         )
 
 
@@ -297,3 +498,43 @@ def get_all_scans_for_target(
             f"[bold red]Database Error:[/bold red] Could not fetch scans for target: {e}"
         )
         return []
+
+
+def save_page_snapshot(
+    url: str, current_hash: str, content: str
+) -> tuple[bool, str | None]:
+    """
+    Saves a snapshot of a web page's content if it has changed.
+    Args:
+        url (str): The URL of the page.
+        current_hash (str): The SHA256 hash of the page's current content.
+        content (str): The full HTML content of the page.
+    Returns:
+        A tuple containing a boolean indicating if a change was detected
+        and the hash of the previous version if it exists.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Check for the most recent hash for this URL
+
+    cursor.execute(
+        "SELECT content_hash FROM page_snapshots WHERE url = %s ORDER BY timestamp DESC LIMIT 1",
+        (url,),
+    )
+    last_record = cursor.fetchone()
+    last_hash = last_record[0] if last_record else None
+
+    change_detected = last_hash is not None and last_hash != current_hash
+
+    # Insert the new snapshot
+
+    cursor.execute(
+        "INSERT INTO page_snapshots (url, content_hash, content) VALUES (%s, %s, %s)",
+        (url, current_hash, content.encode("utf-8")),
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return change_detected, last_hash

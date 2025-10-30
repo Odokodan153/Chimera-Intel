@@ -422,7 +422,8 @@ def run_workflow(workflow_file: str) -> None:
 
 
 automation_app = typer.Typer()
-connect_app = typer.Typer()
+# FIX: Removed the separate connect_app
+# connect_app = typer.Typer()
 
 
 @automation_app.command("enrich-ioc")
@@ -489,7 +490,8 @@ def run_automation_workflow(
     run_workflow(workflow_file)
 
 
-@connect_app.command("virustotal")
+# FIX: Changed decorator from @connect_app.command to @automation_app.command
+@automation_app.command("virustotal")
 def run_vt_submission(
     file_path: str = typer.Argument(
         ..., help="Path to the file to submit to VirusTotal."

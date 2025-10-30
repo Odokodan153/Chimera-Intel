@@ -9,8 +9,10 @@ from .utils import save_or_print_results
 from .database import save_scan_to_db
 import typer
 import logging
+import json
 from typing import List
 import asyncio
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +30,11 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
     logger.info("Starting social media profile search for username: %s", username)
 
     # Initialize Sherlock's site data
+    # The default URL is outdated, so we provide the correct one.
 
-    site_data = SitesInformation(None)
+    data_file_path = os.path.join(os.path.dirname(__file__), "resources/data.json")
+    site_data = SitesInformation(data_file_path)
+
     found_profiles: List[SocialProfile] = []
     try:
         # Sherlock's main function is async, so we await it.
@@ -56,26 +61,35 @@ async def find_social_profiles(username: str) -> SocialOSINTResult:
 
 
 # --- Typer CLI Application ---
+social_osint_app = typer.Typer(
+    help="Search for a username across multiple social media platforms using Sherlock."
+)
 
-social_osint_app = typer.Typer()
 
-
-@social_osint_app.command("run")
-def run_social_osint_scan(
-    username: str = typer.Argument(..., help="The username to search for."),
+@social_osint_app.command()
+def run(
+    # --- End Fix ---
+    username: str = typer.Argument(
+        ..., metavar="USERNAME", help="The username to search for."
+    ),
     output_file: str = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """
-    Searches for a username across hundreds of social networks.
+    """Searches for a username across hundreds of social networks."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-    Args:
-        username (str): The username to search for.
-        output_file (str): Optional path to save the results to a JSON file.
-    """
-    results_model = asyncio.run(find_social_profiles(username))
+    results_model = loop.run_until_complete(find_social_profiles(username))
     results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)
+
+    if output_file:
+        save_or_print_results(results_dict, output_file)
+    else:
+        typer.echo(json.dumps(results_dict, indent=2))
+
     save_scan_to_db(target=username, module="social_osint", data=results_dict)
     logger.info("Social media OSINT scan complete for %s", username)

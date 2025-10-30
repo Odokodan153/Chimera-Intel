@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "chimera-intel"
+version = "1.0.0"
+description = "A standalone strategic intelligence platform with a powerful deep research module."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = {extras = ["all"], version = "^0.9.0"}
+rich = "^13.3.5"
+google-generativeai = "^0.3.2"
+httpx = "^0.24.1"
+beautifulsoup4 = "^4.12.2"
+pydantic = "^2.3.0"
+asyncio = "^3.4.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+chimera = "chimera_intel.cli:app"
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+deep_research = "chimera_intel.core.deep_research:deep_research_app"

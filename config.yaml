@@ -23,6 +23,13 @@ modules:
   dark_web:
     # The SOCKS5 proxy address required to connect to the Tor network
     tor_proxy_url: "socks5://127.0.0.1:9150"
+    
+  marint:
+    # Add settings for MARINT here in the future
+    placeholder: true
+
+  negotiation:
+    model_path: "models/negotiation_intent_model"
 
 # Settings for report generation
 reporting:

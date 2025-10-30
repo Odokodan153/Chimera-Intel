@@ -6,6 +6,7 @@ Provides tools to perform reverse image searches and transcribe audio files.
 
 import typer
 import logging
+import asyncio  # <-- ADDED
 from typing import Optional, List
 import speech_recognition as sr  # type: ignore
 from .schemas import (
@@ -125,7 +126,7 @@ def transcribe_audio_file(file_path: str) -> MediaAnalysisResult:
         logger.error(f"Failed to transcribe audio file {file_path}: {e}")
         return MediaAnalysisResult(
             file_path=file_path,
-            media_type="Audio",
+            media_type="Audio",  # <-- This is already correct
             error=f"An error occurred during transcription: {e}",
         )
 
@@ -137,7 +138,7 @@ media_app = typer.Typer()
 
 
 @media_app.command("reverse-search")
-async def run_reverse_image_search(
+def run_reverse_image_search(  # <-- CHANGED: Removed 'async'
     file_path: str = typer.Argument(..., help="Path to the image file."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -146,7 +147,12 @@ async def run_reverse_image_search(
     """
     Performs a reverse image search to find where an image appears online.
     """
-    results_model = await reverse_image_search(file_path)
+    # --- CHANGED: Use asyncio.run() to call the async function ---
+    with console.status(
+        f"[bold cyan]Performing reverse image search on {file_path}...[/bold cyan]"
+    ):
+        results_model = asyncio.run(reverse_image_search(file_path))
+
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
@@ -171,3 +177,7 @@ def run_audio_transcription(
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=file_path, module="media_transcription", data=results_dict)
+
+
+if __name__ == "__main__":
+    media_app()

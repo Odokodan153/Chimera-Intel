@@ -152,12 +152,20 @@ def analyze_diff_for_signals(diff_result: dict) -> List[MicroSignal]:
         and isinstance(diff_result["footprint"]["dns_records"].get("A"), dict)
     ):
         if insert in diff_result["footprint"]["dns_records"]["A"]:
-            new_ips = diff_result["footprint"]["dns_records"]["A"][insert]
-            if isinstance(new_ips, list):
+
+            # --- FIX APPLIED ---
+            # new_ips_tuples is a list of (index, value) tuples, e.g., [(1, '2.2.2.2')]
+            new_ips_tuples = diff_result["footprint"]["dns_records"]["A"][insert]
+
+            if isinstance(new_ips_tuples, list):
+                # We must extract only the values (the IPs) for the .join() call.
+                just_the_ips = [str(ip_tuple[1]) for ip_tuple in new_ips_tuples]
+                # --- END FIX ---
+
                 signals.append(
                     MicroSignal(
                         signal_type="Infrastructure Change",
-                        description=f"New IP address(es) detected: {', '.join(new_ips)}",
+                        description=f"New IP address(es) detected: {', '.join(just_the_ips)}",
                         confidence="High",
                         source_field="footprint.dns_records.A",
                     )
@@ -215,7 +223,11 @@ def run_diff_analysis(
     )
 
     console.print("\n[bold]Comparison Results:[/bold]")
-    pprint(full_result.comparison_summary.model_dump())
+    # --- FIX: Pass the console object to pprint ---
+    # This ensures that when 'console' is mocked in a test,
+    # pprint's output is captured by the mock.
+    pprint(full_result.comparison_summary.model_dump(), console=console)
+    # --- END FIX ---
 
     if full_result.detected_signals:
         console.print("\n[bold yellow]💡 Interpreted Micro-Signals[/bold yellow]")

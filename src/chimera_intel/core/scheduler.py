@@ -8,8 +8,41 @@ dependency-free implementation designed specifically for the daemon's needs.
 
 from datetime import datetime
 import logging
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from typing import Callable, Dict, Any
 
 logger = logging.getLogger(__name__)
+
+# --- APScheduler Setup ---
+# This creates a scheduler that runs in a background thread.
+
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+
+def add_job(
+    func: Callable,
+    trigger: str,
+    cron_schedule: str,
+    job_id: str,
+    kwargs: Dict[str, Any],
+):
+    """Adds a job to the APScheduler."""
+    if trigger == "cron":
+        cron_trigger = CronTrigger.from_crontab(cron_schedule)
+
+        scheduler.add_job(
+            func=func,
+            trigger=cron_trigger,
+            id=job_id,
+            replace_existing=True,
+            kwargs=kwargs,
+        )
+        logger.info(
+            f"Successfully added job '{job_id}' with schedule: '{cron_schedule}'"
+        )
 
 
 def is_time_to_run(cron_schedule: str, now: datetime) -> bool:

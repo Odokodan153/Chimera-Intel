@@ -37,65 +37,160 @@ The user assumes all responsibility and liability for any actions taken and for 
 
 This tool is provided "AS IS" without any warranty of any kind, express or implied. The data gathered by Chimera Intel is aggregated from third-party sources and may be inaccurate, incomplete, or outdated. You are responsible for independently verifying all information before taking action. The author and any contributors shall **not be held liable for any damages**, claims, or other liabilities arising from the use, misuse, or inability to use this software.
 
+### ⚠️End-User License Agreement (EULA)
 
+By using Chimera Intel, you agree to this End-User License Agreement (EULA). This EULA is a binding legal agreement between you and the developers of Chimera Intel.
+
+Prohibited Uses: You may not use Chimera Intel for any purpose that is unlawful or prohibited by these terms, conditions, and notices. You may not use the tool in any manner that could damage, disable, overburden, or impair any server, or the network(s) connected to any server, or interfere with any other party's use and enjoyment of any services. You may not attempt to gain unauthorized access to any services, other accounts, computer systems, or networks connected to any server or to any of the services, through hacking, password mining, or any other means.
+
+No Reverse Engineering: You may not reverse engineer, decompile, or disassemble the software, except and only to the extent that such activity is expressly permitted by applicable law notwithstanding this limitation.
+
+Termination: Without prejudice to any other rights, the developers of Chimera Intel may terminate this EULA if you fail to comply with the terms and conditions of this EULA. In such event, you must destroy all copies of the software and all of its component parts.
+
+Governing Law: This EULA will be governed by the laws of the jurisdiction in which the developers of Chimera Intel reside, without regard to its conflict of law principles.
 
 Its command-line interface ensures scriptable workflows, automation of repetitive tasks, and easy integration with other tools or CI/CD pipelines, making it a versatile solution for both small-scale investigations and large enterprise deployments.
 ## ✨ Key Features
 
 Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
+| Command Group                   | Feature Command                         | Description                                                                             |
+| ------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Project**                     | `init`, `use`, `status`                 | Manages intelligence projects for organized, long-term tracking.                        |
+|                                 | `report`                                | Generates a comprehensive PDF dossier for the active project.                           |
+|                                 | `signal`                                | Analyzes data for unintentional strategic signals (e.g., hiring trends).                |
+|                                 | `export-stix`                           | Exports all intelligence for a target to a STIX 2.1 bundle.                             |
+|                                 | `import-stix`                           | Imports a STIX 2.1 bundle into the active project.                                      |
+| **Scan**                        | `footprint`                             | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence.                  |
+|                                 | `web`                                   | Analyzes website technology stacks, traffic, and tech stack risk.                       |
+|                                 | `business`                              | Retrieves public financial data, news, and patents.                                     |
+|                                 | `cloud`                                 | Scans for misconfigured cloud assets like S3 buckets.                                   |
+|                                 | `personnel`                             | Finds, validates, and enriches public employee email addresses.                         |
+|                                 | `profiles`                              | Identifies social media profiles via usernames.                                         |
+|                                 | `geo`                                   | Retrieves geolocation information for IP addresses.                                     |
+|                                 | `social`                                | Analyzes content from a target's RSS feed.                                              |
+| **Recon**                       | `credentials`                           | Searches breach data for compromised credentials.                                       |
+|                                 | `assets`                                | Discovers digital assets like mobile apps and public datasets.                          |
+|                                 | `threat-infra`                          | Pivots on malicious indicators to map adversary infrastructure.                         |
+| **Defensive**                   | `checks`                                | Audits security posture for breaches and code leaks.                                    |
+|                                 | `vuln`                                  | Scans for CVEs and open ports on discovered assets.                                     |
+|                                 | `darkweb`                               | Searches the dark web for relevant queries via Tor.                                     |
+|                                 | `certs`                                 | Monitors new SSL/TLS certificate issuance.                                              |
+|                                 | `scan-iac`                              | Checks Infrastructure-as-Code (e.g., Terraform) for security flaws.                     |
+|                                 | `scan-secrets`                          | Detects leaked secrets in code repositories.                                            |
+| **Offensive**                   | `api-discover`                          | Finds exposed APIs through active reconnaissance.                                       |
+|                                 | `enum-content`                          | Enumerates hidden web content (directories, files).                                     |
+|                                 | `cloud-takeover`                        | Checks for subdomain and cloud service takeovers.                                       |
+| **Internal**                    | `analyze-log`                           | Analyzes local logs for incident response.                                              |
+|                                 | `static-analysis`                       | Performs malware or code static analysis.                                               |
+|                                 | `parse-mft`                             | Parses Master File Tables for forensic insights.                                        |
+| **Corporate**                   | `hr-intel`                              | Gathers strategic intelligence on hiring trends and employee sentiment.                 |
+|                                 | `supplychain`                           | Collects trade data and supply chain insights.                                          |
+|                                 | `ip-deep`                               | Tracks trademarks, patents, and IP activity.                                            |
+|                                 | `regulatory`                            | Monitors lobbying and regulatory activities.                                            |
+| **Industry**                    | `run`                                   | Get an AI-generated analysis of a specific industry in a given country.                 |
+|                                 | `monopoly`                              | Check if a company has a monopoly or dominant market position in a specific industry.   |
+| **Analysis**                    | `social`                                | Social media analysis.                                                                  |
+|                                 | `behavioral`                            | Builds a corporate "psycho-profile" from public communications.                         |
+|                                 | `competitive`                           | Competitive intelligence analysis.                                                      |
+|                                 | `deception`                             | Uncovers hidden corporate networks and mimicry.                                         |
+|                                 | `opsec`                                 | Operations security analysis.                                                           |
+|                                 | `pestel`                                | PESTEL (Political, Economic, Social, Technological, Environmental, and Legal) analysis. |
+|                                 | `signal`                                | Analyzes data for unintentional strategic signals.                                      |
+|                                 | `temporal`                              | Analyzes historical web snapshots to track a company's "Shifting Identity".             |
+|                                 | `wsa`                                   | Amplifies weak signals into high-confidence events using evidence theory.               |
+|                                 | `influence`                             | Influence and narrative tracking.                                                       |
+|                                 | `narrative`                             | Narrative analysis.                                                                     |
+|                                 | `simulate`                              | Attack path simulation.                                                                 |
+|                                 | `cultint`                               | Cultural intelligence.                                                                  |
+|                                 | `forecast`                              | Predicts potential future events from historical data.                                  |
+|                                 | `core`                                  | Performs AI-assisted SWOT analysis and sentiment analysis.                              |
+|                                 | `diff`                                  | Detects and interprets changes by comparing historical scans.                           |
+|                                 | `strategy`                              | Generates a high-level AI-powered strategic profile.                                    |
+| **Auto**                        | `enrich-ioc`                            | Automatically enriches Indicators of Compromise.                                        |
+|                                 | `enrich-cve`                            | Enriches CVE data for vulnerability management.                                         |
+|                                 | `threat-model`                          | Automates threat modeling based on aggregated scan data.                                |
+|                                 | `ueba`                                  | Performs User and Entity Behavior Analytics on log files.                               |
+|                                 | `workflow`                              | Executes multi-step automated security workflows from a YAML file.                      |
+| **Connect**                     | `virustotal`                            | Integrates with VirusTotal for file and URL analysis.                                   |
+| **Report / Reporter**           | `pdf`                                   | Generates professional PDF reports from scan data.                                      |
+|                                 | `graph`                                 | Creates interactive HTML knowledge graphs.                                              |
+| **Media**                       | `reverse-search`                        | Performs a reverse image search to find where an image is used online.                  |
+|                                 | `transcribe`                            | Transcribes audio files to text using an offline Whisper model.                         |
+| **Video Intelligence (VIDINT)** | `run`                                   | Video Intelligence (VIDINT) Module.                                                     |
+| **AppInt**                      | `static`                                | Performs static analysis on mobile application (.apk) files.                            |
+| **Imint**                       | `analyze-image`                         | Extracts EXIF metadata from image files.                                                |
+| **Geoint**                      | `run`                                   | Analyzes a target's geographic footprint for geopolitical risks.                        |
+| **Cybint**                      | `scan-host`                             | Scans a host for open ports, vulnerabilities, and services.                             |
+|                                 | `scan-url`                              | Analyzes a URL for threats, technologies, and metadata.                                 |
+| **Finint**                      | `track-wallet`                          | Monitors cryptocurrency wallet activity and balances.                                   |
+|                                 | `get-transactions`                      | Retrieves transaction history for a given wallet address.                               |
+| **Humint**                      | `search-profiles`                       | Searches for individuals across social media and professional networks.                 |
+|                                 | `monitor-person`                        | Continuously monitors a person's online activity for changes.                           |
+| **Legint**                      | `search-dockets`                        | Searches court dockets and legal filings.                                               |
+|                                 | `monitor-legislation`                   | Tracks changes in laws and regulations.                                                 |
+| **Marint**                      | `track-vessel`                          | Tracks maritime vessels using AIS data.                                                 |
+|                                 | `monitor-area`                          | Monitors a specific maritime area for vessel activity.                                  |
+| **Prodint**                     | `analyze-product`                       | Gathers information about a product from online sources.                                |
+|                                 | `compare-products`                      | Compares features, reviews, and prices of multiple products.                            |
+| **Sigint**                      | `scan-wifi`                             | Scans for nearby Wi-Fi networks and analyzes their security.                            |
+|                                 | `analyze-traffic`                       | Captures and analyzes network traffic.                                                  |
+| **Bioint**                      | `analyze-face`                          | Performs facial recognition and analysis on images.                                     |
+|                                 | `compare-voices`                        | Compares voice recordings for speaker identification.                                   |
+| **Chemint**                     | `search-compound`                       | Searches for information about chemical compounds.                                      |
+|                                 | `analyze-formula`                       | Analyzes chemical formulas and structures.                                              |
+| **Avint**                       | `track-flight`                          | Tracks aircraft in real-time.                                                           |
+|                                 | `monitor-airspace`                      | Monitors a specific airspace for flight activity.                                       |
+| **Ecoint**                      | `market-analysis`                       | Analyzes market trends and economic indicators.                                         |
+|                                 | `economic-indicators`                   | Retrieves key economic indicators for a country or region.                              |
+| **Elecint**                     | `analyze-device`                        | Gathers information about electronic devices.                                           |
+|                                 | `track-signal`                          | Tracks and analyzes electronic signals.                                                 |
+| **Qint**                        | `create-survey`                         | Creates and distributes surveys and questionnaires.                                     |
+|                                 | `analyze-responses`                     | Analyzes survey responses to extract insights.                                          |
+| **Scint**                       | `search-papers`                         | Searches for scientific papers and research articles.                                   |
+|                                 | `track-research`                        | Monitors a specific area of scientific research for new developments.                   |
+| **Spaceint**                    | `track-satellite`                       | Tracks the location and status of satellites.                                           |
+|                                 | `monitor-launch`                        | Monitors for upcoming satellite launches.                                               |
+| **Weathint**                    | `get-forecast`                          | Retrieves weather forecasts for a specific location.                                    |
+|                                 | `analyze-climate`                       | Analyzes historical climate data.                                                       |
+| **Otint**                       | `scan-network`                          | Scans operational technology (OT) networks for devices and vulnerabilities.             |
+|                                 | `analyze-plc`                           | Analyzes programmable logic controller (PLC) configurations.                            |
+| **Historical**                  | `run`                                   | Analyzes and compares historical snapshots of a website.                                |
+| **AINews**                      | `latest`                                | Fetches the latest AI news from Ars Technica.                                           |
+| **HackerNews**                  | `top`                                   | Fetches the top stories from Hacker News.                                               |
+| **Social Media Monitor**        | `run`                                   | Social media monitoring for real-time data collection.                                  |
+| **Crypto**                      | `run`                                   | Cryptocurrency Intelligence Module.                                                     |
+| **Infrastructure**              | `run`                                   | Infrastructure Intelligence Module.                                                     |
+| **Ecosystem**                   | `run`                                   | Ecosystem Intelligence Module.                                                          |
+| **Logistics**                   | `run`                                   | Logistics Intelligence Module.                                                          |
+| **Physical**                    | `run`                                   | Physical Intelligence (PHYSINT) Module.                                                 |
+| **Podcast**                     | `run`                                   | Podcast Intelligence Module.                                                            |
+| **Corporate Records**           | `run`                                   | Corporate Records Intelligence Module.                                                  |
+| **Credibility**                 | `run`                                   | Credibility Assessment Module.                                                          |
+| **Deep Research**               | `run`                                   | Deep Research Module.                                                                   |
+| **Dissemination**               | `run`                                   | Dissemination Suite Module.                                                             |
+| **Ethint**                      | `run`                                   | Ethical Intelligence (ETHINT) Module.                                                   |
+| **Metacognition**               | `run`                                   | Metacognition Module.                                                                   |
+| **Autonomous**                  | `run`                                   | Autonomous Intelligence Agent Module.                                                   |
+| **AIA**                         | `run`                                   | Autonomous Intelligence Agent Framework.                                                |
+| **User**                        | `login`, `logout`, `register`, `status` | User management and authentication.                                                     |
+| **TTP**                         | `run`                                   | CVE to MITRE ATT&CK mapping.                                                            |
+| **TPR-Scan**                    | `run`                                   | Third-Party Risk Management scans.                                                      |
+| **Sysint**                      | `run`                                   | Systemic Intelligence (SYSINT) & Cascade Analyzer.                                      |
+| **Scanint**                     | `run`                                   | Software Supply Chain Security (SCAINT).                                                |
+| **Risk**                        | `run`                                   | Risk Assessment tools.                                                                  |
+| **Response**                    | `run`                                   | Automated Response & Counter-Offensive Operations.                                      |
+| **Red Team**                    | `run`                                   | Adversarial Simulation & Strategy Validation Engine.                                    |
+| **Masint**                      | `run`                                   | Measurement and Signature Intelligence (MASINT) Module.                                 |
+| **Negotiation**                 | `start`                                 | Starts a new negotiation session.                                                       |
+|                                 | `join`                                  | Joins an existing negotiation session.                                                  |
+|                                 | `leave`                                 | Leaves a negotiation session.                                                           |
+|                                 | `status`                                | Gets the status of a negotiation session.                                               |
+|                                 | `offer`                                 | Makes an offer in a negotiation.                                                        |
+|                                 | `accept`                                | Accepts an offer.                                                                       |
+|                                 | `reject`                                | Rejects an offer.                                                                       |
+|                                 | `history`                               | Gets the history of a negotiation.                                                      |
 
-| Command Group      | Feature Command | Description                                                              |
-| :----------------- | :-------------- | :----------------------------------------------------------------------- |
-| **Project** | `init`, `use`, `status` | Manages intelligence projects for organized, long-term tracking.          |
-|                    | `report`        | Generates a comprehensive PDF dossier for the active project.            |
-|                    | `signal`        | Analyzes data for unintentional strategic signals (e.g., hiring trends). |
-| **Scan** | `footprint`     | Gathers WHOIS, DNS, subdomains, and enriches with Threat Intelligence.     |
-|                    | `web`           | Analyzes website technology stacks, traffic, and tech stack risk.         |
-|                    | `business`      | Retrieves public financial data, news, and patents.                      |
-|                    | `cloud`         | Scans for misconfigured cloud assets like S3 buckets.                    |
-|                    | `personnel`     | Finds, validates, and enriches public employee email addresses.          |
-|                    | `profiles`      | Identifies social media profiles via usernames.                          |
-|                    | `geo`           | Retrieves geolocation information for IP addresses.                      |
-| **Recon** | `credentials`   | Searches breach data for compromised credentials.                        |
-|                    | `assets`        | Discovers digital assets like mobile apps and public datasets.           |
-|                    | `threat-infra`  | Pivots on malicious indicators to map adversary infrastructure.          |
-| **Defensive** | `checks`        | Audits security posture for breaches and code leaks.                     |
-|                    | `vuln`          | Scans for CVEs and open ports on discovered assets.                      |
-|                    | `darkweb`       | Searches the dark web for relevant queries via Tor.                      |
-|                    | `certs`         | Monitors new SSL/TLS certificate issuance.                               |
-|                    | `scan-iac`      | Checks Infrastructure-as-Code (e.g., Terraform) for security flaws.      |
-|                    | `scan-secrets`  | Detects leaked secrets in code repositories.                             |
-| **Offensive** | `api-discover`  | Finds exposed APIs through active reconnaissance.                        |
-|                    | `enum-content`  | Enumerates hidden web content (directories, files).                      |
-|                    | `cloud-takeover`| Checks for subdomain and cloud service takeovers.                        |
-| **Internal** | `analyze-log`   | Analyzes local logs for incident response.                               |
-|                    | `static-analysis`| Performs malware or code static analysis.                                |
-|                    | `parse-mft`     | Parses Master File Tables for forensic insights.                         |
-| **Corporate** | `hr-intel`      | Gathers strategic intelligence on hiring trends and employee sentiment.  |
-|                    | `supplychain`   | Collects trade data and supply chain insights.                           |
-|                    | `ip-deep`       | Tracks trademarks, patents, and IP activity.                             |
-|                    | `regulatory`    | Monitors lobbying and regulatory activities.                             |
-| **Analysis** | `core`          | Performs AI-assisted SWOT analysis and sentiment analysis.               |
-|                    | `diff`          | Detects and interprets changes by comparing historical scans.            |
-|                    | `forecast`      | Predicts potential future events from historical data.                   |
-|                    | `strategy`      | Generates a high-level AI-powered strategic profile.                     |
-|                    | `temporal`      | Analyzes historical web snapshots to track a company's "Shifting Identity". |
-|                    | `behavioral`    | Builds a corporate "psycho-profile" from public communications.          |
-|                    | `wsa`           | Amplifies weak signals into high-confidence events using evidence theory. |
-|                    | `deception`     | Uncovers hidden corporate networks and mimicry.                          |
-| **Auto** | `enrich-ioc`    | Automatically enriches Indicators of Compromise.                         |
-|                    | `enrich-cve`    | Enriches CVE data for vulnerability management.                          |
-|                    | `threat-model`  | Automates threat modeling based on aggregated scan data.                 |
-|                    | `ueba`          | Performs User and Entity Behavior Analytics on log files.                |
-|                    | `workflow`      | Executes multi-step automated security workflows from a YAML file.       |
-| **Connect** | `virustotal`    | Integrates with VirusTotal for file and URL analysis.                    |
-| **Report** | `pdf`           | Generates professional PDF reports from scan data.                       |
-|                    | `graph`         | Creates interactive HTML knowledge graphs.                               |
-| **Media** | `reverse-search`| Performs a reverse image search to find where an image is used online.   |
-|                    | `transcribe`    | Transcribes audio files to text using an offline Whisper model.         |
-| **AppInt** | `static`        | Performs static analysis on mobile application (.apk) files.             |
-| **Imint** | `analyze-image` | Extracts EXIF metadata from image files.                                 |
-| **Geoint** | `run`           | Analyzes a target's geographic footprint for geopolitical risks.         |
+
 
 
 ---
@@ -216,3 +311,16 @@ graph TD
         N --> O[AI Models / Historical Comparison];
         O --> P[Final Report/Analysis];
     end
+
+## 🚀 Deployment
+
+### Secret Management
+
+For production deployments, Chimera Intel is configured to use **HashiCorp Vault** for secure secret management. This is the recommended approach for handling sensitive credentials like API keys and database passwords.
+
+To configure the application to use Vault, you must set the following environment variables:
+
+```bash
+export VAULT_ADDR="[https://your-vault-server.com](https://your-vault-server.com)"
+export VAULT_TOKEN="your-vault-access-token"
+export VAULT_SECRET_PATH="kv/data/chimera-intel" # The path to your secrets in Vault

@@ -9,15 +9,19 @@ import typer
 import logging
 from typing import Optional
 from passlib.context import CryptContext
-
+from datetime import datetime, timedelta
+from . import schemas
+from jose import jwt
 from .schemas import User
-from .database import create_user_in_db, get_user_from_db
+from .database import create_user_in_db, get_user_from_db, User as UserModel
 from .utils import console
 
 logger = logging.getLogger(__name__)
 
 USER_CONTEXT_FILE = ".chimera_user_context"
-
+SECRET_KEY = "a_very_secret_key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -62,6 +66,39 @@ def logout_user() -> None:
     logger.info("User logged out.")
 
 
+def get_user(self, username: str):
+    return self.db.query(UserModel).filter(UserModel.username == username).first()
+
+
+def create_user(self, user: schemas.UserCreate):
+    hashed_password = pwd_context.hash(user.password)
+    db_user = UserModel(
+        username=user.username, email=user.email, hashed_password=hashed_password
+    )
+    self.db.add(db_user)
+    self.db.commit()
+    self.db.refresh(db_user)
+    return db_user
+
+
+def authenticate_user(self, username: str, password: str) -> Optional[UserModel]:
+    user = self.get_user(username)
+    if not user or not pwd_context.verify(password, user.hashed_password):
+        return None
+    return user
+
+
+def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
 # --- Typer CLI Application ---
 
 
@@ -71,6 +108,7 @@ user_app = typer.Typer()
 @user_app.command("add")
 def add_user_command(
     username: str = typer.Argument(..., help="The username for the new user."),
+    email: str = typer.Argument(..., help="The email for the new user."),
     password: str = typer.Option(
         ..., "--password", prompt=True, hide_input=True, help="The user's password."
     ),
@@ -80,7 +118,7 @@ def add_user_command(
         console.print(f"[bold red]Error:[/bold red] User '{username}' already exists.")
         raise typer.Exit(code=1)
     hashed_password = get_password_hash(password)
-    create_user_in_db(username, hashed_password)
+    create_user_in_db(username, email, hashed_password)
     console.print(f"[bold green]Successfully created user '{username}'.[/bold green]")
 
 

@@ -18,10 +18,6 @@ from typing import Dict, Any, List, Optional
 import logging
 from .utils import console
 import os
-from pyvis.network import Network  # type: ignore
-
-# Import the global CONFIG object to access customization settings
-
 
 from .config_loader import CONFIG
 from .graph_db import build_and_save_graph
@@ -184,18 +180,9 @@ def create_pdf_report(
     generate_pdf_report(data, output_path)
 
 
-def generate_graph_report(target: str, output_path: str):
+def generate_graph_report(json_data: Dict[str, Any], output_path: str):
     """Generates an HTML graph report for a target."""
-    graph_result = build_and_save_graph(target)
-    if graph_result.error:
-        console.print(
-            f"[bold red]Error generating graph report:[/bold red] {graph_result.error}"
-        )
-        return
-    net = Network(height="100%", width="100%", bgcolor="#222222", font_color="white")
-
-    for node in graph_result.nodes:
-        net.add_node(node.id, label=node.label, title=node.node_type)
-    for edge in graph_result.edges:
-        net.add_edge(edge.source, edge.target, label=edge.label)
-    net.save_graph(output_path)
+    try:
+        build_and_save_graph(json_data, output_path)
+    except Exception as e:
+        console.print(f"[bold red]Error generating graph report:[/bold red] {e}")

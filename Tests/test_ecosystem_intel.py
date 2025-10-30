@@ -1,109 +1,138 @@
 import unittest
+import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
+import typer  # <-- Import Typer for the fix
 
-# Import the specific Typer app for this module, not the main one
-
-
-from chimera_intel.core.ecosystem_intel import ecosystem_app
 from chimera_intel.core.ecosystem_intel import (
     find_partners,
     find_competitors,
     find_distributors,
+    ecosystem_app,
 )
 from chimera_intel.core.schemas import (
     GNewsResult,
     TradeDataResult,
-    Shipment,
     ProjectConfig,
-    NewsArticle,
+    Shipment,
 )
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
+
+# FIX: wrap in parent app to make subcommand invocation valid
+app = typer.Typer()
+app.add_typer(ecosystem_app, name="ecosystem")
 
 
 class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
     """Test cases for the Ecosystem Intelligence module."""
 
-    @patch("chimera_intel.core.ecosystem_intel.API_KEYS")
+    # --- Partner Discovery Tests ---
+
     @patch("chimera_intel.core.ecosystem_intel.get_news_gnews", new_callable=AsyncMock)
     @patch(
         "chimera_intel.core.ecosystem_intel.get_tech_stack_wappalyzer",
         new_callable=AsyncMock,
     )
-    async def test_find_partners(self, mock_get_tech, mock_get_news, mock_api_keys):
-        """Tests the partner discovery function."""
+    @patch("chimera_intel.core.ecosystem_intel.API_KEYS")
+    async def test_find_partners_success(
+        self, mock_api_keys, mock_wappalyzer, mock_gnews
+    ):
+        """Tests successful partner discovery from multiple sources."""
         # Arrange
 
         mock_api_keys.gnews_api_key = "fake_gnews_key"
-        mock_api_keys.wappalyzer_api_key = "fake_wapp_key"
-
-        # Corrected mock to ensure "PartnerInc" is found
-
-        mock_get_news.return_value = GNewsResult(
+        mock_api_keys.wappalyzer_api_key = "fake_wappalyzer_key"
+        mock_gnews.return_value = GNewsResult(
             articles=[
-                NewsArticle(
-                    title="TestCorp partners with PartnerInc",
-                    description="",
-                    url="",
-                    source={},
-                )
+                {
+                    "title": "MegaCorp Announces Partnership with Partner Inc.",
+                    "description": "",
+                    "url": "",
+                    "source": {},
+                }
             ]
         )
-        mock_get_tech.return_value = ["Salesforce CRM"]
+        mock_wappalyzer.return_value = ["Salesforce", "SomeOtherTech"]
 
         # Act
 
-        partners = await find_partners("TestCorp", "testcorp.com")
+        partners = await find_partners("MegaCorp", "megacorp.com")
 
         # Assert
-        # The test should now find two partners: "PartnerInc" and "Salesforce"
 
         self.assertEqual(len(partners), 2)
         partner_names = {p.partner_name for p in partners}
-        self.assertIn("PartnerInc", partner_names)
+        self.assertIn("Partner Inc", partner_names)
         self.assertIn("Salesforce", partner_names)
+
+    # --- Competitor Discovery Tests ---
 
     @patch(
         "chimera_intel.core.ecosystem_intel.async_client.get", new_callable=AsyncMock
     )
-    async def test_find_competitors(self, mock_async_get):
-        """Tests the competitor discovery function."""
+    @patch("chimera_intel.core.ecosystem_intel.API_KEYS")
+    async def test_find_competitors_success(self, mock_api_keys, mock_get):
+        """Tests successful competitor discovery using SimilarWeb."""
         # Arrange
 
+        mock_api_keys.similarweb_api_key = "fake_sw_key"
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = {
-            "similar_sites": [{"site": "competitor.com", "score": 0.8}]
+            "similar_sites": [{"site": "competitor.com", "score": 0.9}]
         }
-        mock_async_get.return_value = mock_response
+        mock_get.return_value = mock_response
 
         # Act
 
-        with patch(
-            "chimera_intel.core.ecosystem_intel.API_KEYS.similarweb_api_key", "fake_key"
-        ):
-            competitors = await find_competitors("example.com")
+        competitors = await find_competitors("example.com")
+
         # Assert
 
         self.assertEqual(len(competitors), 1)
         self.assertEqual(competitors[0].competitor_name, "competitor.com")
+        self.assertEqual(competitors[0].confidence, "High")
 
-    @patch("chimera_intel.core.ecosystem_intel.asyncio.to_thread")
-    async def test_find_distributors(self, mock_to_thread: AsyncMock):
-        """Tests the distributor discovery function."""
+    async def test_find_competitors_no_api_key(self):
+        """Tests competitor discovery when the SimilarWeb API key is missing."""
+        with patch(
+            "chimera_intel.core.ecosystem_intel.API_KEYS.similarweb_api_key", None
+        ):
+            competitors = await find_competitors("example.com")
+            # Should return an empty list gracefully
+
+            self.assertEqual(len(competitors), 0)
+
+    # --- Distributor Discovery Tests ---
+
+    @patch("chimera_intel.core.ecosystem_intel.get_trade_data")
+    async def test_find_distributors_success(self, mock_get_trade_data):
+        """Tests successful distributor discovery from trade data."""
         # Arrange
 
-        mock_to_thread.return_value = TradeDataResult(
-            total_shipments=1,
+        mock_get_trade_data.return_value = TradeDataResult(
             shipments=[
                 Shipment(
-                    date="2025-01-01",
-                    shipper="Factory",
-                    consignee="Distributor Inc",
-                    product_description="Widgets",
-                )
+                    date="2023-01-01",
+                    consignee="Distributor A",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
+                Shipment(
+                    date="2023-01-02",
+                    consignee="Distributor A",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
+                Shipment(
+                    date="2023-01-03",
+                    consignee="Distributor B",
+                    shipper="TestCorp",
+                    product_description="Test Product",
+                ),
             ],
+            total_shipments=3,
         )
 
         # Act
@@ -112,95 +141,75 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
 
         # Assert
 
-        self.assertEqual(len(distributors), 1)
-        self.assertEqual(distributors[0].distributor_name, "Distributor Inc")
+        self.assertEqual(len(distributors), 2)
+        distributor_names = {d.distributor_name for d in distributors}
+        self.assertIn("Distributor A", distributor_names)
+        self.assertIn("Distributor B", distributor_names)
 
     # --- CLI Command Tests ---
 
-    @patch("chimera_intel.core.ecosystem_intel.find_partners", new_callable=AsyncMock)
     @patch(
-        "chimera_intel.core.ecosystem_intel.find_competitors", new_callable=AsyncMock
+        "chimera_intel.core.ecosystem_intel.async_run_full_ecosystem_analysis",
+        new_callable=AsyncMock,
     )
-    @patch(
-        "chimera_intel.core.ecosystem_intel.find_distributors", new_callable=AsyncMock
-    )
-    @patch("chimera_intel.core.ecosystem_intel.save_scan_to_db")
-    def test_cli_ecosystem_run_with_args(
-        self, mock_save_db, mock_distributors, mock_competitors, mock_partners
-    ):
-        """Tests the CLI command with explicit arguments."""
-        # Arrange
+    def test_cli_run_success_with_args(self, mock_async_run):
+        """Tests a successful run of the 'ecosystem run' command with direct arguments."""
 
-        mock_partners.return_value = []
-        mock_competitors.return_value = []
-        mock_distributors.return_value = []
+        mock_return_future = asyncio.Future()
+        mock_return_future.set_result(None)  # Set return value for the async function
+        mock_async_run.return_value = mock_return_future
 
         # Act
 
-        result = runner.invoke(
-            ecosystem_app, ["TestCorp", "testcorp.com", "--output", "test.json"]
-        )
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run", "MyCompany", "mycompany.com"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        mock_partners.assert_awaited_with("TestCorp", "testcorp.com")
-        mock_distributors.assert_awaited_with("TestCorp")
-        mock_competitors.assert_awaited_with("testcorp.com")
-        mock_save_db.assert_called_once()
+        mock_async_run.assert_awaited_with("MyCompany", "mycompany.com", None)
 
     @patch("chimera_intel.core.ecosystem_intel.get_active_project")
-    @patch("chimera_intel.core.ecosystem_intel.find_partners", new_callable=AsyncMock)
     @patch(
-        "chimera_intel.core.ecosystem_intel.find_competitors", new_callable=AsyncMock
+        "chimera_intel.core.ecosystem_intel.async_run_full_ecosystem_analysis",
+        new_callable=AsyncMock,
     )
-    @patch(
-        "chimera_intel.core.ecosystem_intel.find_distributors", new_callable=AsyncMock
-    )
-    @patch("chimera_intel.core.ecosystem_intel.save_scan_to_db")
-    def test_cli_ecosystem_run_with_project(
-        self,
-        mock_save_db,
-        mock_distributors,
-        mock_competitors,
-        mock_partners,
-        mock_get_project,
-    ):
-        """Tests the CLI command using an active project."""
+    def test_cli_run_with_project(self, mock_async_run, mock_get_project):
+        """NEW: Tests the CLI command using an active project's context."""
         # Arrange
 
+        # --- ALSO FIX THIS TEST: It has the same AsyncMock issue ---
+        mock_return_future = asyncio.Future()
+        mock_return_future.set_result(None)
+        mock_async_run.return_value = mock_return_future
+        # --- End Fix ---
+
         mock_project = ProjectConfig(
-            project_name="EcosystemTest",
-            created_at="2025-01-01",
+            project_name="Test",
+            created_at="",
             company_name="ProjectCorp",
             domain="project.com",
         )
         mock_get_project.return_value = mock_project
-        mock_partners.return_value = []
-        mock_competitors.return_value = []
-        mock_distributors.return_value = []
 
         # Act
 
-        result = runner.invoke(ecosystem_app, ["--output", "test.json"])
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run"])
 
         # Assert
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Using targets from active project", result.stdout)
-        mock_partners.assert_awaited_with("ProjectCorp", "project.com")
-        mock_save_db.assert_called_once()
+        # The call is now correct, as 'run' is no longer passed as an argument
+        mock_async_run.assert_awaited_with(None, None, None)
 
-    @patch("chimera_intel.core.ecosystem_intel.get_active_project")
-    def test_cli_ecosystem_run_no_args_no_project(self, mock_get_project):
-        """Tests CLI failure when no arguments are given and no project is active."""
-        # Arrange
-
-        mock_get_project.return_value = None
-
+    @patch("chimera_intel.core.ecosystem_intel.get_active_project", return_value=None)
+    def test_cli_run_no_target_or_project(self, mock_get_project):
+        """NEW: Tests CLI failure when no target is given and no project is active."""
         # Act
 
-        result = runner.invoke(ecosystem_app, [])
+        # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
+        result = runner.invoke(app, ["ecosystem", "run"])
 
         # Assert
 

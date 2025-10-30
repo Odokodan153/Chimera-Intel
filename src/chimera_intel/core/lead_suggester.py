@@ -9,6 +9,8 @@ import typer
 import json
 import logging
 
+# import sys  <-- FIX: Removed sys import
+
 from rich.markdown import Markdown
 
 from chimera_intel.core.database import get_aggregated_data_for_target
@@ -34,7 +36,7 @@ def generate_lead_suggestions(
         api_key (str): The Google AI API key.
 
     Returns:
-        LeadSuggestionResult: A Pydantic model containing the AI-generated suggestions.
+        LeadSuggestionResult: A Pantic model containing the AI-generated suggestions.
     """
     if not api_key:
         return LeadSuggestionResult(
@@ -88,51 +90,90 @@ lead_suggester_app = typer.Typer()
 
 
 @lead_suggester_app.command("run")
-def run_lead_suggestion():
+def run_lead_suggestion(
+    no_rich: bool = typer.Option(
+        False, "--no-rich", help="Disable rich text formatting."
+    )
+):
     """
     Analyzes the active project and suggests next steps for the investigation.
     """
-    active_project = get_active_project()
-    if not active_project:
-        console.print(
-            "[bold red]Error:[/bold red] No active project set. Use 'chimera project use <name>' first."
+    # --- MODIFIED: Updated try/except block ---
+    try:
+        active_project = get_active_project()
+        if not active_project:
+            typer.echo(
+                "Error: No active project set. Use 'chimera project use <name>' first.",
+                err=True,
+            )
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
+        target_name = active_project.company_name or active_project.domain
+        if not target_name:
+            typer.echo(
+                "Error: Active project has no target (domain or company name) set.",
+                err=True,
+            )
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
+        logger.info(
+            f"Generating lead suggestions for project: {active_project.project_name}"
         )
-        raise typer.Exit(code=1)
-    target_name = active_project.company_name or active_project.domain
-    if not target_name:
-        console.print(
-            "[bold red]Error:[/bold red] Active project has no target (domain or company name) set."
-        )
-        raise typer.Exit(code=1)
-    logger.info(
-        f"Generating lead suggestions for project: {active_project.project_name}"
-    )
 
-    aggregated_data = get_aggregated_data_for_target(target_name)
-    if not aggregated_data:
-        console.print(
-            f"[bold red]Error:[/bold red] No historical data found for '{target_name}'. Run scans first."
-        )
-        raise typer.Exit(code=1)
-    api_key = API_KEYS.google_api_key
-    if not api_key:
-        console.print(
-            "[bold red]Error:[/bold red] Google API key (GOOGLE_API_KEY) not found."
-        )
-        raise typer.Exit(code=1)
-    with console.status(
-        "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]"
-    ):
-        suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
-    console.print(
-        f"\n--- [bold]Suggested Intelligence Leads for {active_project.project_name}[/bold] ---\n"
-    )
-    if suggestion_result.error:
-        console.print(
-            f"[bold red]Error generating suggestions:[/bold red] {suggestion_result.error}"
-        )
-        raise typer.Exit(code=1)
-    else:
-        console.print(
-            Markdown(suggestion_result.suggestions_text or "No suggestions generated.")
-        )
+        aggregated_data = get_aggregated_data_for_target(target_name)
+        if not aggregated_data:
+            typer.echo(
+                f"Error: No historical data found for '{target_name}'. Run scans first.",
+                err=True,
+            )
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
+        api_key = API_KEYS.google_api_key
+        if not api_key:
+            typer.echo("Error: Google API key (GOOGLE_API_KEY) not found.", err=True)
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
+        if no_rich:
+            suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
+        else:
+            with console.status(
+                "[bold cyan]AI is analyzing the case file to suggest next steps...[/bold cyan]"
+            ):
+                suggestion_result = generate_lead_suggestions(aggregated_data, api_key)
+        if not no_rich:
+            console.print(
+                f"\n--- [bold]Suggested Intelligence Leads for {active_project.project_name}[/bold] ---\n"
+            )
+        if suggestion_result.error:
+            typer.echo(
+                f"Error generating suggestions: {suggestion_result.error}", err=True
+            )
+            # FIX: Use typer.Exit(code=1)
+            raise typer.Exit(code=1)
+        else:
+            output_text = (
+                suggestion_result.suggestions_text or "No suggestions generated."
+            )
+            if no_rich:
+                typer.echo(output_text)
+            else:
+                console.print(Markdown(output_text))
+
+        # FIX: Add explicit typer.Exit(code=0) for success
+        raise typer.Exit(code=0)
+
+    # FIX: Removed the unnecessary SystemExit catch
+    except Exception as e:
+        # This will catch typer.Exit(code=1) as well, but it's better
+        # to let typer.Exit exceptions propagate to the runner.
+        # However, for other unexpected errors, we exit with 1.
+        if not isinstance(e, typer.Exit):
+            typer.echo(f"An unexpected error occurred: {e}", err=True)
+            # FIX: Use typer.Exit(code=1) for *unexpected* errors
+            raise typer.Exit(code=1)
+        else:
+            raise e  # Re-raise the typer.Exit
+
+
+if __name__ == "__main__":
+    lead_suggester_app()

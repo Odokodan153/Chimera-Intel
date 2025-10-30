@@ -5,6 +5,8 @@ from .ai_core import generate_narrative_from_graph
 from .config_loader import API_KEYS
 from .utils import console
 from rich.markdown import Markdown
+from pyvis.network import Network
+import json
 
 graph_app = typer.Typer()
 
@@ -12,15 +14,42 @@ graph_app = typer.Typer()
 @graph_app.command("build")
 def build_graph_command(
     target: str = typer.Argument(
-        ..., help="The primary target to build the graph around."
+        ..., help="The path to the JSON file containing the data for the graph."
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save the graph to an HTML file."
     ),
 ):
     """Builds and saves an entity relationship graph for a target."""
-    console.print(f"[bold cyan]Building entity graph for {target}...[/bold cyan]")
-    graph_result = build_and_save_graph(target)
+    console.print(
+        f"[bold cyan]Building entity graph from file '{target}'...[/bold cyan]"
+    )
+
+    try:
+        with open(target, "r") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        console.print(
+            f"[bold red]Error:[/bold red] Input file not found at '{target}'."
+        )
+        raise typer.Exit(code=1)
+    except json.JSONDecodeError:
+        console.print(
+            f"[bold red]Error:[/bold red] Invalid JSON format in file '{target}'."
+        )
+        raise typer.Exit(code=1)
+    # Corrected function call: passes loaded 'data' and 'output_file' if it exists
+
+    if output_file:
+        graph_result = build_and_save_graph(data, output_file)
+    else:
+        # Decide what to do if no output file is specified.
+        # For example, you could create a default name or just build the graph in memory without saving.
+        # Here, we'll assume a default name based on the target.
+
+        target_name = data.get("domain") or data.get("company", "graph")
+        output_path = f"{target_name.replace('.', '_')}_graph.html"
+        graph_result = build_and_save_graph(data, output_path)
     if graph_result.error:
         console.print(
             f"[bold red]Error building graph:[/bold red] {graph_result.error}"
@@ -31,8 +60,12 @@ def build_graph_command(
     )
 
     if output_file:
-        # Placeholder for visualization logic
-
+        net = Network(height="800px", width="100%", notebook=True)
+        for node in graph_result.nodes:
+            net.add_node(node.id, label=node.label, title=node.node_type)
+        for edge in graph_result.edges:
+            net.add_edge(edge.source, edge.target, title=edge.label)
+        net.show(output_file)
         console.print(f"[cyan]Visualization saved to {output_file}[/cyan]")
 
 

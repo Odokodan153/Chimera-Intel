@@ -16,9 +16,10 @@ import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
 from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult, GraphNarrativeResult
 from .graph_db import build_and_save_graph
-from .graph_schemas import GraphNarrativeResult
 import json
+import os
 
 # Get a logger instance for this specific file
 
@@ -68,7 +69,7 @@ def analyze_sentiment(text: str) -> SentimentAnalysisResult:
         text (str): The text to analyze.
 
     Returns:
-        SentimentAnalysisResult: A Pantic model containing the sentiment label, score, or an error.
+        SentimentAnalysisResult: A Pydantic model containing the sentiment label, score, or an error.
     """
     if not sentiment_analyzer:
         return SentimentAnalysisResult(
@@ -120,7 +121,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
         api_key (str): The Google AI API key.
 
     Returns:
-        SWOTAnalysisResult: A Pantic model containing the markdown-formatted SWOT analysis, or an error.
+        SWOTAnalysisResult: A Pydantic model containing the markdown-formatted SWOT analysis, or an error.
     """
     if not api_key:
         return SWOTAnalysisResult(
@@ -147,7 +148,7 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
         traffic_data (List[float]): A list of numbers (e.g., monthly website visits).
 
     Returns:
-        AnomalyDetectionResult: A Pantic model containing the original data, detected anomalies, or an error.
+        AnomalyDetectionResult: A Pydantic model containing the original data, detected anomalies, or an error.
     """
     if not IsolationForest or not np:
         return AnomalyDetectionResult(
@@ -155,6 +156,12 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
             detected_anomalies=[],
             error="'scikit-learn' or 'numpy' not installed.",
         )
+
+    # --- FIX: Handle empty list gracefully ---
+    if not traffic_data:
+        return AnomalyDetectionResult(data_points=[], detected_anomalies=[])
+    # --- End Fix ---
+
     if not all(isinstance(x, (int, float)) for x in traffic_data):
         return AnomalyDetectionResult(
             data_points=traffic_data,
@@ -213,6 +220,7 @@ def run_swot_analysis(input_file: str):
         logger.error(
             "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
         )
+        console.print("Google API key not found")
         raise typer.Exit(code=1)
     try:
         with open(input_file, "r") as f:
@@ -229,6 +237,7 @@ def run_swot_analysis(input_file: str):
         raise typer.Exit(code=1)
     except json.JSONDecodeError:
         logger.error("Invalid JSON in file '%s'", input_file)
+        console.print("Invalid JSON")
         raise typer.Exit(code=1)
     except Exception as e:
         logger.error("Error reading or processing file for SWOT analysis: %s", e)
@@ -254,6 +263,7 @@ def run_anomaly_detection(data_points: str):
         logger.error(
             "Invalid data points for anomaly detection: %s. Error: %s", data_points, e
         )
+        console.print("Invalid data points")
 
 
 def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeResult:
@@ -265,19 +275,95 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
         api_key (str): The Google AI API key.
 
     Returns:
-        GraphNarrativeResult: A Pantic model containing the AI-generated narrative.
+        GraphNarrativeResult: A Pydantic model containing the AI-generated narrative.
     """
-    graph_result = build_and_save_graph(target)
-    if graph_result.error:
-        return GraphNarrativeResult(narrative_text="", error=graph_result.error)
-    # Simplified representation for the prompt
+    if not os.path.exists(target):
+        return GraphNarrativeResult(narrative_text="", error="DB error")
+    try:
+        with open(target, "r") as f:
+            data = json.load(f)
+        output_path = f"{target.replace('.json', '')}_graph.html"
+        build_and_save_graph(data, output_path)
 
+        nodes = []
+        edges = []
+        target_node_id = data.get("domain") or data.get("company", "Unknown Target")
+        nodes.append(
+            GraphNode(
+                id=target_node_id,
+                label=target_node_id,
+                node_type="Main Target",
+                properties={},
+            )
+        )
+
+        footprint_data = data.get("footprint", {})
+        for sub_item in footprint_data.get("subdomains", {}).get("results", []):
+            subdomain = sub_item.get("domain")
+            if subdomain:
+                nodes.append(
+                    GraphNode(
+                        id=subdomain,
+                        label=subdomain,
+                        node_type="Subdomain",
+                        properties={},
+                    )
+                )
+                edges.append(
+                    GraphEdge(
+                        source=target_node_id,
+                        target=subdomain,
+                        label="has_subdomain",
+                        properties={},
+                    )
+                )
+        for ip in footprint_data.get("dns_records", {}).get("A", []):
+            if "Error" not in str(ip):
+                nodes.append(
+                    GraphNode(id=ip, label=ip, node_type="IP Address", properties={})
+                )
+                edges.append(
+                    GraphEdge(
+                        source=target_node_id,
+                        target=ip,
+                        label="resolves_to",
+                        properties={},
+                    )
+                )
+        web_data = data.get("web_analysis", {})
+        for tech_item in web_data.get("tech_stack", {}).get("results", []):
+            tech = tech_item.get("technology")
+            if tech:
+                nodes.append(
+                    GraphNode(
+                        id=tech, label=tech, node_type="Technology", properties={}
+                    )
+                )
+                edges.append(
+                    GraphEdge(
+                        source=target_node_id,
+                        target=tech,
+                        label="uses_tech",
+                        properties={},
+                    )
+                )
+        # Corrected from GraphResult to EntityGraphResult
+
+        graph_result = EntityGraphResult(
+            nodes=nodes,
+            edges=edges,
+            target=target,
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+        )
+        if hasattr(graph_result, "error") and graph_result.error:
+            return GraphNarrativeResult(narrative_text="", error=graph_result.error)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        return GraphNarrativeResult(narrative_text="", error=str(e))
     prompt_data = {
         "nodes": [node.model_dump() for node in graph_result.nodes],
         "edges": [edge.model_dump() for edge in graph_result.edges],
     }
-
-    # Generate narrative using the existing SWOT function's underlying model
 
     swot_result = generate_swot_from_data(
         f"Analyze the following entity graph and provide a brief intelligence summary:\n{json.dumps(prompt_data, indent=2)}",
