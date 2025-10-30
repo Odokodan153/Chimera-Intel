@@ -152,15 +152,15 @@ def analyze_diff_for_signals(diff_result: dict) -> List[MicroSignal]:
         and isinstance(diff_result["footprint"]["dns_records"].get("A"), dict)
     ):
         if insert in diff_result["footprint"]["dns_records"]["A"]:
-            
+
             # --- FIX APPLIED ---
             # new_ips_tuples is a list of (index, value) tuples, e.g., [(1, '2.2.2.2')]
             new_ips_tuples = diff_result["footprint"]["dns_records"]["A"][insert]
-            
+
             if isinstance(new_ips_tuples, list):
                 # We must extract only the values (the IPs) for the .join() call.
                 just_the_ips = [str(ip_tuple[1]) for ip_tuple in new_ips_tuples]
-            # --- END FIX ---
+                # --- END FIX ---
 
                 signals.append(
                     MicroSignal(

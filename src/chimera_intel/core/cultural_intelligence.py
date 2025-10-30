@@ -6,6 +6,7 @@ from .utils import console
 # --- Global Cache for Cultural Profiles ---
 _profile_cache: Dict[str, Dict[str, Any]] = {}
 
+
 def add_cultural_profile(profile_data: Dict[str, Any]):
     """Adds or updates a cultural profile in the database and clears the cache."""
     global _profile_cache
@@ -51,6 +52,7 @@ def add_cultural_profile(profile_data: Dict[str, Any]):
         if conn:
             conn.close()
 
+
 def get_cultural_profile(country_code: str) -> Optional[Dict[str, Any]]:
     """
     Retrieves a cultural profile from the cache or database.
@@ -59,7 +61,7 @@ def get_cultural_profile(country_code: str) -> Optional[Dict[str, Any]]:
     global _profile_cache
     if not country_code:
         return None
-        
+
     # Check cache first
     if country_code.upper() in _profile_cache:
         return _profile_cache[country_code.upper()]
@@ -68,7 +70,7 @@ def get_cultural_profile(country_code: str) -> Optional[Dict[str, Any]]:
     if not conn:
         logging.error("Cannot retrieve cultural profile: No database connection.")
         return None
-    
+
     profile = None
     try:
         with conn.cursor() as cursor:
@@ -98,29 +100,51 @@ def get_cultural_profile(country_code: str) -> Optional[Dict[str, Any]]:
             conn.close()
     return profile
 
+
 def populate_initial_cultural_data():
     """Adds a few example cultural profiles to the database for demonstration."""
     initial_profiles = [
         {
-            "country_code": "US", "country_name": "United States", "directness": 9,
-            "formality": 4, "power_distance": 40, "individualism": 91, "uncertainty_avoidance": 46,
+            "country_code": "US",
+            "country_name": "United States",
+            "directness": 9,
+            "formality": 4,
+            "power_distance": 40,
+            "individualism": 91,
+            "uncertainty_avoidance": 46,
         },
         {
-            "country_code": "JP", "country_name": "Japan", "directness": 3,
-            "formality": 8, "power_distance": 54, "individualism": 46, "uncertainty_avoidance": 92,
+            "country_code": "JP",
+            "country_name": "Japan",
+            "directness": 3,
+            "formality": 8,
+            "power_distance": 54,
+            "individualism": 46,
+            "uncertainty_avoidance": 92,
         },
         {
-            "country_code": "DE", "country_name": "Germany", "directness": 8,
-            "formality": 7, "power_distance": 35, "individualism": 67, "uncertainty_avoidance": 65,
+            "country_code": "DE",
+            "country_name": "Germany",
+            "directness": 8,
+            "formality": 7,
+            "power_distance": 35,
+            "individualism": 67,
+            "uncertainty_avoidance": 65,
         },
         {
-            "country_code": "BR", "country_name": "Brazil", "directness": 6,
-            "formality": 5, "power_distance": 69, "individualism": 38, "uncertainty_avoidance": 76,
+            "country_code": "BR",
+            "country_name": "Brazil",
+            "directness": 6,
+            "formality": 5,
+            "power_distance": 69,
+            "individualism": 38,
+            "uncertainty_avoidance": 76,
         },
     ]
     console.print("[yellow]Populating initial cultural data...[/yellow]")
     for profile in initial_profiles:
         add_cultural_profile(profile)
+
 
 def get_all_cultural_profiles() -> List[Dict[str, Any]]:
     """Retrieves all cultural profiles from the database."""
@@ -128,18 +152,26 @@ def get_all_cultural_profiles() -> List[Dict[str, Any]]:
     if not conn:
         logging.error("Cannot retrieve cultural profiles: No database connection.")
         return []
-    
+
     profiles = []
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT country_code, country_name, directness, formality, power_distance, individualism, uncertainty_avoidance FROM cultural_profiles ORDER BY country_name;")
+            cursor.execute(
+                "SELECT country_code, country_name, directness, formality, power_distance, individualism, uncertainty_avoidance FROM cultural_profiles ORDER BY country_name;"
+            )
             records = cursor.fetchall()
             for record in records:
-                profiles.append({
-                    "country_code": record[0], "country_name": record[1], "directness": record[2],
-                    "formality": record[3], "power_distance": record[4], "individualism": record[5],
-                    "uncertainty_avoidance": record[6],
-                })
+                profiles.append(
+                    {
+                        "country_code": record[0],
+                        "country_name": record[1],
+                        "directness": record[2],
+                        "formality": record[3],
+                        "power_distance": record[4],
+                        "individualism": record[5],
+                        "uncertainty_avoidance": record[6],
+                    }
+                )
     except Exception as e:
         console.print(
             f"[bold red]Database Error:[/bold red] Could not retrieve all cultural profiles: {e}"

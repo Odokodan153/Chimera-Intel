@@ -62,11 +62,8 @@ class TestCorrelationEngine(unittest.TestCase):
             },
             # FIX: Add missing TTP knowledge base for the CVE test
             "ttp_knowledge_base": {
-                "CVE-2023-1337": {
-                    "name": "Mock TTP",
-                    "attack_id": "T1234"
-                }
-            }
+                "CVE-2023-1337": {"name": "Mock TTP", "attack_id": "T1234"}
+            },
         }
         self.engine = CorrelationEngine(self.mock_plugin_manager, self.config)
 
@@ -138,7 +135,7 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            details={}, # No details
+            details={},  # No details
         )
 
         # Act
@@ -164,7 +161,7 @@ class TestCorrelationEngine(unittest.TestCase):
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
-            details={}, # No details
+            details={},  # No details
         )
 
         # Act

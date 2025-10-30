@@ -78,7 +78,7 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
     ):
         """Tests the 'competitive' CLI command with a successful run."""
         # Arrange
-        
+
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},
             {"target": "companyB", "modules": {}},
@@ -86,59 +86,57 @@ class TestCompetitiveAnalyzer(unittest.TestCase):
         mock_generate.return_value = CompetitiveAnalysisResult(
             analysis_text="**Test Analysis**"
         )
-    
+
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", "fake_key"):
             # Act
             # --- FIX: Removed the "run" argument ---
-            result = runner.invoke(
-                competitive_analyzer_app, ["companyA", "companyB"]
-            )
-    
+            result = runner.invoke(competitive_analyzer_app, ["companyA", "companyB"])
+
         # Assert
-        self.assertEqual(result.exit_code, 0) # This should now pass
+        self.assertEqual(result.exit_code, 0)  # This should now pass
 
     @patch("chimera_intel.core.competitive_analyzer.logger")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_data(self, mock_get_data, mock_console, mock_logger):
+    def test_cli_competitive_analysis_no_data(
+        self, mock_get_data, mock_console, mock_logger
+    ):
         """Tests the CLI command when data for one of the targets is missing."""
         # Arrange
-        
+
         mock_get_data.side_effect = [
             {"target": "companyA", "modules": {}},  # First call (companyA) succeeds
             None,  # Second call (companyB) fails
         ]
-    
+
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", "fake_key"):
             # Act
             # --- FIX: Removed the "run" argument ---
-            result = runner.invoke(
-                competitive_analyzer_app, ["companyA", "companyB"]
-            )
-    
+            result = runner.invoke(competitive_analyzer_app, ["companyA", "companyB"])
+
         # Assert
         # If typer.Exit(1) is raised, result.exit_code will be 1
-        self.assertEqual(result.exit_code, 1) # This should now pass
+        self.assertEqual(result.exit_code, 1)  # This should now pass
 
     @patch("chimera_intel.core.competitive_analyzer.logger")
     @patch("chimera_intel.core.competitive_analyzer.console.print")
     @patch("chimera_intel.core.competitive_analyzer.get_aggregated_data_for_target")
-    def test_cli_competitive_analysis_no_api_key(self, mock_get_data, mock_console, mock_logger):
+    def test_cli_competitive_analysis_no_api_key(
+        self, mock_get_data, mock_console, mock_logger
+    ):
         """NEW: Tests the CLI command when the Google API key is not configured."""
         # Arrange
-        
+
         mock_get_data.return_value = {"target": "companyA", "modules": {}}
-    
+
         with patch.object(competitive_analyzer.API_KEYS, "google_api_key", None):
             # Act
             # --- FIX: Removed the "run" argument ---
-            result = runner.invoke(
-                competitive_analyzer_app, ["companyA", "companyB"]
-            )
-    
+            result = runner.invoke(competitive_analyzer_app, ["companyA", "companyB"])
+
         # Assert
         # If typer.Exit(1) is raised, result.exit_code will be 1
-        self.assertEqual(result.exit_code, 1) # This should now pass
+        self.assertEqual(result.exit_code, 1)  # This should now pass
 
 
 if __name__ == "__main__":

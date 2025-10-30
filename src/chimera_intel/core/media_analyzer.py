@@ -161,7 +161,7 @@ def run_reverse_image_search(  # <-- CHANGED: Removed 'async'
 
 
 @media_app.command("transcribe")
-def run_audio_transcription(  
+def run_audio_transcription(
     file_path: str = typer.Argument(..., help="Path to the audio file."),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
@@ -177,7 +177,6 @@ def run_audio_transcription(
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=file_path, module="media_transcription", data=results_dict)
-
 
 
 if __name__ == "__main__":

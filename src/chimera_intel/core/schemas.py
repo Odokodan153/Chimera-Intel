@@ -9,11 +9,11 @@ from sqlalchemy import (
     JSON,
     Boolean,
     LargeBinary,
-    Enum as SQLAlchemyEnum
+    Enum as SQLAlchemyEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime 
+from datetime import datetime
 from pydantic import BaseModel, Field, validator, EmailStr
 import uuid
 from enum import Enum
@@ -21,6 +21,7 @@ from enum import Enum
 # --- General Purpose Models ---
 
 Base = declarative_base()
+
 
 class ScoredResult(BaseModel):
     """A model for a result that has sources and a confidence score."""
@@ -30,6 +31,7 @@ class ScoredResult(BaseModel):
     confidence: str
     sources: List[str]
     threat_intel: Optional["ThreatIntelResult"] = None
+
 
 class ScanData(BaseModel):
     """A model for a single scan result."""
@@ -69,10 +71,12 @@ class SubdomainReport(BaseModel):
     total_unique: int
     results: List[ScoredResult]
 
+
 class DnssecInfo(BaseModel):
     dnssec_enabled: bool
     spf_record: str
     dmarc_record: str
+
 
 class TlsCertInfo(BaseModel):
     issuer: str
@@ -81,16 +85,19 @@ class TlsCertInfo(BaseModel):
     not_before: str
     not_after: str
 
+
 class AsnInfo(BaseModel):
     asn: Optional[str] = None
     owner: Optional[str] = None
     country: Optional[str] = None
     prefix: Optional[str] = None
 
+
 class HistoricalDns(BaseModel):
     a_records: List[str]
     aaaa_records: List[str]
     mx_records: List[str]
+
 
 class IpGeolocation(BaseModel):
     ip: str
@@ -98,12 +105,15 @@ class IpGeolocation(BaseModel):
     country: Optional[str] = None
     provider: Optional[str] = None
 
+
 class BreachInfo(BaseModel):
     source: str
     breaches: List[str]
 
+
 class PortScanResult(BaseModel):
     open_ports: Dict[int, str]
+
 
 class WebTechInfo(BaseModel):
     cms: Optional[str] = None
@@ -111,17 +121,21 @@ class WebTechInfo(BaseModel):
     web_server: Optional[str] = None
     js_library: Optional[str] = None
 
+
 class PersonnelInfo(BaseModel):
     employees: List[Dict[str, str]]
+
 
 class SocialMediaPresence(BaseModel):
     twitter: Optional[str] = None
     linkedin: Optional[str] = None
     github: Optional[str] = None
 
+
 class KnowledgeGraph(BaseModel):
     nodes: List[Dict[str, Any]]
     edges: List[Dict[str, Any]]
+
 
 class FootprintData(BaseModel):
     whois_info: Dict[str, Any]
@@ -141,16 +155,17 @@ class FootprintData(BaseModel):
     personnel_info: PersonnelInfo
     knowledge_graph: KnowledgeGraph
 
+
 class FootprintResult(BaseModel):
     """The main, top-level result model for a footprint scan."""
 
     domain: str
     footprint: FootprintData
 
+
 class IpInfo(BaseModel):
     asn: AsnInfo
     geolocation: IpGeolocation
-
 
 
 # --- Web Analyzer Module Models ---
@@ -493,6 +508,7 @@ class CVE(BaseModel):
     id: str
     cvss_score: float = Field(..., alias="cvss")
     title: str
+
 
 class PortDetail(BaseModel):
     """Model for details about a single open port."""
@@ -1174,6 +1190,7 @@ class ConfigReporting(BaseModel):
     graph: Dict[str, Any] = {}
     pdf: ConfigPDF = ConfigPDF()
 
+
 class ConfigModules(BaseModel):
     """Configuration for all modules from config.yaml."""
 
@@ -1189,15 +1206,18 @@ class ConfigNetwork(BaseModel):
 
 class ConfigNotifications(BaseModel):
     """Configuration for notifications from config.yaml."""
+
     slack_webhook_url: Optional[str] = None
     teams_webhook_url: Optional[str] = None
 
 
 class ConfigGraphDB(BaseModel):
     """Configuration for the graph database from config.yaml."""
+
     uri: str = "bolt://localhost:7687"
     username: str = "neo4j"
     password: str = "password"
+
 
 # --- Blockchain & Cryptocurrency OSINT Models ---
 
@@ -1866,7 +1886,6 @@ class PodcastAnalysisResult(BaseModel):
     error: Optional[str] = None
 
 
-
 # ---: User Management Models ---
 class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1895,7 +1914,9 @@ class ThreatHuntResult(BaseModel):
     message: Optional[str] = None
     error: Optional[str] = None
 
+
 # --- Industry Intelligence Models ---
+
 
 class IndustryIntelResult(BaseModel):
     """Model for the result of an industry intelligence analysis."""
@@ -1905,6 +1926,7 @@ class IndustryIntelResult(BaseModel):
     analysis_text: str
     error: Optional[str] = None
 
+
 class MonopolyAnalysisResult(BaseModel):
     """Model for the result of a monopoly analysis."""
 
@@ -1913,7 +1935,9 @@ class MonopolyAnalysisResult(BaseModel):
     analysis_text: str
     error: Optional[str] = None
 
+
 # --- Aviation Intelligence (AVINT) Models ---
+
 
 class FlightInfo(BaseModel):
     """Model for a single aircraft's state vector from OpenSky Network."""
@@ -1932,16 +1956,17 @@ class FlightInfo(BaseModel):
     spi: bool
     position_source: int
 
+
 class AVINTResult(BaseModel):
     """The main, top-level result model for an AVINT scan."""
-    
+
     total_flights: int
     flights: List[FlightInfo] = []
     error: Optional[str] = None
 
 
 # --- ORM Models ---
-class ScanResult(Base): # type: ignore
+class ScanResult(Base):  # type: ignore
     """Represents a single scan result from any module."""
 
     __tablename__ = "scan_results"
@@ -1953,7 +1978,7 @@ class ScanResult(Base): # type: ignore
     result = Column(Text, nullable=False)
 
 
-class PageSnapshot(Base): # type: ignore
+class PageSnapshot(Base):  # type: ignore
     """Represents a single snapshot of a monitored web page."""
 
     __tablename__ = "page_snapshots"
@@ -1964,13 +1989,16 @@ class PageSnapshot(Base): # type: ignore
     # Storing the full content allows for detailed diffing later.
     content = Column(LargeBinary, nullable=False)
 
+
 # --- Humint ---
 class HumintScenario(BaseModel):
     """Pydantic model for a HUMINT scenario to be run by the engine."""
 
     scenario_type: str
     target: str
-class HumintSource(Base): # type: ignore
+
+
+class HumintSource(Base):  # type: ignore
     __tablename__ = "humint_sources"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -1979,7 +2007,7 @@ class HumintSource(Base): # type: ignore
     reports = relationship("HumintReport", back_populates="source")
 
 
-class HumintReport(Base): # type: ignore
+class HumintReport(Base):  # type: ignore
     __tablename__ = "humint_reports"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
@@ -1988,7 +2016,7 @@ class HumintReport(Base): # type: ignore
     source = relationship("HumintSource", back_populates="reports")
 
 
-class ResponseRule(Base): # type: ignore
+class ResponseRule(Base):  # type: ignore
     __tablename__ = "response_rules"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -2000,7 +2028,7 @@ class ResponseRule(Base): # type: ignore
     )  # e.g., ["iam:reset-password", "edr:quarantine-host"]
 
 
-class ForecastPerformance(Base): # type: ignore
+class ForecastPerformance(Base):  # type: ignore
     __tablename__ = "forecast_performance"
     id = Column(Integer, primary_key=True, index=True)
     scenario = Column(String, index=True)
@@ -2009,20 +2037,27 @@ class ForecastPerformance(Base): # type: ignore
     is_correct = Column(Boolean)  # Was the prediction accurate?
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+
 class Token(BaseModel):
     """Model for a JWT access token."""
+
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
     """Model for the data encoded in a JWT."""
+
     username: Optional[str] = None
+
 
 class DashboardData(BaseModel):
     """Model for the data to be displayed on the main dashboard."""
+
     total_projects: int
     total_scans: int
     recent_scans: List[Dict[str, Any]] = []
+
 
 # --- MASINT Core Models ---
 class RFEmission(BaseModel):
@@ -2062,16 +2097,26 @@ class MASINTResult(BaseModel):
     thermal_signatures: List[ThermalSignature] = []
     error: Optional[str] = None
 
+
 # --- CHEMINT Core Models ---
 class ChemInfo(BaseModel):
     """Schema for a single chemical intelligence hit from PubChem/Patents."""
+
     cid: int = Field(..., description="PubChem Compound ID (CID).")
-    iupac_name: Optional[str] = Field(None, description="The IUPAC systematic chemical name.")
-    molecular_weight: Optional[float] = Field(None, description="The molecular weight in g/mol.")
-    canonical_smiles: Optional[str] = Field(None, description="The Canonical SMILES string (molecular structure).")
-    
+    iupac_name: Optional[str] = Field(
+        None, description="The IUPAC systematic chemical name."
+    )
+    molecular_weight: Optional[float] = Field(
+        None, description="The molecular weight in g/mol."
+    )
+    canonical_smiles: Optional[str] = Field(
+        None, description="The Canonical SMILES string (molecular structure)."
+    )
+
+
 class PatentInfo(BaseModel):
     """Schema for intelligence gathered from patent and research analysis."""
+
     patent_id: str
     title: str
     applicant: str
@@ -2079,33 +2124,46 @@ class PatentInfo(BaseModel):
     summary: str
     country: str = Field("EP", description="Country code (e.g., US, EP, WO).")
 
+
 class SDSData(BaseModel):
     """Schema for key data extracted from Safety Data Sheets (or equivalent sources)."""
+
     cas_number: str
     autoignition_temp_C: Optional[float] = None
     flash_point_C: Optional[float] = None
-    nfpa_fire_rating: Optional[int] = Field(None, description="NFPA 704 fire hazard rating (0-4).")
-    toxicology_summary: str = Field("N/A", description="A brief summary of health hazards.")
+    nfpa_fire_rating: Optional[int] = Field(
+        None, description="NFPA 704 fire hazard rating (0-4)."
+    )
+    toxicology_summary: str = Field(
+        "N/A", description="A brief summary of health hazards."
+    )
+
 
 class CHEMINTResult(BaseModel):
     """Container for Chemical Intelligence results."""
+
     total_results: int
     results: List[ChemInfo | PatentInfo | SDSData]
     error: Optional[str] = None
 
+
 # --- SPACEINT Core Models ---
 class TLEData(BaseModel):
     """Schema for raw Two-Line Element (TLE) data."""
+
     norad_id: str
     name: Optional[str] = None
     line1: str
     line2: str
 
+
 class SPACEINTResult(BaseModel):
     """Container for Space Intelligence results."""
+
     total_satellites: int
     satellites: List[TLEData]
     error: Optional[str] = None
+
 
 # --- Historical Analysis ---
 class HistoricalAnalysisResult(BaseModel):
@@ -2118,6 +2176,7 @@ class HistoricalAnalysisResult(BaseModel):
     ai_summary: Optional[str] = None
     error: Optional[str] = None
 
+
 class Node(BaseModel):
     """Model for a single node in an intelligence graph."""
 
@@ -2126,6 +2185,7 @@ class Node(BaseModel):
     label: str
     properties: Dict[str, Any] = {}
 
+
 class Edge(BaseModel):
     """Model for a relationship (edge) between two nodes in the graph."""
 
@@ -2133,6 +2193,7 @@ class Edge(BaseModel):
     target: str  # ID of the target node
     label: str  # e.g., "Resolves To", "Registered By", "Uses Technology"
     properties: Dict[str, Any] = {}
+
 
 class GraphResult(BaseModel):
     """The main, top-level result model for an entity reconciliation and graph build process."""
@@ -2144,24 +2205,47 @@ class GraphResult(BaseModel):
     edges: List[Edge] = []
     error: Optional[str] = None
 
+
 # --- Deep Research ---
 class IntelFinding(BaseModel):
     """Represents a single piece of structured intelligence."""
-    source_type: str = Field(..., description="The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).")
+
+    source_type: str = Field(
+        ...,
+        description="The intelligence discipline (e.g., SOCMINT, VULNINT, TECHINT).",
+    )
     summary: str = Field(..., description="A concise summary of the key finding.")
-    reference: str = Field(..., description="A URL or source reference for verification.")
-    risk_level: str = Field(..., description="Assessed risk: Low, Medium, High, or Critical.")
-    confidence: str = Field(..., description="Confidence level of the finding: Low, Medium, High.")
+    reference: str = Field(
+        ..., description="A URL or source reference for verification."
+    )
+    risk_level: str = Field(
+        ..., description="Assessed risk: Low, Medium, High, or Critical."
+    )
+    confidence: str = Field(
+        ..., description="Confidence level of the finding: Low, Medium, High."
+    )
+
 
 class PESTAnalysis(BaseModel):
     """Represents a Political, Economic, Social, and Technological analysis."""
-    political: List[str] = Field(..., description="Political factors affecting the target.")
-    economic: List[str] = Field(..., description="Economic factors and trends affecting the target.")
-    social: List[str] = Field(..., description="Social and cultural trends relevant to the target.")
-    technological: List[str] = Field(..., description="Technological landscape and disruptions affecting the target.")
+
+    political: List[str] = Field(
+        ..., description="Political factors affecting the target."
+    )
+    economic: List[str] = Field(
+        ..., description="Economic factors and trends affecting the target."
+    )
+    social: List[str] = Field(
+        ..., description="Social and cultural trends relevant to the target."
+    )
+    technological: List[str] = Field(
+        ..., description="Technological landscape and disruptions affecting the target."
+    )
+
 
 class DeepResearchResult(BaseModel):
     """The final, structured output of a deep research operation."""
+
     topic: str
     target_profile: Dict[str, Any]
     strategic_summary: str
@@ -2171,27 +2255,33 @@ class DeepResearchResult(BaseModel):
     intelligence_findings: List[IntelFinding]
     knowledge_graph: KnowledgeGraph
 
+
 # --- Economics ---
 class EconomicIndicators(BaseModel):
     country: str
     indicators: Dict[str, Any] = Field(default_factory=dict)
     error: Optional[str] = None
 
+
 class TrackingUpdate(BaseModel):
     """Details of a single tracking event."""
+
     status: str
     message: str
     timestamp: str
 
+
 # --- Logistics ---
 class ShipmentDetails(BaseModel):
     """Comprehensive details of a tracked shipment."""
+
     tracking_code: str
     carrier: str
     status: str
     estimated_delivery_date: Optional[str] = None
     updates: List[TrackingUpdate] = []
     error: Optional[str] = None
+
 
 # --- Crypto ---
 class CryptoData(BaseModel):
@@ -2201,12 +2291,15 @@ class CryptoData(BaseModel):
     market: str
     history: Optional[Dict[str, Dict[str, str]]] = None
     error: Optional[str] = None
+
+
 class CryptoForecast(BaseModel):
     """Represents a price forecast for a cryptocurrency."""
 
     symbol: str
     forecast: Optional[List[float]] = None
     error: Optional[str] = None
+
 
 # --- Cyber-Physical Systems Intelligence ---
 class CyberPhysicalSystemNode(BaseModel):
@@ -2215,6 +2308,7 @@ class CyberPhysicalSystemNode(BaseModel):
     id: str
     node_type: str  # e.g., 'PLC', 'SCADA Server', 'Substation', 'GPS Satellite'
     attributes: Dict[str, Any] = {}
+
 
 class CascadingFailurePath(BaseModel):
     """Represents a potential path of cascading failure."""
@@ -2225,9 +2319,11 @@ class CascadingFailurePath(BaseModel):
 
 class CPSAnalysisResult(BaseModel):
     """The result of a Cyber-Physical System analysis (without the graph object)."""
+
     critical_nodes: List[str] = Field(default_factory=list)
     failure_paths: List[CascadingFailurePath] = Field(default_factory=list)
     error: Optional[str] = None
+
 
 class GeoLocation(BaseModel):
     """Model for a geographic location used in CPS modeling."""
@@ -2253,11 +2349,13 @@ class Vulnerability(BaseModel):
     description: Optional[str] = None
     severity: Optional[str] = None
 
+
 # --- Systemic Intelligence ---
 class OTAsset(BaseModel):
     device_id: str
     location: str
     vulnerabilities: List[str] = Field(default_factory=list)
+
 
 class MacroIndicators(BaseModel):
     """Represents key macroeconomic indicators for a country."""
@@ -2286,31 +2384,41 @@ class MicroIndicators(BaseModel):
     pe_ratio: Optional[float] = Field(None, description="Price-to-Earnings ratio.")
     error: Optional[str] = None
 
+
 class SystemNode(BaseModel):
     """A node in the systemic intelligence graph."""
+
     id: str
     layer: str
     attributes: Dict[str, Any] = Field(default_factory=dict)
 
+
 class EmergentProperty(BaseModel):
     """Represents an emergent property of the system."""
+
     property_type: str
     nodes: List[str] = Field(default_factory=list)
     description: str
 
+
 class SYSINTAnalysisResult(BaseModel):
     """The result of a Systemic Intelligence analysis (without the graph object)."""
+
     emergent_properties: List[EmergentProperty] = Field(default_factory=list)
     error: Optional[str] = None
+
 
 # --- Ethical Governance ---
 class Target(BaseModel):
     """Represents a target in an operation."""
+
     id: str
     category: str
 
+
 class Operation(BaseModel):
     """Defines the structure for an intelligence operation to be audited."""
+
     operation_id: str
     operation_type: str
     targets: List[Target] = Field(default_factory=list)
@@ -2318,23 +2426,29 @@ class Operation(BaseModel):
     is_offensive: bool = False
     targets_eu_citizen: bool = False
     has_legal_basis: bool = False
+
     # Allows for extra fields that are not explicitly defined
     class Config:
         extra = "allow"
 
+
 class ComplianceViolation(BaseModel):
     """Represents a single rule violation."""
+
     rule_id: str
     framework: str
     severity: str
     description: str
 
+
 class ComplianceResult(BaseModel):
     """Contains the full result of a compliance audit."""
+
     operation_id: str
     is_compliant: bool
     violations: List[ComplianceViolation] = Field(default_factory=list)
     audit_log: List[str] = Field(default_factory=list)
+
 
 # --- Metacognition & Systemic Evolution ---
 class OperationLog(BaseModel):
@@ -2377,6 +2491,7 @@ class MetacognitionReport(BaseModel):
     gaps: List[IntelligenceGap] = Field(default_factory=list)
     error: Optional[str] = None
 
+
 # --- Dissemination & Actionable Output ---
 class IntelligenceFinding(BaseModel):
     """A single finding within an intelligence report."""
@@ -2396,6 +2511,7 @@ class IntelligenceReport(BaseModel):
     strategic_summary: str
     key_findings: List[IntelligenceFinding] = Field(default_factory=list)
 
+
 class Task(BaseModel):
     """Represents a single task for a module to execute."""
 
@@ -2406,7 +2522,9 @@ class Task(BaseModel):
     result: Optional[Any] = None
     severity: int = 1
 
+
 # --- Autonomous Intelligence Agent ---
+
 
 class AnalysisResult(BaseModel):
     """Represents the output from a single intelligence module."""
@@ -2436,6 +2554,8 @@ class ReasoningOutput(BaseModel):
     hypotheses: List[Hypothesis] = Field(default_factory=list)
     recommendations: List[Recommendation] = Field(default_factory=list)
     next_steps: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 class Plan(BaseModel):
     """Represents the sequence of tasks to achieve an objective."""
 
@@ -2452,6 +2572,7 @@ class SynthesizedReport(BaseModel):
     recommendations: List[Recommendation] = Field(default_factory=list)
     key_findings: List[str] = Field(default_factory=list)
     raw_outputs: List[Dict[str, Any]] = Field(default_factory=list)
+
 
 # --- Risk Assessment---
 class RiskAssessmentResult(BaseModel):
@@ -2493,6 +2614,7 @@ class RiskAssessmentResult(BaseModel):
         None, description="Any error that occurred during the assessment."
     )
 
+
 class CredibilityResult(BaseModel):
     """
     Represents the result of a credibility assessment.
@@ -2512,12 +2634,14 @@ class CredibilityResult(BaseModel):
         None, description="Any error that occurred during the assessment."
     )
 
+
 # --- Negotiation---
 class PartyType(str, Enum):
     COMPANY = "company"
     INDIVIDUAL = "individual"
     GOVERNMENT = "government"
     OTHER = "other"
+
 
 class Channel(str, Enum):
     EMAIL = "email"
@@ -2526,7 +2650,9 @@ class Channel(str, Enum):
     MEETING = "meeting"
     CLI = "cli"
 
+
 # --- Main Data Models ---
+
 
 class Party(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -2536,6 +2662,7 @@ class Party(BaseModel):
     country: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+
 class Offer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     negotiation_id: str
@@ -2543,7 +2670,7 @@ class Offer(BaseModel):
     message_id: Optional[str] = None
     amount_terms: Dict[str, Any]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    accepted: Optional[str] = 'pending'  # pending, accepted, rejected
+    accepted: Optional[str] = "pending"  # pending, accepted, rejected
     accepted_at: Optional[datetime] = None
     currency: Optional[str] = "USD"
     valid_until: Optional[datetime] = None
@@ -2551,10 +2678,12 @@ class Offer(BaseModel):
     revision: int = 1
     previous_offer_id: Optional[str] = None
 
+
 class NegotiationStatus(str, Enum):
     ONGOING = "ongoing"
     CLOSED = "closed"
     CANCELLED = "cancelled"
+
 
 class ChannelType(str, Enum):
     EMAIL = "email"
@@ -2562,12 +2691,14 @@ class ChannelType(str, Enum):
     VOICE = "voice"
     MEETING = "meeting"
 
+
 class NegotiationParty(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     party_id: str
     name: str
     type: PartyType
     role: str  # e.g., 'buyer', 'seller'
+
 
 class Message(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -2585,15 +2716,19 @@ class Message(BaseModel):
     class Config:
         orm_mode = True
 
-class NegotiationModel(Base): # type: ignore
+
+class NegotiationModel(Base):  # type: ignore
     __tablename__ = "negotiations"
 
     id = Column(String, primary_key=True, index=True)
     subject = Column(String, index=True)
-    status = Column(SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING)
+    status = Column(
+        SQLAlchemyEnum(NegotiationStatus), default=NegotiationStatus.ONGOING
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-class OfferModel(Base): # type: ignore
+
+
+class OfferModel(Base):  # type: ignore
     __tablename__ = "offers"
 
     id = Column(String, primary_key=True, index=True)
@@ -2601,28 +2736,36 @@ class OfferModel(Base): # type: ignore
     party_id = Column(String)
     amount_terms = Column(JSON)
     timestamp = Column(DateTime, default=datetime.utcnow)
-    accepted = Column(String, default='pending')
-    
+    accepted = Column(String, default="pending")
+
     session = relationship("NegotiationSession", back_populates="offers")
-class MessageModel(Base): # type: ignore
+
+
+class MessageModel(Base):  # type: ignore
     __tablename__ = "messages"
 
     id = Column(String, primary_key=True, index=True)
-    negotiation_id = Column(String, ForeignKey("negotiation_sessions.id")) # Changed ForeignKey
+    negotiation_id = Column(
+        String, ForeignKey("negotiation_sessions.id")
+    )  # Changed ForeignKey
     sender_id = Column(String)
     content = Column(String)
-    analysis = Column(JSON) 
+    analysis = Column(JSON)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
 
 class MessageBase(BaseModel):
     sender_id: str
     content: str
 
+
 class MessageCreate(MessageBase):
     pass
 
+
 class NegotiationBase(BaseModel):
     subject: str
+
 
 class Negotiation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -2638,39 +2781,47 @@ class Negotiation(BaseModel):
     class Config:
         orm_mode = True
 
+
 class SimulationScenario(BaseModel):
     our_min: float
     our_max: float
     their_min: float
     their_max: float
 
-    @validator('our_max')
+    @validator("our_max")
     def our_max_must_be_greater_than_our_min(cls, v, values, **kwargs):
-        if 'our_min' in values and v <= values['our_min']:
-            raise ValueError('our_max must be greater than our_min')
+        if "our_min" in values and v <= values["our_min"]:
+            raise ValueError("our_max must be greater than our_min")
         return v
 
-class NegotiationSession(Base): # type: ignore
-    __tablename__ = 'negotiation_sessions'
+
+class NegotiationSession(Base):  # type: ignore
+    __tablename__ = "negotiation_sessions"
     id = Column(String, primary_key=True)
     subject = Column(String)
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime)
-    status = Column(String, default='ongoing')
+    status = Column(String, default="ongoing")
     outcome = Column(String)
-    messages = relationship("MessageModel", back_populates="session") # Corrected relationship
-    offers = relationship("OfferModel", back_populates="session") 
-    
+    messages = relationship(
+        "MessageModel", back_populates="session"
+    )  # Corrected relationship
+    offers = relationship("OfferModel", back_populates="session")
+
+
 class BehavioralProfile(BaseModel):
     """Model for the behavioral profile of a negotiation party."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     party_id: str
-    communication_style: Optional[str] = None # e.g., "Formal", "Informal"
-    risk_appetite: Optional[str] = None      # e.g., "Risk-averse", "Risk-seeking"
+    communication_style: Optional[str] = None  # e.g., "Formal", "Informal"
+    risk_appetite: Optional[str] = None  # e.g., "Risk-averse", "Risk-seeking"
     key_motivators: List[str] = Field(default_factory=list)
+
 
 class Counterparty(BaseModel):
     """Model for a counterparty in a negotiation."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     industry: Optional[str] = None
@@ -2678,19 +2829,24 @@ class Counterparty(BaseModel):
     historical_deals: List[Dict[str, Any]] = Field(default_factory=list)
     behavioral_profile: Optional[BehavioralProfile] = None
 
+
 class MarketIndicator(BaseModel):
     """Model for a relevant market indicator."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     value: float
     source: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+
 class Config:
-        orm_mode = True
+    orm_mode = True
+
 
 class VoiceAnalysis(BaseModel):
     """Represents the analysis of vocal tone from an audio message."""
+
     vocal_sentiment: str
     confidence_score: float
     pace: str
@@ -2722,30 +2878,35 @@ class RLLog(BaseModel):
     action: int
     reward: float
 
+
 class AnalysisResponse(BaseModel):
     message_id: str
     analysis: Dict[str, Any]
     recommended_tactic: Dict[str, str]
     simulation: Dict[str, Any]
 
+
 class NegotiationParticipantCreate(BaseModel):
     participant_id: str
     participant_name: str
 
+
 class NegotiationCreate(BaseModel):
     subject: str
     participants: List[NegotiationParticipantCreate]
+
 
 class SimulationMode(str, Enum):
     training = "training"
     inference = "inference"
 
 
-class NegotiationParticipant(Base): # type: ignore
-    __tablename__ = 'negotiation_participants'
-    session_id = Column(String, ForeignKey('negotiation_sessions.id'), primary_key=True)
+class NegotiationParticipant(Base):  # type: ignore
+    __tablename__ = "negotiation_participants"
+    session_id = Column(String, ForeignKey("negotiation_sessions.id"), primary_key=True)
     participant_id = Column(String, primary_key=True)
     participant_name = Column(String)
+
 
 # --- Application Configuration ---
 class IntelSourceConfig(BaseModel):
@@ -2761,40 +2922,54 @@ class FeatureFlags(BaseModel):
     enable_ai_core: bool = True
     enable_mlops_automation: bool = True
 
+
 # --- Role Definitions ---
 class UserRole(str, Enum):
     USER = "user"
     ADMIN = "admin"
 
+
 # --- User Schemas ---
 class UserBase(BaseModel):
     username: str
+
 
 # --- Application Configuration Schemas ---
 class NetworkConfig(BaseModel):
     timeout: float = 20.0
 
+
 class FootprintModuleConfig(BaseModel):
     dns_records_to_query: List[str] = ["A", "AAAA", "MX", "TXT", "NS", "CNAME"]
+
 
 class WebAnalyzerModuleConfig(BaseModel):
     placeholder: bool = True
 
+
 class DarkWebModuleConfig(BaseModel):
     tor_proxy_url: str = "socks5://127.0.0.1:9150"
+
 
 class MarintModuleConfig(BaseModel):
     placeholder: bool = True
 
+
 class NegotiationModuleConfig(BaseModel):
     model_path: str = "models/negotiation_intent_model"
 
+
 class ModulesConfig(BaseModel):
     footprint: FootprintModuleConfig = Field(default_factory=FootprintModuleConfig)
-    web_analyzer: WebAnalyzerModuleConfig = Field(default_factory=WebAnalyzerModuleConfig)
+    web_analyzer: WebAnalyzerModuleConfig = Field(
+        default_factory=WebAnalyzerModuleConfig
+    )
     dark_web: DarkWebModuleConfig = Field(default_factory=DarkWebModuleConfig)
     marint: MarintModuleConfig = Field(default_factory=MarintModuleConfig)
-    negotiation: NegotiationModuleConfig = Field(default_factory=NegotiationModuleConfig)
+    negotiation: NegotiationModuleConfig = Field(
+        default_factory=NegotiationModuleConfig
+    )
+
 
 class ReportingGraphConfig(BaseModel):
     physics_options: str = Field(
@@ -2812,15 +2987,22 @@ class ReportingGraphConfig(BaseModel):
     """
     )
 
+
 class ReportingPdfConfig(BaseModel):
     logo_path: str = "src/chimera_intel/assets/my_logo.png"
     title_text: str = "Chimera Intel - Intelligence Report"
     footer_text: str = "Confidential | Prepared by Chimera Intel"
 
+
 class ReportingConfig(BaseModel):
-    project_report_scans: List[str] = ["footprint", "web_analyzer", "defensive_breaches"]
+    project_report_scans: List[str] = [
+        "footprint",
+        "web_analyzer",
+        "defensive_breaches",
+    ]
     graph: ReportingGraphConfig = Field(default_factory=ReportingGraphConfig)
     pdf: ReportingPdfConfig = Field(default_factory=ReportingPdfConfig)
+
 
 class AppConfig(BaseModel):
     app_name: str = "Chimera Intel"
@@ -2834,6 +3016,7 @@ class AppConfig(BaseModel):
     notifications: ConfigNotifications = Field(default_factory=ConfigNotifications)
     graph_db: ConfigGraphDB = Field(default_factory=ConfigGraphDB)
 
+
 class User(BaseModel):
     """User model for authentication and context."""
 
@@ -2845,6 +3028,7 @@ class User(BaseModel):
     class Config:
         orm_mode = True
 
+
 class UserCreate(BaseModel):
     """Schema for creating a new user."""
 
@@ -2852,28 +3036,35 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
+
 class Event:
     """Represents a security event."""
+
     def __init__(self, event_type: str, source: str, details: Dict[str, Any]):
         self.id = ""
         self.event_type = event_type
         self.source = source
         self.details = details
 
+
 class WhoisInfo(BaseModel):
     """A model for WHOIS information."""
+
     domain_name: Optional[str] = None
     registrar: Optional[str] = None
     creation_date: Optional[datetime] = None
     expiration_date: Optional[datetime] = None
     name_servers: List[str] = []
 
+
 class PageMonitorResult(BaseModel):
     """Model for the result of a page monitor check."""
+
     target: str
     url: str
     has_changed: bool
     diff: Optional[str] = None
+
 
 class InsiderTransactionResult(BaseModel):
     """The main, top-level result model for an insider trading scan."""
@@ -2883,6 +3074,7 @@ class InsiderTransactionResult(BaseModel):
     transactions: List[InsiderTransaction] = []
     error: Optional[str] = None
 
+
 class TwitterStreamResult(BaseModel):
     """The main, top-level result model for a real-time social media monitoring session."""
 
@@ -2890,4 +3082,3 @@ class TwitterStreamResult(BaseModel):
     total_tweets_found: int = 0
     tweets: List[Tweet] = []
     error: Optional[str] = None
-

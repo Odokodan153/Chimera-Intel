@@ -3,11 +3,12 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from chimera_intel.core.logistics_intel import (
     track_shipment,
     ShipmentDetails,
-    TrackingUpdate
+    TrackingUpdate,
 )
 from chimera_intel.core.logistics_intel import app as cli_app
 import httpx
 from typer.testing import CliRunner
+
 
 class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
     """Test cases for the logistics_intel module."""
@@ -36,7 +37,9 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
             ],
         }
         mock_post.return_value = mock_response
-        mock_response.raise_for_status = MagicMock() # Ensure raise_for_status does nothing
+        mock_response.raise_for_status = (
+            MagicMock()
+        )  # Ensure raise_for_status does nothing
 
         result = await track_shipment("EZ123456789", "USPS")
         self.assertIsInstance(result, ShipmentDetails)
@@ -62,11 +65,11 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
     async def test_track_shipment_api_http_error(self, mock_post, mock_api_keys):
         """Tests the function when the API returns an HTTP error."""
         mock_api_keys.easypost_api_key = "fake_key"
-        
+
         # Mock the response within the exception
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.text = '{"error": "Invalid API key"}'
-        
+
         mock_post.side_effect = httpx.HTTPStatusError(
             "401 Unauthorized",
             request=MagicMock(),
@@ -121,7 +124,7 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         result = self.runner.invoke(
             cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): pre_transit", result.stdout)
         self.assertIn("Estimated Delivery: 2025-01-05", result.stdout)
@@ -135,7 +138,7 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
             tracking_code="EZ123",
             carrier="USPS",
             status="in_transit",
-            estimated_delivery_date=None, # No date
+            estimated_delivery_date=None,  # No date
             updates=[],
             error=None,
         )
@@ -145,10 +148,12 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         result = self.runner.invoke(
             cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Status for EZ123 (USPS): in_transit", result.stdout)
-        self.assertNotIn("Estimated Delivery:", result.stdout) # Verify it doesn't print this line
+        self.assertNotIn(
+            "Estimated Delivery:", result.stdout
+        )  # Verify it doesn't print this line
 
     @patch("chimera_intel.core.logistics_intel.asyncio.run")
     def test_cli_track_error(self, mock_asyncio_run):
@@ -167,26 +172,29 @@ class TestLogisticsIntel(unittest.IsolatedAsyncioTestCase):
         result = self.runner.invoke(
             cli_app, ["EZ123", "--carrier", "USPS"], env={"NO_COLOR": "1"}
         )
-        
-        self.assertEqual(result.exit_code, 1) # CLI should exit with 1 on error
+
+        self.assertEqual(result.exit_code, 1)  # CLI should exit with 1 on error
         # --- FIX: Error messages are printed to stderr, not stdout ---
         self.assertIn("Error:", result.stderr)
         self.assertIn("No API key", result.stderr)
-        self.assertNotIn("Tracking History", result.stdout) # Table should not be printed
+        self.assertNotIn(
+            "Tracking History", result.stdout
+        )  # Table should not be printed
 
     def test_cli_track_missing_carrier(self):
         """Tests the CLI when the required --carrier option is missing."""
         # FIX: Removed "track" command name
         result = self.runner.invoke(cli_app, ["EZ123"], env={"NO_COLOR": "1"})
-        
-        self.assertNotEqual(result.exit_code, 0) # Fails due to missing option
+
+        self.assertNotEqual(result.exit_code, 0)  # Fails due to missing option
         # FIX: Typer prints missing option errors to stderr, not stdout
         # --- FIX: Check for substrings because ANSI codes can break exact match ---
         self.assertIn("Missing option", result.stderr)
-        
+
         # --- THIS IS THE FIX ---
         # Check for "carrier" instead of "--carrier" to avoid ANSI code issues
-        self.assertIn("carrier", result.stderr) 
+        self.assertIn("carrier", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

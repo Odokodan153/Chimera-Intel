@@ -21,6 +21,7 @@ def mock_network_timeout():
 
 # --- NEW FIXTURES ---
 
+
 @pytest.fixture
 def mock_handler() -> AsyncMock:
     """Provides a mock handler. Tests will configure this handler's behavior."""
@@ -31,19 +32,19 @@ def mock_handler() -> AsyncMock:
 def mocked_global_client(mock_handler, mock_network_timeout):
     """
     This fixture replaces the low-level patching with httpx.MockTransport.
-    
+
     It creates a new AsyncClient that uses a mock transport, and then
     patches the module's global 'async_client' to use it.
-    
+
     This fixture is SYNCHRONOUS, which avoids all the async dependency errors.
     """
     # 1. Create the mock transport, telling it to call our mock_handler for any request
     mock_transport = httpx.MockTransport(mock_handler)
-    
+
     # 2. Get the patched timeout value
     # --- FIX: The fixture yields the float 30.0 directly, not a mock ---
     timeout_value = mock_network_timeout  # This is 30.0
-    
+
     # 3. Create a new client configured to use our MOCK transport
     client = AsyncClient(
         transport=mock_transport,
@@ -54,11 +55,12 @@ def mocked_global_client(mock_handler, mock_network_timeout):
     # 4. Patch the global client in the module under test
     with patch.object(http_client_module, "async_client", client) as patched_client:
         yield patched_client
-    
+
     # 5. No client.aclose() is needed for a MockTransport client
 
 
 # --- REWRITTEN TESTS FOR GLOBAL CLIENT ---
+
 
 async def test_global_client_transport_success(mocked_global_client, mock_handler):
     """Test a successful HTTP request. The handler returns a 200 OK."""
@@ -66,12 +68,14 @@ async def test_global_client_transport_success(mocked_global_client, mock_handle
     mock_handler.return_value = Response(200, json={"status": "ok"})
 
     # Act: Call the global client (which is now our mocked_global_client)
-    response = await http_client_module.async_client.request("GET", "https://example.com")
+    response = await http_client_module.async_client.request(
+        "GET", "https://example.com"
+    )
 
     # Assert
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
-    
+
     # Assert the handler was called correctly
     mock_handler.assert_called_once()
     called_request = mock_handler.call_args[0][0]
@@ -85,12 +89,14 @@ async def test_global_client_handles_server_error(mocked_global_client, mock_han
     mock_handler.return_value = Response(500, content=b"Server Error")
 
     # Act
-    response = await http_client_module.async_client.request("GET", "https://example.com")
+    response = await http_client_module.async_client.request(
+        "GET", "https://example.com"
+    )
 
     # Assert: The client just returns the 500 response
     assert response.status_code == 500
     assert response.text == "Server Error"
-    
+
     # We can prove retries are NOT happening (as expected)
     assert mock_handler.call_count == 1
 
@@ -114,7 +120,9 @@ async def test_global_client_handles_client_error(mocked_global_client, mock_han
     mock_handler.return_value = Response(404, content=b"Not Found")
 
     # Act
-    response = await http_client_module.async_client.request("GET", "https://example.com")
+    response = await http_client_module.async_client.request(
+        "GET", "https://example.com"
+    )
 
     # Assert
     assert response.status_code == 404
@@ -124,9 +132,12 @@ async def test_global_client_handles_client_error(mocked_global_client, mock_han
 
 # --- TESTS FOR get_async_http_client (These were passing and are unchanged) ---
 
+
 @patch("chimera_intel.core.http_client.AsyncClient")
 @patch("chimera_intel.core.http_client.httpx.AsyncHTTPTransport")
-async def test_get_client_no_proxy(mock_transport_class, mock_client_class, mock_network_timeout):
+async def test_get_client_no_proxy(
+    mock_transport_class, mock_client_class, mock_network_timeout
+):
     """Ensure a client is created without proxies."""
     mock_transport_instance = MagicMock(name="TransportInstance")
     mock_transport_class.return_value = mock_transport_instance
@@ -152,7 +163,9 @@ async def test_get_client_no_proxy(mock_transport_class, mock_client_class, mock
 
 @patch("chimera_intel.core.http_client.AsyncClient")
 @patch("chimera_intel.core.http_client.httpx.AsyncHTTPTransport")
-async def test_get_client_with_proxy(mock_transport_class, mock_client_class, mock_network_timeout):
+async def test_get_client_with_proxy(
+    mock_transport_class, mock_client_class, mock_network_timeout
+):
     """Ensure client uses proxy when provided."""
     mock_transport_instance = MagicMock(name="ProxyTransportInstance")
     mock_transport_class.return_value = mock_transport_instance

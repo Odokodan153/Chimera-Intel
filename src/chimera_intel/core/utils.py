@@ -127,6 +127,7 @@ def send_teams_notification(webhook_url: str, title: str, message: str) -> None:
     except Exception as e:
         logger.error("Failed to send Teams notification: %s", e)
 
+
 def get_zopa(
     history: List[Dict[str, Any]], default_zopa: Tuple[float, float] = (8000, 12000)
 ) -> Tuple[float, float]:

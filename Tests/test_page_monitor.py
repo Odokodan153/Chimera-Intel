@@ -24,10 +24,7 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         # Since page_monitor_app has only one command, invoke it directly.
         result = runner.invoke(
             page_monitor_app,
-            [
-                "--url", "https://example.com/about",
-                "--schedule", "* * * * *"
-            ],
+            ["--url", "https://example.com/about", "--schedule", "* * * * *"],
         )
         # --- END FIX ---
 
@@ -38,9 +35,11 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
             print("STDERR:\n", result.stderr)
             # Print the full exception stack trace if it exists
             import traceback
-            traceback.print_exception(type(result.exception), result.exception, result.exception.__traceback__)
-            print(f"\nException: {result.exception}\n")
 
+            traceback.print_exception(
+                type(result.exception), result.exception, result.exception.__traceback__
+            )
+            print(f"\nException: {result.exception}\n")
 
         # Assert that it ran successfully (Typer can return 0 or None on success)
         self.assertIn(
@@ -48,10 +47,10 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
             [0, None],
             f"Unexpected exit code: {result.exit_code}. See output above.",
         )
-        
+
         # Assert that the core logic was called
         mock_add_job.assert_called_once()
-        
+
         # Assert that the user received success feedback
         mock_console.assert_any_call(
             "[bold green]✅ Successfully scheduled web page monitor.[/bold green]"
@@ -79,7 +78,7 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         # 3. Mock the async context manager
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_client
-        
+
         # 4. Set the return value of the patched get_async_http_client
         mock_get_client.return_value = mock_context_manager
         # --- End of Fix ---
@@ -112,7 +111,7 @@ class TestPageMonitor(unittest.IsolatedAsyncioTestCase):
         # 3. Mock the async context manager
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_client
-        
+
         # 4. Set the return value of the patched get_async_http_client
         mock_get_client.return_value = mock_context_manager
         # --- End of Fix ---

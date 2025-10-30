@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import sysint
 
+
 class SYSINTPlugin(ChimeraPlugin):
     """
     Systemic Intelligence (SYSINT) & Cascade Analyzer plugin.
@@ -22,6 +23,7 @@ class SYSINTPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the SYSINT plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = SYSINTPlugin()

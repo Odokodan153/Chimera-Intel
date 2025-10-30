@@ -12,7 +12,7 @@ from chimera_intel.core.internal import (
 from chimera_intel.core.schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,
-    MFTAnalysisResult
+    MFTAnalysisResult,
 )
 
 runner = CliRunner()
@@ -74,11 +74,11 @@ class TestInternal(unittest.TestCase):
     # The other 3 decorators pass arguments in bottom-up order.
     def test_parse_mft_success(
         self,
-        mock_remove,       # From @patch("...os.remove")
-        mock_exists,       # From @patch("...os.path.exists", ...)
-        mock_analyzeMFT    # From @patch("...analyzeMFT", ...)
+        mock_remove,  # From @patch("...os.remove")
+        mock_exists,  # From @patch("...os.path.exists", ...)
+        mock_analyzeMFT,  # From @patch("...analyzeMFT", ...)
     ):
-    # --- END FIX ---
+        # --- END FIX ---
         """Tests a successful MFT parsing."""
         # Arrange
         mock_analyzeMFT.main = MagicMock(return_value=None)

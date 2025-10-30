@@ -107,10 +107,8 @@ code_intel_app = typer.Typer()
 @code_intel_app.command()
 def analyze_repo(
     repo_url: str = typer.Argument(
-        ..., 
-        help="The full URL of the public Git repository."
+        ..., help="The full URL of the public Git repository."
     ),
-   
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
@@ -123,9 +121,9 @@ def analyze_repo(
         console.print(
             f"[bold red]Error:[/bold red] Failed to clone or analyze repository: {results_model.error}"
         )
-    
-        raise typer.Exit(code=1) 
-        
+
+        raise typer.Exit(code=1)
+
     results_dict = results_model.model_dump(exclude_none=True)
-    save_or_print_results(results_dict, output_file)  
+    save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=repo_url, module="code_intel_repo", data=results_dict)

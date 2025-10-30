@@ -1,6 +1,9 @@
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.negotiation.py import negotiation_app  # Import the app from the consolidated engine.py
+from chimera_intel.core.negotiation.py import (
+    negotiation_app,
+)  # Import the app from the consolidated engine.py
+
 
 class NegotiationPlugin(ChimeraPlugin):
     """

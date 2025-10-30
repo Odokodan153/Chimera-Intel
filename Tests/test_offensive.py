@@ -78,9 +78,7 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
     # FIX: Remove invalid patch
     @patch("chimera_intel.core.offensive.asyncio.to_thread")
-    async def test_check_for_subdomain_takeover_vulnerable(
-        self, mock_to_thread
-    ):
+    async def test_check_for_subdomain_takeover_vulnerable(self, mock_to_thread):
         """Tests detection of a vulnerable subdomain."""
         # Arrange
         # Simulate 'socket.gethostbyname' raising an error, indicating a dangling CNAME
@@ -131,9 +129,7 @@ class TestOffensive(unittest.IsolatedAsyncioTestCase):
 
         # Act
         # FIX: Correct command name is 'enum-content'
-        result = runner.invoke(
-            offensive_app, ["enum-content", "http://example.com"]
-        )
+        result = runner.invoke(offensive_app, ["enum-content", "http://example.com"])
 
         # Assert
 

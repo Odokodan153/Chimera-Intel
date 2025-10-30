@@ -10,14 +10,17 @@ from chimera_intel.core.chemint import chemint_app
 # Pytest Fixtures
 # ------------------
 
+
 @pytest.fixture
 def runner():
     """Provides a Typer CliRunner instance."""
     return CliRunner()
 
+
 # ------------------
 # MOCK DATA
 # ------------------
+
 
 @pytest.fixture
 def mock_pypatent_result():
@@ -27,15 +30,17 @@ def mock_pypatent_result():
     mock_patent.url = "http://example.com/patent1"
     return [mock_patent]
 
+
 @pytest.fixture
 def mock_scholarly_result():
     """Mock data for a scholarly search result."""
     return [
         {
             "bib": {"title": "Test Paper Title"},
-            "eprint_url": "http://example.com/paper1"
+            "eprint_url": "http://example.com/paper1",
         }
     ]
+
 
 # Mock HTML for track-precursors
 MOCK_HTML_SIGMA = """
@@ -78,6 +83,7 @@ MOCK_HTML_ICIS = """
 # Test Suites
 # ------------------
 
+
 class TestChemicalLookup:
     """Tests for the 'lookup' command."""
 
@@ -106,7 +112,7 @@ class TestChemicalLookup:
         assert "molecular_formula" in result.stdout
         assert "CH2O" in result.stdout
         assert "Results saved to" in result.stdout
-        
+
         with open(output_file, "r") as f:
             data = json.load(f)
             assert data["results"][0]["cid"] == 240
@@ -132,24 +138,30 @@ class TestChemicalLookup:
         assert "Looking up chemical properties for CID: 240" in result.stdout
         assert "molecular_formula" in result.stdout
         assert "CH2O" in result.stdout
-        assert "Results saved to" not in result.stdout # Key assertion
+        assert "Results saved to" not in result.stdout  # Key assertion
 
-    @patch("chimera_intel.core.chemint.pcp.Compound.from_cid", side_effect=Exception("PubChem Error"))
+    @patch(
+        "chimera_intel.core.chemint.pcp.Compound.from_cid",
+        side_effect=Exception("PubChem Error"),
+    )
     def test_cli_lookup_exception(self, mock_from_cid, runner):
         """Tests the exception handler for the 'lookup' command."""
         # Act
         result = runner.invoke(chemint_app, ["lookup", "--cid", "999"])
 
         # Assert
-        assert result.exit_code == 0 # The exception is caught and printed
+        assert result.exit_code == 0  # The exception is caught and printed
         assert "Error looking up chemical properties: PubChem Error" in result.stdout
+
 
 class TestPatentSearch:
     """Tests for the 'monitor-patents-research' command."""
 
     @patch("chimera_intel.core.chemint.scholarly.search_pubs", return_value=iter([]))
     @patch("chimera_intel.core.chemint.pypatent.Search")
-    def test_patents_found_success(self, mock_pypatent_class, mock_scholarly, runner, mock_pypatent_result):
+    def test_patents_found_success(
+        self, mock_pypatent_class, mock_scholarly, runner, mock_pypatent_result
+    ):
         """Tests the happy path when patents are found."""
         # Arrange
         mock_instance = MagicMock()
@@ -160,7 +172,7 @@ class TestPatentSearch:
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Patents (USPTO):" in result.stdout
@@ -170,7 +182,9 @@ class TestPatentSearch:
 
     @patch("chimera_intel.core.chemint.scholarly.search_pubs", return_value=iter([]))
     @patch("chimera_intel.core.chemint.pypatent.Search")
-    def test_patents_found_callable(self, mock_pypatent_class, mock_scholarly, runner, mock_pypatent_result):
+    def test_patents_found_callable(
+        self, mock_pypatent_class, mock_scholarly, runner, mock_pypatent_result
+    ):
         """Tests the path where pypatent.results is a callable."""
         # Arrange
         mock_instance = MagicMock()
@@ -182,10 +196,10 @@ class TestPatentSearch:
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "polymer"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
-        mock_instance.results.assert_called_once() # Check that the callable was called
+        mock_instance.results.assert_called_once()  # Check that the callable was called
         assert "Test Patent Title" in result.stdout
 
     @patch("chimera_intel.core.chemint.scholarly.search_pubs", return_value=iter([]))
@@ -201,26 +215,32 @@ class TestPatentSearch:
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "nonexistent"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Patents (USPTO):" in result.stdout
         assert "No patents found on USPTO." in result.stdout
 
     @patch("chimera_intel.core.chemint.scholarly.search_pubs", return_value=iter([]))
-    @patch("chimera_intel.core.chemint.pypatent.Search", side_effect=Exception("USPTO API Down"))
+    @patch(
+        "chimera_intel.core.chemint.pypatent.Search",
+        side_effect=Exception("USPTO API Down"),
+    )
     def test_pypatent_exception(self, mock_pypatent_class, mock_scholarly, runner):
         """Tests the exception handler for the pypatent search."""
         # Act
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "error"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Error searching for patents on USPTO: USPTO API Down" in result.stdout
 
-    @patch("chimera_intel.core.chemint.scholarly.search_pubs", side_effect=Exception("Google Scholar Blocked"))
+    @patch(
+        "chimera_intel.core.chemint.scholarly.search_pubs",
+        side_effect=Exception("Google Scholar Blocked"),
+    )
     @patch("chimera_intel.core.chemint.pypatent.Search")
     def test_scholarly_exception(self, mock_pypatent_class, mock_scholarly, runner):
         """Tests the exception handler for the scholarly search."""
@@ -233,11 +253,15 @@ class TestPatentSearch:
         result = runner.invoke(
             chemint_app, ["monitor-patents-research", "--keywords", "error"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
-        assert "Error searching for research papers: Google Scholar Blocked" in result.stdout
+        assert (
+            "Error searching for research papers: Google Scholar Blocked"
+            in result.stdout
+        )
         assert "Note: Google Scholar may block requests." in result.stdout
+
 
 class TestTrackPrecursors:
     """Tests for the 'track-precursors' command (previously uncovered)."""
@@ -247,7 +271,7 @@ class TestTrackPrecursors:
         """Tests happy path for all three suppliers and CSV writing."""
         # Arrange
         output_file = tmp_path / "precursors.csv"
-        
+
         def mock_response(*args, **kwargs):
             url = args[0]
             response = MagicMock()
@@ -261,7 +285,7 @@ class TestTrackPrecursors:
             else:
                 response.text = ""
             return response
-        
+
         mock_get.side_effect = mock_response
 
         # Act
@@ -275,7 +299,7 @@ class TestTrackPrecursors:
         assert "Scraped Sigma-Aldrich for acetone" in result.stdout
         assert "Scraped Fisher Scientific for acetone" in result.stdout
         assert "Scraped VWR for acetone" in result.stdout
-        
+
         # FIX: Split assertion to be robust to newlines in the output
         assert "Precursor tracking data saved to" in result.stdout
         assert str(output_file) in result.stdout
@@ -298,7 +322,8 @@ class TestTrackPrecursors:
 
         # Act
         result = runner.invoke(
-            chemint_app, ["track-precursors", "-p", "nonexistent", "-o", str(output_file)]
+            chemint_app,
+            ["track-precursors", "-p", "nonexistent", "-o", str(output_file)],
         )
 
         # Assert
@@ -306,7 +331,10 @@ class TestTrackPrecursors:
         assert "No precursor data was found." in result.stdout
         assert not output_file.exists()
 
-    @patch("chimera_intel.core.chemint.requests.get", side_effect=requests.exceptions.RequestException("Connection Timeout"))
+    @patch(
+        "chimera_intel.core.chemint.requests.get",
+        side_effect=requests.exceptions.RequestException("Connection Timeout"),
+    )
     def test_track_precursors_request_exception(self, mock_get, runner, tmp_path):
         """Tests the requests exception handler."""
         # Arrange
@@ -316,15 +344,20 @@ class TestTrackPrecursors:
         result = runner.invoke(
             chemint_app, ["track-precursors", "-p", "acetone", "-o", str(output_file)]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Error scraping Sigma-Aldrich: Connection Timeout" in result.stdout
         assert "No precursor data was found." in result.stdout
 
     @patch("chimera_intel.core.chemint.requests.get")
-    @patch("chimera_intel.core.chemint.BeautifulSoup", side_effect=Exception("Parsing Error"))
-    def test_track_precursors_parsing_exception(self, mock_soup, mock_get, runner, tmp_path):
+    @patch(
+        "chimera_intel.core.chemint.BeautifulSoup",
+        side_effect=Exception("Parsing Error"),
+    )
+    def test_track_precursors_parsing_exception(
+        self, mock_soup, mock_get, runner, tmp_path
+    ):
         """Tests the generic exception handler (e.g., parsing error)."""
         # Arrange
         output_file = tmp_path / "precursors.csv"
@@ -334,11 +367,12 @@ class TestTrackPrecursors:
         result = runner.invoke(
             chemint_app, ["track-precursors", "-p", "acetone", "-o", str(output_file)]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Error parsing Sigma-Aldrich data: Parsing Error" in result.stdout
         assert "No precursor data was found." in result.stdout
+
 
 class TestSdsAnalysis:
     """Tests for the 'analyze-sds' command."""
@@ -373,7 +407,9 @@ class TestSdsAnalysis:
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.headers = {"Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+        mock_response.headers = {
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        }
         mock_response.content = b"fake-docx-bytes"
         mock_get.return_value = mock_response
 
@@ -428,34 +464,45 @@ class TestSdsAnalysis:
         assert "H302" in result.stdout
         assert "P301" in result.stdout
 
-    @patch("chimera_intel.core.chemint.requests.get", side_effect=requests.exceptions.RequestException("Download Failed"))
+    @patch(
+        "chimera_intel.core.chemint.requests.get",
+        side_effect=requests.exceptions.RequestException("Download Failed"),
+    )
     def test_cli_sds_analysis_download_error(self, mock_get, runner):
         """Tests the download exception handler for 'analyze-sds'."""
         # Act
         result = runner.invoke(
             chemint_app, ["analyze-sds", "--sds-url", "http://example.com/sds.pdf"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "Error downloading SDS: Download Failed" in result.stdout
 
     @patch("chimera_intel.core.chemint.requests.get")
-    @patch("chimera_intel.core.chemint.pdfplumber.open", side_effect=Exception("Corrupt PDF"))
+    @patch(
+        "chimera_intel.core.chemint.pdfplumber.open",
+        side_effect=Exception("Corrupt PDF"),
+    )
     def test_cli_sds_analysis_generic_error(self, mock_pdfplumber, mock_get, runner):
         """Tests the generic exception handler for 'analyze-sds'."""
         # Arrange
-        mock_response = MagicMock(status_code=200, headers={"Content-Type": "application/pdf"}, content=b"fake")
+        mock_response = MagicMock(
+            status_code=200,
+            headers={"Content-Type": "application/pdf"},
+            content=b"fake",
+        )
         mock_get.return_value = mock_response
 
         # Act
         result = runner.invoke(
             chemint_app, ["analyze-sds", "--sds-url", "http://example.com/sds.pdf"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "An unexpected error occurred: Corrupt PDF" in result.stdout
+
 
 class TestMonitorChemicalNews:
     """Tests for the 'monitor-chemical-news' command (previously uncovered)."""
@@ -463,6 +510,7 @@ class TestMonitorChemicalNews:
     @patch("chimera_intel.core.chemint.requests.get")
     def test_monitor_news_success(self, mock_get, runner):
         """Robust happy path test for chemical news monitoring."""
+
         # Arrange: return HTML snippets depending on the URL
         def mock_response(*args, **kwargs):
             url = args[0]
@@ -476,7 +524,7 @@ class TestMonitorChemicalNews:
             else:
                 response.text = ""
             return response
-        
+
         mock_get.side_effect = mock_response
 
         # Act
@@ -493,7 +541,7 @@ class TestMonitorChemicalNews:
         sources_and_titles = [
             ("Chemical & Engineering News", "C&EN Article"),
             ("Chemistry World", "Chemistry World Article"),
-            ("ICIS", "ICIS Article")
+            ("ICIS", "ICIS Article"),
         ]
         for source, title in sources_and_titles:
             assert source in output
@@ -508,43 +556,53 @@ class TestMonitorChemicalNews:
     def test_monitor_news_no_results(self, mock_get, runner):
         """Tests the path where no news articles are found."""
         # Arrange
-        mock_get.return_value = MagicMock(status_code=200, text="<html>No results</html>")
+        mock_get.return_value = MagicMock(
+            status_code=200, text="<html>No results</html>"
+        )
 
         # Act
         result = runner.invoke(
             chemint_app, ["monitor-chemical-news", "-k", "nonexistent"]
         )
-        
+
         # Assert
         assert result.exit_code == 0
         assert "No chemical news found." in result.stdout
 
-    @patch("chimera_intel.core.chemint.requests.get", side_effect=requests.exceptions.RequestException("Connection Failed"))
+    @patch(
+        "chimera_intel.core.chemint.requests.get",
+        side_effect=requests.exceptions.RequestException("Connection Failed"),
+    )
     def test_monitor_news_request_exception(self, mock_get, runner):
         """Tests the requests exception handler."""
         # Act
-        result = runner.invoke(
-            chemint_app, ["monitor-chemical-news", "-k", "error"]
-        )
-        
+        result = runner.invoke(chemint_app, ["monitor-chemical-news", "-k", "error"])
+
         # Assert
         assert result.exit_code == 0
-        assert "Error scraping Chemical & Engineering News: Connection Failed" in result.stdout
+        assert (
+            "Error scraping Chemical & Engineering News: Connection Failed"
+            in result.stdout
+        )
         assert "No chemical news found." in result.stdout
 
     @patch("chimera_intel.core.chemint.requests.get")
-    @patch("chimera_intel.core.chemint.BeautifulSoup", side_effect=Exception("Parsing Error"))
+    @patch(
+        "chimera_intel.core.chemint.BeautifulSoup",
+        side_effect=Exception("Parsing Error"),
+    )
     def test_monitor_news_parsing_exception(self, mock_soup, mock_get, runner):
         """Tests the generic exception handler (e.g., parsing error)."""
         # Arrange
         mock_get.return_value = MagicMock(status_code=200, text="<html></html>")
 
         # Act
-        result = runner.invoke(
-            chemint_app, ["monitor-chemical-news", "-k", "error"]
-        )
-        
+        result = runner.invoke(chemint_app, ["monitor-chemical-news", "-k", "error"])
+
         # Assert
         assert result.exit_code == 0
-        assert "Error parsing Chemical & Engineering News data: Parsing Error" in result.stdout
+        assert (
+            "Error parsing Chemical & Engineering News data: Parsing Error"
+            in result.stdout
+        )
         assert "No chemical news found." in result.stdout

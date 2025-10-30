@@ -1,8 +1,10 @@
 import typer
+
 # from typing_extensions import Annotated # <-- REVERTED
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
+
 # import sys  <-- FIX: Removed sys import
 from rich.console import Console
 
@@ -11,6 +13,7 @@ from rich.console import Console
 console = Console()
 
 # --- Logic Function ---
+
 
 def analyze_wifi_capture(pcap_path: str):
     """
@@ -22,10 +25,10 @@ def analyze_wifi_capture(pcap_path: str):
     for packet in packets:
         if packet.haslayer(Dot11Beacon):
             bssid = packet[Dot11].addr2
-            
+
             # --- FIX: Correctly parse SSID by ID, not just first Elt ---
-            ssid = "<hidden>" # Default if no SSID element
-            ssid_elt = packet.getlayer(Dot11Elt, ID=0) # ID 0 is for SSID
+            ssid = "<hidden>"  # Default if no SSID element
+            ssid_elt = packet.getlayer(Dot11Elt, ID=0)  # ID 0 is for SSID
             if ssid_elt is not None:
                 try:
                     ssid = ssid_elt.info.decode()
@@ -36,19 +39,19 @@ def analyze_wifi_capture(pcap_path: str):
             if bssid not in aps:
                 # --- START FIX: Manually parse crypto, network_stats() is unreliable ---
                 stats = packet[Dot11Beacon].network_stats()  # Still use for channel
-                
+
                 crypto_set = set()
-                
+
                 # Check for RSN (WPA2/WPA3) - ID 48
                 rsn_elt = packet.getlayer(Dot11Elt, ID=48)
                 if rsn_elt:
                     crypto_set.add("WPA2")
-                
+
                 # Check for WPA1 (Vendor Specific) - ID 221
                 # OUI for WPA is 00:50:F2, type 1
                 wpa_elt = packet.getlayer(Dot11Elt, ID=221)
-                if wpa_elt and wpa_elt.info.startswith(b'\x00P\xf2\x01\x01\x00'):
-                     crypto_set.add("WPA")
+                if wpa_elt and wpa_elt.info.startswith(b"\x00P\xf2\x01\x01\x00"):
+                    crypto_set.add("WPA")
 
                 # Check for WEP (only if WPA/WPA2 not found)
                 if packet[Dot11Beacon].cap.privacy and not crypto_set:
@@ -68,7 +71,7 @@ def analyze_wifi_capture(pcap_path: str):
                         security = "WPA"
                     elif "WEP" in crypto:
                         security = "WEP"
-                
+
                 aps[bssid] = {
                     "ssid": ssid,
                     "security": security,
@@ -81,9 +84,9 @@ def analyze_wifi_capture(pcap_path: str):
     for bssid, info in aps.items():
         console.print(f"\nSSID: {info['ssid']}")
         console.print(f"  BSSID: {bssid}")
-        # Note: Channel is often None without a proper RadioTap setup/parsing, 
+        # Note: Channel is often None without a proper RadioTap setup/parsing,
         # but the test logic is fine as is once the SSID is correct.
-        channel_display = info['channel'] if info['channel'] is not None else "N/A" 
+        channel_display = info["channel"] if info["channel"] is not None else "N/A"
         console.print(f"  Channel: {channel_display}")
 
         security_color = "green"
@@ -101,6 +104,7 @@ def analyze_wifi_capture(pcap_path: str):
 
 # --- App Factory ---
 
+
 def get_wifi_app():
     """
     Factory function to create the Wi-Fi Typer app.
@@ -110,15 +114,13 @@ def get_wifi_app():
         help="Wireless Network Analysis (SIGINT)",
     )
 
-    @app.command(
-        help="Analyze a wireless network capture file."
-    )
+    @app.command(help="Analyze a wireless network capture file.")
     def analyze(
-    # --- START SYNTAX FIX: Removed invalid comments from function signature ---
+        # --- START SYNTAX FIX: Removed invalid comments from function signature ---
         capture_file: str = typer.Argument(
             ..., help="Path to the wireless capture file (.pcap or .pcapng)."
         ),
-    # --- END SYNTAX FIX ---
+        # --- END SYNTAX FIX ---
     ):
         """
         Analyzes wireless network capture files to identify, profile, and assess
@@ -128,7 +130,9 @@ def get_wifi_app():
 
         if not os.path.exists(capture_file):
             # FIX: Use console.print with rich markup and typer.Exit(1)
-            console.print(f"[red]Error:[/red] Capture file not found at '{capture_file}'")
+            console.print(
+                f"[red]Error:[/red] Capture file not found at '{capture_file}'"
+            )
             raise typer.Exit(code=1)
         try:
             # FIX: Corrected NameError (was pcap_path, should be capture_file)
@@ -137,10 +141,10 @@ def get_wifi_app():
             # FIX: Use console.print with rich markup and typer.Exit(1)
             console.print(f"[red]An error occurred during Wi-Fi analysis:[/red] {e}")
             raise typer.Exit(code=1)
-            
+
         # FIX: Added rich markup for success
         console.print("\n[green]Wireless network analysis complete.[/green]")
-    
+
     return app
 
 

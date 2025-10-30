@@ -19,9 +19,7 @@ class TestOpsecAnalyzer(unittest.TestCase):
     # --- Function Tests ---
 
     @patch("chimera_intel.core.opsec_analyzer.get_aggregated_data_for_target")
-    def test_generate_opsec_report_compromised_committer_found(
-        self, mock_get_agg_data
-    ):
+    def test_generate_opsec_report_compromised_committer_found(self, mock_get_agg_data):
         """Tests the detection of a compromised committer."""
         # Arrange
 

@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import dissemination_suite
 
+
 class DisseminationPlugin(ChimeraPlugin):
     """
     Automated Dissemination & Briefing Suite plugin.
@@ -22,6 +23,7 @@ class DisseminationPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the Dissemination plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = DisseminationPlugin()

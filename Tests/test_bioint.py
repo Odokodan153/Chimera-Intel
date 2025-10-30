@@ -8,9 +8,7 @@ runner = CliRunner()
 @patch("chimera_intel.core.bioint.SeqIO.parse")
 @patch("chimera_intel.core.bioint.Entrez")
 @patch("chimera_intel.core.bioint.console.print", new_callable=MagicMock)
-def test_monitor_sequences_success(
-    mock_console_print, mock_entrez, mock_seqio_parse
-):
+def test_monitor_sequences_success(mock_console_print, mock_entrez, mock_seqio_parse):
     """(Original Test)"""
     # Mock esearch and efetch
     mock_esearch_handle = MagicMock()

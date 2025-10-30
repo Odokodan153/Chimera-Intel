@@ -20,7 +20,7 @@ import csv
 import re
 import pubchempy as pcp
 import json
-from urllib.parse import urlsplit, urlunsplit # <-- ADDED IMPORT
+from urllib.parse import urlsplit, urlunsplit  # <-- ADDED IMPORT
 
 chemint_app = typer.Typer()
 
@@ -52,10 +52,10 @@ def monitor_patents_research(
         print("\n[bold]Patents (USPTO):[/bold]")
         search = pypatent.Search(keywords, results_limit=limit)
         patents = search.results
-        
+
         if callable(patents):
             patents = patents()
-        
+
         # FIX: Ensure robust checking for patents list
         if patents is not None and len(patents) > 0:
             table = Table(show_header=True, header_style="bold magenta")
@@ -265,10 +265,12 @@ def monitor_chemical_news(
                         if not link.startswith("http"):
                             # UPDATED FIX: (More robust)
                             parts = urlsplit(url)
-                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+                            base_url = urlunsplit(
+                                (parts.scheme, parts.netloc, "", "", "")
+                            )
                             # FIX #2: Ensure the relative link starts with a '/' before joining (most robust fix without urljoin).
-                            if not link.startswith('/'):
-                                link = '/' + link
+                            if not link.startswith("/"):
+                                link = "/" + link
                             link = base_url + link
                         results.append([source, title, link])
             elif source == "Chemistry World":
@@ -283,10 +285,12 @@ def monitor_chemical_news(
                         if not link.startswith("http"):
                             # UPDATED FIX: (More robust)
                             parts = urlsplit(url)
-                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+                            base_url = urlunsplit(
+                                (parts.scheme, parts.netloc, "", "", "")
+                            )
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
-                            if not link.startswith('/'):
-                                link = '/' + link
+                            if not link.startswith("/"):
+                                link = "/" + link
                             link = base_url + link
                         results.append([source, title, link])
             elif source == "ICIS":
@@ -299,10 +303,12 @@ def monitor_chemical_news(
                         if not link.startswith("http"):
                             # UPDATED FIX: (More robust)
                             parts = urlsplit(url)
-                            base_url = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
+                            base_url = urlunsplit(
+                                (parts.scheme, parts.netloc, "", "", "")
+                            )
                             # FIX #2: Ensure the relative link starts with a '/' before joining.
-                            if not link.startswith('/'):
-                                link = '/' + link
+                            if not link.startswith("/"):
+                                link = "/" + link
                             link = base_url + link
                         results.append([source, title, link])
         except requests.exceptions.RequestException as e:
@@ -310,15 +316,15 @@ def monitor_chemical_news(
         except Exception as e:
             print(f"[red]Error parsing {source} data: {e}[/red]")
     if results:
-        # FIX: Replaced expand=True with a fixed width and column ratios 
+        # FIX: Replaced expand=True with a fixed width and column ratios
         # to prevent URL truncation in test environments.
         table = Table(show_header=True, header_style="bold magenta", width=120)
-        
+
         # --- THIS IS THE FIX ---
         # Changed ratio from 1 to 2 to prevent truncation of "Chemical & Engineering News"
         table.add_column("Source", no_wrap=True, overflow="ellipsis", ratio=2)
         # --- END FIX ---
-        
+
         table.add_column("Title", overflow="fold", ratio=2)
         # --- THIS IS THE FIX ---
         # Changed overflow="fold" to no_wrap=True and overflow="ellipsis"

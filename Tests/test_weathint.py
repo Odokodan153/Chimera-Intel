@@ -36,7 +36,7 @@ def mock_httpx_client(mocker):
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value.get.return_value = mock_response
-    
+
     # Patch the httpx.Client imported by the weathint module
     mocker.patch("chimera_intel.core.weathint.httpx.Client", return_value=mock_client)
 

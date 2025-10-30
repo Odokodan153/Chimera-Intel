@@ -17,6 +17,7 @@ import pyais
 # --- FIX: Import Console locally and remove from utils import ---
 from rich.console import Console
 from chimera_intel.core.utils import save_or_print_results
+
 # --- End Fix ---
 from chimera_intel.core.database import save_scan_to_db
 
@@ -114,7 +115,9 @@ class SignalIntercept:
                     self.aircraft[icao]["callsign"] = callsign.strip("_")
             except Exception as e:
                 # FIX: Use console.print for test compatibility and CLI consistency
-                console.print(f"[bold red]Could not decode Comm-B message for {icao}: {e}[/bold red]")
+                console.print(
+                    f"[bold red]Could not decode Comm-B message for {icao}: {e}[/bold red]"
+                )
 
 
 def run_sigint_analysis(
@@ -144,7 +147,9 @@ def run_sigint_analysis(
                     continue  # No data received, just continue the loop
                 except Exception as e:
                     # FIX: Use console.print for test compatibility and CLI consistency
-                    console.print(f"[bold red]Error processing stream data: {e}[/bold red]")
+                    console.print(
+                        f"[bold red]Error processing stream data: {e}[/bold red]"
+                    )
     except (socket.error, ConnectionRefusedError) as e:
         console.print(
             f"[bold red]Error connecting to stream at {host}:{port}: {e}[/bold red]"
@@ -172,7 +177,7 @@ def decode_adsb_from_capture(
                 except IndexError:
                     continue
                 except ValueError as e:
-                    raise Exception(f"Malformed row: {row}. Error: {e}") 
+                    raise Exception(f"Malformed row: {row}. Error: {e}")
 
     except FileNotFoundError:
         console.print(f"[bold red]Error: File not found at '{file_path}'[/bold red]")

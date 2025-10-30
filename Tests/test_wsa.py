@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from typer.testing import CliRunner
-import typer  
+import typer
 
 from chimera_intel.core.weak_signal_analyzer import (
     generate_weak_signals,
@@ -95,11 +95,13 @@ class TestWeakSignalAnalyzer(unittest.TestCase):
 
         # Check the output by inspecting calls to the mocked console
         output = "".join(str(c.args[0]) for c in mock_console.print.call_args_list)
-        
+
         self.assertIn("Amplified Intelligence Events", output)
-        
+
         # Look for the text with the rich markup
-        self.assertIn("[bold]Hypothesis:[/bold] [cyan]MergerOrAcquisition[/cyan]", output)
+        self.assertIn(
+            "[bold]Hypothesis:[/bold] [cyan]MergerOrAcquisition[/cyan]", output
+        )
         self.assertIn("[bold]Combined Belief:[/bold] [yellow]58.0%[/yellow]", output)
 
     @patch("chimera_intel.core.weak_signal_analyzer.resolve_target")

@@ -7,7 +7,7 @@ import asyncio
 import json
 import typer  # Import typer
 from typer.testing import CliRunner
-import logging # <-- Import logging to use for caplog.set_level
+import logging  # <-- Import logging to use for caplog.set_level
 
 # Add the project's root directory to the Python path to ensure imports work correctly
 sys.path.insert(
@@ -32,15 +32,18 @@ from chimera_intel.core.schemas import (
 
 # --- Mocks and Fixtures ---
 
+
 @pytest.fixture
 def runner():
     """Provides a Typer CliRunner."""
     return CliRunner()
 
+
 @pytest.fixture
 def mock_console():
     """Provides a mock Rich Console."""
     return MagicMock()
+
 
 @pytest.fixture
 def mock_modules():
@@ -76,6 +79,7 @@ def mock_modules():
 
 # --- Test Classes ---
 
+
 class TestLoadAvailableModules:
     """Tests the dynamic module loader."""
 
@@ -92,8 +96,15 @@ class TestLoadAvailableModules:
     @patch("pkgutil.iter_modules")
     @patch("importlib.import_module")
     # --- END FIX ---
-    @patch("chimera_intel.core.aia_framework.aia_core_package") 
-    def test_load_success(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    @patch("chimera_intel.core.aia_framework.aia_core_package")
+    def test_load_success(
+        self,
+        mock_aia_core_package,
+        mock_import,
+        mock_iter_modules,
+        mock_modules_pkg,
+        caplog,
+    ):
         """Tests successful loading of allowed sync and async modules."""
         # Configure the mock package
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
@@ -101,7 +112,7 @@ class TestLoadAvailableModules:
 
         mock_mod_async = MagicMock()
         mock_mod_async.run = AsyncMock()
-        
+
         mock_mod_sync = MagicMock()
         mock_mod_sync.run = MagicMock()
 
@@ -127,45 +138,50 @@ class TestLoadAvailableModules:
     # --- END FIX ---
     # --- END FIX ---
     @patch("chimera_intel.core.aia_framework.aia_core_package")
-    def test_load_no_run_attr(self, mock_aia_core_package, mock_import, mock_iter_modules, mock_modules_pkg, caplog):
+    def test_load_no_run_attr(
+        self,
+        mock_aia_core_package,
+        mock_import,
+        mock_iter_modules,
+        mock_modules_pkg,
+        caplog,
+    ):
         """Tests warning if a module has no 'run' attribute."""
-        
+
         # --- FIX: Explicitly set the log capture level ---
         # This ensures that all logs, including WARNING, are captured
         # just in case the default level is being overridden.
         caplog.set_level(logging.WARNING)
         # --- END FIX ---
-        
+
         # Configure the mock package
         mock_aia_core_package.__path__ = mock_modules_pkg.__path__
         mock_aia_core_package.__name__ = mock_modules_pkg.__name__
-        
-        
-        class DummyModule: 
-            pass
-        mock_mod = DummyModule() 
 
-        mock_iter_modules.return_value = [
-            (None, "chimera_intel.core.footprint", None)
-        ]
+        class DummyModule:
+            pass
+
+        mock_mod = DummyModule()
+
+        mock_iter_modules.return_value = [(None, "chimera_intel.core.footprint", None)]
         mock_import.side_effect = [mock_mod]
 
         modules = load_available_modules()
-        
+
         # We expect the log, but then the function should find no modules and hit the fallback
         assert "Falling back to built-ins" in caplog.text
-        assert "footprint" in modules # The module *is* present from the fallback.
+        assert "footprint" in modules  # The module *is* present from the fallback.
 
     # --- FIX: Changed patch target from '...aia_framework.pkgutil.iter_modules' to 'pkgutil.iter_modules'
     @patch("pkgutil.iter_modules")
     # --- END FIX ---
-    @patch("chimera_intel.core.aia_framework.aia_core_package") 
+    @patch("chimera_intel.core.aia_framework.aia_core_package")
     def test_load_fallback(self, mock_aia_core_package, mock_iter_modules, caplog):
         """Tests fallback to built-ins if dynamic loading finds nothing."""
         # Configure the mock package
         mock_aia_core_package.__path__ = ["dummy/path"]
         mock_aia_core_package.__name__ = "chimera_intel.core"
-        
+
         mock_iter_modules.return_value = []  # Simulate no modules found
 
         modules = load_available_modules()
@@ -213,7 +229,9 @@ class TestCreateInitialPlans:
         )
 
     @patch("chimera_intel.core.aia_framework.decompose_objective")
-    def test_create_initial_plans_fallback_no_domain(self, mock_decompose, mock_console):
+    def test_create_initial_plans_fallback_no_domain(
+        self, mock_decompose, mock_console
+    ):
         """Tests fallback failure when no domain is found."""
         mock_decompose.return_value = []
         objective = "Analyze this threat actor"
@@ -246,7 +264,7 @@ class TestExecutePlan:
         assert result_plan.tasks[0].result.data == {"status": "ok_async"}
         assert result_plan.tasks[1].status == "completed"
         assert result_plan.tasks[1].result.data == {"status": "ok_sync"}
-        
+
         # Check that the mock functions were called correctly
         mock_modules["async_module"]["func"].assert_called_once_with(p=1)
         mock_modules["sync_module"]["func"].assert_called_once_with(p=2)
@@ -260,7 +278,9 @@ class TestExecutePlan:
         result_plan = await execute_plan(plan, mock_console, mock_modules, timeout=10)
 
         assert result_plan.tasks[0].status == "failed"
-        assert "Module 'unknown_module' not found" in result_plan.tasks[0].result["error"]
+        assert (
+            "Module 'unknown_module' not found" in result_plan.tasks[0].result["error"]
+        )
 
     async def test_execute_plan_task_exception(self, mock_console, mock_modules):
         """Tests failure when a module raises an exception."""
@@ -275,7 +295,7 @@ class TestExecutePlan:
 
     async def test_execute_plan_task_timeout(self, mock_console, mock_modules):
         """Tests failure when a module times out."""
-        
+
         async def long_sleep(*args, **kwargs):
             await asyncio.sleep(2)
             return "Should not return"
@@ -288,10 +308,13 @@ class TestExecutePlan:
             tasks=[Task(id=1, module="timeout_module", params={})],
         )
         # Use a short timeout
-        result_plan = await execute_plan(plan, mock_console, mock_modules, timeout=1) 
+        result_plan = await execute_plan(plan, mock_console, mock_modules, timeout=1)
 
         assert result_plan.tasks[0].status == "failed"
-        assert "TimeoutError: Task execution exceeded 1s" in result_plan.tasks[0].result["error"]
+        assert (
+            "TimeoutError: Task execution exceeded 1s"
+            in result_plan.tasks[0].result["error"]
+        )
 
 
 class TestSynthesizeAndRefine:
@@ -302,7 +325,7 @@ class TestSynthesizeAndRefine:
         """Tests that new tasks from the reasoning engine are added to the plan."""
         plan = Plan(objective="Test", tasks=[])
         task_counts = {}
-        
+
         mock_generate_reasoning.return_value = ReasoningOutput(
             analytical_summary="Summary",
             hypotheses=[],
@@ -327,15 +350,18 @@ class TestSynthesizeAndRefine:
     @patch("chimera_intel.core.aia_framework.generate_reasoning")
     def test_synthesize_and_refine_duplicate_task(self, mock_generate_reasoning):
         """Tests that duplicate tasks are not added."""
-        existing_task = Task(id=1, module="new_module", params={"p": 1}, status="completed")
+        existing_task = Task(
+            id=1, module="new_module", params={"p": 1}, status="completed"
+        )
         plan = Plan(objective="Test", tasks=[existing_task])
         task_counts = {}
-        
+
         # Reasoning engine suggests the *exact same* task again
         mock_generate_reasoning.return_value = ReasoningOutput(
             analytical_summary="Summary",
             next_steps=[{"module": "new_module", "params": {"p": 1}}],
-            hypotheses=[], recommendations=[]
+            hypotheses=[],
+            recommendations=[],
         )
 
         _, result_plan = synthesize_and_refine(plan, task_counts)
@@ -345,42 +371,56 @@ class TestSynthesizeAndRefine:
         assert task_counts == {}
 
     @patch("chimera_intel.core.aia_framework.generate_reasoning")
-    def test_synthesize_and_refine_execution_limit(self, mock_generate_reasoning, caplog):
+    def test_synthesize_and_refine_execution_limit(
+        self, mock_generate_reasoning, caplog
+    ):
         """Tests that tasks exceeding the execution limit are skipped."""
         plan = Plan(objective="Test", tasks=[])
         # Pre-populate counts to simulate tasks have run twice already
-        task_counts = {
-            ("recursive_module", '{"p": 1}'): 2 
-        }
-        
+        task_counts = {("recursive_module", '{"p": 1}'): 2}
+
         mock_generate_reasoning.return_value = ReasoningOutput(
             analytical_summary="Summary",
             next_steps=[{"module": "recursive_module", "params": {"p": 1}}],
-            hypotheses=[], recommendations=[]
+            hypotheses=[],
+            recommendations=[],
         )
 
         _, result_plan = synthesize_and_refine(plan, task_counts)
 
         # No new task should be added
         assert len(result_plan.tasks) == 0
-        assert task_counts[("recursive_module", '{"p": 1}')] == 3 # Count is incremented
-        assert "Skipping" in caplog.text # Check for warning log
+        assert (
+            task_counts[("recursive_module", '{"p": 1}')] == 3
+        )  # Count is incremented
+        assert "Skipping" in caplog.text  # Check for warning log
 
     @patch("chimera_intel.core.aia_framework.generate_reasoning")
-    def test_synthesize_and_refine_serialization_fallback(self, mock_generate_reasoning):
+    def test_synthesize_and_refine_serialization_fallback(
+        self, mock_generate_reasoning
+    ):
         """Tests that repr() is used for non-serializable results. (From original test)"""
+
         class NonSerializable:
             def __repr__(self):
                 return "<NonSerializable object>"
 
         mock_generate_reasoning.return_value = ReasoningOutput(
             analytical_summary="Summary based on fallback.",
-            hypotheses=[], recommendations=[], next_steps=[]
+            hypotheses=[],
+            recommendations=[],
+            next_steps=[],
         )
         plan = Plan(
             objective="Test serialization fallback",
             tasks=[
-                Task(id="1", module="footprint", params={}, status="completed", result=NonSerializable())
+                Task(
+                    id="1",
+                    module="footprint",
+                    params={},
+                    status="completed",
+                    result=NonSerializable(),
+                )
             ],
         )
 
@@ -402,30 +442,49 @@ class TestRunAutonomousAnalysis:
     @patch("builtins.open")
     @patch("json.dump")
     async def test_run_success_single_loop(
-        self, mock_json_dump, mock_open, mock_load_mods, mock_create_plans, mock_exec_plan, mock_synthesize
+        self,
+        mock_json_dump,
+        mock_open,
+        mock_load_mods,
+        mock_create_plans,
+        mock_exec_plan,
+        mock_synthesize,
     ):
         """Tests a successful run that completes in a single loop."""
         objective = "Test example.com"
         output_file = "test_report.json"
-        
+
         # 1. Setup Mocks
         mock_load_mods.return_value = {"footprint": {}}
-        
-        plan = Plan(objective=objective, tasks=[Task(id=1, module="footprint", params={})])
+
+        plan = Plan(
+            objective=objective, tasks=[Task(id=1, module="footprint", params={})]
+        )
         mock_create_plans.return_value = [plan]
-        
+
         # 2. Mock execute_plan to return the plan with the task completed
-        plan_after_exec = Plan(objective=objective, tasks=[
-            Task(id=1, module="footprint", params={}, status="completed", result=AnalysisResult(module_name="footprint", data={}))
-        ])
+        plan_after_exec = Plan(
+            objective=objective,
+            tasks=[
+                Task(
+                    id=1,
+                    module="footprint",
+                    params={},
+                    status="completed",
+                    result=AnalysisResult(module_name="footprint", data={}),
+                )
+            ],
+        )
         mock_exec_plan.return_value = plan_after_exec
-        
+
         # 3. Mock synthesize_and_refine to return *no new tasks*
         report = SynthesizedReport(objective=objective, summary="All done")
-        mock_synthesize.return_value = (report, plan_after_exec) # No new pending tasks
+        mock_synthesize.return_value = (report, plan_after_exec)  # No new pending tasks
 
         # 4. Run
-        await _run_autonomous_analysis(objective, output_file, max_runs=5, timeout=30, max_runtime=300)
+        await _run_autonomous_analysis(
+            objective, output_file, max_runs=5, timeout=30, max_runtime=300
+        )
 
         # 5. Assertions
         mock_create_plans.assert_called_once_with(objective, unittest.mock.ANY)
@@ -443,35 +502,75 @@ class TestRunAutonomousAnalysis:
     ):
         """Tests an iterative run (task -> reason -> new task -> reason -> stop)."""
         objective = "Test example.com"
-        
+
         # 1. Mocks
         mock_load_mods.return_value = {"m1": {}, "m2": {}}
-        
-        plan_start = Plan(objective=objective, tasks=[Task(id=1, module="m1", params={})])
+
+        plan_start = Plan(
+            objective=objective, tasks=[Task(id=1, module="m1", params={})]
+        )
         mock_create_plans.return_value = [plan_start]
-        
+
         # 2. Setup side effects for iterative run
-        plan_after_exec_1 = Plan(objective=objective, tasks=[
-            Task(id=1, module="m1", params={}, status="completed", result=AnalysisResult(module_name="m1", data={}))
-        ])
-        plan_after_synth_1 = Plan(objective=objective, tasks=[
-            Task(id=1, module="m1", params={}, status="completed", result=AnalysisResult(module_name="m1", data={})),
-            Task(id=2, module="m2", params={}) # NEW TASK
-        ])
-        plan_after_exec_2 = Plan(objective=objective, tasks=[
-            Task(id=1, module="m1", params={}, status="completed", result=AnalysisResult(module_name="m1", data={})),
-            Task(id=2, module="m2", params={}, status="completed", result=AnalysisResult(module_name="m2", data={}))
-        ])
-        plan_after_synth_2 = plan_after_exec_2 # NO NEW TASKS
-        
+        plan_after_exec_1 = Plan(
+            objective=objective,
+            tasks=[
+                Task(
+                    id=1,
+                    module="m1",
+                    params={},
+                    status="completed",
+                    result=AnalysisResult(module_name="m1", data={}),
+                )
+            ],
+        )
+        plan_after_synth_1 = Plan(
+            objective=objective,
+            tasks=[
+                Task(
+                    id=1,
+                    module="m1",
+                    params={},
+                    status="completed",
+                    result=AnalysisResult(module_name="m1", data={}),
+                ),
+                Task(id=2, module="m2", params={}),  # NEW TASK
+            ],
+        )
+        plan_after_exec_2 = Plan(
+            objective=objective,
+            tasks=[
+                Task(
+                    id=1,
+                    module="m1",
+                    params={},
+                    status="completed",
+                    result=AnalysisResult(module_name="m1", data={}),
+                ),
+                Task(
+                    id=2,
+                    module="m2",
+                    params={},
+                    status="completed",
+                    result=AnalysisResult(module_name="m2", data={}),
+                ),
+            ],
+        )
+        plan_after_synth_2 = plan_after_exec_2  # NO NEW TASKS
+
         mock_exec_plan.side_effect = [plan_after_exec_1, plan_after_exec_2]
-        
+
         report1 = SynthesizedReport(objective=objective, summary="Step 1 done")
         report2 = SynthesizedReport(objective=objective, summary="Step 2 done")
-        mock_synthesize.side_effect = [(report1, plan_after_synth_1), (report2, plan_after_synth_2)]
+        mock_synthesize.side_effect = [
+            (report1, plan_after_synth_1),
+            (report2, plan_after_synth_2),
+        ]
 
         # 3. Run
-        await _run_autonomous_analysis(objective, None, max_runs=5, timeout=30, max_runtime=300)
+        await _run_autonomous_analysis(
+            objective, None, max_runs=5, timeout=30, max_runtime=300
+        )
 
         # 4. Assertions
         assert mock_exec_plan.call_count == 2
@@ -480,12 +579,13 @@ class TestRunAutonomousAnalysis:
     @patch("chimera_intel.core.aia_framework.create_initial_plans")
     async def test_run_initial_plan_fails(self, mock_create_plans):
         """Tests that the run exits if no initial plan can be created."""
-        mock_create_plans.return_value = [] # No plan
-        
+        mock_create_plans.return_value = []  # No plan
+
         with pytest.raises(typer.Exit) as e:
             await _run_autonomous_analysis("Test", None, 5, 30, 300)
-        
+
         assert e.value.exit_code == 1
+
 
 if __name__ == "__main__":
     pytest.main()

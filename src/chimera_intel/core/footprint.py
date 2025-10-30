@@ -415,7 +415,9 @@ async def get_tls_cert_info(domain: str) -> TlsCertInfo:
         response.raise_for_status()
         data = response.json()
         if not data:
-            return TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
+            return TlsCertInfo(
+                issuer="", subject="", sans=[], not_before="", not_after=""
+            )
         latest_cert = data[0]
         cert_info = TlsCertInfo(
             issuer=latest_cert.get("issuer_name"),
@@ -427,7 +429,9 @@ async def get_tls_cert_info(domain: str) -> TlsCertInfo:
         API_CACHE[cache_key] = {"timestamp": time.time(), "data": cert_info}
         return cert_info
     except (HTTPStatusError, RequestError) as e:
-        logger.error(f"Error fetching TLS certificate info from crt.sh for '{domain}': {e}")
+        logger.error(
+            f"Error fetching TLS certificate info from crt.sh for '{domain}': {e}"
+        )
         return TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
 
 
@@ -452,7 +456,6 @@ async def check_dnssec(domain: str) -> DnssecInfo:
     except Exception as e:
         logger.error(f"Error checking DNSSEC for '{domain}': {e}")
 
-
     try:
         spf_response = dns.resolver.resolve(domain, "TXT")
         for record in spf_response:
@@ -474,7 +477,6 @@ async def check_dnssec(domain: str) -> DnssecInfo:
         pass
     except Exception as e:
         logger.error(f"Error checking DMARC for '{domain}': {e}")
-
 
     return DnssecInfo(
         dnssec_enabled=dnssec_enabled,
@@ -632,7 +634,9 @@ async def discover_personnel(domain: str, api_key: str) -> PersonnelInfo:
         API_CACHE[cache_key] = {"timestamp": time.time(), "data": personnel_info}
         return personnel_info
     except (HTTPStatusError, RequestError) as e:
-        logger.error(f"Error fetching personnel info from Hunter.io for '{domain}': {e}")
+        logger.error(
+            f"Error fetching personnel info from Hunter.io for '{domain}': {e}"
+        )
         return PersonnelInfo(employees=[])
 
 
@@ -658,19 +662,43 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     hunter_api_key = API_KEYS.hunter_api_key
 
     initial_tasks = [
-        get_subdomains_virustotal(domain, vt_api_key) if vt_api_key else asyncio.sleep(0, result=[]),
+        (
+            get_subdomains_virustotal(domain, vt_api_key)
+            if vt_api_key
+            else asyncio.sleep(0, result=[])
+        ),
         get_subdomains_dnsdumpster(domain),
         get_subdomains_threatminer(domain),
         get_subdomains_urlscan(domain),
-        get_subdomains_shodan(domain, shodan_api_key) if shodan_api_key else asyncio.sleep(0, result=[]),
+        (
+            get_subdomains_shodan(domain, shodan_api_key)
+            if shodan_api_key
+            else asyncio.sleep(0, result=[])
+        ),
         asyncio.to_thread(get_whois_info, domain),
         asyncio.to_thread(get_dns_records, domain),
-        get_passive_dns(domain, vt_api_key) if vt_api_key else asyncio.sleep(0, result=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])),
+        (
+            get_passive_dns(domain, vt_api_key)
+            if vt_api_key
+            else asyncio.sleep(
+                0, result=HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
+            )
+        ),
         get_tls_cert_info(domain),
         check_dnssec(domain),
-        get_breach_info(domain, hibp_api_key) if hibp_api_key else asyncio.sleep(0, result=BreachInfo(source="HaveIBeenPwned", breaches=[])),
+        (
+            get_breach_info(domain, hibp_api_key)
+            if hibp_api_key
+            else asyncio.sleep(
+                0, result=BreachInfo(source="HaveIBeenPwned", breaches=[])
+            )
+        ),
         get_web_technologies(f"https://{domain}"),
-        discover_personnel(domain, hunter_api_key) if hunter_api_key else asyncio.sleep(0, result=PersonnelInfo(employees=[])),
+        (
+            discover_personnel(domain, hunter_api_key)
+            if hunter_api_key
+            else asyncio.sleep(0, result=PersonnelInfo(employees=[]))
+        ),
     ]
     results = await asyncio.gather(*initial_tasks, return_exceptions=True)
     (
@@ -690,13 +718,36 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
     ) = results
 
     # --- Stage 1.5: Data Validation and Defaulting ---
-    passive_dns_data = passive_dns_data_res if isinstance(passive_dns_data_res, HistoricalDns) else HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
-    tls_cert_data = tls_cert_data_res if isinstance(tls_cert_data_res, TlsCertInfo) else TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
-    dnssec_data = dnssec_data_res if isinstance(dnssec_data_res, DnssecInfo) else DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record="")
-    breach_data = breach_data_res if isinstance(breach_data_res, BreachInfo) else BreachInfo(source="HaveIBeenPwned", breaches=[])
-    web_tech_data = web_tech_data_res if isinstance(web_tech_data_res, WebTechInfo) else WebTechInfo()
-    personnel_data = personnel_data_res if isinstance(personnel_data_res, PersonnelInfo) else PersonnelInfo(employees=[])
-
+    passive_dns_data = (
+        passive_dns_data_res
+        if isinstance(passive_dns_data_res, HistoricalDns)
+        else HistoricalDns(a_records=[], aaaa_records=[], mx_records=[])
+    )
+    tls_cert_data = (
+        tls_cert_data_res
+        if isinstance(tls_cert_data_res, TlsCertInfo)
+        else TlsCertInfo(issuer="", subject="", sans=[], not_before="", not_after="")
+    )
+    dnssec_data = (
+        dnssec_data_res
+        if isinstance(dnssec_data_res, DnssecInfo)
+        else DnssecInfo(dnssec_enabled=False, spf_record="", dmarc_record="")
+    )
+    breach_data = (
+        breach_data_res
+        if isinstance(breach_data_res, BreachInfo)
+        else BreachInfo(source="HaveIBeenPwned", breaches=[])
+    )
+    web_tech_data = (
+        web_tech_data_res
+        if isinstance(web_tech_data_res, WebTechInfo)
+        else WebTechInfo()
+    )
+    personnel_data = (
+        personnel_data_res
+        if isinstance(personnel_data_res, PersonnelInfo)
+        else PersonnelInfo(employees=[])
+    )
 
     # --- Stage 2: Consolidate and Prepare for Enrichment ---
 
@@ -731,9 +782,13 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         ip_enrichment_tasks.append((ip, get_reverse_ip_lookup(ip)))
         ip_enrichment_tasks.append((ip, perform_port_scan(ip)))
 
-    ip_enrichment_results: Dict[str, Dict[str, Any]] = {ip: {} for ip in main_domain_ips}
+    ip_enrichment_results: Dict[str, Dict[str, Any]] = {
+        ip: {} for ip in main_domain_ips
+    }
     if ip_enrichment_tasks:
-        ip_results = await asyncio.gather(*[task for _, task in ip_enrichment_tasks], return_exceptions=True)
+        ip_results = await asyncio.gather(
+            *[task for _, task in ip_enrichment_tasks], return_exceptions=True
+        )
         for (ip, _), result in zip(ip_enrichment_tasks, ip_results):
             if isinstance(result, IpInfo):
                 ip_enrichment_results[ip]["ip_info"] = result
@@ -786,10 +841,11 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
             ip_geolocation_dict[ip] = ip_info.geolocation
 
     port_scan_results_dict = {
-        ip: ip_enrichment_results.get(ip, {}).get("port_scan", PortScanResult(open_ports={}))
+        ip: ip_enrichment_results.get(ip, {}).get(
+            "port_scan", PortScanResult(open_ports={})
+        )
         for ip in main_domain_ips
     }
-
 
     footprint_data = FootprintData(
         whois_info=whois_data if isinstance(whois_data, dict) else {},
@@ -797,7 +853,10 @@ async def gather_footprint_data(domain: str) -> FootprintResult:
         subdomains=subdomain_report,
         ip_threat_intelligence=ip_threat_intelligence,
         historical_dns=passive_dns_data,
-        reverse_ip={ip: ip_enrichment_results.get(ip, {}).get("reverse_ip", []) for ip in main_domain_ips},
+        reverse_ip={
+            ip: ip_enrichment_results.get(ip, {}).get("reverse_ip", [])
+            for ip in main_domain_ips
+        },
         asn_info=asn_info_dict,
         tls_cert_info=tls_cert_data,
         dnssec_info=dnssec_data,

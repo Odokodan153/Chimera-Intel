@@ -8,11 +8,7 @@ from rich.panel import Panel
 from .threat_intel import get_threat_intel_otx, ThreatIntelResult
 from .vulnerability_scanner import search_vulnerabilities
 from .threat_actor_intel import search_threat_actors
-from .schemas import (
-    Vulnerability,
-    ThreatActor,
-    RiskAssessmentResult
-)
+from .schemas import Vulnerability, ThreatActor, RiskAssessmentResult
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +243,7 @@ def run_indicator_assessment(
         console.print(f"[bold red]Error:[/] {result.error}")
         # --- FIX: Added typer.Exit(code=1) for error handling ---
         raise typer.Exit(code=1)
-    
+
     table = Table(title=f"Risk Assessment for {indicator}")
     table.add_column("Field", style="cyan")
     table.add_column("Value", style="magenta")

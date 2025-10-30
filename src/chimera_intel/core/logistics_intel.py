@@ -10,7 +10,6 @@ from .config_loader import API_KEYS
 logger = logging.getLogger(__name__)
 
 
-
 async def track_shipment(tracking_code: str, carrier: str) -> ShipmentDetails:
     """
     Tracks a shipment using the EasyPost API.
@@ -103,12 +102,12 @@ def run_shipment_tracking_cli(
 
     with console.status("[bold green]Tracking shipment...[/]"):
         result = asyncio.run(track())
-        
+
     if result.error:
         # FIX: Use typer.echo and raise typer.Exit(code=1) to ensure a non-zero exit code on failure for testing.
         typer.echo(f"Error: {result.error}", err=True)
         raise typer.Exit(code=1)
-        
+
     console.print(
         f"[bold]Status for {result.tracking_code} ({result.carrier}):[/] {result.status}"
     )

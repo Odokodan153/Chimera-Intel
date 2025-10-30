@@ -80,11 +80,14 @@ class TestPluginManager(unittest.TestCase):
 
         # Spy on the initialize method
 
-        with patch.object(
-            ValidPluginA, "initialize", wraps=ValidPluginA().initialize
-        ) as spy_a, patch.object(
-            ValidPluginB, "initialize", wraps=ValidPluginB().initialize
-        ) as spy_b:
+        with (
+            patch.object(
+                ValidPluginA, "initialize", wraps=ValidPluginA().initialize
+            ) as spy_a,
+            patch.object(
+                ValidPluginB, "initialize", wraps=ValidPluginB().initialize
+            ) as spy_b,
+        ):
 
             # Act
 

@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+
 def install_plugins():
     """
     Finds and installs all plugins in the 'plugins' directory.
@@ -22,6 +23,7 @@ def install_plugins():
                 print(f"Successfully installed {plugin_name}")
             except subprocess.CalledProcessError as e:
                 print(f"Failed to install {plugin_name}. Error: {e}")
+
 
 if __name__ == "__main__":
     install_plugins()

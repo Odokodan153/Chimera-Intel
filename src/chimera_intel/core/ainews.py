@@ -22,7 +22,7 @@ class AiNews:
         """
         # FIX: Instantiate Console inside the function.
         console = Console()
-        
+
         # URL for the Ars Technica feed, which consistently has high-quality AI news
         feed_url = "http://feeds.arstechnica.com/arstechnica/index/"
 
@@ -62,7 +62,7 @@ def latest_news(
     """Fetches the latest AI news from Ars Technica."""
     # FIX: Instantiate Console inside the function.
     console = Console()
-    
+
     ainews = AiNews()
     articles = ainews.get_latest_ai_news(limit)
 

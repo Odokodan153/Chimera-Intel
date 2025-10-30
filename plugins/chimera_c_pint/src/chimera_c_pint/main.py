@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import c_pint
 
+
 class CPINTPlugin(ChimeraPlugin):
     """
     Integrated Cyber-Physical Systems Intelligence (C-PINT) plugin.
@@ -20,6 +21,7 @@ class CPINTPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the C-PINT plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = CPINTPlugin()

@@ -8,7 +8,9 @@ from chimera_intel.core.config_loader import API_KEYS
 
 # Patch the API keys *before* importing the app to ensure import-time checks pass
 with patch.object(API_KEYS, "gnews_api_key", "fake_gnews_key_for_import"):
-    with patch.object(API_KEYS, "twitter_bearer_token", "fake_twitter_token_for_import"):
+    with patch.object(
+        API_KEYS, "twitter_bearer_token", "fake_twitter_token_for_import"
+    ):
         from chimera_intel.core.io_tracking import (
             io_tracking_app,
             search_news_narrative,
@@ -53,12 +55,18 @@ MOCK_REDDIT_RESPONSE = {"data": {"children": MOCK_REDDIT_POSTS}}
 # --- ORIGINAL TESTS (Corrected) ---
 # These tests are kept as they are good integration-level tests for the CLI command.
 
+
 # FIX: Added twitter_bearer_token patch
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    return_value=MOCK_NEWS_ARTICLES,
+)
 def test_track_influence_success_high_level(
     mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
@@ -102,9 +110,7 @@ def test_track_influence_no_api_key(
     with patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key", None):
         # Act
         # FIX: Added "track" command
-        result = runner.invoke(
-            io_tracking_app, ["--narrative", "some narrative"]
-        )
+        result = runner.invoke(io_tracking_app, ["--narrative", "some narrative"])
 
     # Assert
     assert result.exit_code == 1
@@ -139,10 +145,18 @@ def test_track_influence_api_error(
 
 
 # FIX: Added twitter_bearer_token patch
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
-@patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[{"data": "reddit post"}])
-@patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[{"data": "tweet"}])
+@patch(
+    "chimera_intel.core.io_tracking.search_reddit_narrative",
+    return_value=[{"data": "reddit post"}],
+)
+@patch(
+    "chimera_intel.core.io_tracking.search_twitter_narrative",
+    return_value=[{"data": "tweet"}],
+)
 @patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=[])
 def test_track_influence_no_news_success(
     mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
@@ -153,9 +167,7 @@ def test_track_influence_no_news_success(
     """
     # Act
     # FIX: Added "track" command
-    result = runner.invoke(
-        io_tracking_app, ["--narrative", "obscure narrative"]
-    )
+    result = runner.invoke(io_tracking_app, ["--narrative", "obscure narrative"])
 
     # Assert
     assert result.exit_code == 0
@@ -171,7 +183,10 @@ def test_track_influence_no_news_success(
 # FIX: Removed "fake_key" to allow the patch to pass the mock argument
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    return_value=MOCK_NEWS_ARTICLES,
+)
 def test_track_influence_no_twitter_key(
     mock_search_news, mock_search_reddit, mock_gnews_key
 ):
@@ -183,9 +198,7 @@ def test_track_influence_no_twitter_key(
     with patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", None):
         # Act
         # FIX: Added "track" command
-        result = runner.invoke(
-            io_tracking_app, ["--narrative", "test narrative"]
-        )
+        result = runner.invoke(io_tracking_app, ["--narrative", "test narrative"])
 
     # Assert
     assert result.exit_code == 0
@@ -197,11 +210,16 @@ def test_track_influence_no_twitter_key(
 
 
 # FIX: Added twitter_bearer_token patch
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("tweepy.Client")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    return_value=MOCK_NEWS_ARTICLES,
+)
 def test_track_influence_twitter_api_error(
     mock_search_news, mock_search_reddit, mock_tweepy_client, mock_gnews_key
 ):
@@ -211,13 +229,13 @@ def test_track_influence_twitter_api_error(
     """
     # Arrange
     mock_client_instance = mock_tweepy_client.return_value
-    mock_client_instance.search_recent_tweets.side_effect = tweepy.TweepyException("Twitter is down")
+    mock_client_instance.search_recent_tweets.side_effect = tweepy.TweepyException(
+        "Twitter is down"
+    )
 
     # Act
     # FIX: Added "track" command
-    result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
-    )
+    result = runner.invoke(io_tracking_app, ["--narrative", "test narrative"])
 
     # Assert
     assert result.exit_code == 0
@@ -228,11 +246,16 @@ def test_track_influence_twitter_api_error(
 
 
 # FIX: Added twitter_bearer_token patch
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("httpx.Client.get", side_effect=httpx.RequestError("Reddit is down"))
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative", return_value=MOCK_NEWS_ARTICLES)
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    return_value=MOCK_NEWS_ARTICLES,
+)
 def test_track_influence_reddit_api_error(
     mock_search_news, mock_search_twitter, mock_httpx_get, mock_gnews_key
 ):
@@ -242,9 +265,7 @@ def test_track_influence_reddit_api_error(
     """
     # Act
     # FIX: Added "track" command
-    result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
-    )
+    result = runner.invoke(io_tracking_app, ["--narrative", "test narrative"])
 
     # Assert
     assert result.exit_code == 0
@@ -258,7 +279,10 @@ def test_track_influence_reddit_api_error(
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
-@patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=RuntimeError("A generic unexpected error"))
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    side_effect=RuntimeError("A generic unexpected error"),
+)
 def test_track_influence_generic_exception(
     mock_search_news, mock_search_twitter, mock_search_reddit, mock_gnews_key
 ):
@@ -267,9 +291,7 @@ def test_track_influence_generic_exception(
     This should be caught and cause an exit code 1.
     """
     # Act
-    result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
-    )
+    result = runner.invoke(io_tracking_app, ["--narrative", "test narrative"])
 
     # Assert
     assert result.exit_code == 1
@@ -285,11 +307,13 @@ def test_track_influence_no_narrative_arg():
     result = runner.invoke(io_tracking_app, [], env={"NO_COLOR": "1"})
 
     # Assert
-    assert result.exit_code == 2  
+    assert result.exit_code == 2
     assert "Missing option" in result.output
 
 
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.search_reddit_narrative", return_value=[])
 @patch("chimera_intel.core.io_tracking.search_twitter_narrative", return_value=[])
@@ -301,9 +325,7 @@ def test_track_influence_short_arg_and_empty_narrative(
     Tests using the short-form '-n' argument and provides an empty
     string. This should be a successful run (exit code 0) that finds nothing.
     """
-    result = runner.invoke(
-        io_tracking_app, ["-n", ""] 
-    )
+    result = runner.invoke(io_tracking_app, ["-n", ""])
 
     assert result.exit_code == 0
     assert "Tracking influence campaign for narrative: ''" in result.output
@@ -320,6 +342,7 @@ def test_track_influence_short_arg_and_empty_narrative(
 
 # --- Tests for search_news_narrative ---
 
+
 @patch("httpx.Client")
 def test_search_news_narrative_success(mock_client):
     """Tests the success path of search_news_narrative."""
@@ -327,7 +350,7 @@ def test_search_news_narrative_success(mock_client):
     mock_response = MagicMock()
     mock_response.json.return_value = MOCK_GNEWS_RESPONSE
     mock_client.get.return_value = mock_response
-    
+
     narrative = "test narrative"
 
     # Act
@@ -364,13 +387,14 @@ def test_search_news_narrative_http_error(mock_client):
 
 # --- Tests for search_twitter_narrative ---
 
+
 @patch("tweepy.Client")
 def test_search_twitter_narrative_success(mock_tweepy_client):
     """Tests the success path of search_twitter_narrative."""
     # Arrange
     mock_client_instance = mock_tweepy_client.return_value
     mock_client_instance.search_recent_tweets.return_value = MOCK_TWEET_DATA
-    
+
     narrative = "test narrative"
 
     # Act
@@ -392,7 +416,7 @@ def test_search_twitter_narrative_no_results(mock_tweepy_client):
     mock_response.data = None  # Simulate no results
     mock_client_instance = mock_tweepy_client.return_value
     mock_client_instance.search_recent_tweets.return_value = mock_response
-    
+
     # Act
     tweets = search_twitter_narrative("test narrative")
 
@@ -414,6 +438,7 @@ def test_search_twitter_narrative_client_exception(mock_tweepy_client):
 
 # --- Tests for search_reddit_narrative ---
 
+
 @patch("httpx.Client")
 def test_search_reddit_narrative_success(mock_client):
     """Tests the success path of search_reddit_narrative."""
@@ -421,7 +446,7 @@ def test_search_reddit_narrative_success(mock_client):
     mock_response = MagicMock()
     mock_response.json.return_value = MOCK_REDDIT_RESPONSE
     mock_client.get.return_value = mock_response
-    
+
     narrative = "test narrative"
 
     # Act
@@ -452,9 +477,7 @@ def test_search_reddit_narrative_http_error(mock_client):
 
     # Assert
     assert posts == []
-    mock_echo.assert_called_with(
-        "Error searching Reddit: Server Error", err=True
-    )
+    mock_echo.assert_called_with("Error searching Reddit: Server Error", err=True)
 
 
 @patch("httpx.Client")
@@ -465,10 +488,10 @@ def test_search_reddit_narrative_malformed_json(mock_client):
     # Simulate valid JSON but missing keys
     mock_response.json.return_value = {"foo": "bar"}
     mock_client.get.return_value = mock_response
-    
+
     # Act
     posts = search_reddit_narrative("test narrative", mock_client)
-    
+
     # Assert
     assert posts == []
 
@@ -480,7 +503,10 @@ def test_search_reddit_narrative_malformed_json(mock_client):
 
 # --- Comprehensive Test for 'track' command ---
 
-@patch("chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key")
+
+@patch(
+    "chimera_intel.core.io_tracking.API_KEYS.twitter_bearer_token", "fake_twitter_key"
+)
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
 @patch("chimera_intel.core.io_tracking.console")
 @patch("tweepy.Client")
@@ -521,11 +547,12 @@ def test_track_influence_full_run_with_results(
     )
 
 
-
-
 # FIX: Removed "fake_key" to allow the patch to pass the mock argument
 @patch("chimera_intel.core.io_tracking.API_KEYS.gnews_api_key")
-@patch("chimera_intel.core.io_tracking.search_news_narrative", side_effect=ValueError("Test value error"))
+@patch(
+    "chimera_intel.core.io_tracking.search_news_narrative",
+    side_effect=ValueError("Test value error"),
+)
 def test_track_influence_value_error(mock_search_news, mock_gnews_key):
     """
     Tests the main command's 'except ValueError' block.
@@ -533,9 +560,7 @@ def test_track_influence_value_error(mock_search_news, mock_gnews_key):
     """
     # Act
     # FIX: Added "track" command
-    result = runner.invoke(
-        io_tracking_app, ["--narrative", "test narrative"]
-    )
+    result = runner.invoke(io_tracking_app, ["--narrative", "test narrative"])
 
     # Assert
     assert result.exit_code == 1

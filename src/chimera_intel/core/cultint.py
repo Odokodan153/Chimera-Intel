@@ -34,13 +34,13 @@ def analyze_cultural_narrative(target: str) -> Optional[Dict[str, Any]]:
     # Fetch aggregated data from modules that are relevant to cultural analysis
 
     aggregated_data = get_aggregated_data_for_target(target)
-    
+
     if not aggregated_data:
         console.print(
             f"[yellow]Warning:[/] No relevant data sources (social media, news, HR intel) found for '{target}' to analyze cultural narrative."
         )
         raise typer.Exit(code=0)
-    
+
     # Filter for modules that provide cultural context
 
     cultural_data_sources = {

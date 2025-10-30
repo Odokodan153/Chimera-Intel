@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 # The application instance to be tested
 from chimera_intel.core.marint import marint_app
+
 # Import the config object to patch it at its source
 from chimera_intel.core.config_loader import API_KEYS
 
@@ -53,12 +54,14 @@ def mock_websockets(mocker):
     # Note: This technique manually sets the required async iterator protocol attributes.
     # FIX: Change lambda to accept 'self' (the mock object) as the first argument,
     # and return itself to be the async iterator.
-    mock_connect.__aiter__ = lambda self: self 
-    mock_connect.__anext__ = AsyncMock(side_effect=[
-        json.dumps(message),
-        StopAsyncIteration # Sentinel to end the async for loop
-    ])
-    
+    mock_connect.__aiter__ = lambda self: self
+    mock_connect.__anext__ = AsyncMock(
+        side_effect=[
+            json.dumps(message),
+            StopAsyncIteration,  # Sentinel to end the async for loop
+        ]
+    )
+
     return mocker.patch("websockets.connect", return_value=mock_connect)
 
 

@@ -8,6 +8,7 @@ logical steps for an intelligence analyst to take.
 import typer
 import json
 import logging
+
 # import sys  <-- FIX: Removed sys import
 
 from rich.markdown import Markdown
@@ -157,7 +158,7 @@ def run_lead_suggestion(
                 typer.echo(output_text)
             else:
                 console.print(Markdown(output_text))
-        
+
         # FIX: Add explicit typer.Exit(code=0) for success
         raise typer.Exit(code=0)
 
@@ -171,7 +172,7 @@ def run_lead_suggestion(
             # FIX: Use typer.Exit(code=1) for *unexpected* errors
             raise typer.Exit(code=1)
         else:
-            raise e # Re-raise the typer.Exit
+            raise e  # Re-raise the typer.Exit
 
 
 if __name__ == "__main__":

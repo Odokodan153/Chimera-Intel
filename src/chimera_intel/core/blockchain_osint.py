@@ -60,7 +60,7 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
             )
         # --- FIX END ---
 
-        balance_in_wei = int(balance_data.get("result", 0)) # or balance_data["result"]
+        balance_in_wei = int(balance_data.get("result", 0))  # or balance_data["result"]
         balance_in_eth = balance_in_wei / 1e18
 
         # --- 2. Get Transactions ---
@@ -114,6 +114,7 @@ def get_wallet_analysis(address: str) -> WalletAnalysisResult:
             total_transactions=0,
             error=f"An API error occurred: {e}",
         )
+
 
 # --- Typer CLI Application ---
 

@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import ethint
 
+
 class ETHINTPlugin(ChimeraPlugin):
     """
     Ethical Governance & Compliance Engine (ETHINT) plugin.
@@ -22,6 +23,7 @@ class ETHINTPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the ETHINT plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = ETHINTPlugin()

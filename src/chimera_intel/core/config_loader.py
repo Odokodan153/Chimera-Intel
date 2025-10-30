@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional
 
 import hvac
 import yaml
+
 # FIX: Removed PostgresDsn import
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings
@@ -147,24 +148,28 @@ class ApiKeys(BaseSettings):
     def assemble_db_connection(cls, v: Optional[str], values: Any) -> Any:
         if isinstance(v, str):
             return v
-        
+
         # FIX: Rely on environment variables (raw strings) and use an explicit default for port
         # This is more robust in a `mode="before"` validator where field parsing isn't guaranteed
         db_host = os.getenv("DB_HOST")
         db_user = os.getenv("DB_USER")
         db_password = os.getenv("DB_PASSWORD")
         db_name = os.getenv("DB_NAME")
-        
+
         # Get DB_PORT as a string from environment, or use the field default "5432" as fallback
         # values.data.get('DB_PORT') is for the alias, os.getenv('DB_PORT') is the raw env var.
         db_port_raw = values.data.get("DB_PORT") or os.getenv("DB_PORT")
-        
+
         # Fallback to the default value (5432) as a string if no env value is found
         db_port = str(db_port_raw) if db_port_raw else str(5432)
 
-        if all([db_host, db_user, db_password, db_name, db_port]): # FIX: Added db_port to the check
+        if all(
+            [db_host, db_user, db_password, db_name, db_port]
+        ):  # FIX: Added db_port to the check
             # Always return a raw string to prevent PostgresDsn from redacting or truncating the database name
-            assembled = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            assembled = (
+                f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            )
             return assembled
         return v
 
@@ -177,7 +182,12 @@ class ApiKeys(BaseSettings):
 
     @classmethod
     def settings_customise_sources(
-        cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
     ):
         """
         Customizes the loading priority for settings.
@@ -223,4 +233,4 @@ def load_config_from_yaml() -> AppConfig:
 
 
 CONFIG = load_config_from_yaml()
-API_KEYS = ApiKeys() # type: ignore
+API_KEYS = ApiKeys()  # type: ignore

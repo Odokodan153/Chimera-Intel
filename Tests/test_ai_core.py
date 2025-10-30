@@ -202,9 +202,7 @@ class TestAiCore(unittest.TestCase):
         """
         Tests the 'swot' CLI command when the underlying function returns an error.
         """
-        mock_swot.return_value = SWOTAnalysisResult(
-            analysis_text="", error="API Error"
-        )
+        mock_swot.return_value = SWOTAnalysisResult(analysis_text="", error="API Error")
         result = runner.invoke(ai_app, ["swot", "input.json"])
         self.assertEqual(result.exit_code, 1)
 
@@ -326,10 +324,10 @@ class TestAiCore(unittest.TestCase):
         result = generate_narrative_from_graph("example.com.json", "fake_api_key")
 
         self.assertEqual(result.narrative_text, "Test narrative")
-        
+
         # Check that the SWOT function was called with the correct graph data
         self.assertEqual(mock_gen_swot.call_count, 1)
-        
+
         # --- FIX: Parse the JSON string from the prompt ---
         prompt_full_string = mock_gen_swot.call_args[0][0]
         json_data_string = prompt_full_string.split("\n", 1)[-1]
@@ -339,7 +337,7 @@ class TestAiCore(unittest.TestCase):
         self.assertIn("edges", graph_data)
 
         # Check for nodes by ID
-        node_ids = {n['id'] for n in graph_data['nodes']}
+        node_ids = {n["id"] for n in graph_data["nodes"]}
         self.assertIn("example.com", node_ids)
         self.assertIn("sub.example.com", node_ids)
         self.assertIn("1.2.3.4", node_ids)
@@ -349,12 +347,12 @@ class TestAiCore(unittest.TestCase):
         expected_edge = {
             "source": "example.com",
             "target": "sub.example.com",
-            "label": "has_subdomain"
+            "label": "has_subdomain",
         }
         found_edge = any(
-            e["source"] == expected_edge["source"] and
-            e["target"] == expected_edge["target"] and
-            e["label"] == expected_edge["label"]
+            e["source"] == expected_edge["source"]
+            and e["target"] == expected_edge["target"]
+            and e["label"] == expected_edge["label"]
             for e in graph_data["edges"]
         )
         self.assertTrue(found_edge, "Edge 'has_subdomain' not found in graph data")
@@ -362,25 +360,25 @@ class TestAiCore(unittest.TestCase):
         expected_edge_2 = {
             "source": "example.com",
             "target": "1.2.3.4",
-            "label": "resolves_to"
+            "label": "resolves_to",
         }
         found_edge_2 = any(
-            e["source"] == expected_edge_2["source"] and
-            e["target"] == expected_edge_2["target"] and
-            e["label"] == expected_edge_2["label"]
+            e["source"] == expected_edge_2["source"]
+            and e["target"] == expected_edge_2["target"]
+            and e["label"] == expected_edge_2["label"]
             for e in graph_data["edges"]
         )
         self.assertTrue(found_edge_2, "Edge 'resolves_to' not found in graph data")
-        
+
         expected_edge_3 = {
             "source": "example.com",
             "target": "React",
-            "label": "uses_tech"
+            "label": "uses_tech",
         }
         found_edge_3 = any(
-            e["source"] == expected_edge_3["source"] and
-            e["target"] == expected_edge_3["target"] and
-            e["label"] == expected_edge_3["label"]
+            e["source"] == expected_edge_3["source"]
+            and e["target"] == expected_edge_3["target"]
+            and e["label"] == expected_edge_3["label"]
             for e in graph_data["edges"]
         )
         self.assertTrue(found_edge_3, "Edge 'uses_tech' not found in graph data")

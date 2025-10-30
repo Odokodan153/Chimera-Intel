@@ -1,5 +1,5 @@
 import pytest
-import typer  
+import typer
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock
 
@@ -25,7 +25,9 @@ def mock_docker_client(mocker):
     mock_client.containers.run.return_value = mock_container
 
     # Patch the docker import *where it's used* (in the deception module)
-    return mocker.patch("chimera_intel.core.deception.docker.from_env", return_value=mock_client)
+    return mocker.patch(
+        "chimera_intel.core.deception.docker.from_env", return_value=mock_client
+    )
 
 
 def test_deploy_honeypot_success(mock_docker_client):

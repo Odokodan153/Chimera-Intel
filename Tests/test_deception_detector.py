@@ -62,7 +62,7 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
                 update={"whois_info": {"emails": ["contact@shared.com"]}}
             ),
         )
-        
+
         # Mock footprint for the related target, "company-b.com"
         footprint_b = FootprintResult(
             domain="company-b.com",
@@ -81,9 +81,8 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
         mock_asyncio_gather.side_effect = [
             # 1. Return for reverse_ip_tasks: a list of lists of domain strings
             [["company-b.com"]],
-            
             # 2. Return for footprint tasks: a list of FootprintResult objects
-            [footprint_b]
+            [footprint_b],
         ]
 
         # Act
@@ -96,7 +95,7 @@ class TestDeceptionDetector(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.detected_links[0].link_type, "Shared Whois Email")
         self.assertEqual(result.detected_links[0].confidence, "High")
         self.assertIn("contact@shared.com", result.detected_links[0].details)
-        
+
         # Check that the entities are correct (order might vary)
         entities = {
             result.detected_links[0].entity_a,

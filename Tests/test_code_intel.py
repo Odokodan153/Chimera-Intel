@@ -1,7 +1,7 @@
 import typer
 from typer.testing import CliRunner
 import json
-from unittest.mock import MagicMock, patch 
+from unittest.mock import MagicMock, patch
 
 # The application instance to be tested
 from chimera_intel.core.code_intel import code_intel_app
@@ -11,6 +11,7 @@ runner = CliRunner()
 
 
 # The mock_git_repo fixture is no longer needed, as we will patch directly.
+
 
 # Patch external dependencies
 @patch("git.Repo.clone_from")
@@ -27,28 +28,26 @@ def test_analyze_repo_command_success(mock_clone):
     mock_commit.author.name = "John Doe"
     mock_commit.author.email = "john.doe@example.com"
     mock_commit.message = "feat: Add new feature"
-    
+
     # Mock the repo object that `clone_from` would return
     mock_repo_instance = MagicMock()
     mock_repo_instance.iter_commits.return_value = [mock_commit]
-    
+
     # Configure the mock passed in by the decorator
     mock_clone.return_value = mock_repo_instance
 
     # --- Execute ---
     # FIXED: Remove "analyze-repo" from the list.
     # The app *is* the analyze-repo command.
-    result = runner.invoke(
-        code_intel_app, ["https://github.com/user/repo"]
-    )
+    result = runner.invoke(code_intel_app, ["https://github.com/user/repo"])
 
     # --- Assert ---
     # With patches, exit_code should be 0 (success) as expected
     assert result.exit_code == 0
-    
+
     # Check for the initial status message
     assert "Analyzing repository: https://github.com/user/repo" in result.stdout
-    
+
     # --- FIX: Assert against the actual JSON output format ---
     # The CLI prints a status message first, followed by the JSON output.
     output_lines = result.stdout.splitlines()
@@ -65,7 +64,7 @@ def test_analyze_repo_command_success(mock_clone):
     assert data["top_committers"][0]["name"] == "John Doe"
     assert data["commit_keywords"]["feat"] == 1
     # --- END FIX ---
-    
+
     # Verify that the clone was attempted with the correct URL
     mock_clone.assert_called_once()
     assert mock_clone.call_args[0][0] == "https://github.com/user/repo"
@@ -86,9 +85,7 @@ def test_analyze_repo_command_clone_error(mock_clone):
 
     # --- Execute ---
     # FIXED: Remove "analyze-repo" from the list.
-    result = runner.invoke(
-        code_intel_app, ["https://github.com/user/nonexistent-repo"]
-    )
+    result = runner.invoke(code_intel_app, ["https://github.com/user/nonexistent-repo"])
 
     # --- Assert ---
     # Check the exception for the correct exit code
@@ -97,7 +94,7 @@ def test_analyze_repo_command_clone_error(mock_clone):
         exit_code = result.exception.exit_code
 
     assert exit_code == 1
-    
+
     # Check for the specific error message in the output
     assert "Failed to clone or analyze repository" in result.stdout
     assert "fatal: repository not found" in result.stdout

@@ -158,7 +158,7 @@ async def find_distributors(company_name: str) -> List[DiscoveredDistributor]:
 ecosystem_app = typer.Typer()
 
 
-@ecosystem_app.command()  
+@ecosystem_app.command()
 def run(  # FIX: Renamed function from run_full_ecosystem_analysis
     company_name: Optional[str] = typer.Argument(
         None,
@@ -168,7 +168,7 @@ def run(  # FIX: Renamed function from run_full_ecosystem_analysis
         None,
         help="The primary domain of the target company. Uses active project if not provided.",
     ),
-    output_file: Optional[str] = typer.Option(  
+    output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):

@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import cryptocurrency_intel
 
+
 class CryptoPlugin(ChimeraPlugin):
     """
     Cryptocurrency Intelligence plugin.
@@ -20,6 +21,7 @@ class CryptoPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the Cryptocurrency Intelligence plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = CryptoPlugin()

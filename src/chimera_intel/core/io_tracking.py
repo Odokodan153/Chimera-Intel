@@ -6,6 +6,7 @@ import typer
 import httpx
 from rich.table import Table
 import tweepy
+
 # FIX: Removed unused 'sys' import
 # import sys
 
@@ -62,16 +63,13 @@ def search_reddit_narrative(narrative: str, client: httpx.Client) -> list:
         return []
 
 
-
-@io_tracking_app.command(
-    help="Track a narrative to identify influence campaigns."
-)
+@io_tracking_app.command(help="Track a narrative to identify influence campaigns.")
 def track(
     narrative: str = typer.Option(
         ...,
         "--narrative",
         "-n",
-        help="The narrative or topic to track for influence operations."
+        help="The narrative or topic to track for influence operations.",
     ),
 ):
     """
@@ -81,18 +79,19 @@ def track(
     console.print(
         f"Tracking influence campaign for narrative: '[bold cyan]{narrative}[/bold cyan]'"
     )
-    
+
     # --- FIX: Replace sys.exit(1) with raise typer.Exit(code=1) ---
     if not API_KEYS.gnews_api_key:
-        typer.echo("Configuration Error: GNEWS_API_KEY not found in .env file.", err=True)
+        typer.echo(
+            "Configuration Error: GNEWS_API_KEY not found in .env file.", err=True
+        )
         raise typer.Exit(code=1)
     # --- END FIX ---
 
     try:
         with httpx.Client() as client:
             news_articles = search_news_narrative(narrative, client)
-            
-           
+
             if not API_KEYS.twitter_bearer_token:
                 typer.echo(
                     "Warning: TWITTER_BEARER_TOKEN not found. Skipping Twitter search.",
@@ -100,9 +99,9 @@ def track(
                 )
             else:
                 search_twitter_narrative(narrative)
-            
+
             search_reddit_narrative(narrative, client)
-            
+
         console.print(
             f"\nFound {len(news_articles)} news articles related to the narrative."
         )
@@ -110,7 +109,7 @@ def track(
         if not news_articles:
             console.print("\nNo significant propagation found in news media.")
             return
-            
+
         table = Table(title="News Narrative Analysis")
         table.add_column("Source", style="cyan")
         table.add_column("Title", style="green")
@@ -118,19 +117,19 @@ def track(
         for article in news_articles:
             table.add_row(article.get("source", {}).get("name"), article.get("title"))
         console.print(table)
-        
+
     except ValueError as e:
         typer.echo(f"Configuration Error: {e}", err=True)
-        raise typer.Exit(code=1) 
+        raise typer.Exit(code=1)
     except httpx.HTTPStatusError as e:
         typer.echo(
             f"API Error: Failed to fetch data. Status code: {e.response.status_code}",
             err=True,
         )
-        raise typer.Exit(code=1) 
+        raise typer.Exit(code=1)
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-        raise typer.Exit(code=1) 
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

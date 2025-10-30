@@ -135,9 +135,11 @@ class NegotiationEngine:
         elif "accept" in lower_content:
             intent = "accept"
         # FIX: Expanded rejection logic
-        elif ("reject" in lower_content or 
-              "not happy" in lower_content or 
-              "too high" in lower_content):
+        elif (
+            "reject" in lower_content
+            or "not happy" in lower_content
+            or "too high" in lower_content
+        ):
             intent = "rejection"
         else:
             intent = "neutral"
@@ -146,7 +148,7 @@ class NegotiationEngine:
             "tone_score": tone_score,
             "sentiment": sentiment,
             "argument_tactics": detected_tactics,
-            "intent": intent,  
+            "intent": intent,
         }
 
     async def recommend_tactic_async(
@@ -339,7 +341,6 @@ class NegotiationEngine:
             "settlement_point": settlement_point,
         }
 
-
     def recommend_tactic(self, history: List[Dict[str, Any]]) -> Dict[str, str]:
         """Synchronous wrapper for backward-compatible testing."""
         return self._generate_rule_based_recommendation(history)
@@ -462,9 +463,7 @@ def join_negotiation(
     """
     db = next(get_db_connection())
     session = (
-        db.query(NegotiationSession)
-        .filter(NegotiationSession.id == session_id)
-        .first()
+        db.query(NegotiationSession).filter(NegotiationSession.id == session_id).first()
     )
     if not session:
         console.print(f"Negotiation session with ID {session_id} not found.")
@@ -580,9 +579,7 @@ def get_history(
     """
     db = next(get_db_connection())
     session = (
-        db.query(NegotiationSession)
-        .filter(NegotiationSession.id == session_id)
-        .first()
+        db.query(NegotiationSession).filter(NegotiationSession.id == session_id).first()
     )
     if not session:
         console.print(f"Negotiation session with ID {session_id} not found.")
@@ -600,9 +597,7 @@ def negotiation_status(
     """
     db = next(get_db_connection())
     session = (
-        db.query(NegotiationSession)
-        .filter(NegotiationSession.id == session_id)
-        .first()
+        db.query(NegotiationSession).filter(NegotiationSession.id == session_id).first()
     )
     if not session:
         console.print(f"Negotiation session with ID {session_id} not found.")

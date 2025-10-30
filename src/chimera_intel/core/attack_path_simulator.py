@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 import networkx as nx
 import psycopg2
-import logging  
+import logging
 
 from .database import get_db_connection
 
@@ -38,7 +38,7 @@ def simulate_attack(
     entry_point: Annotated[
         str,
         typer.Option(
-            ...,  
+            ...,
             "--entry-point",
             "-e",
             help="The entry point of the simulated attack (e.g., 'Public-Facing Web Server').",
@@ -47,7 +47,7 @@ def simulate_attack(
     target_asset: Annotated[
         str,
         typer.Option(
-            ...,  
+            ...,
             "--target-asset",
             "-t",
             help="The target asset to simulate the attack against (e.g., 'Customer Database').",
@@ -79,7 +79,7 @@ def simulate_attack(
             conn.close()
             return
             # -----------------------------------------------------------------
-        
+
         attack_graph = build_attack_graph(cursor)
         cursor.close()
         conn.close()
@@ -92,7 +92,7 @@ def simulate_attack(
             # This avoids being caught by the 'except Exception' block
             # and allows the command to exit with the default code 0.
             return
-        
+
         # Find all shortest paths
         paths = list(nx.all_shortest_paths(attack_graph, entry_point, target_asset))
         console.print(

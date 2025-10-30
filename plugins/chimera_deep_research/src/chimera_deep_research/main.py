@@ -6,7 +6,8 @@ with the Chimera Intel framework.
 
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.deep_research import deep_research_app 
+from chimera_intel.core.deep_research import deep_research_app
+
 
 class DeepResearchPlugin(ChimeraPlugin):
     """The ultimate strategic intelligence fusion plugin."""

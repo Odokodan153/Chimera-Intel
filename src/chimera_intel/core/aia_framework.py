@@ -6,27 +6,32 @@ import os
 import importlib
 import pkgutil
 import time
-import re  
+import re
 from logging.handlers import RotatingFileHandler
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
+
 # FIX: Import the 'core' package itself to find sub-modules
 import chimera_intel.core as aia_core_package
+
 # FIX: Changed relative imports to absolute
 from chimera_intel.core.schemas import Plan, Task, SynthesizedReport, AnalysisResult
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
 # import chimera_intel.core.modules as aia_modules # FIX: Removed this incorrect import
 
-from chimera_intel.core.advanced_reasoning_engine import generate_reasoning, decompose_objective
+from chimera_intel.core.advanced_reasoning_engine import (
+    generate_reasoning,
+    decompose_objective,
+)
 
 # --- Version Info ---
 
 
-__version__ = "1.3.2"\
-
+__version__ = "1.3.2"
 # --- Logger with RotatingFileHandler ---
 
 
@@ -73,8 +78,8 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
     """Dynamically loads modules from the 'chimera_intel.core' package."""
     modules: Dict[str, Dict[str, Any]] = {}
     ALLOWED_MODULES = {"footprint", "threat_intel", "vulnerability_scanner"}
-    
-    # FIX for Issues 1 & 2: Moved exception handling inside the loop 
+
+    # FIX for Issues 1 & 2: Moved exception handling inside the loop
     # to allow partial loading and ensure specific warnings are logged.
     for _, name, _ in pkgutil.iter_modules(
         aia_core_package.__path__, aia_core_package.__name__ + "."
@@ -84,11 +89,11 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
             continue
         try:
             mod = importlib.import_module(name)
-            
+
             # FIX for Issue #2: Explicitly check for 'run' and warn if missing.
             if not hasattr(mod, "run"):
                 logger.warning(f"Module {module_name} does not have a 'run' function.")
-                continue # Skip module if no 'run' is found
+                continue  # Skip module if no 'run' is found
 
             # Check if 'run' is callable
             if callable(mod.run):
@@ -100,7 +105,7 @@ def load_available_modules() -> Dict[str, Dict[str, Any]]:
                 logger.warning(
                     f"Module {module_name} has a 'run' attribute that is not callable."
                 )
-                
+
         except Exception as e:
             # Catch module-specific import or loading errors
             logger.warning(
@@ -137,8 +142,9 @@ def create_initial_plans(objective: str, console: Console) -> List[Plan]:
             "[yellow]Warning: Reasoning engine returned no tasks. Trying fallback analysis...[/]"
         )
 
-       
-        domain_match = re.search(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", objective, re.IGNORECASE)
+        domain_match = re.search(
+            r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", objective, re.IGNORECASE
+        )
 
         if domain_match:
             domain = domain_match.group(0)
@@ -156,8 +162,7 @@ def create_initial_plans(objective: str, console: Console) -> List[Plan]:
                 "Fallback failed: No recognizable domain found in the objective."
             )
             return []
-        
-        
+
     # For simplicity, we'll create one plan with all initial tasks.
     # A more advanced implementation could group tasks into multiple plans.
 
@@ -313,7 +318,7 @@ async def _run_autonomous_analysis(
         f"[dim]Chimera AIA Framework v{__version__} | Build {datetime.now():%Y%m%d}[/]"
     )
     # FIX for Issue #3: Add a standard print() to ensure the test runner captures the output.
-    print(f"Objective Received: '{objective}'") 
+    print(f"Objective Received: '{objective}'")
     console.print(
         Panel(
             f"[bold yellow]Objective Received:[/] '{objective}'", border_style="yellow"

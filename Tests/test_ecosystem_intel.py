@@ -1,5 +1,5 @@
 import unittest
-import asyncio  
+import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 import typer  # <-- Import Typer for the fix
@@ -154,13 +154,13 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
     )
     def test_cli_run_success_with_args(self, mock_async_run):
         """Tests a successful run of the 'ecosystem run' command with direct arguments."""
-        
+
         mock_return_future = asyncio.Future()
         mock_return_future.set_result(None)  # Set return value for the async function
         mock_async_run.return_value = mock_return_future
-      
+
         # Act
-        
+
         # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
         result = runner.invoke(app, ["ecosystem", "run", "MyCompany", "mycompany.com"])
 
@@ -193,7 +193,7 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
         mock_get_project.return_value = mock_project
 
         # Act
-        
+
         # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
         result = runner.invoke(app, ["ecosystem", "run"])
 
@@ -207,7 +207,7 @@ class TestEcosystemIntel(unittest.IsolatedAsyncioTestCase):
     def test_cli_run_no_target_or_project(self, mock_get_project):
         """NEW: Tests CLI failure when no target is given and no project is active."""
         # Act
-        
+
         # FIX: Invoke the parent 'app' with the full command 'ecosystem run'
         result = runner.invoke(app, ["ecosystem", "run"])
 

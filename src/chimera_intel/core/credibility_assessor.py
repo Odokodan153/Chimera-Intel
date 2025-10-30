@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from typing import Optional
-from.schemas import CredibilityResult
+from .schemas import CredibilityResult
 from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
@@ -13,7 +13,6 @@ from rich.panel import Panel
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
-
 
 
 # --- Core Logic ---

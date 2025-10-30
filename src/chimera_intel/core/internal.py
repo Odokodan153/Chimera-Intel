@@ -160,7 +160,7 @@ def parse_mft(file_path: str) -> MFTAnalysisResult:
                     )
                 )
         # --- END OF FIX ---
-        
+
         return MFTAnalysisResult(total_records=len(entries), entries=entries)
     except Exception as e:
         error_msg = f"An unexpected error occurred during MFT parsing: {e}"

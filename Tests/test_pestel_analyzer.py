@@ -76,13 +76,13 @@ class TestPestelAnalyzer(unittest.TestCase):
         # --- FIX: Removed "run" from the args list ---
         result = runner.invoke(pestel_analyzer_app, ["--target", "example.com"])
         # --- END FIX ---
-        
+
         # Assert
         self.assertEqual(result.exit_code, 0, result.stdout)
         self.assertIn("PESTEL Analysis for example.com", result.stdout)
         self.assertIn("PESTEL Analysis", result.stdout)
         mock_generate.assert_called_with({"target": "example.com"}, "fake_key")
-        
+
         # This assertion was correct
         mock_resolve.assert_called_once_with(
             "example.com", required_assets=["domain", "company_name"]
@@ -114,7 +114,7 @@ class TestPestelAnalyzer(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1, result.stdout)
         self.assertIn("No historical data found", result.stdout)
-        
+
         # This assertion was correct
         mock_resolve.assert_called_once_with(
             "example.com", required_assets=["domain", "company_name"]

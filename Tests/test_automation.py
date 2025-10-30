@@ -101,7 +101,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
             mock_post.side_effect = Exception("API is down")
             result = enrich_cves(["CVE-2021-44228"])
             self.assertIsNotNone(result.error)
-            self.assertIn("An error occurred with the Vulners API: API is down", result.error)
+            self.assertIn(
+                "An error occurred with the Vulners API: API is down", result.error
+            )
 
     @patch("chimera_intel.core.automation.get_aggregated_data_for_target")
     def test_generate_threat_model_success_rule_1_vuln(self, mock_get_data):
@@ -141,9 +143,7 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         mock_get_data.return_value = {
             "modules": {
                 "cloud_osint_s3": {
-                    "found_buckets": [
-                        {"name": "my-public-bucket", "is_public": True}
-                    ]
+                    "found_buckets": [{"name": "my-public-bucket", "is_public": True}]
                 }
             }
         }
@@ -168,7 +168,10 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         }
         result = generate_threat_model("example.com")
         self.assertEqual(len(result.potential_paths), 1)
-        self.assertIn("leaked credential for user 'test@example.com'", result.potential_paths[0].path[0])
+        self.assertIn(
+            "leaked credential for user 'test@example.com'",
+            result.potential_paths[0].path[0],
+        )
 
     # --- Extended Test ---
     @patch("chimera_intel.core.automation.get_aggregated_data_for_target")
@@ -225,7 +228,10 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         with patch("builtins.open", mock_open(read_data=log_data)):
             result = analyze_behavioral_logs("logs.csv")
             self.assertIsNotNone(result.error)
-            self.assertIn("Log file must contain headers: timestamp, user, source_ip", result.error)
+            self.assertIn(
+                "Log file must contain headers: timestamp, user, source_ip",
+                result.error,
+            )
 
     # --- Extended Test ---
     @patch("os.path.exists", return_value=True)
@@ -236,7 +242,7 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         log_data = (
             "timestamp,user,source_ip\n"
             "2025-09-08T10:00:00Z,user1,192.168.1.10\n"  # Baseline
-            "bad-timestamp,user1,10.0.0.5\n"          # Anomaly log with bad timestamp
+            "bad-timestamp,user1,10.0.0.5\n"  # Anomaly log with bad timestamp
         )
         with patch("builtins.open", mock_open(read_data=log_data)):
             result = analyze_behavioral_logs("logs.csv")
@@ -350,7 +356,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         mock_yaml_content = "steps:\n  - run: scan web {target}\n"
         with patch("builtins.open", mock_open(read_data=mock_yaml_content)):
             run_workflow("workflow.yaml")
-            mock_logger_error.assert_called_with("Workflow file must define a 'target'.")
+            mock_logger_error.assert_called_with(
+                "Workflow file must define a 'target'."
+            )
 
     # --- Extended Test ---
     @patch("chimera_intel.core.automation.logger.error")
@@ -377,7 +385,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.automation.generate_threat_model")
     def test_cli_threat_model(self, mock_generate):
         """Tests the 'threat-model' CLI command."""
-        mock_generate.return_value = MagicMock(model_dump=lambda: {"target_domain": "test.com"})
+        mock_generate.return_value = MagicMock(
+            model_dump=lambda: {"target_domain": "test.com"}
+        )
         result = runner.invoke(automation_app, ["threat-model", "test.com"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"target_domain": "test.com"', result.stdout)
@@ -385,7 +395,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.automation.analyze_behavioral_logs")
     def test_cli_ueba(self, mock_analyze):
         """Tests the 'ueba' CLI command."""
-        mock_analyze.return_value = MagicMock(model_dump=lambda: {"total_anomalies_found": 1})
+        mock_analyze.return_value = MagicMock(
+            model_dump=lambda: {"total_anomalies_found": 1}
+        )
         result = runner.invoke(automation_app, ["ueba", "logs.csv"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn('"total_anomalies_found": 1', result.stdout)

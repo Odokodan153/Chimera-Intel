@@ -54,12 +54,14 @@ class CorrelationEngine:
                 self._trigger_scan(
                     action.get("params", []),
                     rule.get("description", ""),
-                    event  # FIX: Pass the event for templating
+                    event,  # FIX: Pass the event for templating
                 )
             elif action_type == "ttp_lookup":
                 self._ttp_lookup(event, action)
 
-    def _trigger_scan(self, params: List[str], description: str, event: Event) -> None: # FIX: Accept event
+    def _trigger_scan(
+        self, params: List[str], description: str, event: Event
+    ) -> None:  # FIX: Accept event
         """
         Triggers a plugin command.
         """
@@ -109,7 +111,7 @@ class CorrelationEngine:
         cve_id = event.details.get("cve_id")
         if not cve_id:
             return
-        ttp_info = self.ttp_knowledge_base.get(cve_id) # This will now work
+        ttp_info = self.ttp_knowledge_base.get(cve_id)  # This will now work
         if ttp_info:
             message = (
                 f"TTP found for {cve_id}: {ttp_info['name']} ({ttp_info['attack_id']})."

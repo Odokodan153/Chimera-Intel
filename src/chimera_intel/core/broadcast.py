@@ -1,10 +1,12 @@
 import asyncio
 from typing import Dict, Any
 
+
 class Broadcaster:
     """
     A simple in-memory broadcaster for sending messages to clients.
     """
+
     def __init__(self):
         self._subscribers = set()
 
@@ -28,6 +30,7 @@ class Broadcaster:
         Unsubscribes a client.
         """
         self._subscribers.remove(queue)
+
 
 # Create a global instance of the broadcaster
 broadcast = Broadcaster()

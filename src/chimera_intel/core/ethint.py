@@ -1,6 +1,7 @@
 import logging
 import json
 from typing import List, Dict, Optional
+
 # FIX: Changed relative import to absolute import to fix module loading in pytest.
 from chimera_intel.core.schemas import Operation, ComplianceResult, ComplianceViolation
 import typer
@@ -39,6 +40,7 @@ SEVERITY_LEVELS = {
 # FIX: Global cache variable for lazy loading
 _ETHICAL_FRAMEWORKS_CACHE = None
 
+
 def load_frameworks(path: Optional[str] = None) -> Dict:
     """Loads ethical frameworks from a read-only JSON file."""
     if path is None:
@@ -65,6 +67,7 @@ def load_frameworks(path: Optional[str] = None) -> Dict:
         )
         return {}
 
+
 # FIX: Function to perform lazy loading/caching
 def get_ethical_frameworks() -> Dict:
     """Initializes and returns the cached ethical frameworks."""
@@ -72,6 +75,7 @@ def get_ethical_frameworks() -> Dict:
     if _ETHICAL_FRAMEWORKS_CACHE is None:
         _ETHICAL_FRAMEWORKS_CACHE = load_frameworks()
     return _ETHICAL_FRAMEWORKS_CACHE
+
 
 # FIX: Removed the module-level execution to allow testing frameworks to properly mock dependencies.
 # ETHICAL_FRAMEWORKS = load_frameworks()
@@ -94,8 +98,8 @@ def audit_operation(
         RuntimeError: If the ethical frameworks cannot be loaded.
     """
     # FIX: Use the getter function to ensure frameworks are loaded correctly for testing
-    frameworks = get_ethical_frameworks() 
-    
+    frameworks = get_ethical_frameworks()
+
     if not frameworks:
         audit_logger.critical("No ethical frameworks loaded. Audit cannot proceed.")
         raise RuntimeError("No ethical frameworks were loaded, cannot perform audit.")
@@ -134,7 +138,7 @@ def audit_operation(
         return result
     for framework_name in frameworks_to_check:
         # FIX: Use the local 'frameworks' variable instead of the old global one
-        framework = frameworks.get(framework_name) 
+        framework = frameworks.get(framework_name)
         if not framework:
             log_action(f"Framework '{framework_name}' not found. Skipping.")
             continue

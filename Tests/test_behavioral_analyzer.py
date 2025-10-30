@@ -12,6 +12,7 @@ from chimera_intel.core.schemas import PsychographicProfileResult, BehavioralSig
 # Create a runner for CLI tests
 runner = CliRunner()
 
+
 class TestBehavioralAnalyzer(unittest.TestCase):
     """Test cases for the behavioral_analyzer module."""
 
@@ -72,8 +73,14 @@ class TestBehavioralAnalyzer(unittest.TestCase):
         }
         # Simulate different classifications for each call
         mock_classify.side_effect = [
-            { "labels": ["Aggressive Marketing"], "scores": [0.8] }, # For "Senior Growth Hacker"
-            { "labels": ["Innovation & R&D"], "scores": [0.9] },   # For "Data Scientist (R&D)"
+            {
+                "labels": ["Aggressive Marketing"],
+                "scores": [0.8],
+            },  # For "Senior Growth Hacker"
+            {
+                "labels": ["Innovation & R&D"],
+                "scores": [0.9],
+            },  # For "Data Scientist (R&D)"
         ]
 
         # Act
@@ -83,7 +90,9 @@ class TestBehavioralAnalyzer(unittest.TestCase):
         self.assertIsNone(result.error)
         self.assertEqual(len(result.behavioral_signals), 2)
         self.assertEqual(mock_classify.call_count, 2)
-        self.assertEqual(result.behavioral_signals[0].signal_type, "Aggressive Marketing")
+        self.assertEqual(
+            result.behavioral_signals[0].signal_type, "Aggressive Marketing"
+        )
         self.assertEqual(result.behavioral_signals[1].signal_type, "Innovation & R&D")
         # Check that dominant traits are sorted by count (in this case, 1 each)
         self.assertIn("Aggressive Marketing", result.profile_summary["dominant_traits"])
@@ -99,11 +108,11 @@ class TestBehavioralAnalyzer(unittest.TestCase):
         # Arrange
         mock_get_data.return_value = {
             "modules": {
-                "business_intel": { "news": { "articles": [{ "title": "Vague statement" }] } }
+                "business_intel": {"news": {"articles": [{"title": "Vague statement"}]}}
             }
         }
         # Simulate a low confidence score
-        mock_classify.return_value = { "labels": ["Innovation & R&D"], "scores": [0.5] }
+        mock_classify.return_value = {"labels": ["Innovation & R&D"], "scores": [0.5]}
 
         # Act
         result = generate_psychographic_profile("example.com")
@@ -120,10 +129,18 @@ class TestBehavioralAnalyzer(unittest.TestCase):
     def test_calculate_narrative_entropy(self):
         """Tests the narrative entropy calculation."""
         signals = [
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="B", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="C", content="", justification=""),
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="B", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="C", content="", justification=""
+            ),
         ]
         # Entropy = 1.5
         entropy_result = calculate_narrative_entropy(signals)
@@ -137,11 +154,19 @@ class TestBehavioralAnalyzer(unittest.TestCase):
         """Tests the different assessment branches for entropy."""
         # Low Entropy (< 1.0)
         low_signals = [
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="B", content="", justification=""),
-        ] # Entropy = 0.811
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="B", content="", justification=""
+            ),
+        ]  # Entropy = 0.811
         result_low = calculate_narrative_entropy(low_signals)
         self.assertIsNotNone(result_low)
         self.assertLess(result_low.entropy_score, 1.0)
@@ -149,12 +174,22 @@ class TestBehavioralAnalyzer(unittest.TestCase):
 
         # High Entropy (> 2.0)
         high_signals = [
-            BehavioralSignal(source_type="", signal_type="A", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="B", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="C", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="D", content="", justification=""),
-            BehavioralSignal(source_type="", signal_type="E", content="", justification=""),
-        ] # Entropy = 2.32
+            BehavioralSignal(
+                source_type="", signal_type="A", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="B", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="C", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="D", content="", justification=""
+            ),
+            BehavioralSignal(
+                source_type="", signal_type="E", content="", justification=""
+            ),
+        ]  # Entropy = 2.32
         result_high = calculate_narrative_entropy(high_signals)
         self.assertIsNotNone(result_high)
         self.assertGreater(result_high.entropy_score, 2.0)
@@ -198,7 +233,9 @@ class TestBehavioralAnalyzer(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.exit_code, 0)
-        mock_resolve.assert_called_with("example.com", required_assets=["domain", "company_name"])
+        mock_resolve.assert_called_with(
+            "example.com", required_assets=["domain", "company_name"]
+        )
         mock_generate.assert_called_with("example.com")
         mock_save_print.assert_called_with(mock_dump_dict, None)
         mock_save_db.assert_called_with(

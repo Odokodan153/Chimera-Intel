@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import logistics_intel
 
+
 class LogisticsPlugin(ChimeraPlugin):
     """
     Logistics Intelligence plugin.
@@ -20,6 +21,7 @@ class LogisticsPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the Logistics Intelligence plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = LogisticsPlugin()

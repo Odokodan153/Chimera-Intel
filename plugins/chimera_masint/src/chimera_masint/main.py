@@ -3,6 +3,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core.masint import app as masint_app
 
+
 class MasintPlugin(ChimeraPlugin):
     """
     MASINT (Measurement and Signature Intelligence) plugin.
@@ -22,18 +23,19 @@ class MasintPlugin(ChimeraPlugin):
         plugin_app = typer.Typer(
             name="masint",
             help="Measurement and Signature Intelligence (MASINT) Module.",
-            no_args_is_help=True
+            no_args_is_help=True,
         )
-        
+
         # Attach the core MASINT commands (rf-pcap, acoustic, thermal)
         # This will make them available under 'chimera masint run <command>'
         plugin_app.add_typer(masint_app, name="run")
-        
+
         return plugin_app
 
     def initialize(self):
         """Initializes the MASINT plugin. No specific initialization needed for now."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = MasintPlugin()

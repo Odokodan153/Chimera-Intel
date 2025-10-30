@@ -89,7 +89,7 @@ class TestCLI(unittest.TestCase):
         # avoiding issues with cached, un-patched module-level variables.
         self.app = chimera_intel.cli.get_cli_app()
         # --- END FIX ---
-        
+
         # This runner is correct for unittest. The mix_stderr comment was a red herring.
         self.runner = CliRunner()
 
@@ -111,7 +111,8 @@ class TestCLI(unittest.TestCase):
 
     # --- FIX: Patch must target the *original source* module ---
     @patch(
-        "chimera_intel.core.database.initialize_database", side_effect=ConnectionError("DB Down")
+        "chimera_intel.core.database.initialize_database",
+        side_effect=ConnectionError("DB Down"),
     )
     def test_main_no_db_connection_still_runs_basic_commands(
         self, mock_initialize_database
@@ -124,10 +125,11 @@ class TestCLI(unittest.TestCase):
             return_value=[MockFootprintPlugin(), MockDefensivePlugin()],
         ):
             import chimera_intel.cli
+
             reload(chimera_intel.cli)
             app = chimera_intel.cli.get_cli_app()
             runner = CliRunner()
-            
+
             result = runner.invoke(app, ["--help"])
             self.assertEqual(result.exit_code, 0)
             self.assertIn("Usage", result.stdout)
@@ -153,7 +155,12 @@ class TestCLI(unittest.TestCase):
     @patch("chimera_intel.core.footprint.resolve_target", return_value="example.com")
     @patch("chimera_intel.core.footprint.gather_footprint_data", new_callable=AsyncMock)
     @patch("chimera_intel.core.footprint.is_valid_domain", return_value=True)
-    def test_scan_footprint_success(self, mock_is_valid: MagicMock, mock_gather_footprint: AsyncMock, mock_resolve_target: MagicMock):
+    def test_scan_footprint_success(
+        self,
+        mock_is_valid: MagicMock,
+        mock_gather_footprint: AsyncMock,
+        mock_resolve_target: MagicMock,
+    ):
         """Tests a successful 'scan footprint run' command with specific assertions."""
         # Arrange
 
@@ -201,34 +208,41 @@ class TestCLI(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        
+
         # --- FIX for multi-line JSON output ---
         json_output_str = None
         try:
             # Find the start of the JSON object
-            start_index = result.stdout.find('{')
+            start_index = result.stdout.find("{")
             # Find the last closing brace of the main object
-            end_index = result.stdout.rfind('}')
-            
+            end_index = result.stdout.rfind("}")
+
             if start_index != -1 and end_index != -1 and end_index > start_index:
                 json_output_str = result.stdout[start_index : end_index + 1]
                 # Try to parse it to make sure it's valid JSON before asserting
                 json.loads(json_output_str)
             else:
-                json_output_str = None # No valid JSON found
+                json_output_str = None  # No valid JSON found
         except json.JSONDecodeError:
-            json_output_str = None # Failed to parse
+            json_output_str = None  # Failed to parse
         # --- END FIX ---
-        
-        self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
+
+        self.assertIsNotNone(
+            json_output_str,
+            f"No JSON output found in stdout. Output was: {result.stdout}",
+        )
         output = json.loads(json_output_str)
         self.assertEqual(output["domain"], "example.com")
         self.assertIn("footprint", output)
 
     # --- FIX: Remove 'async' keyword from test definition ---
     @patch("chimera_intel.core.footprint.resolve_target", return_value="invalid-domain")
-    @patch("chimera_intel.core.footprint.is_valid_domain", return_value=False) # Mock the internal validation
-    def test_scan_footprint_invalid_domain(self, mock_is_valid, mock_resolve_target: MagicMock):
+    @patch(
+        "chimera_intel.core.footprint.is_valid_domain", return_value=False
+    )  # Mock the internal validation
+    def test_scan_footprint_invalid_domain(
+        self, mock_is_valid, mock_resolve_target: MagicMock
+    ):
         """Tests 'scan footprint run' with an invalid domain, expecting a specific error."""
         # Act
 
@@ -237,7 +251,7 @@ class TestCLI(unittest.TestCase):
         )
 
         # Assert
-        
+
         self.assertEqual(result.exit_code, 1)
         self.assertIn("is not a valid domain format", result.stdout)
 
@@ -259,11 +273,11 @@ class TestCLI(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
-        
+
         json_output_str = None
         try:
-            start_index = result.stdout.find('{')
-            end_index = result.stdout.rfind('}')
+            start_index = result.stdout.find("{")
+            end_index = result.stdout.rfind("}")
             if start_index != -1 and end_index != -1 and end_index > start_index:
                 json_output_str = result.stdout[start_index : end_index + 1]
                 # Try to parse it to make sure it's valid JSON before asserting
@@ -271,9 +285,12 @@ class TestCLI(unittest.TestCase):
             else:
                 json_output_str = None
         except json.JSONDecodeError:
-            json_output_str = None # Failed to parse, let the assertion fail
+            json_output_str = None  # Failed to parse, let the assertion fail
 
-        self.assertIsNotNone(json_output_str, f"No JSON output found in stdout. Output was: {result.stdout}")
+        self.assertIsNotNone(
+            json_output_str,
+            f"No JSON output found in stdout. Output was: {result.stdout}",
+        )
         output = json.loads(json_output_str)
         self.assertEqual(output["breaches"], [])
 
@@ -287,7 +304,7 @@ class TestCLI(unittest.TestCase):
         )
 
         # Assert
-        
+
         self.assertEqual(result.exit_code, 1)
         self.assertIn("`HIBP_API_KEY` not found in your .env file.", result.stdout)
 

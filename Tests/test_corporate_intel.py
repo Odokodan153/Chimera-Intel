@@ -59,7 +59,10 @@ class TestCorporateIntel(unittest.TestCase):
         self.assertIn("Could not find or parse a careers page", result.error)
 
     # NEW: Test for scrape exception (covers line 44)
-    @patch("chimera_intel.core.corporate_intel.sync_client.get", side_effect=RequestError("Test error"))
+    @patch(
+        "chimera_intel.core.corporate_intel.sync_client.get",
+        side_effect=RequestError("Test error"),
+    )
     def test_get_hiring_trends_scrape_exception(self, mock_get):
         """Tests the hiring trends function when the scrape fails with an exception."""
         result = get_hiring_trends("example.com")
@@ -105,7 +108,10 @@ class TestCorporateIntel(unittest.TestCase):
 
     # NEW: Test for API error (covers lines 87-91)
     @patch("chimera_intel.core.corporate_intel.API_KEYS")
-    @patch("chimera_intel.core.corporate_intel.sync_client.get", side_effect=RequestError("API down"))
+    @patch(
+        "chimera_intel.core.corporate_intel.sync_client.get",
+        side_effect=RequestError("API down"),
+    )
     def test_get_employee_sentiment_api_error(self, mock_get, mock_api_keys):
         """Tests the employee sentiment function when the API call fails."""
         mock_api_keys.aura_api_key = "fake_aura_key"
@@ -113,7 +119,6 @@ class TestCorporateIntel(unittest.TestCase):
         self.assertIsInstance(result, EmployeeSentimentResult)
         self.assertIsNone(result.overall_rating)
         self.assertIn("An error occurred with the Aura API", result.error)
-
 
     # --- Trade Data Tests ---
 
@@ -124,19 +129,19 @@ class TestCorporateIntel(unittest.TestCase):
         mock_api_keys.import_genius_api_key = "fake_ig_key"
         mock_response = MagicMock(spec=Response)
         mock_response.raise_for_status.return_value = None
-        
+
         # MODIFIED: Added shipment data to cover list comprehension (lines 102-104)
         mock_response.json.return_value = {
-            "total_results": 1, 
+            "total_results": 1,
             "shipments": [
                 {
                     "arrival_date": "2023-01-01",
                     "shipper": {"name": "Test Shipper"},
                     "consignee": {"name": "Test Consignee"},
                     "description": "Test Product",
-                    "weight_kg": 1000
+                    "weight_kg": 1000,
                 }
-            ]
+            ],
         }
         mock_get.return_value = mock_response
 
@@ -152,14 +157,19 @@ class TestCorporateIntel(unittest.TestCase):
     # NEW: Test for missing API key
     def test_get_trade_data_no_api_key(self):
         """Tests trade data retrieval when the API key is missing."""
-        with patch("chimera_intel.core.corporate_intel.API_KEYS.import_genius_api_key", None):
+        with patch(
+            "chimera_intel.core.corporate_intel.API_KEYS.import_genius_api_key", None
+        ):
             result = get_trade_data("Example Corp")
             self.assertIsNotNone(result.error)
             self.assertIn("ImportGenius API key not found", result.error)
 
     # NEW: Test for API error
     @patch("chimera_intel.core.corporate_intel.API_KEYS")
-    @patch("chimera_intel.core.corporate_intel.sync_client.get", side_effect=RequestError("API down"))
+    @patch(
+        "chimera_intel.core.corporate_intel.sync_client.get",
+        side_effect=RequestError("API down"),
+    )
     def test_get_trade_data_api_error(self, mock_get, mock_api_keys):
         """Tests the trade data function when the API call fails."""
         mock_api_keys.import_genius_api_key = "fake_ig_key"
@@ -182,7 +192,7 @@ class TestCorporateIntel(unittest.TestCase):
                 "serial_number": "123",
                 "status_label": "LIVE",
                 "description": "Test Mark",
-                "owner": {"name": "Example Corp"}
+                "owner": {"name": "Example Corp"},
             }
         ]
         mock_get.return_value = mock_response
@@ -204,7 +214,10 @@ class TestCorporateIntel(unittest.TestCase):
 
     # NEW: Test for API error (covers lines 136-138)
     @patch("chimera_intel.core.corporate_intel.API_KEYS")
-    @patch("chimera_intel.core.corporate_intel.sync_client.get", side_effect=RequestError("API down"))
+    @patch(
+        "chimera_intel.core.corporate_intel.sync_client.get",
+        side_effect=RequestError("API down"),
+    )
     def test_get_trademarks_api_error(self, mock_get, mock_api_keys):
         """Tests the trademark search function when the API call fails."""
         mock_api_keys.uspto_api_key = "fake_uspto_key"
@@ -226,7 +239,7 @@ class TestCorporateIntel(unittest.TestCase):
                 {
                     "lobbying_represents": [
                         {
-                            "amount": "50000.00", # Test string-to-float conversion
+                            "amount": "50000.00",  # Test string-to-float conversion
                             "year": "2023",
                             "specific_issue": "Test Issue",
                         }
@@ -247,14 +260,19 @@ class TestCorporateIntel(unittest.TestCase):
     # NEW: Test for missing API key (covers line 152)
     def test_get_lobbying_data_no_api_key(self):
         """Tests lobbying data retrieval when the API key is missing."""
-        with patch("chimera_intel.core.corporate_intel.API_KEYS.lobbying_data_api_key", None):
+        with patch(
+            "chimera_intel.core.corporate_intel.API_KEYS.lobbying_data_api_key", None
+        ):
             result = get_lobbying_data("Example Corp")
             self.assertEqual(result.total_spent, 0)
             self.assertIn("Lobbying data API key not found", result.error)
 
     # NEW: Test for API error (covers lines 179-181)
     @patch("chimera_intel.core.corporate_intel.API_KEYS")
-    @patch("chimera_intel.core.corporate_intel.sync_client.get", side_effect=RequestError("API down"))
+    @patch(
+        "chimera_intel.core.corporate_intel.sync_client.get",
+        side_effect=RequestError("API down"),
+    )
     def test_get_lobbying_data_api_error(self, mock_get, mock_api_keys):
         """Tests the lobbying data function when the API call fails."""
         mock_api_keys.lobbying_data_api_key = "fake_lobby_key"
@@ -289,9 +307,7 @@ class TestCorporateIntel(unittest.TestCase):
     # NEW: Test for missing API key (covers line 195)
     def test_get_sec_filings_no_api_key(self):
         """Tests SEC filing analysis when the API key is missing."""
-        with patch(
-            "chimera_intel.core.corporate_intel.API_KEYS.sec_api_io_key", None
-        ):
+        with patch("chimera_intel.core.corporate_intel.API_KEYS.sec_api_io_key", None):
             result = get_sec_filings_analysis("AAPL")
             self.assertIsNone(result)
 
@@ -309,7 +325,10 @@ class TestCorporateIntel(unittest.TestCase):
             self.assertIsNone(result)
 
     # NEW: Test for API error (covers lines 222-224)
-    @patch("chimera_intel.core.corporate_intel.QueryApi", side_effect=Exception("API error"))
+    @patch(
+        "chimera_intel.core.corporate_intel.QueryApi",
+        side_effect=Exception("API error"),
+    )
     def test_get_sec_filings_analysis_api_error(self, mock_query_api):
         """Tests SEC filing analysis when the QueryApi fails."""
         with patch(
@@ -353,15 +372,15 @@ class TestCorporateIntel(unittest.TestCase):
         self, mock_sentiment, mock_hiring, mock_get_project
     ):
         """Tests 'hr-intel' when a domain is passed as an argument."""
-        mock_get_project.return_value = None # No active project
+        mock_get_project.return_value = None  # No active project
         mock_hiring.return_value = HiringTrendsResult(total_postings=1, job_postings=[])
         mock_sentiment.return_value = EmployeeSentimentResult(overall_rating=4.0)
 
         result = runner.invoke(corporate_intel_app, ["hr-intel", "google.com"])
-        
+
         self.assertEqual(result.exit_code, 0)
         mock_hiring.assert_called_with("google.com")
-        mock_sentiment.assert_called_with("google") # Best effort name
+        mock_sentiment.assert_called_with("google")  # Best effort name
         self.assertNotIn("Using active project", result.stdout)
 
     # NEW: Test 'hr-intel' with company name argument (covers 238, 317-323)
@@ -372,17 +391,19 @@ class TestCorporateIntel(unittest.TestCase):
         self, mock_sentiment, mock_hiring, mock_get_project
     ):
         """Tests 'hr-intel' when a company name (not domain) is passed."""
-        mock_get_project.return_value = None # No active project
-        mock_hiring.return_value = HiringTrendsResult(total_postings=0, error="Domain needed")
+        mock_get_project.return_value = None  # No active project
+        mock_hiring.return_value = HiringTrendsResult(
+            total_postings=0, error="Domain needed"
+        )
         mock_sentiment.return_value = EmployeeSentimentResult(overall_rating=4.0)
 
         result = runner.invoke(corporate_intel_app, ["hr-intel", "Google Inc"])
-        
+
         self.assertEqual(result.exit_code, 0)
-        mock_hiring.assert_not_called() # No domain
+        mock_hiring.assert_not_called()  # No domain
         mock_sentiment.assert_called_with("Google Inc")
         self.assertIn('"error": "Domain needed', result.stdout)
-    
+
     # NEW: Test 'hr-intel' with no target (covers 264-266)
     @patch("chimera_intel.core.corporate_intel.get_active_project", return_value=None)
     def test_cli_hr_intel_no_target_no_project(self, mock_get_project):
@@ -390,7 +411,6 @@ class TestCorporateIntel(unittest.TestCase):
         result = runner.invoke(corporate_intel_app, ["hr-intel"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No target provided and no active project set", result.stdout)
-
 
     @patch("chimera_intel.core.corporate_intel.get_trade_data")
     def test_cli_supplychain_with_argument(self, mock_get_trade):
@@ -475,9 +495,11 @@ class TestCorporateIntel(unittest.TestCase):
         result = runner.invoke(corporate_intel_app, ["sec-filings"])
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No ticker provided and no active project", result.stdout)
-    
+
     # NEW: Test 'sec-filings' when no data is found (covers 522)
-    @patch("chimera_intel.core.corporate_intel.get_sec_filings_analysis", return_value=None)
+    @patch(
+        "chimera_intel.core.corporate_intel.get_sec_filings_analysis", return_value=None
+    )
     def test_cli_sec_filings_no_data_found(self, mock_get_filings):
         """Tests 'sec-filings' when get_sec_filings_analysis returns None."""
         result = runner.invoke(corporate_intel_app, ["sec-filings", "TICKER"])

@@ -31,8 +31,12 @@ def get_cli_app():
 
     # --- Core Command Registration ---
     app.add_typer(project_app, name="project", help="Manage intelligence projects.")
-    app.add_typer(briefing_app, name="briefing", help="Generate AI-powered executive briefings.")  
-    app.add_typer(graph_app, name="graph", help="Interact with the Chimera Intelligence Graph.")
+    app.add_typer(
+        briefing_app, name="briefing", help="Generate AI-powered executive briefings."
+    )
+    app.add_typer(
+        graph_app, name="graph", help="Interact with the Chimera Intelligence Graph."
+    )
 
     @app.command(name="version", help="Show Chimera Intel version.")
     def version():

@@ -63,9 +63,7 @@ class OTAsset:
 def ot_recon(
     # --- FIX: Changed from typer.Argument to typer.Option ---
     ip_address: str = typer.Option(
-        ..., 
-        "--ip-address",
-        help="The IP address to scan for OT protocols."
+        ..., "--ip-address", help="The IP address to scan for OT protocols."
     ),
 ):
     """
@@ -109,7 +107,7 @@ def ot_recon(
 
         # FIX: Add explicit success exit for the test runner
         # REMOVED: raise typer.Exit(code=0)
-        
+
     except (ValueError, shodan.APIError) as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)

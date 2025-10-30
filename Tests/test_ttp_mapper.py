@@ -15,27 +15,28 @@ runner = CliRunner()
 
 # --- MOCK DATA FOR LOGIC TESTS ---
 
+
 @pytest.fixture
 def mock_mitre_attack_data():
     """Fixture to mock the MitreAttackData class."""
     with patch("chimera_intel.core.ttp_mapper.MitreAttackData") as mock_class:
         mock_instance = mock_class.return_value
-        
+
         # Mock technique for CVE-1234
         mock_tech_1 = {
             "name": "Phishing",
             "external_references": [{"external_id": "T1566"}],
             "kill_chain_phases": [
                 {"phase_name": "resource-development"},
-                {"phase_name": "initial-access"}
-            ]
+                {"phase_name": "initial-access"},
+            ],
         }
-        
+
         # Mock technique for CVE-5678 (e.g., has no tactic info)
         mock_tech_2 = {
             "name": "Data Encrypted",
             "external_references": [{"external_id": "T1486"}],
-            "kill_chain_phases": [] # Empty list
+            "kill_chain_phases": [],  # Empty list
         }
 
         # Configure the mock instance's methods
@@ -45,7 +46,7 @@ def mock_mitre_attack_data():
             if cve_id == "CVE-2023-5678":
                 return [mock_tech_2]
             if cve_id == "CVE-2023-9999":
-                return [] # CVE not found
+                return []  # CVE not found
             if cve_id == "CVE-ERROR":
                 raise Exception("MITRE library failure")
             return []
@@ -55,6 +56,7 @@ def mock_mitre_attack_data():
 
 
 # --- CLI TESTS (Original and Extended) ---
+
 
 @patch("chimera_intel.core.ttp_mapper.save_scan_to_db")
 @patch("chimera_intel.core.ttp_mapper.save_or_print_results")
@@ -167,16 +169,17 @@ def test_cli_map_cve_no_cves():
     Typer should handle this and exit with code 2.
     """
     # Act
-    result = runner.invoke(main_app, ["ttp", "map-cve"]) # No CVEs
+    result = runner.invoke(main_app, ["ttp", "map-cve"])  # No CVEs
 
     # Assert
-    assert result.exit_code == 2 # Typer's exit code for missing arguments
+    assert result.exit_code == 2  # Typer's exit code for missing arguments
     assert "Missing argument" in result.output
     assert "CVE_IDS" in result.output
 
 
 # --- Unit Tests for 'map_cves_to_ttp' logic ---
 # These tests do NOT mock map_cves_to_ttp, but mock the underlying library
+
 
 def test_logic_map_cves_to_ttp_success(mock_mitre_attack_data):
     """
@@ -191,14 +194,14 @@ def test_logic_map_cves_to_ttp_success(mock_mitre_attack_data):
     assert result.total_cves_analyzed == 1
     assert result.error is None
     assert len(result.mapped_techniques) == 1
-    
+
     tech = result.mapped_techniques[0]
     assert isinstance(tech, MappedTechnique)
     assert tech.cve_id == "CVE-2023-1234"
     assert tech.technique_id == "T1566"
     assert tech.technique_name == "Phishing"
     assert tech.tactic == "resource-development, initial-access"
-    
+
     # Check that the library was initialized
     mock_mitre_attack_data.assert_called_once_with("enterprise-attack.json")
 
@@ -215,12 +218,12 @@ def test_logic_map_cves_to_ttp_parsing_details(mock_mitre_attack_data):
     assert result.total_cves_analyzed == 1
     assert result.error is None
     assert len(result.mapped_techniques) == 1
-    
+
     tech = result.mapped_techniques[0]
     assert tech.cve_id == "CVE-2023-5678"
     assert tech.technique_id == "T1486"
     assert tech.technique_name == "Data Encrypted"
-    assert tech.tactic == "N/A" # Should default to N/A
+    assert tech.tactic == "N/A"  # Should default to N/A
 
 
 def test_logic_map_cves_to_ttp_cve_not_found(mock_mitre_attack_data):
@@ -234,7 +237,7 @@ def test_logic_map_cves_to_ttp_cve_not_found(mock_mitre_attack_data):
     # Assert
     assert result.total_cves_analyzed == 1
     assert result.error is None
-    assert len(result.mapped_techniques) == 0 # No techniques found
+    assert len(result.mapped_techniques) == 0  # No techniques found
 
 
 def test_logic_map_cves_to_ttp_multiple_cves(mock_mitre_attack_data):
@@ -248,7 +251,7 @@ def test_logic_map_cves_to_ttp_multiple_cves(mock_mitre_attack_data):
     # Assert
     assert result.total_cves_analyzed == 2
     assert result.error is None
-    assert len(result.mapped_techniques) == 1 # Only one CVE had results
+    assert len(result.mapped_techniques) == 1  # Only one CVE had results
     assert result.mapped_techniques[0].cve_id == "CVE-2023-1234"
     assert result.mapped_techniques[0].technique_id == "T1566"
 

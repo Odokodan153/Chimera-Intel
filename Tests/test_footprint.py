@@ -200,6 +200,7 @@ class TestFootprint(unittest.TestCase):
         mock_async_get.side_effect = RequestError("Network error")
         result = asyncio.run(get_subdomains_dnsdumpster("example.com"))
         self.assertEqual(result, [])
+
     # --- END NEW ---
 
     @patch("chimera_intel.core.http_client.async_client.get", new_callable=AsyncMock)

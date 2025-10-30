@@ -219,10 +219,11 @@ class TestCloudOsint(unittest.TestCase):
         )
         mock_find_assets.assert_awaited_with("projectcloudinc")
         mock_save_db.assert_called_once()
-        mock_save_print.assert_called_once() # Verify this is also called
+        mock_save_print.assert_called_once()  # Verify this is also called
         # Add assertion for the final "complete" message
-        self.assertIn("Cloud asset scan complete for keyword: projectcloudinc", result.stdout)
-
+        self.assertIn(
+            "Cloud asset scan complete for keyword: projectcloudinc", result.stdout
+        )
 
     @patch("chimera_intel.core.cloud_osint.get_active_project")
     # Add patches for all side-effects, even if they aren't expected to run

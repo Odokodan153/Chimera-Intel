@@ -8,7 +8,7 @@ import httpx
 from bs4 import BeautifulSoup
 import datetime
 from hashlib import sha256
-import logging 
+import logging
 
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
@@ -58,7 +58,9 @@ async def check_for_changes(url: str, job_id: str):
                 console.print(
                     f"[bold red]!! Change Detected for {url}[/bold red] - Hash changed from {old_hash[:8]} to {current_hash[:8]}"
                 )
-                logger.warning(f"Change detected for {url}: {old_hash[:8]} -> {current_hash[:8]}")
+                logger.warning(
+                    f"Change detected for {url}: {old_hash[:8]} -> {current_hash[:8]}"
+                )
 
                 # Send notifications
                 message = f"🚨 Chimera Intel Alert: Significant change detected on monitored URL: {url}. Snapshot taken."
@@ -96,16 +98,15 @@ page_monitor_app = typer.Typer(
 )
 
 
-@page_monitor_app.command(
-    help="Add a new web page monitoring job to the scheduler."
-)
+@page_monitor_app.command(help="Add a new web page monitoring job to the scheduler.")
 def add(
-# --- End Fix ---
+    # --- End Fix ---
     # --- FIX: Changed back to Option from Argument ---
     url: Annotated[
         str,
         typer.Option(
-            "--url", "-u",
+            "--url",
+            "-u",
             help="The URL of the web page to monitor for changes.",
         ),
     ],
@@ -113,7 +114,8 @@ def add(
     schedule: Annotated[
         str,
         typer.Option(
-            "--schedule", "-s",
+            "--schedule",
+            "-s",
             help="Cron-style schedule for the monitor (e.g., '0 * * * *' for hourly).",
         ),
     ],
@@ -139,7 +141,10 @@ def add(
     console.print(
         "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
     )
-    logger.info(f"Successfully scheduled job {job_id} for {url} with schedule '{schedule}'")
-    
+    logger.info(
+        f"Successfully scheduled job {job_id} for {url} with schedule '{schedule}'"
+    )
+
+
 if __name__ == "__main__":
     page_monitor_app()

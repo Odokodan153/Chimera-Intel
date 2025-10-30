@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import risk_assessment
 
+
 class RiskAssessmentPlugin(ChimeraPlugin):
     """
     Risk Assessment plugin.
@@ -21,6 +22,7 @@ class RiskAssessmentPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the Risk Assessment plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = RiskAssessmentPlugin()

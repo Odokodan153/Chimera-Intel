@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import metacognition
 
+
 class MetacognitionPlugin(ChimeraPlugin):
     """
     Metacognition & Self-Improving AI Core plugin.
@@ -22,6 +23,7 @@ class MetacognitionPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the Metacognition plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = MetacognitionPlugin()

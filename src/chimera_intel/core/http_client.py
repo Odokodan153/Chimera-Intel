@@ -59,12 +59,9 @@ async def get_async_http_client(proxies: Optional[Dict[str, Any]] = None):
     """
     client = None
     try:
-# If proxies are provided, create a new client with the specified proxy settings.
+        # If proxies are provided, create a new client with the specified proxy settings.
         if proxies and "http" in proxies:
-            transport = httpx.AsyncHTTPTransport(
-                retries=3,
-                proxy=proxies["http"]  
-            )
+            transport = httpx.AsyncHTTPTransport(retries=3, proxy=proxies["http"])
         else:
             # FIX: If no proxy, explicitly create a new default transport with retries set.
             transport = httpx.AsyncHTTPTransport(retries=3)

@@ -107,15 +107,20 @@ class SpaceInt:
             )
         console.print(table)
 
+
 @app.command()
 def track(
-    norad_id: int = typer.Argument(..., help="The NORAD Catalog Number of the satellite to track."),
+    norad_id: int = typer.Argument(
+        ..., help="The NORAD Catalog Number of the satellite to track."
+    ),
 ):
     """
     Tracks a satellite by its NORAD ID and displays its current position.
     """
     spaceint = SpaceInt()
-    console.print(f"[bold cyan]Fetching TLE data for NORAD ID: {norad_id}...[/bold cyan]")
+    console.print(
+        f"[bold cyan]Fetching TLE data for NORAD ID: {norad_id}...[/bold cyan]"
+    )
     tle = spaceint.get_satellite_tle(norad_id)
     if tle:
         name, line1, line2 = tle
@@ -130,11 +135,16 @@ def track(
             table.add_row("Z", f"{position[2]:.2f}")
             console.print(table)
         else:
-            console.print("[bold red]Could not calculate satellite position.[/bold red]")
+            console.print(
+                "[bold red]Could not calculate satellite position.[/bold red]"
+            )
+
 
 @app.command()
 def launches(
-    limit: int = typer.Option(5, "--limit", "-l", help="The number of upcoming launches to display."),
+    limit: int = typer.Option(
+        5, "--limit", "-l", help="The number of upcoming launches to display."
+    ),
 ):
     """
     Displays a list of upcoming rocket launches.

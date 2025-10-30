@@ -36,13 +36,13 @@ def mock_tweepy_api(mocker):
             "hashtags": [{"text": "testing"}],
         },
     }
-    
+
     # Configure user_timeline to return a list of these mocks
     mock_api_instance.user_timeline.return_value = [mock_tweet] * 5
-    
+
     # Patch the bearer token handler as well
     mocker.patch("chimera_intel.core.profile_analyzer.tweepy.OAuth2BearerHandler")
-    
+
     return mock_api_instance
 
 
@@ -55,9 +55,7 @@ def test_analyze_twitter_profile_success(
         analysis_text="Positive sentiment.", error=None
     )
 
-    result = runner.invoke(
-        app, ["profile", "twitter", "testuser", "--count", "10"]
-    )
+    result = runner.invoke(app, ["profile", "twitter", "testuser", "--count", "10"])
 
     assert result.exit_code == 0
     assert "Analyzing Twitter profile for @testuser" in result.stdout
@@ -79,24 +77,18 @@ def test_analyze_twitter_profile_no_tweets(
     """Tests analysis when the user has no tweets."""
     mock_tweepy_api.user_timeline.return_value = []  # No tweets
 
-    result = runner.invoke(
-        app, ["profile", "twitter", "notweetsuser", "--count", "10"]
-    )
+    result = runner.invoke(app, ["profile", "twitter", "notweetsuser", "--count", "10"])
 
     assert result.exit_code == 0
     assert "No tweets found for this user." in result.stdout
     assert "AI Behavioral Profile" not in result.stdout
 
 
-def test_analyze_twitter_profile_no_google_key(
-    mock_api_keys, mock_tweepy_api
-):
+def test_analyze_twitter_profile_no_google_key(mock_api_keys, mock_tweepy_api):
     """Tests failure when the Google API key (for AI analysis) is missing."""
     mock_api_keys.google_api_key = None  # Simulate missing key
 
-    result = runner.invoke(
-        app, ["profile", "twitter", "anyuser", "--count", "10"]
-    )
+    result = runner.invoke(app, ["profile", "twitter", "anyuser", "--count", "10"])
 
     # The command should still succeed (exit_code 0)
     assert result.exit_code == 0
@@ -112,9 +104,7 @@ def test_analyze_twitter_profile_no_twitter_token(mock_api_keys):
     """Tests failure when the Twitter Bearer Token is missing."""
     mock_api_keys.twitter_bearer_token = None  # Simulate missing key
 
-    result = runner.invoke(
-        app, ["profile", "twitter", "anyuser", "--count", "10"]
-    )
+    result = runner.invoke(app, ["profile", "twitter", "anyuser", "--count", "10"])
 
     # The command should fail with exit_code 1
     assert result.exit_code == 1

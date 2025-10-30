@@ -8,8 +8,11 @@ from .. import models
 
 router = APIRouter()
 
+
 @router.get("/")
-async def sse_updates(request: Request, current_user: models.User = Depends(get_current_user)):
+async def sse_updates(
+    request: Request, current_user: models.User = Depends(get_current_user)
+):
     """
     Server-Sent Events endpoint to stream updates to the client.
     """
@@ -22,13 +25,10 @@ async def sse_updates(request: Request, current_user: models.User = Depends(get_
                 payload = await queue.get()
                 channel = payload["channel"]
                 message = payload["message"]
-                
+
                 # Only send updates intended for the current user
                 if channel == f"user:{current_user.id}":
-                    yield {
-                        "event": "update",
-                        "data": json.dumps(message)
-                    }
+                    yield {"event": "update", "data": json.dumps(message)}
         except asyncio.CancelledError:
             # Handle client disconnection
             broadcast.unsubscribe(queue)

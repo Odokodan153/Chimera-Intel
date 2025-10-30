@@ -2,6 +2,7 @@
 Human Intelligence (HUMINT) Management Plugin for Chimera Intel.
 This plugin now also serves as an aggregator for core operational commands.
 """
+
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
 from chimera_intel.core.humint import humint_app
@@ -27,7 +28,9 @@ class HumintPlugin(ChimeraPlugin):
         Returns the aggregated Typer app containing the sub-commands.
         """
         # Create a new Typer app instance that will be exposed by the plugin.
-        humanOps_app = typer.Typer(help="Core operational commands for HUMINT and Cognitive Warfare.")
+        humanOps_app = typer.Typer(
+            help="Core operational commands for HUMINT and Cognitive Warfare."
+        )
 
         # Add the core command groups to this new app instance.
         humanOps_app.add_typer(humint_app, name="humint")

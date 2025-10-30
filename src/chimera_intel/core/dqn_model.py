@@ -37,7 +37,7 @@ class DQN(nn.Module):
         else:
             # Random action: explore
             # Get device from state to ensure tensor is on same device
-            device = state.device if state.is_cuda else 'cpu'
+            device = state.device if state.is_cuda else "cpu"
             return torch.randint(
                 0, self.n_actions, (1,), dtype=torch.long, device=device
             )

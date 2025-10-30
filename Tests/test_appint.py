@@ -43,15 +43,15 @@ class TestAppint(unittest.TestCase):
         # Arrange
         # Mock subprocess.run to simulate successful decompilation
         mock_subprocess.return_value = MagicMock(returncode=0)
-        
+
         # --- FIX: Make mock_os_walk return a realistic relative path ---
         # The function will call os.walk on "dummy.apk_decompiled"
         output_dir = "dummy.apk_decompiled"
         mock_subdir = "fake_dir"
         mock_filename = "strings.xml"
         # e.g., "dummy.apk_decompiled/fake_dir"
-        mock_root_path = os.path.join(output_dir, mock_subdir) 
-        
+        mock_root_path = os.path.join(output_dir, mock_subdir)
+
         # Mock os.walk to return one file to scan in a subdirectory
         mock_os_walk.return_value = [
             (mock_root_path, [], [mock_filename]),
@@ -60,22 +60,22 @@ class TestAppint(unittest.TestCase):
 
         # Act
         # This will create output_dir = "dummy.apk_decompiled"
-        result = analyze_apk_static("dummy.apk") 
+        result = analyze_apk_static("dummy.apk")
 
         # Assert
         self.assertIsNone(result.error)
         self.assertEqual(len(result.secrets_found), 1)
         self.assertEqual(result.secrets_found[0].secret_type, "api_key")
         self.assertEqual(result.secrets_found[0].line_number, 2)
-        
+
         # --- FIX: Assert the correct *relative* path ---
         # The code calculates os.path.relpath("dummy.apk_decompiled/fake_dir/strings.xml", "dummy.apk_decompiled")
         # which should result in "fake_dir/strings.xml"
         # "fake_dir/strings.xml"
-        expected_rel_path = os.path.join(mock_subdir, mock_filename) 
+        expected_rel_path = os.path.join(mock_subdir, mock_filename)
         self.assertEqual(result.secrets_found[0].file_path, expected_rel_path)
         # ------------------------------------------------
-        
+
         mock_rmtree.assert_called_once()  # Ensure cleanup happens
 
     # --- Extended Test ---
@@ -218,7 +218,9 @@ class TestAppint(unittest.TestCase):
         """
         # Arrange
         # Mock the analysis to return a successful result
-        mock_analyze.return_value = MagicMock(error=None, model_dump=MagicMock(return_value={}))
+        mock_analyze.return_value = MagicMock(
+            error=None, model_dump=MagicMock(return_value={})
+        )
         # Mock the save_scan_to_db to raise a generic error
         mock_save_db.side_effect = Exception("Database connection failed")
 

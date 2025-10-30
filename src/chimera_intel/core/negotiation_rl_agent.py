@@ -175,9 +175,9 @@ class QLearningLLMAgent:
             device=self.device,
             dtype=torch.bool,
         )
-        
+
         # --- FIX: The unconditional torch.cat on next_state is removed from here ---
-        
+
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
@@ -187,20 +187,20 @@ class QLearningLLMAgent:
 
         # Compute V(s_{t+1}) for all next states.
         next_state_values = torch.zeros(self.batch_size, device=self.device)
-        
+
         # --- YOUR FIX APPLIED ---
         with torch.no_grad():
-             non_final_next_states_list = [s for s in batch.next_state if s is not None]
+            non_final_next_states_list = [s for s in batch.next_state if s is not None]
 
         if len(non_final_next_states_list) > 0:
             non_final_next_states = torch.cat(non_final_next_states_list, dim=0)
             target_values = self.target_net(non_final_next_states).max(1)[0]
             next_state_values[non_final_mask] = target_values
         else:
-         # Explicitly skip if there are no non-final states
+            # Explicitly skip if there are no non-final states
             pass
         # --- END OF YOUR FIX ---
-        
+
         # Compute the expected Q values
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 

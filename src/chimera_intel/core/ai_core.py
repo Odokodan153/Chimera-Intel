@@ -15,12 +15,8 @@ from typing import List, Optional, Any, Dict
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-from .schemas import (
-    SentimentAnalysisResult,
-    SWOTAnalysisResult,
-    AnomalyDetectionResult
-)
-from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult,GraphNarrativeResult
+from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult, GraphNarrativeResult
 from .graph_db import build_and_save_graph
 import json
 import os
@@ -160,15 +156,12 @@ def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResul
             detected_anomalies=[],
             error="'scikit-learn' or 'numpy' not installed.",
         )
-    
+
     # --- FIX: Handle empty list gracefully ---
     if not traffic_data:
-        return AnomalyDetectionResult(
-            data_points=[],
-            detected_anomalies=[]
-        )
+        return AnomalyDetectionResult(data_points=[], detected_anomalies=[])
     # --- End Fix ---
-    
+
     if not all(isinstance(x, (int, float)) for x in traffic_data):
         return AnomalyDetectionResult(
             data_points=traffic_data,

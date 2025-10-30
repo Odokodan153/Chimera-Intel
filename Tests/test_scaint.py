@@ -47,9 +47,7 @@ def test_analyze_repo_success(mocker, mock_git_clone, mock_subprocess_run):
     mocker.patch("os.path.exists", return_value=True)
 
     # --- FIX: Removed "analyze-repo" from the args list ---
-    result = runner.invoke(
-        scaint_app, ["https://github.com/some/repo"]
-    )
+    result = runner.invoke(scaint_app, ["https://github.com/some/repo"])
     # --- END FIX ---
 
     assert result.exit_code == 0, result.stdout
@@ -65,9 +63,7 @@ def test_analyze_repo_no_requirements_txt(mocker, mock_git_clone):
     mocker.patch("os.path.exists", return_value=False)
 
     # --- FIX: Removed "analyze-repo" from the args list ---
-    result = runner.invoke(
-        scaint_app, ["https://github.com/some/repo"]
-    )
+    result = runner.invoke(scaint_app, ["https://github.com/some/repo"])
     # --- END FIX ---
 
     assert result.exit_code == 1, result.stdout
@@ -83,9 +79,7 @@ def test_analyze_repo_git_clone_fails(mocker, mock_git_clone):
     )
 
     # --- FIX: Removed "analyze-repo" from the args list ---
-    result = runner.invoke(
-        scaint_app, ["https://github.com/some/repo"]
-    )
+    result = runner.invoke(scaint_app, ["https://github.com/some/repo"])
     # --- END FIX ---
 
     assert result.exit_code == 1, result.stdout

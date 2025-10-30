@@ -1,8 +1,8 @@
 import unittest
 import json
 import asyncio
-import typer  
-from unittest.mock import patch, MagicMock, AsyncMock 
+import typer
+from unittest.mock import patch, MagicMock, AsyncMock
 from typer.testing import CliRunner
 
 from chimera_intel.core.deep_research import conduct_deep_research, deep_research_app
@@ -101,13 +101,13 @@ class TestDeepResearch(unittest.TestCase):
             "http://example.com/some-finding",
         )
         self.assertEqual(result.pest_analysis.political[0], "Government funding")
-        
+
         # FIX (AttributeError): Access 'id' as a dict key, not an attribute
         self.assertIn("Quantum Computing", result.knowledge_graph.nodes[0]["id"])
-        
+
         # FIX (AssertionError): There are 7 search tasks, so 7 calls
         self.assertEqual(mock_search.call_count, 7)
-        
+
         mock_genai.configure.assert_called_once_with(api_key="fake_api_key")
 
     @patch("chimera_intel.core.deep_research.API_KEYS")
@@ -165,8 +165,7 @@ class TestDeepResearch(unittest.TestCase):
 
     # FIX (RuntimeError): Use AsyncMock to mock the async function
     @patch(
-        "chimera_intel.core.deep_research.conduct_deep_research",
-        new_callable=AsyncMock
+        "chimera_intel.core.deep_research.conduct_deep_research", new_callable=AsyncMock
     )
     def test_cli_run_success(self, mock_conduct_research):
         """Tests a successful run of the 'deep-research run' CLI command."""
@@ -177,7 +176,9 @@ class TestDeepResearch(unittest.TestCase):
             topic="Test Topic",
             target_profile={"name": "Test Topic", "description": "A test."},
             strategic_summary="Summary",
-            pest_analysis=PESTAnalysis(political=[], economic=[], social=[], technological=[]),
+            pest_analysis=PESTAnalysis(
+                political=[], economic=[], social=[], technological=[]
+            ),
             intelligence_gaps=[],
             recommended_actions=[],
             intelligence_findings=[],
@@ -185,7 +186,7 @@ class TestDeepResearch(unittest.TestCase):
         )
 
         # Act
-        
+
         # FIX (Typer Error): Invoke the wrapped 'app'
         result = runner.invoke(app, ["deep-research", "run", "Test Topic"])
 
@@ -198,8 +199,7 @@ class TestDeepResearch(unittest.TestCase):
 
     # FIX (RuntimeError): Use AsyncMock to mock the async function
     @patch(
-        "chimera_intel.core.deep_research.conduct_deep_research",
-        new_callable=AsyncMock
+        "chimera_intel.core.deep_research.conduct_deep_research", new_callable=AsyncMock
     )
     def test_cli_run_failure(self, mock_conduct_research):
         """Tests a failed run of the 'deep-research run' CLI command."""
@@ -209,12 +209,12 @@ class TestDeepResearch(unittest.TestCase):
         mock_conduct_research.return_value = None  # Simulate a failure
 
         # Act
-        
+
         # FIX (Typer Error): Invoke the wrapped 'app'
         result = runner.invoke(app, ["deep-research", "run", "Failed Topic"])
 
         # Assert
-        
+
         # FIX: This now passes because we added typer.Exit(code=1) to the app
         self.assertEqual(result.exit_code, 1)
         # FIX: Update assertion to match actual CLI output
@@ -222,14 +222,14 @@ class TestDeepResearch(unittest.TestCase):
 
     def test_cli_run_no_topic(self):
         """Tests that the CLI command fails if no topic is provided."""
-        
+
         # FIX (Typer Error): Invoke the wrapped 'app'
         result = runner.invoke(app, ["deep-research", "run"])
-        
+
         # --- FIX APPLIED ---
         # Exit code for missing argument is 2
         self.assertEqual(result.exit_code, 2)
-        
+
         # Check stderr for the missing argument message
         self.assertIn("Missing argument 'TOPIC'", result.stderr)
         # --- END FIX ---

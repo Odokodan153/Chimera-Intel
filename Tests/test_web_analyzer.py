@@ -295,7 +295,9 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
     @patch("chimera_intel.core.web_analyzer.console.print")
     @patch("chimera_intel.core.web_analyzer.resolve_target")  # <-- ADDED
-    def test_cli_web_run_invalid_domain(self, mock_resolve: MagicMock, mock_print: MagicMock): # <-- MODIFIED
+    def test_cli_web_run_invalid_domain(
+        self, mock_resolve: MagicMock, mock_print: MagicMock
+    ):  # <-- MODIFIED
         """Tests the 'scan web run' CLI command with an invalid domain, expecting an error."""
         # Arrange
         # Simulate the resolver receiving and passing through the invalid domain
@@ -303,12 +305,14 @@ class TestWebAnalyzer(unittest.IsolatedAsyncioTestCase):
 
         # Act
         # FIX: Invoke with just the argument, not the command name "run".
-        result = runner.invoke(web_app, ["invalid-domain"]) # <-- MODIFIED
+        result = runner.invoke(web_app, ["invalid-domain"])  # <-- MODIFIED
 
         # Assert
         self.assertNotEqual(result.exit_code, 0)
         # Verify the resolver was called as expected
-        mock_resolve.assert_called_once_with("invalid-domain", required_assets=["domain"])
+        mock_resolve.assert_called_once_with(
+            "invalid-domain", required_assets=["domain"]
+        )
         # Verify the error was printed
         mock_print.assert_called_once()
 

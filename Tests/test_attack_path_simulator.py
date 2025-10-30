@@ -74,12 +74,17 @@ def test_simulate_attack_success(
         if isinstance(arg, Panel):
             panel_title = str(arg.title)
             panel_content = str(arg.renderable)
-            if "Simulated Attack Path(s)" in panel_title or \
-               "Public-Facing Web Server -> API Gateway -> Customer Database" in panel_content:
+            if (
+                "Simulated Attack Path(s)" in panel_title
+                or "Public-Facing Web Server -> API Gateway -> Customer Database"
+                in panel_content
+            ):
                 found_title_or_panel = True
                 break
-    
-    assert found_title_or_panel, f"Expected attack path title or string was not printed. Mock calls: {mock_console_print.call_args_list}"
+
+    assert (
+        found_title_or_panel
+    ), f"Expected attack path title or string was not printed. Mock calls: {mock_console_print.call_args_list}"
 
     mock_get_db_conn.assert_called_once()
     mock_cursor.execute.assert_any_call("SELECT COUNT(*) FROM asset_connections")
@@ -117,13 +122,14 @@ def test_simulate_attack_no_assets(mock_get_db_conn, mock_console_print, mock_lo
 
     # The command 'return's, so the exit code is 0
     assert result.exit_code == 0, result.stdout
-    
+
     mock_console_print.assert_any_call(
         "[bold yellow]Warning:[/bold yellow] No assets found in the graph database. Cannot build attack graph."
     )
     mock_cursor.execute.assert_any_call("SELECT COUNT(*) FROM asset_connections")
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
+
 
 # --- Extended Test ---
 @patch("chimera_intel.core.attack_path_simulator.logger")

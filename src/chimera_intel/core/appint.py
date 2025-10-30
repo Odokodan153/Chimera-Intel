@@ -99,9 +99,7 @@ appint_app = typer.Typer()
 @appint_app.command("static")
 def run_static_apk_analysis(
     # --- FIX REVERTED: Use standard typer.Argument syntax ---
-    file_path: str = typer.Argument(
-        ..., help="Path to the .apk file to analyze."
-    ),
+    file_path: str = typer.Argument(..., help="Path to the .apk file to analyze."),
     # --------------------------------------------------
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."

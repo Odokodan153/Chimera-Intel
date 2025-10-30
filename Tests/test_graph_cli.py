@@ -19,6 +19,7 @@ def mock_db():
 
 # --- Tests for "query" command ---
 
+
 def test_run_cypher_query_success_with_results(mock_db):
     """Test the 'query' command with a successful query that returns results."""
     # Mock the return value of execute_query
@@ -63,6 +64,7 @@ def test_run_cypher_query_db_exception(mock_db):
 
 
 # --- Tests for "find-path" command ---
+
 
 def test_find_shortest_path_success(mock_db):
     """Test 'find-path' when a path is successfully found."""

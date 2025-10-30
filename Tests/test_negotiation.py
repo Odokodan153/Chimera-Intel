@@ -49,7 +49,7 @@ def test_full_engine_functionality(engine):
     message = "I'm not happy with this price, it's too high."
     analysis = engine.analyze_message(message)
     assert analysis["sentiment"] == "negative"
-    assert analysis["intent"] == "rejection" # This assertion will now pass
+    assert analysis["intent"] == "rejection"  # This assertion will now pass
 
     # 2. BATNA Assessment
 
@@ -102,6 +102,7 @@ def test_initial_recommendation(engine):
 
 # The following tests seem to be written in unittest style (using self)
 # I will convert them to standard pytest style.
+
 
 @pytest.fixture
 def self_engine():
@@ -165,6 +166,7 @@ def test_recommend_tactic_no_history(engine):
     """Tests the initial recommendation when there is no history."""
     recommendation = engine.recommend_tactic([])
     assert "Opening" in recommendation["tactic"]
+
 
 def test_assess_batna(engine):
     """Tests the BATNA assessment functionality."""

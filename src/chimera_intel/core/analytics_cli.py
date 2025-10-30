@@ -8,7 +8,7 @@ import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing_extensions import Annotated
-from typing import Optional # FIX: Import Optional
+from typing import Optional  # FIX: Import Optional
 from unittest.mock import MagicMock  # <-- FIX: Added import
 
 # FIX: Removed global console object
@@ -81,14 +81,18 @@ def show_analytics():
 # --- FIX: Added missing plot-sentiment command ---
 @analytics_app.command("plot-sentiment")
 def plot_sentiment_trajectory(
-    negotiation_id: Annotated[str, typer.Argument(help="The ID of the negotiation to plot.")],
+    negotiation_id: Annotated[
+        str, typer.Argument(help="The ID of the negotiation to plot.")
+    ],
     # FIX: Changed type hint to Optional[str]
-    output: Annotated[Optional[str], typer.Option(help="Path to save the plot image file.")] = None,
+    output: Annotated[
+        Optional[str], typer.Option(help="Path to save the plot image file.")
+    ] = None,
 ):
     """
     Plots the sentiment trajectory over time for a negotiation.
     """
-    
+
     # --- FIX: Robustly validate parameters ---
     def safe_getattr(obj, name):
         val = getattr(obj, name, None)
@@ -105,9 +109,9 @@ def plot_sentiment_trajectory(
     }
 
     if not all(db_params.values()):
-         # FIX: Use typer.echo to ensure output is captured by CliRunner
-         typer.echo("Error: Database connection parameters are missing.")
-         return
+        # FIX: Use typer.echo to ensure output is captured by CliRunner
+        typer.echo("Error: Database connection parameters are missing.")
+        return
     # --- End Fix ---
 
     try:
@@ -119,10 +123,10 @@ def plot_sentiment_trajectory(
 
         # FIX: Changed query to use named-style placeholder
         query = "SELECT timestamp, (analysis->>'tone_score')::float as sentiment FROM messages WHERE negotiation_id = %(neg_id)s ORDER BY timestamp"
-        
+
         # FIX: Changed params to a dictionary to match query and satisfy mypy
-        
-        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id}) # type: ignore[call-overload] 
+
+        df = pd.read_sql_query(query, conn, params={"neg_id": negotiation_id})  # type: ignore[call-overload]
         conn.close()
 
         if df.empty:
@@ -131,18 +135,19 @@ def plot_sentiment_trajectory(
             return
 
         # Ensure 'sentiment' column is numeric, coercing errors
-        df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+        df["sentiment"] = pd.to_numeric(df["sentiment"], errors="coerce")
         # Drop rows where sentiment could not be converted
-        df.dropna(subset=['sentiment'], inplace=True)
+        df.dropna(subset=["sentiment"], inplace=True)
 
         # Convert timestamp to datetime objects if they are not already
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
 
         if df.empty:
-             # FIX: Use typer.echo to ensure output is captured by CliRunner
-             typer.echo(f"No valid numeric sentiment data found for negotiation ID: {negotiation_id} after cleaning.")
-             return
+            # FIX: Use typer.echo to ensure output is captured by CliRunner
+            typer.echo(
+                f"No valid numeric sentiment data found for negotiation ID: {negotiation_id} after cleaning."
+            )
+            return
 
         plt.figure(figsize=(10, 6))
         plt.plot(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
@@ -150,9 +155,8 @@ def plot_sentiment_trajectory(
         plt.xlabel("Time")
         plt.ylabel("Sentiment Score")
         plt.grid(True)
-        plt.xticks(rotation=45) # Rotate x-axis labels for better readability
-        plt.tight_layout() # Adjust layout
-
+        plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+        plt.tight_layout()  # Adjust layout
 
         if output:
             plt.savefig(output)
@@ -164,8 +168,10 @@ def plot_sentiment_trajectory(
     except Exception as e:
         # FIX: Use typer.echo to ensure output is captured by CliRunner
         typer.echo(f"An error occurred: {e}")
+
+
 # --- End Fix ---
 
 
 if __name__ == "__main__":
-   analytics_app()
+    analytics_app()

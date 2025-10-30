@@ -117,10 +117,10 @@ def track_narrative(
                 f"[{sentiment_color}]{sentiment}[/{sentiment_color}]",
             )
         console.print(table)
-        
+
         # FIX: The function must return the result when called as a module utility.
         return analyzed_content
-        
+
     except ValueError as e:
         console.print(f"[bold red]Configuration Error:[/bold red] {e}")
         # FIX: Use typer.Exit(code=1)
@@ -132,7 +132,7 @@ def track_narrative(
 
     # --- FIX: Removed the unconditional typer.Exit(code=0) as it stops execution
     # when the function is called as a module utility.
-    # raise typer.Exit(code=0) 
+    # raise typer.Exit(code=0)
 
 
 if __name__ == "__main__":

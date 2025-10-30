@@ -318,7 +318,7 @@ class TestCybint(unittest.IsolatedAsyncioTestCase):
         printed_messages = " ".join(
             str(call.args[0]) for call in mock_console.call_args_list
         )
-        
+
         # This assertion will now pass as the correct domain is used
         self.assertIn(
             "Using domain 'project.com' from active project 'TestProject'",

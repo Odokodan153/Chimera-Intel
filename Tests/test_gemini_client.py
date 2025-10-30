@@ -25,6 +25,7 @@ def mock_genai():
 
 # --- Tests for __init__ ---
 
+
 @patch("src.chimera_intel.core.gemini_client.API_KEYS")
 def test_init_no_api_key(mock_keys, caplog):
     """Test client initialization when Google API key is missing."""
@@ -48,6 +49,7 @@ def test_init_configure_exception(mock_genai_lib, mock_keys, caplog):
 
 
 # --- Tests for classify_intent ---
+
 
 @patch("src.chimera_intel.core.gemini_client.API_KEYS")
 def test_classify_intent_no_model(mock_keys):
@@ -73,6 +75,7 @@ def test_classify_intent_api_exception(mock_api_keys, mock_genai, caplog):
 
 
 # --- Tests for generate_response ---
+
 
 @patch("src.chimera_intel.core.gemini_client.API_KEYS")
 def test_generate_response_no_model(mock_keys):

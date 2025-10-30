@@ -81,9 +81,7 @@ class TestStrategist(unittest.TestCase):
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
     # --- FIX: Patch path corrected to where API_KEYS is USED ---
-    @patch(
-        "chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key"
-    )
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_command_success(self, mock_generate, mock_get_data):
         """
         Tests a successful run of the `analysis strategy run` CLI command.
@@ -106,9 +104,7 @@ class TestStrategist(unittest.TestCase):
 
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     # --- FIX: Patch path corrected to where API_KEYS is USED ---
-    @patch(
-        "chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key"
-    )
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_no_historical_data(self, mock_get_data):
         """
         Tests the CLI command's behavior when no historical data is found for the target.
@@ -148,7 +144,7 @@ class TestStrategist(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         # With mix_stderr=False, we can now check the stderr stream
-        
+
         # Note: typer.secho prints to stderr, which is captured in stdout by default
         # unless mix_stderr=False is passed to invoke. Let's check stdout.
         self.assertIn("Google API key not found", result.stdout)
@@ -156,9 +152,7 @@ class TestStrategist(unittest.TestCase):
     @patch("chimera_intel.core.strategist.get_aggregated_data_for_target")
     @patch("chimera_intel.core.strategist.generate_strategic_profile")
     # --- FIX: Patch path corrected to where API_KEYS is USED ---
-    @patch(
-        "chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key"
-    )
+    @patch("chimera_intel.core.strategist.API_KEYS.google_api_key", "fake_google_key")
     def test_cli_strategy_handles_generation_error(self, mock_generate, mock_get_data):
         """
         Tests that the CLI command correctly handles an error from the AI generation function.

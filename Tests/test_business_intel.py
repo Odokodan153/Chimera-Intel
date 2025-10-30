@@ -226,7 +226,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
 
         # Assert
         self.assertIsNotNone(result.error)
-        self.assertIn("An unexpected error occurred while scraping patents", result.error)
+        self.assertIn(
+            "An unexpected error occurred while scraping patents", result.error
+        )
 
     # --- Extended Test ---
     @patch("chimera_intel.core.business_intel.API_KEYS")
@@ -334,9 +336,7 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
 
         # Act
         # FIX: Removed positional argument "Microsoft"
-        result = runner.invoke(
-            business_app, ["run", "--ticker", "MSFT", "--filings"]
-        )
+        result = runner.invoke(business_app, ["run", "--ticker", "MSFT", "--filings"])
 
         # Assert
         self.assertEqual(result.exit_code, 0, result.stderr)
@@ -348,7 +348,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
-    @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
+    @patch(
+        "chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany"
+    )
     @patch("chimera_intel.core.business_intel.API_KEYS")
     @patch("chimera_intel.core.business_intel.logger")
     def test_cli_business_intel_filings_no_ticker_warning(
@@ -384,7 +386,9 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
     @patch("chimera_intel.core.business_intel.save_scan_to_db")
     @patch("chimera_intel.core.business_intel.asyncio.run")
     @patch("chimera_intel.core.business_intel.get_active_project", return_value=None)
-    @patch("chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany")
+    @patch(
+        "chimera_intel.core.business_intel.resolve_target", return_value="SomeCompany"
+    )
     @patch("chimera_intel.core.business_intel.API_KEYS")
     @patch("chimera_intel.core.business_intel.logger")
     def test_cli_business_intel_no_gnews_key_warning(
@@ -442,7 +446,7 @@ class TestBusinessIntel(unittest.IsolatedAsyncioTestCase):
         )
         mock_get_project.return_value = mock_project
         mock_asyncio_run.side_effect = run_coroutine
-        
+
         # Act
         # This will pass `None` to company_name, triggering the resolver.
         result = runner.invoke(business_app, ["run"])

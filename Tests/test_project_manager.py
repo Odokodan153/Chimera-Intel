@@ -37,7 +37,10 @@ class TestProjectManager(unittest.TestCase):
     def test_create_project_success(self, mock_get_conn, mock_get_user):
         """Tests the successful creation of a new project."""
         mock_get_user.return_value = User(
-            id=1, username="testadmin", hashed_password="", email="testadmin@example.com"
+            id=1,
+            username="testadmin",
+            hashed_password="",
+            email="testadmin@example.com",
         )
         mock_conn = MagicMock()
         mock_cursor = MagicMock()

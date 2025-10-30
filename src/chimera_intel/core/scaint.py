@@ -8,6 +8,7 @@ import os
 import tempfile
 import subprocess
 import json
+
 # import sys  # <-- FIX: Removed sys import
 
 # Create a new Typer application for SCAINT commands
@@ -35,6 +36,7 @@ def analyze_dependencies(repo_path: str) -> dict:
         # and vulnerability findings to stdout, so we check stderr first
         raise Exception(f"OSV-Scanner error: {result.stderr}")
     return json.loads(result.stdout) if result.stdout else {"results": []}
+
 
 @scaint_app.command(
     help="Analyze a public code repository for supply chain vulnerabilities."
@@ -77,10 +79,10 @@ def analyze_repo(
                 print("---------------------------------")
             else:
                 print("\nNo known vulnerabilities found in the dependencies.")
-            
+
             # FIX: Removed 'raise typer.Exit(code=0)'.
             # CliRunner interprets a normal return as exit code 0.
-        
+
         except git.exc.GitCommandError as e:
             print(f"Error cloning repository: {e}")
             # FIX: Use typer.Exit(code=1) for errors.

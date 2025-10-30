@@ -16,11 +16,15 @@ def test_generate_scenario_success():
     """
     Tests the successful generation of a red team scenario.
     """
-    with patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys, patch(
-        "chimera_intel.core.red_team.get_aggregated_data_for_target"
-    ) as mock_get_data, patch(
-        "chimera_intel.core.red_team.generate_swot_from_data"
-    ) as mock_generate_swot:
+    with (
+        patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys,
+        patch(
+            "chimera_intel.core.red_team.get_aggregated_data_for_target"
+        ) as mock_get_data,
+        patch(
+            "chimera_intel.core.red_team.generate_swot_from_data"
+        ) as mock_generate_swot,
+    ):
 
         # --- Setup Mocks ---
 
@@ -45,9 +49,12 @@ def test_generate_scenario_no_data():
     """
     Tests the command's behavior when no aggregated data is found for the target.
     """
-    with patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys, patch(
-        "chimera_intel.core.red_team.get_aggregated_data_for_target"
-    ) as mock_get_data:
+    with (
+        patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys,
+        patch(
+            "chimera_intel.core.red_team.get_aggregated_data_for_target"
+        ) as mock_get_data,
+    ):
         # --- Setup Mocks ---
 
         mock_api_keys.google_api_key = "test_key"

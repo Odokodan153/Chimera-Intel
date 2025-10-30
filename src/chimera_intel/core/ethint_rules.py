@@ -1,5 +1,6 @@
 from .schemas import Operation
 
+
 def check_roe_01(operation: Operation) -> bool:
     """
     Checks for offensive operations targeting civilian infrastructure.
@@ -12,7 +13,11 @@ def check_roe_01(operation: Operation) -> bool:
     """
     if not operation.targets:
         return True  # No targets mean no violation.
-    return not (operation.is_offensive and any(t.category == 'civilian_infrastructure' for t in operation.targets))
+    return not (
+        operation.is_offensive
+        and any(t.category == "civilian_infrastructure" for t in operation.targets)
+    )
+
 
 def check_dp_01(operation: Operation) -> bool:
     """
@@ -27,6 +32,7 @@ def check_dp_01(operation: Operation) -> bool:
     # This check is safe because the boolean flags are expected to have a default
     # value of False in the Pydantic schema.
     return not (operation.targets_eu_citizen and not operation.has_legal_basis)
+
 
 def check_roe_02(operation: Operation) -> bool:
     """

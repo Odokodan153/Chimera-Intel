@@ -3,6 +3,7 @@
 from googlesearch import search as google_search_func
 from typing import List
 
+
 def search(queries: List[str], num_results: int = 10) -> List[str]:
     """
     Performs a simple Google search for multiple queries and returns a list of URLs.

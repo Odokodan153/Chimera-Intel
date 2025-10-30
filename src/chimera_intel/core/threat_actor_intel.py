@@ -19,6 +19,7 @@ from .utils import console, save_or_print_results
 
 logger = logging.getLogger(__name__)
 
+
 async def search_threat_actors(indicator: str) -> List[ThreatActor]:
     """
     Searches for threat actors associated with a given indicator.
@@ -29,9 +30,9 @@ async def search_threat_actors(indicator: str) -> List[ThreatActor]:
 
     # get_threat_actor_profile returns ThreatActorIntelResult which holds an optional actor.
     if profile_result.actor:
-        return [profile_result.actor] # Return a list containing the single found actor
+        return [profile_result.actor]  # Return a list containing the single found actor
 
-    return [] # Return an empty list if no actor is found
+    return []  # Return an empty list if no actor is found
 
 
 def get_threat_actor_profile(group_name: str) -> ThreatActorIntelResult:

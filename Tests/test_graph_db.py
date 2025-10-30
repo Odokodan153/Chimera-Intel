@@ -14,7 +14,7 @@ class TestGraphDb(unittest.TestCase):
             "footprint": {
                 "dns_records": {"A": ["1.2.3.4"]},
                 "subdomains": {"results": [{"domain": "sub.example.com"}]},
-            }
+            },
         }
         output_path = "test_graph.html"
 
@@ -26,10 +26,10 @@ class TestGraphDb(unittest.TestCase):
         self.assertIsNone(graph_result.error)
         self.assertEqual(graph_result.total_nodes, 3)  # target, ip, subdomain
         self.assertEqual(graph_result.total_edges, 2)
-        
+
         # Verify that the function created the HTML file
         self.assertTrue(os.path.exists(output_path))
-        
+
         # Clean up the created file
         os.remove(output_path)
 

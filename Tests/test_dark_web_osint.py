@@ -125,19 +125,17 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         "chimera_intel.core.dark_web_osint.async_run_dark_web_search",
         new_callable=AsyncMock,
     )
-    @patch("chimera_intel.core.dark_web_osint.get_active_project") # Need to mock this
+    @patch("chimera_intel.core.dark_web_osint.get_active_project")  # Need to mock this
     def test_cli_dark_web_search_with_project(self, mock_get_project, mock_async_run):
         """NEW: Tests the CLI command using an active project's company name."""
         # Arrange
-        
+
         # Mock the project that get_active_project() will return
         mock_project = MagicMock()
         mock_project.company_name = "ProjectCorp"
         mock_get_project.return_value = mock_project
-        
-        mock_scan_result = DarkWebScanResult(
-            query="ProjectCorp", found_results=[]
-        )
+
+        mock_scan_result = DarkWebScanResult(query="ProjectCorp", found_results=[])
 
         # Define an async side_effect function to simulate the prints
         async def mock_coro(*args, **kwargs):
@@ -163,9 +161,14 @@ class TestDarkWebOsint(unittest.IsolatedAsyncioTestCase):
         "chimera_intel.core.dark_web_osint.async_run_dark_web_search",
         new_callable=AsyncMock,
     )
-    @patch("chimera_intel.core.dark_web_osint.get_active_project", return_value=None) # No project
-    def test_cli_dark_web_search_no_query_or_project(self, mock_get_project, mock_async_run):
+    @patch(
+        "chimera_intel.core.dark_web_osint.get_active_project", return_value=None
+    )  # No project
+    def test_cli_dark_web_search_no_query_or_project(
+        self, mock_get_project, mock_async_run
+    ):
         """NEW: Tests CLI failure when no query is given and no project is active."""
+
         # Arrange
         # Define an async side_effect function to simulate the failure
         async def mock_coro(*args, **kwargs):

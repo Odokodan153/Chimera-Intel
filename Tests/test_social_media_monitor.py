@@ -10,7 +10,7 @@ from chimera_intel.core.social_media_monitor import (
 from chimera_intel.core.schemas import (
     TwitterMonitoringResult,
     YouTubeMonitoringResult,
-    Tweet
+    Tweet,
 )
 
 runner = CliRunner()

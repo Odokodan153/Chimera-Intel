@@ -71,6 +71,7 @@ class TestScheduler(unittest.TestCase):
     @patch("chimera_intel.core.scheduler.scheduler")
     def test_add_job_success(self, mock_scheduler):
         """Tests the successful addition of a job to the APScheduler."""
+
         def dummy_func():
             pass
 

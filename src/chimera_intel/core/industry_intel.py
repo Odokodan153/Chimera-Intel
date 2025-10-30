@@ -2,7 +2,7 @@ import logging
 import asyncio
 from typing import Optional
 import typer
-from .schemas import IndustryIntelResult, MonopolyAnalysisResult 
+from .schemas import IndustryIntelResult, MonopolyAnalysisResult
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
@@ -87,7 +87,10 @@ async def get_industry_analysis(
         industry=industry, country=country, analysis_text=ai_result.analysis_text
     )
 
-async def check_monopoly_status(company_name: str, industry: str, country: Optional[str] = None) -> MonopolyAnalysisResult:
+
+async def check_monopoly_status(
+    company_name: str, industry: str, country: Optional[str] = None
+) -> MonopolyAnalysisResult:
     """
     Analyzes news and web data to determine if a company has a monopoly in a given industry.
 
@@ -125,7 +128,10 @@ async def check_monopoly_status(company_name: str, industry: str, country: Optio
         )
 
     articles_text = "\n".join(
-        [f"Title: {article.title}\nDescription: {article.description}" for article in news_results.articles[:5]]
+        [
+            f"Title: {article.title}\nDescription: {article.description}"
+            for article in news_results.articles[:5]
+        ]
     )
 
     prompt = f"""
@@ -144,7 +150,9 @@ async def check_monopoly_status(company_name: str, industry: str, country: Optio
     ---
     """
 
-    with console.status("[bold cyan]AI is analyzing the competitive landscape...[/bold cyan]"):
+    with console.status(
+        "[bold cyan]AI is analyzing the competitive landscape...[/bold cyan]"
+    ):
         ai_result = generate_swot_from_data(prompt, google_api_key)
 
     if ai_result.error:
@@ -158,7 +166,7 @@ async def check_monopoly_status(company_name: str, industry: str, country: Optio
     return MonopolyAnalysisResult(
         company_name=company_name,
         industry=industry,
-        analysis_text=ai_result.analysis_text
+        analysis_text=ai_result.analysis_text,
     )
 
 
@@ -196,12 +204,17 @@ def run_industry_analysis(
         target_name = f"{industry}_{country}" if country else industry
         save_scan_to_db(target=target_name, module="industry_intel", data=results_dict)
 
+
 @industry_intel_app.command("monopoly")
 def run_monopoly_check(
     company_name: str = typer.Argument(..., help="The name of the company to analyze."),
     industry: str = typer.Argument(..., help="The industry to analyze within."),
-    country: Optional[str] = typer.Option(None, "--country", "-c", help="The country to focus the analysis on."),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Save results to a JSON file."),
+    country: Optional[str] = typer.Option(
+        None, "--country", "-c", help="The country to focus the analysis on."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
 ):
     """
     Analyzes if a company is a monopoly within a specific industry.
@@ -212,11 +225,15 @@ def run_monopoly_check(
         console.print(f"[bold red]Error:[/bold red] {results_model.error}")
         raise typer.Exit(code=1)
 
-    console.print(f"\n--- [bold]Monopoly Analysis: {company_name.title()} in {industry.title()}[/bold] ---\n")
+    console.print(
+        f"\n--- [bold]Monopoly Analysis: {company_name.title()} in {industry.title()}[/bold] ---\n"
+    )
     console.print(Markdown(results_model.analysis_text))
 
     if output_file:
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
         target_name = f"{company_name}_{industry}_monopoly"
-        save_scan_to_db(target=target_name, module="industry_intel_monopoly", data=results_dict)
+        save_scan_to_db(
+            target=target_name, module="industry_intel_monopoly", data=results_dict
+        )

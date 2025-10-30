@@ -2,6 +2,7 @@ import typer
 from src.chimera_intel.core.plugin_interface import ChimeraPlugin
 from src.chimera_intel.core import aia_framework
 
+
 class AIAPlugin(ChimeraPlugin):
     """
     Autonomous Intelligence Agent (AIA) Framework plugin.
@@ -23,6 +24,7 @@ class AIAPlugin(ChimeraPlugin):
     def initialize(self):
         """Initializes the AIA Framework plugin."""
         pass
+
 
 # The plugin manager will discover and instantiate this class
 plugin = AIAPlugin()

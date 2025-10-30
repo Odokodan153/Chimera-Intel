@@ -7,6 +7,7 @@ from typer.testing import CliRunner
 # --- FIX: Import app from analytics_cli and logic from analytics ---
 from src.chimera_intel.core.analytics import get_negotiation_kpis
 from src.chimera_intel.core.analytics_cli import analytics_app
+
 # --- End Fix ---
 
 # Runner for testing the Typer app
@@ -108,9 +109,10 @@ def test_get_kpis_db_exception(mock_connect, mock_db_params):
 
 
 # FIX: Patch the API_KEYS object *where it is used* (in analytics_cli)
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name=None, db_user=None, db_password=None, db_host=None
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(db_name=None, db_user=None, db_password=None, db_host=None),
+)
 # --- FIX: Remove unnecessary mocks for this validation test ---
 def test_plot_sentiment_missing_params():
     """Test plot command when DB parameters are missing from config."""
@@ -120,9 +122,15 @@ def test_plot_sentiment_missing_params():
 
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(
+        db_name="testdb",
+        db_user="testuser",
+        db_password="testpass",
+        db_host="localhost",
+    ),
+)
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
@@ -136,15 +144,23 @@ def test_plot_sentiment_connection_error(mock_plt, mock_read_sql, mock_connect):
 
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(
+        db_name="testdb",
+        db_user="testuser",
+        db_password="testpass",
+        db_host="localhost",
+    ),
+)
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics_cli.plt")
 # --- End Fix ---
-def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_db_conn):
+def test_plot_sentiment_no_messages(
+    mock_plt, mock_read_sql, mock_connect, mock_db_conn
+):
     """Test plot command when no messages are found for the negotiation ID."""
     mock_connect.return_value = mock_db_conn[0]
     # Simulate empty DataFrame
@@ -155,9 +171,15 @@ def test_plot_sentiment_no_messages(mock_plt, mock_read_sql, mock_connect, mock_
 
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(
+        db_name="testdb",
+        db_user="testuser",
+        db_password="testpass",
+        db_host="localhost",
+    ),
+)
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
@@ -183,23 +205,29 @@ def test_plot_sentiment_save_to_file(
 
     assert "Plot saved to test_plot.png" in result.stdout
     mock_plt.figure.assert_called_once()
-    mock_plt.plot.assert_called_with(df["timestamp"], df["sentiment"], marker="o", linestyle="-")
+    mock_plt.plot.assert_called_with(
+        df["timestamp"], df["sentiment"], marker="o", linestyle="-"
+    )
     mock_plt.savefig.assert_called_with("test_plot.png")
     mock_plt.show.assert_not_called()
 
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(
+        db_name="testdb",
+        db_user="testuser",
+        db_password="testpass",
+        db_host="localhost",
+    ),
+)
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")
 @patch("src.chimera_intel.core.analytics_cli.plt")
 # --- End Fix ---
-def test_plot_sentiment_show_plot(
-    mock_plt, mock_read_sql, mock_connect, mock_db_conn
-):
+def test_plot_sentiment_show_plot(mock_plt, mock_read_sql, mock_connect, mock_db_conn):
     """Test plot command successfully showing the plot (no output path)."""
     mock_connect.return_value = mock_db_conn[0]
     df = pd.DataFrame(
@@ -217,9 +245,15 @@ def test_plot_sentiment_show_plot(
 
 
 # FIX: Patch target to 'analytics_cli.API_KEYS' and provide 'database_url'
-@patch("src.chimera_intel.core.analytics_cli.API_KEYS", MagicMock(
-    db_name="testdb", db_user="testuser", db_password="testpass", db_host="localhost"
-))
+@patch(
+    "src.chimera_intel.core.analytics_cli.API_KEYS",
+    MagicMock(
+        db_name="testdb",
+        db_user="testuser",
+        db_password="testpass",
+        db_host="localhost",
+    ),
+)
 # --- FIX: Update patch targets to point to analytics_cli ---
 @patch("src.chimera_intel.core.analytics_cli.psycopg2.connect")
 @patch("src.chimera_intel.core.analytics_cli.pd.read_sql_query")

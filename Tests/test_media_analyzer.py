@@ -156,7 +156,7 @@ class TestMediaAnalyzer(unittest.IsolatedAsyncioTestCase):
             # Read the valid JSON from the output file
             with open(tmpfile_path, "r") as f:
                 output = json.load(f)
-        
+
         self.assertEqual(output["file_path"], "test.mp3")
         self.assertEqual(output["transcript"]["text"], "hello world")
 

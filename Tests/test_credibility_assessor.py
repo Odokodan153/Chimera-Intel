@@ -8,8 +8,10 @@ from chimera_intel.core.schemas import CredibilityResult
 from datetime import datetime
 import httpx
 from typer.testing import CliRunner
+
 # FIX: Import the sub-app from credibility_assessor.py, not the main app
 from chimera_intel.core.credibility_assessor import app as credibility_app
+
 
 # Use unittest.IsolatedAsyncioTestCase for async test methods
 class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
@@ -23,7 +25,10 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(result)
 
     @patch("chimera_intel.core.credibility_assessor.API_KEYS")
-    @patch("chimera_intel.core.credibility_assessor.httpx.AsyncClient.post", new_callable=AsyncMock)
+    @patch(
+        "chimera_intel.core.credibility_assessor.httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+    )
     async def test_check_google_safe_browsing_api_error(self, mock_post, mock_api_keys):
         """Tests Google Safe Browsing check during an API error."""
         mock_api_keys.google_api_key = "fake_key"
@@ -135,19 +140,36 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result, CredibilityResult)
         self.assertIn("Clickbait phrases found in content.", result.factors)
         # FIX: Check if the factor *starts with* the text
-        self.assertTrue(any(f.startswith("Domain is relatively new") for f in result.factors))
-        
-    @patch("chimera_intel.core.credibility_assessor.urlparse", side_effect=Exception("Test Error"))
+        self.assertTrue(
+            any(f.startswith("Domain is relatively new") for f in result.factors)
+        )
+
+    @patch(
+        "chimera_intel.core.credibility_assessor.urlparse",
+        side_effect=Exception("Test Error"),
+    )
     async def test_assess_source_general_exception(self, mock_urlparse):
         """Tests the general exception handler for assess_source_credibility."""
         result = await assess_source_credibility("https://www.example.com")
         self.assertEqual(result.credibility_score, 0.0)
         self.assertIn("An error occurred: Test Error", result.error)
 
-    @patch("chimera_intel.core.credibility_assessor.whois.whois", side_effect=Exception("WHOIS Error"))
-    @patch("chimera_intel.core.credibility_assessor.check_google_safe_browsing", new_callable=AsyncMock, return_value={})
-    @patch("chimera_intel.core.credibility_assessor.httpx.AsyncClient.get", new_callable=AsyncMock)
-    async def test_assess_source_whois_exception(self, mock_get, mock_safe_browsing, mock_whois):
+    @patch(
+        "chimera_intel.core.credibility_assessor.whois.whois",
+        side_effect=Exception("WHOIS Error"),
+    )
+    @patch(
+        "chimera_intel.core.credibility_assessor.check_google_safe_browsing",
+        new_callable=AsyncMock,
+        return_value={},
+    )
+    @patch(
+        "chimera_intel.core.credibility_assessor.httpx.AsyncClient.get",
+        new_callable=AsyncMock,
+    )
+    async def test_assess_source_whois_exception(
+        self, mock_get, mock_safe_browsing, mock_whois
+    ):
         """Tests exception handling during the whois lookup."""
         mock_response = MagicMock()
         mock_response.text = "<html><body></body></html>"
@@ -159,7 +181,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Could not determine domain age.", result.factors)
 
     # --- CLI Tests ---
-    
+
     def setUp(self):
         self.runner = CliRunner()
 
@@ -173,7 +195,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
         mock_asyncio_run.return_value = mock_result
-        
+
         # FIX: Added required URL argument, explicitly include "assess" subcommand
         result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
@@ -192,7 +214,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
         mock_asyncio_run.return_value = mock_result
-        
+
         # FIX: Added required URL argument, explicitly include "assess" subcommand
         result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
@@ -210,7 +232,7 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
             error=None,
         )
         mock_asyncio_run.return_value = mock_result
-        
+
         # FIX: Added required URL argument, explicitly include "assess" subcommand
         result = self.runner.invoke(credibility_app, ["https://example.com"])
         self.assertEqual(result.exit_code, 0)
@@ -228,13 +250,14 @@ class TestCredibilityAssessor(unittest.IsolatedAsyncioTestCase):
             error="A test error occurred",
         )
         mock_asyncio_run.return_value = mock_result
-        
+
         # FIX: Added required URL argument, explicitly include "assess" subcommand
         result = self.runner.invoke(credibility_app, ["https://example.com"])
         # The command prints an error but exits cleanly (code 0)
-        self.assertEqual(result.exit_code, 0) 
+        self.assertEqual(result.exit_code, 0)
         self.assertIn("Error:", result.stdout)
         self.assertIn("A test error occurred", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

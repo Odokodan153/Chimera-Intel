@@ -92,7 +92,7 @@ class TestLeadSuggester(unittest.TestCase):
     def test_cli_run_lead_suggestion_success(
         self, mock_generate, mock_get_data, mock_get_project, mock_api_keys
     ):
-    # --- END FIX ---
+        # --- END FIX ---
         """Tests a successful run of the 'lead-suggester run' command."""
         # Arrange
 
@@ -113,27 +113,29 @@ class TestLeadSuggester(unittest.TestCase):
         # --- END FIX ---
 
         # Act
-        
+
         # --- FIX: Removed the "run" argument ---
         result = runner.invoke(lead_suggester_app, ["--no-rich"])
-        
+
         # Assert
 
         self.assertEqual(result.exit_code, 0, msg=result.output)
         self.assertIn("Suggested Lead", result.output)
-        
+
         # --- FIX: Update assertion to use the new key ---
-        mock_generate.assert_called_with({"target": "example.com"}, "fake_key_for_cli_test")
+        mock_generate.assert_called_with(
+            {"target": "example.com"}, "fake_key_for_cli_test"
+        )
         # --- END FIX ---
 
     @patch("chimera_intel.core.lead_suggester.get_active_project", return_value=None)
     def test_cli_run_no_active_project(self, mock_get_project):
         """Tests the CLI command when no active project is set."""
         # This test should now fail with exit code 1 instead of 2
-        
+
         # --- FIX: Removed the "run" argument ---
         result = runner.invoke(lead_suggester_app, [])
-        
+
         self.assertEqual(result.exit_code, 1)
         self.assertIn("No active project set", result.output)
 
@@ -153,9 +155,9 @@ class TestLeadSuggester(unittest.TestCase):
         )
 
         # Act
-        
+
         # This test should now fail with exit code 1 instead of 2
-        
+
         # --- FIX: Removed the "run" argument ---
         result = runner.invoke(lead_suggester_app, [])
 

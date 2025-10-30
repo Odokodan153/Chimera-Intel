@@ -42,7 +42,9 @@ class TestSpaceInt(unittest.TestCase):
 
         tle = self.spaceint.get_satellite_tle(25544)
         self.assertIsNone(tle)
-        mock_print.assert_called_with("[bold red]Error fetching TLE data: API Error[/bold red]")
+        mock_print.assert_called_with(
+            "[bold red]Error fetching TLE data: API Error[/bold red]"
+        )
 
     @patch("requests.get")
     def test_get_satellite_tle_invalid_data(self, mock_get):
@@ -66,10 +68,12 @@ class TestSpaceInt(unittest.TestCase):
     def test_get_satellite_position_exception(self, mock_print, mock_twoline2rv):
         # Mock an exception during satellite position calculation
         mock_twoline2rv.side_effect = Exception("SGP4 Error")
-        
+
         position = self.spaceint.get_satellite_position(MOCK_TLE_LINE1, MOCK_TLE_LINE2)
         self.assertIsNone(position)
-        mock_print.assert_called_with("[bold red]Error calculating satellite position: SGP4 Error[/bold red]")
+        mock_print.assert_called_with(
+            "[bold red]Error calculating satellite position: SGP4 Error[/bold red]"
+        )
 
     @patch("src.chimera_intel.core.spaceint.Satrec.sgp4")
     def test_get_satellite_position_sgp4_error(self, mock_sgp4):
@@ -86,7 +90,7 @@ class TestSpaceInt(unittest.TestCase):
 
         # Call the predict_flyover function
         result = self.spaceint.predict_flyover(25544, 42.6977, 23.3219)
-        
+
         # Function should return early
         self.assertIsNone(result)
 
@@ -100,7 +104,7 @@ class TestSpaceInt(unittest.TestCase):
         mock_get_position.return_value = (1000.0, 2000.0, 3000.0)
 
         result = self.runner.invoke(app, ["track", "25544"])
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Successfully fetched TLE for: ISS (ZARYA)", result.stdout)
         self.assertIn("Current Position of ISS (ZARYA)", result.stdout)
@@ -117,7 +121,7 @@ class TestSpaceInt(unittest.TestCase):
         mock_get_tle.return_value = None
 
         result = self.runner.invoke(app, ["track", "25544"])
-        
+
         self.assertEqual(result.exit_code, 0)
         # No error message is printed from the command itself, only from get_satellite_tle (which is mocked)
         self.assertNotIn("Successfully fetched TLE", result.stdout)
@@ -131,7 +135,7 @@ class TestSpaceInt(unittest.TestCase):
         mock_get_position.return_value = None
 
         result = self.runner.invoke(app, ["track", "25544"])
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Successfully fetched TLE for: ISS (ZARYA)", result.stdout)
         self.assertIn("Could not calculate satellite position.", result.stdout)
@@ -147,14 +151,14 @@ class TestSpaceInt(unittest.TestCase):
                     "net": "2025-12-01T12:00:00Z",
                     "rocket": {"configuration": {"full_name": "Falcon 9"}},
                     "mission": {"name": "Starlink Group 10-1"},
-                    "pad": {"name": "SLC-40"}
+                    "pad": {"name": "SLC-40"},
                 }
             ]
         }
         mock_get.return_value = mock_response
 
         result = self.runner.invoke(app, ["launches", "--limit", "1"])
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Upcoming Rocket Launches", result.stdout)
         self.assertIn("Falcon 9", result.stdout)
@@ -167,23 +171,27 @@ class TestSpaceInt(unittest.TestCase):
         mock_get.side_effect = requests.exceptions.RequestException("Launch API Error")
 
         result = self.runner.invoke(app, ["launches", "--limit", "1"])
-        
+
         self.assertEqual(result.exit_code, 0)
         self.assertIn("Error fetching launch data: Launch API Error", result.stdout)
 
     @patch("src.chimera_intel.core.spaceint.SpaceInt.predict_flyover")
     def test_predict_command_success(self, mock_predict_flyover):
         # Test that the 'predict' command calls the class method
-        result = self.runner.invoke(app, ["predict", "25544", "--lat", "42.7", "--lon", "23.3"])
-        
+        result = self.runner.invoke(
+            app, ["predict", "25544", "--lat", "42.7", "--lon", "23.3"]
+        )
+
         self.assertEqual(result.exit_code, 0)
         mock_predict_flyover.assert_called_with(25544, 42.7, 23.3, 24)
 
     @patch("src.chimera_intel.core.spaceint.SpaceInt.predict_flyover")
     def test_predict_command_with_hours(self, mock_predict_flyover):
         # Test that 'predict' command passes 'hours' argument
-        result = self.runner.invoke(app, ["predict", "25544", "--lat", "42.7", "--lon", "23.3", "--hours", "48"])
-        
+        result = self.runner.invoke(
+            app, ["predict", "25544", "--lat", "42.7", "--lon", "23.3", "--hours", "48"]
+        )
+
         self.assertEqual(result.exit_code, 0)
         mock_predict_flyover.assert_called_with(25544, 42.7, 23.3, 48)
 

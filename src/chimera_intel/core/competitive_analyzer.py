@@ -8,6 +8,7 @@ of two targets based on previously saved scan data.
 import typer
 import json
 import logging
+
 # --- FIX: Removed 'import sys' ---
 
 from rich.markdown import Markdown
@@ -124,7 +125,7 @@ def run_competitive_analysis(
         )
         # --- FIX: Reverted to typer.Exit ---
         raise typer.Exit(code=1)
-        
+
     api_key = API_KEYS.google_api_key
     if not api_key:
         console.print(
@@ -132,7 +133,7 @@ def run_competitive_analysis(
         )
         # --- FIX: Reverted to typer.Exit ---
         raise typer.Exit(code=1)
-        
+
     console.print(
         "[bold cyan]Synthesizing data with AI for competitive analysis...[/bold cyan]"
     )

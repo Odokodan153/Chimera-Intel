@@ -19,9 +19,12 @@ from functools import lru_cache
 from chimera_intel.core.database import get_db_connection as get_db
 from chimera_intel.core import schemas
 from chimera_intel.core.negotiation import NegotiationEngine
+
+
 # This is a placeholder for auth, you'll need to implement it
 def get_current_user():
     return None
+
 
 # Configure structured logging
 
@@ -280,6 +283,7 @@ async def websocket_endpoint(
     finally:
         db.close()
         logger.info(f"Closed DB session for WebSocket negotiation {negotiation_id}")
+
 
 app = FastAPI()
 app.include_router(router)

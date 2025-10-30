@@ -23,9 +23,15 @@ console = Console()
 
 PSYCHOLOGICAL_TRIGGERS = {
     "fear": [
-        "panic", "threat", "danger", "risk", "warning", "collapse", "afraid",
+        "panic",
+        "threat",
+        "danger",
+        "risk",
+        "warning",
+        "collapse",
+        "afraid",
         # FIX: Added 'fear' to ensure explicit mention is captured
-        "fear" 
+        "fear",
     ],
     "anger": [
         "outrage",
@@ -143,13 +149,13 @@ class CognitiveWarfareEngine:
     def _identify_triggers(self, content: str) -> List[str]:
         """Identifies psychological triggers in a text."""
         triggers_found = []
-        content_lower = content.lower() # Check against lowercase content
+        content_lower = content.lower()  # Check against lowercase content
         for trigger, keywords in PSYCHOLOGICAL_TRIGGERS.items():
             # FIX: Use regex with word boundaries (\b) to match whole words
             # This prevents matching "us" in "must"
             try:
                 # Escape keywords that might have regex special characters
-                pattern = r'\b(' + '|'.join(re.escape(k) for k in keywords) + r')\b'
+                pattern = r"\b(" + "|".join(re.escape(k) for k in keywords) + r")\b"
                 if re.search(pattern, content_lower, re.IGNORECASE):
                     triggers_found.append(trigger)
             except re.error as e:

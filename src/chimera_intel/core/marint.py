@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 import asyncio
 import websockets
 import json
-import sys  
+import sys
 from chimera_intel.core.config_loader import API_KEYS
 
 # Create a new Typer application for MARINT commands
@@ -17,7 +17,7 @@ marint_app = typer.Typer(
 )
 
 
-async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False): 
+async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):
     """
     Connects to the aisstream.io websocket and retrieves data for the specified vessel.
     """
@@ -46,19 +46,15 @@ async def get_vessel_data(imo: str, api_key: str, test_mode: bool = False):
                     typer.echo(f"Course Over Ground: {position_report['Cog']} degrees")
                     typer.echo("----------------------")
                     if test_mode:
-                        break  
-
+                        break
 
 
 @marint_app.command(help="Track a vessel by its IMO number.")
 def track_vessel(
     imo: Annotated[
         str,
-        typer.Argument(  
-            help="The IMO number of the vessel to track."
-        ),
+        typer.Argument(help="The IMO number of the vessel to track."),
     ],
-    
     test: bool = typer.Option(False, "--test"),
 ):
     """
@@ -68,25 +64,24 @@ def track_vessel(
     api_key = API_KEYS.aisstream_api_key
     if not api_key:
         typer.echo("Error: AISSTREAM_API_KEY not found in .env file.", err=True)
-       
+
         sys.exit(1)
-    
 
     typer.echo(f"Starting live tracking for vessel with IMO: {imo}...")
     try:
         asyncio.run(get_vessel_data(imo, api_key=api_key, test_mode=test))
-        
+
     except ValueError as e:
-       
+
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except KeyboardInterrupt:
         typer.echo("\nStopping vessel tracking.")
-       
-        sys.exit(0) 
+
+        sys.exit(0)
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
-    
+
         sys.exit(1)
 
 
