@@ -14,6 +14,7 @@ from typing import Dict, Optional
 
 from chimera_intel.core.narrative_analyzer import track_narrative
 from chimera_intel.core.utils import console, save_or_print_results
+from .database import save_scan_to_db # Added database import
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ def map_synthetic_narrative(query: str) -> SyntheticNarrativeMapResult:
     logger.info(f"Mapping synthetic narrative for query: {query}")
     try:
         # 1. Reuse existing narrative tracker
+        # (Assuming narrative_analyzer.track_narrative exists)
         narrative_items = track_narrative(query)
         if not narrative_items:
             return SyntheticNarrativeMapResult(query=query, total_items_found=0, synthetic_items_detected=0)
@@ -106,13 +108,18 @@ def map_synthetic_narrative(query: str) -> SyntheticNarrativeMapResult:
 
         # 2. Analyze each item for synthetic prose
         for item in narrative_items:
-            analysis = analyze_text_for_synthesis(item["content"])
+            # Fallback for item content
+            item_content = item.get("content", "")
+            if not item_content:
+                continue
+
+            analysis = analyze_text_for_synthesis(item_content)
             
             synth_item = SyntheticNarrativeItem(
-                source=item["source"],
-                type=item["type"],
-                content=item["content"],
-                sentiment=item["sentiment"],
+                source=item.get("source", "Unknown"),
+                type=item.get("type", "Unknown"),
+                content=item_content,
+                sentiment=item.get("sentiment", 0.0),
                 synthetic_analysis=analysis
             )
             
@@ -154,8 +161,51 @@ def run_synthetic_narrative_map(
     console.print(f"[bold cyan]Mapping synthetic narrative for:[/bold cyan] '{query}'")
     result = map_synthetic_narrative(query)
     
-    save_or_print_results(result.model_dump(), output_file)
+    result_dump = result.model_dump(exclude_none=True)
+    save_or_print_results(result_dump, output_file)
+    
+    # Save the main result to the DB
+    save_scan_to_db(target=query, module="synthetic_narrative_map", data=result_dump)
     
     if result.synthetic_items_detected > 0:
         console.print(f"\n[bold yellow]Warning:[/bold yellow] Detected [bold red]{result.synthetic_items_detected}[/bold red] suspected synthetic items.")
         console.print(f"Breakdown: {result.synthetic_items_by_type}")
+
+
+# --- NEW CLI COMMAND START ---
+# This new command reuses the existing `map_synthetic_narrative` function
+# as requested by "Disinformation-Audit".
+
+@disinformation_app.command(
+    "audit",
+    help="Passively monitor for disinformation campaigns against a target.",
+)
+def run_disinformation_audit(
+    target: str = typer.Argument(..., help="The brand, executive, or keyword to audit."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Passively monitors social, news, and forum data for coordinated
+    information campaigns or narrative manipulation against the target.
+    
+    This command is an alias for 'synthetic-narrative-map'
+    to fit the 'Disinformation-Audit' use case.
+    """
+    console.print(f"[bold cyan]Running Disinformation Audit for:[/bold cyan] '{target}'")
+    # Reuse the exact same function as synthetic-narrative-map
+    result = map_synthetic_narrative(target)
+    
+    result_dump = result.model_dump(exclude_none=True)
+    save_or_print_results(result_dump, output_file)
+    
+    # Save the main result to the DB
+    save_scan_to_db(target=target, module="disinformation_audit", data=result_dump)
+
+    if result.synthetic_items_detected > 0:
+        console.print(f"\n[bold yellow]Audit Warning:[/bold yellow] Detected [bold red]{result.synthetic_items_detected}[/bold red] suspected synthetic items amplifying this narrative.")
+        console.print(f"Breakdown: {result.synthetic_items_by_type}")
+    else:
+        console.print(f"\n[bold green]Audit Complete:[/bold green] No synthetic amplification detected.")
+# --- NEW CLI COMMAND END ---

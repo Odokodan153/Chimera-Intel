@@ -1243,7 +1243,33 @@ class WalletAnalysisResult(BaseModel):
     recent_transactions: List[WalletTransaction] = []
     error: Optional[str] = None
 
-    # --- Code & Repository Intelligence Models ---
+class SmartContractAnalysis(BaseModel):
+    address: str
+    is_verified: bool = False
+    contract_name: Optional[str] = None
+    creator_address: Optional[str] = None
+    creator_tx_hash: Optional[str] = None
+    token_name: Optional[str] = None
+    token_symbol: Optional[str] = None
+    source_code_snippet: Optional[str] = None
+    error: Optional[str] = None
+
+class TokenFlow(BaseModel):
+    hash: str
+    from_address: str
+    to_address: str
+    token_symbol: str
+    amount: float
+    timestamp: str
+
+class TokenFlowResult(BaseModel):
+    address: str
+    token_symbol_filter: Optional[str] = None
+    token_flows: List[TokenFlow] = Field(default_factory=list)
+    total_flows_tracked: int = 0
+    error: Optional[str] = None
+
+# --- Code & Repository Intelligence Models ---
 
 
 class CommitterInfo(BaseModel):
@@ -4076,3 +4102,133 @@ class CrowdfundingAnalysisResult(BaseResult):
     """Result of a crowdfunding platform analysis."""
     keyword: str
     projects: List[CrowdfundingProject] = []
+
+class ArbitrationFinding(BaseModel):
+    """Details of a specific arbitration or legal dispute finding."""
+    case_title: str = Field(..., description="Title or name of the case/dispute.")
+    source_url: str = Field(..., description="URL of the source document or article.")
+    snippet: str = Field(description="A snippet from the source describing the dispute.")
+    case_type: str = Field(default="Unknown", description="Type of dispute (e.g., 'Arbitration', 'Litigation', 'Dispute').")
+
+class ArbitrationSearchResult(BaseResult):
+    """Result model for arbitration and legal dispute searches."""
+    query: str
+    findings: List[ArbitrationFinding] = Field(default_factory=list, description="List of found arbitration cases or disputes.")
+
+class ExportControlFinding(BaseModel):
+    """Details of a potential export control, embargo, or trade restriction."""
+    entity_name: str = Field(..., description="The name of the entity mentioned.")
+    source_list: str = Field(..., description="The name of the sanctions/control list (e.g., 'Consolidated Screening List', 'OFAC').")
+    source_url: str = Field(..., description="URL of the source document or listing.")
+    details: str = Field(description="Details about the restriction or finding.")
+
+class ExportControlResult(BaseResult):
+    """Result model for export control screening."""
+    query: str
+    findings: List[ExportControlFinding] = Field(default_factory=list, description="List of export control findings.")
+    
+class LobbyingActivity(BaseModel):
+    """Details of a specific lobbying filing or political donation."""
+    payee: str = Field(..., description="The lobbying firm or political entity receiving funds.")
+    amount: float = Field(..., description="The amount of money involved.")
+    date: str = Field(..., description="The date of the filing or donation.")
+    source_url: str = Field(..., description="URL of the source data (e.g., OpenSecrets, FEC).")
+    purpose: str = Field(description="The stated purpose of the lobbying or donation.")
+
+class LobbyingSearchResult(BaseResult):
+    """Result model for lobbying and political influence searches."""
+    query: str
+    activities: List[LobbyingActivity] = Field(default_factory=list, description="List of lobbying activities and donations found.")
+
+class PatentRDResult(BaseModel):
+    """Model for the result of a patent and R&D tracking analysis."""
+    topic: str
+    company: Optional[str] = None
+    analysis_text: str
+    error: Optional[str] = None
+
+
+class MarketIntelResult(BaseModel):
+    """Model for the result of a market intelligence analysis."""
+    product: str
+    industry: str
+    country: Optional[str] = None
+    analysis_text: str
+    error: Optional[str] = None
+
+
+class ESGMonitorResult(BaseModel):
+    """Model for the result of an ESG & sustainability monitoring analysis."""
+    company: str
+    industry: Optional[str] = None
+    analysis_text: str
+    error: Optional[str] = None
+
+class FinancialTransaction(BaseModel):
+    """Represents a single financial transaction for AML analysis."""
+    transaction_id: str
+    from_account: str
+    to_account: str
+    amount: float
+    timestamp: datetime
+    currency: str = "USD"
+    description: Optional[str] = None
+
+class MoneyFlowGraph(BaseModel):
+    """Result of a money flow graph visualization."""
+    graph_file: str
+    total_nodes: int
+    total_edges: int
+    suspicious_nodes: List[str] = []
+
+class AmlPattern(BaseModel):
+    """Describes a potential money laundering pattern detected by AI."""
+    pattern_type: str = Field(..., description="e.g., 'Structuring', 'Smurfing', 'Layering'")
+    description: str = Field(..., description="AI-generated explanation of the pattern")
+    involved_accounts: List[str]
+    confidence_score: float = Field(..., description="Confidence of the AI's detection (0.0 to 1.0)")
+    evidence: List[str] = Field(..., description="List of transaction IDs supporting the finding")
+
+class AmlAnalysisResult(BaseModel):
+    """Result from the AI-powered pattern recognition."""
+    target: str
+    patterns_detected: List[AmlPattern] = []
+    summary: str
+    error: Optional[str] = None
+
+class ScenarioImpact(BaseModel):
+    """Describes the impact of a simulation on a single node."""
+    node_affected: str
+    impact_type: str = Field(..., description="e.g., 'Sanction', 'Seizure'")
+    affected_downstream_nodes: List[str]
+    total_value_frozen: float
+    
+class AmlSimulationResult(BaseModel):
+    """Result of a 'what-if' scenario simulation."""
+    scenario_description: str
+    impacts: List[ScenarioImpact]
+    error: Optional[str] = None
+class DetectedObject(BaseModel):
+    """Represents a single object detected in imagery."""
+    label: str = Field(..., description="The classification label of the detected object (e.g., 'Vehicle', 'Storage Tank').")
+    confidence: float = Field(..., description="The model's confidence in the detection, from 0.0 to 1.0.")
+    lat: float = Field(..., description="Latitude of the object's centroid.")
+    lon: float = Field(..., description="Longitude of the object's centroid.")
+    bounding_box: Optional[List[float]] = Field(None, description="Coordinates of the bounding box [lat_min, lon_min, lat_max, lon_max].")
+    timestamp: Optional[datetime] = Field(None, description="Timestamp of the imagery in which the object was detected.")
+
+class ImageryAnalysisResult(BaseModel):
+    """Contains the results of a GEOINT++ imagery analysis task."""
+    request_id: uuid.UUID = Field(..., description="The unique ID matching the analysis request.")
+    status: str = Field(..., description="The processing status (e.g., 'PENDING', 'COMPLETED', 'ERROR').")
+    change_detected: Optional[bool] = Field(None, description="Flag indicating if significant change was detected.")
+    change_summary: Optional[str] = Field(None, description="A textual summary of the detected changes.")
+    change_confidence: Optional[float] = Field(None, description="Confidence in the detected change.")
+    objects_detected: List[DetectedObject] = Field(default=[], description="A list of objects found in the 'after' imagery.")
+    total_objects: int = Field(default=0, description="Total number of objects detected.")
+    imagery_provider: Optional[str] = Field(None, description="The source of the satellite/aerial imagery (e.g., 'Planet', 'Maxar').")
+    timestamp_before: Optional[datetime] = Field(None, description="Timestamp of the 'before' image used for comparison.")
+    timestamp_after: Optional[datetime] = Field(None, description="Timestamp of the 'after' image used for comparison.")
+    correlated_vessel_logs: List[str] = Field(default=[], description="List of vessel IDs/logs (AIS) correlated with activity.")
+    correlated_flight_logs: List[str] = Field(default=[], description="List of flight IDs/logs (ADS-B) correlated with activity.")
+    error: Optional[str] = Field(None, description="Error message if the analysis failed.")

@@ -6,7 +6,7 @@ from chimera_intel.core.leadership_profiler import (
     profile_leadership,
     leadership_profiler_app,
 )
-from chimera_intel.core.schemas import LeadershipProfileResult, GoogleSearchResults, AIAnalysisResult
+from chimera_intel.core.schemas import LeadershipProfileResult, GoogleSearchResults, SWOTAnalysisResult
 
 runner = CliRunner()
 
@@ -29,7 +29,7 @@ class TestLeadershipProfiler(unittest.TestCase):
             total_results=1,
             error=None
         )
-        mock_ai_call.return_value = AIAnalysisResult(
+        mock_ai_call.return_value = SWOTAnalysisResult(
             analysis_text="Finding: Strong political affiliation.", error=None
         )
 

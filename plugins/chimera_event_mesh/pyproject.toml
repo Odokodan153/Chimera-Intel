@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_event_mesh"
+version = "0.1.0"
+description = "Chimera Intel plugin for the Real-Time Event Mesh."
+requires-python = ">=3.8"
+dependencies = [
+    # "chimera-intel", 
+    "feedparser"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+event_mesh = "chimera_event_mesh.main:create_plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

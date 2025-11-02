@@ -6,7 +6,7 @@ from chimera_intel.core.alternative_hypothesis_generator import (
     generate_alternative_hypotheses,
     alternative_hypothesis_app,
 )
-from chimera_intel.core.schemas import AlternativeHypothesisResult, AIAnalysisResult
+from chimera_intel.core.schemas import AlternativeHypothesisResult, SWOTAnalysisResult
 
 runner = CliRunner()
 
@@ -29,7 +29,7 @@ class TestAlternativeHypothesisGenerator(unittest.TestCase):
                 }
             }
         }
-        mock_ai_call.return_value = AIAnalysisResult(
+        mock_ai_call.return_value = SWOTAnalysisResult(
             analysis_text="Alt: The vulnerability is a honeypot.", error=None
         )
 

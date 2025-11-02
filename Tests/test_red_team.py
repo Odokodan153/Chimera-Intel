@@ -3,7 +3,7 @@ from unittest.mock import patch
 import typer  # Import typer
 
 # Import the application instance and the SWOTAnalysisResult schema
-from chimera_intel.core.red_team import red_team_app
+from chimera_intel.core.red_team import simulate_adversary_ttp, red_team_app
 from chimera_intel.core.schemas import SWOTAnalysisResult
 
 app = typer.Typer()
@@ -151,3 +151,66 @@ def test_phishing_simulation_no_data():
         assert result.exit_code == 0
         assert "No OSINT data found for target 'NoDataCorp'" in result.stdout
         assert "Phishing Simulation Template" not in result.stdout
+
+    @patch("chimera_intel.core.red_team.API_KEYS")
+    @patch("chimera_intel.core.red_team.get_aggregated_data_for_target")
+    @patch("chimera_intel.core.red_team.generate_swot_from_data")
+    def test_simulate_adversary_ttp_success(
+        self, mock_generate_swot, mock_get_data, mock_api_keys
+    ):
+        """Tests successful generation of a TTP simulation plan."""
+        # Setup Mocks
+        mock_api_keys.google_api_key = "fake_key"
+        mock_get_data.return_value = {"domains": ["example.com"], "employees": ["test@example.com"]}
+        
+        mock_ai_response = SWOTAnalysisResult(
+            analysis_text="## TTP Objective\nTest simulation plan.",
+            error=None
+        )
+        mock_generate_swot.return_value = mock_ai_response
+
+        # Call the function
+        result = simulate_adversary_ttp(target="example.com", ttp_id="T1566")
+
+        # Assertions
+        self.assertIsNotNone(result)
+        self.assertIn("ttp_simulation_plan", result)
+        self.assertEqual(result["ttp_simulation_plan"], "## TTP Objective\nTest simulation plan.")
+        mock_get_data.assert_called_with("example.com")
+        mock_generate_swot.assert_called_once()
+
+    @patch("chimera_intel.core.red_team.API_KEYS")
+    @patch("chimera_intel.core.red_team.get_aggregated_data_for_target")
+    def test_simulate_adversary_ttp_no_data(self, mock_get_data, mock_api_keys):
+        """Tests simulation when no OSINT data is found."""
+        mock_api_keys.google_api_key = "fake_key"
+        mock_get_data.return_value = None
+
+        result = simulate_adversary_ttp(target="nodata.com", ttp_id="T1566")
+
+        self.assertIsNone(result)
+        mock_get_data.assert_called_with("nodata.com")
+
+    @patch("chimera_intel.core.red_team.API_KEYS")
+    def test_simulate_adversary_ttp_no_api_key(self, mock_api_keys):
+        """Tests that the function exits if the API key is missing."""
+        mock_api_keys.google_api_key = None
+        
+        with self.assertRaises(typer.Exit) as cm:
+            simulate_adversary_ttp(target="example.com", ttp_id="T1566")
+        
+        self.assertEqual(cm.exception.exit_code, 1)
+
+    @patch("chimera_intel.core.red_team.simulate_adversary_ttp")
+    def test_run_ttp_simulation_command(self, mock_simulate_func):
+        """Tests the CLI command 'simulate-ttp'."""
+        mock_simulate_func.return_value = {"ttp_simulation_plan": "CLI Test Plan"}
+
+        result = self.runner.invoke(
+            red_team_app, ["red-team", "simulate-ttp", "example.com", "T1059"]
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("CLI Test Plan", result.stdout)
+        self.assertIn("TTP Emulation Plan for example.com (T1059)", result.stdout)
+        mock_simulate_func.assert_called_with("example.com", "T1059")

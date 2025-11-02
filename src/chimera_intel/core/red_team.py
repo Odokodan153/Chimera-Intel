@@ -172,3 +172,89 @@ def run_phishing_simulation(
         console.print(result["phishing_simulation_template"])
     else:
         console.print(f"No OSINT data found for target '{target}' to generate simulation.")
+
+# --- NEW: Adversary Emulation Functionality ---
+
+def simulate_adversary_ttp(target: str, ttp_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Generates an adversary emulation plan for a specific TTP.
+    """
+    console.print(
+        f"[bold cyan]Generating emulation plan for TTP {ttp_id} against {target}...[/bold cyan]"
+    )
+    
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        raise typer.Exit(code=1)
+
+    # 1. Gather aggregated data for context
+    try:
+        aggregated_data = get_aggregated_data_for_target(target)
+    except Exception as e:
+        console.print(f"[bold red]Database Error:[/bold red] Could not fetch OSINT data: {e}")
+        return None
+
+    if not aggregated_data:
+        return None # No data to work with
+
+    # 2. Build the AI prompt
+    prompt = f"""
+    As a senior purple team operator, design an adversary emulation plan
+    for the target '{target}' based on the following MITRE ATT&CK TTP: {ttp_id}.
+
+    Use the provided OSINT data to make the simulation steps as realistic as possible.
+
+    **Aggregated OSINT Data (sample):**
+    {str(aggregated_data)[:2000]} 
+
+    **Task:**
+    Generate a complete simulation plan with the following components:
+    1.  **TTP Objective:** Briefly explain what this TTP (e.g., "T1566: Phishing") achieves.
+    2.  **Emulation Steps (Red Team):** Provide 3-5 specific, actionable steps
+        a red team would take to simulate this TTP against '{target}', using the
+        OSINT data as context (e.g., "Craft a spear-phishing email targeting
+        known employee [X] referencing internal project [Y]").
+    3.  **Detection & Analytics (Blue Team):** For each step, describe a
+        specific detection analytic (e.g., "Monitor for new processes spawned
+        by Microsoft Office applications").
+    4.  **Mitigation (Blue Team):** Recommend a primary mitigation for this TTP
+        (e.g., "Implement user training for phishing awareness").
+    
+    Format the output clearly with markdown.
+    """
+
+    # 3. Call the AI
+    ai_result = generate_swot_from_data(prompt, api_key)
+
+    if ai_result.error:
+        console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
+        return None
+        
+    return {"ttp_simulation_plan": ai_result.analysis_text}
+
+@red_team_app.command("simulate-ttp")
+def run_ttp_simulation(
+    target: str = typer.Argument(
+        ..., help="The target entity to simulate against."
+    ),
+    ttp_id: str = typer.Argument(
+        ..., help="The MITRE ATT&CK TTP ID (e.g., 'T1566', 'T1059.001')."
+    )
+):
+    """
+    Generates an adversary emulation plan for a specific TTP.
+    """
+    try:
+        result = simulate_adversary_ttp(target, ttp_id)
+    except typer.Exit as te:
+        raise te
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] Unexpected error: {e}")
+        raise typer.Exit(code=1)
+        
+    if result:
+        console.print(f"\n[bold green]TTP Emulation Plan for {target} ({ttp_id}):[/bold green]")
+        console.print(result["ttp_simulation_plan"])
+    else:
+        console.print(f"No OSINT data found for target '{target}' to generate simulation plan.")

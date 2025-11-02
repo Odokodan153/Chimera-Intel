@@ -1,6 +1,9 @@
 import unittest
-from unittest.mock import Mock
-from chimera_intel.core.correlation_engine import CorrelationEngine
+from unittest.mock import Mock, patch
+from chimera_intel.core.correlation_engine import (
+    CorrelationEngine,
+    AlertPrioritizationEngine,
+)
 from chimera_intel.core.schemas import Event
 
 
@@ -11,11 +14,14 @@ class TestCorrelationEngine(unittest.TestCase):
         """Set up a mock plugin manager and config for each test."""
         self.mock_plugin_manager = Mock()
         self.config = {
-            "correlation_rules": {
-                "rules": [
+            # --- NEW: IFTTT Pipelines ---
+            "automation_pipelines": {
+                "pipelines": [
                     {
-                        "name": "New IP Scan",
-                        "conditions": {"event_type": "footprint_scan"},
+                        "name": "Pipeline 1: New IP Scan",
+                        # 'IF' trigger:
+                        "trigger": {"event.event_type": "footprint_scan"},
+                        # 'THEN-THAT' actions:
                         "actions": [
                             {
                                 "type": "trigger_scan",
@@ -25,156 +31,144 @@ class TestCorrelationEngine(unittest.TestCase):
                                     "run",
                                     "{details.new_ip}",
                                 ],
-                                "description": "New IP {details.new_ip} found for {target}",
                             }
                         ],
                     },
                     {
-                        "name": "New Subdomain Scan",
-                        "conditions": {"event_type": "footprint_scan"},
-                        "actions": [
-                            {
-                                "type": "trigger_scan",
-                                "params": [
-                                    "scan",
-                                    "web",
-                                    "run",
-                                    "{details.new_subdomain}",
-                                ],
-                                "description": "New subdomain {details.new_subdomain} found",
-                            }
-                        ],
-                    },
-                    {
-                        "name": "Critical CVE TTP Mapping",
-                        "conditions": {"event_type": "vulnerability_scan"},
+                        "name": "Pipeline 2: Critical CVE TTP",
+                        "trigger": {
+                            "event.event_type": "vulnerability_scan",
+                            # NEW: Trigger on high priority
+                            "priority": "High",
+                        },
                         "actions": [
                             {
                                 "type": "ttp_lookup",
                                 "trigger_on_find": {
-                                    # FIX: Template {cve_id} to be found by the new logic
                                     "params": ["ttp", "map-cve", "{cve_id}"]
                                 },
                             }
                         ],
                     },
+                    # --- NEW: Cross-Module Correlation Pipeline ---
+                    {
+                        "name": "Pipeline 3: Cross-Module Finance to Personnel",
+                        "trigger": {
+                            # 'IF' a finance event happens...
+                            "domain": "finance",
+                            "event.event_type": "finance_anomaly",
+                            "event.details.is_large_transfer": True,
+                        },
+                        "actions": [
+                            {
+                                # 'THEN-THAT' trigger a personnel scan
+                                "type": "trigger_scan",
+                                "params": [
+                                    "personnel",
+                                    "check_user",
+                                    "{details.user}", # Get user from finance event
+                                ],
+                            }
+                        ],
+                    },
                 ]
             },
-            # FIX: Add missing TTP knowledge base for the CVE test
+            # --- NEW: Prioritization Weights ---
+            "prioritization_weights": {
+                "impact": 0.6,
+                "confidence": 0.3,
+                "relevance": 0.1,
+            },
             "ttp_knowledge_base": {
                 "CVE-2023-1337": {"name": "Mock TTP", "attack_id": "T1234"}
             },
         }
         self.engine = CorrelationEngine(self.mock_plugin_manager, self.config)
 
-    # FIX: Removed invalid patch
+    # --- NEW: Test for Prioritization Engine ---
+    def test_alert_prioritization_engine(self):
+        """Tests the new AlertPrioritizationEngine directly."""
+        engine = AlertPrioritizationEngine(
+            {"impact": 0.6, "confidence": 0.3, "relevance": 0.1}
+        )
+        
+        # High impact event
+        high_event = Event(
+            event_type="vulnerability_scan",
+            source="vulnerability_scanner",
+            details={"cvss_score": 10.0, "is_critical_asset": True},
+        )
+        high_alert = engine.prioritize_alert(high_event)
+        
+        # Low impact event
+        low_event = Event(
+            event_type="vulnerability_scan",
+            source="social_media_listener", # Low confidence
+            details={"cvss_score": 1.0},
+        )
+        low_alert = engine.prioritize_alert(low_event)
+
+        self.assertEqual(high_alert.priority, "High")
+        self.assertEqual(low_alert.priority, "Low")
+        self.assertGreater(high_alert.ranking_score, low_alert.ranking_score)
+        self.assertAlmostEqual(high_alert.impact, 1.0)
+        self.assertAlmostEqual(high_alert.confidence, 0.9)
+        self.assertAlmostEqual(low_alert.impact, 0.1)
+        self.assertAlmostEqual(low_alert.confidence, 0.5)
+
+
     def test_new_ip_triggers_vuln_scan(self):
-        """Tests that a new IP in a footprint scan triggers a vulnerability scan."""
-        # Arrange
+        """Tests that a new IP triggers Pipeline 1."""
         event = Event(
             event_type="footprint_scan",
             source="footprint_scanner",
             details={"new_ip": "2.2.2.2"},
         )
-
-        # Act
         self.engine.process_event(event)
-
-        # Assert
-        # FIX: Use assert_any_call, as this event matches 2 rules
-        # (The "new_subdomain" rule also fires but with a placeholder)
-        self.mock_plugin_manager.run_command.assert_any_call(
+        self.mock_plugin_manager.run_command.assert_called_with(
             "defensive", "vuln", "run", "2.2.2.2"
         )
 
-    # FIX: Removed invalid patch
-    def test_new_subdomain_triggers_web_scan(self):
-        """Tests that a new subdomain triggers a web analysis scan."""
-        # Arrange
-        event = Event(
-            event_type="footprint_scan",
-            source="footprint_scanner",
-            details={"new_subdomain": "new.example.com"},
-        )
-
-        # Act
-        self.engine.process_event(event)
-
-        # Assert
-        # FIX: Use assert_any_call, as this event matches 2 rules
-        # (The "new_ip" rule also fires but with a placeholder)
-        self.mock_plugin_manager.run_command.assert_any_call(
-            "scan", "web", "run", "new.example.com"
-        )
-
     def test_critical_cve_triggers_ttp_map(self):
-        """Tests that a critical CVE (CVSS >= 9.0) found in a vuln scan triggers a TTP mapping."""
-        # Arrange
+        """Tests that a critical CVE triggers Pipeline 2."""
         event = Event(
             event_type="vulnerability_scan",
             source="vulnerability_scanner",
             details={"cve_id": "CVE-2023-1337", "cvss_score": 9.8},
         )
-
-        # Act
         self.engine.process_event(event)
-
-        # Assert
-        # This test is fine, as only one rule matches
+        
+        # Assert: TTP lookup was called because the event was prioritized as 'High'
         self.mock_plugin_manager.run_command.assert_called_once_with(
             "ttp", "map-cve", "CVE-2023-1337"
         )
 
-    # FIX: Removed invalid patch
-    def test_no_change_does_not_trigger_scan(self):
-        """
-        NEW: Tests that no scan is triggered if the footprint has not changed.
-        (FIX: Test now confirms scans *are* called, but with placeholders)
-        """
-        # Arrange
+    def test_low_priority_cve_does_not_trigger(self):
+        """Tests that a low-priority CVE does *not* trigger Pipeline 2."""
+        self.mock_plugin_manager.reset_mock()
         event = Event(
-            event_type="footprint_scan",
-            source="footprint_scanner",
-            details={},  # No details
+            event_type="vulnerability_scan",
+            source="vulnerability_scanner",
+            details={"cve_id": "CVE-2023-0001", "cvss_score": 3.0}, # Low score
         )
-
-        # Act
         self.engine.process_event(event)
+        
+        # Assert: No command was called because priority was not 'High'
+        self.mock_plugin_manager.run_command.assert_not_called()
 
-        # Assert
-        # FIX: The code *does* trigger scans (it only checks event_type).
-        # We assert that it was called with the unfilled template.
-        self.mock_plugin_manager.run_command.assert_any_call(
-            "defensive", "vuln", "run", "{details.new_ip}"
-        )
-        self.mock_plugin_manager.run_command.assert_any_call(
-            "scan", "web", "run", "{details.new_subdomain}"
-        )
-
-    # FIX: Removed invalid patch
-    def test_no_previous_scan_does_not_trigger(self):
-        """
-        NEW: Tests that no scan is triggered if there is no previous scan.
-        (FIX: Test now confirms scans *are* called, but with placeholders)
-        """
-        # Arrange
+    # --- NEW: Test for Cross-Module Correlation ---
+    def test_cross_module_correlation_finance_to_personnel(self):
+        """Tests Pipeline 3: A finance event triggers a personnel scan."""
         event = Event(
-            event_type="footprint_scan",
-            source="footprint_scanner",
-            details={},  # No details
+            event_type="finance_anomaly",
+            source="finance_tracker",
+            details={"is_large_transfer": True, "user": "john.doe"},
         )
-
-        # Act
         self.engine.process_event(event)
-
-        # Assert
-        # FIX: The code *does* trigger scans (it only checks event_type).
-        # We assert that it was called with the unfilled template.
-        self.mock_plugin_manager.run_command.assert_any_call(
-            "defensive", "vuln", "run", "{details.new_ip}"
-        )
-        self.mock_plugin_manager.run_command.assert_any_call(
-            "scan", "web", "run", "{details.new_subdomain}"
+        
+        # Assert: The finance event triggered a "personnel" plugin command
+        self.mock_plugin_manager.run_command.assert_called_once_with(
+            "personnel", "check_user", "john.doe"
         )
 
 

@@ -11,18 +11,19 @@ from typing import Optional, List, Set
 import asyncio
 from datetime import datetime
 
-# --- MODIFIED IMPORTS ---
 from .schemas import (
     GeointReport, 
     CountryRiskProfile, 
     WifiNetworkInfo, 
     WifiGeointResult,
-    PhysicalEvent,         # New
-    EventDetectionResult,    # New
-    AerialVehicleInfo,     # New
-    AerialIntelResult        # New
+    PhysicalEvent,
+    EventDetectionResult,
+    AerialVehicleInfo,
+    AerialIntelResult,
+    ImageryAnalysisRequest,
+    DetectedObject,
+    ImageryAnalysisResult
 )
-# --- END MODIFIED IMPORTS ---
 
 from .utils import save_or_print_results, console
 from .database import get_aggregated_data_for_target, save_scan_to_db
@@ -288,6 +289,68 @@ def find_aerial_vehicles(lat: float, lon: float, radius_km: int = 50) -> AerialI
         )
 
 
+# --- NEW FUNCTION: Planetary-Scale Imagery Analysis (GEOINT++) ---
+
+def analyze_imagery(
+    request: ImageryAnalysisRequest, 
+    provider: str = "mock"
+) -> ImageryAnalysisResult:
+    """
+    Performs large-scale imagery analysis for change detection, object detection,
+    and activity monitoring.
+    
+    NOTE: This is a mock function. A real implementation would require a dedicated
+    backend pipeline integrating with providers like Planet, Maxar, or AWS Open Data
+    and running ML models (e.g., YOLO, SAM) at scale.
+    """
+    logger.info(f"Received imagery analysis request for target: {request.target_geofence_id}")
+    
+    if not API_KEYS.planet_api_key:
+        logger.warning("No PLANET_API_KEY found. Using mock data.")
+        provider = "mock"
+
+    if provider == "mock":
+        # Simulate finding change and detecting objects
+        
+        detected_objects = [
+            DetectedObject(
+                label="Vehicle",
+                confidence=0.85,
+                lat=request.center_lat + 0.001,
+                lon=request.center_lon,
+            ),
+            DetectedObject(
+                label="Storage Tank",
+                confidence=0.92,
+                lat=request.center_lat,
+                lon=request.center_lon + 0.001,
+            ),
+        ]
+        
+        return ImageryAnalysisResult(
+            request_id=request.request_id,
+            status="COMPLETED",
+            change_detected=True,
+            change_summary="New construction detected in northeast quadrant.",
+            objects_detected=detected_objects,
+            total_objects=len(detected_objects),
+            imagery_provider="Mock Satellite Inc.",
+            timestamp_before=datetime(2023, 1, 15).isoformat(),
+            timestamp_after=datetime(2023, 2, 15).isoformat(),
+        )
+    else:
+        # Placeholder for real API call
+        logger.error(f"Imagery provider '{provider}' not implemented.")
+        return ImageryAnalysisResult(
+            request_id=request.request_id,
+            status="ERROR",
+            error=f"Provider '{provider}' not implemented."
+        )
+
+
+# --- END NEW FUNCTION ---
+
+
 geoint_app = typer.Typer()
 
 
@@ -385,4 +448,57 @@ def run_aerial_tracking(
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
         target=f"{lat},{lon}", module="geoint_aerial_intel", data=results_dict
+    )
+
+
+# --- NEW COMMAND: Planetary-Scale Imagery Analysis (GEOINT++) ---
+
+@geoint_app.command("track-imagery")
+def run_imagery_analysis(
+    lat: float = typer.Option(..., "--lat", help="Center latitude for the analysis area."),
+    lon: float = typer.Option(..., "--lon", help="Center longitude for the analysis area."),
+    geofence_id: Optional[str] = typer.Option(
+        None, "--geofence", "-g", help="ID of a pre-defined geofence to analyze."
+    ),
+    target: Optional[str] = typer.Option(
+        None, help="Target project to associate this analysis with."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Analyzes satellite imagery for change detection and object monitoring (GEOINT++).
+    
+    This is a high-level simulation. Real implementation is complex.
+    """
+    if geofence_id:
+        target_name = resolve_target(geofence_id)
+        console.print(f"[cyan]Analyzing imagery for geofence: {target_name}...[/cyan]")
+        db_target = target_name
+    elif target:
+        target_name = resolve_target(target)
+        console.print(f"[cyan]Analyzing imagery near ({lat}, {lon}) for target: {target_name}...[/cyan]")
+        db_target = target_name
+    else:
+        console.print(f"[cyan]Analyzing imagery for coordinates: ({lat}, {lon})...[/cyan]")
+        db_target = f"{lat},{lon}"
+        
+    
+    # In a real app, geofence_id would be used to look up coordinates
+    # For now, we just pass the lat/lon and ID
+    
+    request = ImageryAnalysisRequest(
+        target_geofence_id=geofence_id or "adhoc_request",
+        center_lat=lat,
+        center_lon=lon,
+        radius_km=5, # Example default
+        analysis_types=["CHANGE_DETECTION", "OBJECT_DETECTION"],
+    )
+    
+    results_model = analyze_imagery(request, provider="mock")
+    results_dict = results_model.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=db_target, module="geoint_imagery_analysis", data=results_dict
     )

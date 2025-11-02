@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-operational-defense"
+version = "1.0.0"
+description = "A Chimera Intel plugin for grouped Red Team, Counter-Intel, Deception, and Supply Chain operations."
+requires-python = ">=3.9"
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+ops = "chimera_operational_defense.main:OperationalDefensePlugin"

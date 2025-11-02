@@ -2,7 +2,7 @@
 Module for Legal Intelligence (LEGINT).
 
 Handles the gathering of intelligence from legal sources, such as court dockets,
-case filings, sanctions lists, and corporate registries.
+case filings, sanctions lists, corporate registries, and regulatory filings.
 """
 
 import typer
@@ -18,19 +18,28 @@ from .schemas import (
     UboResult,
     UboData,
     ComplianceCheckResult,
-    PIIFinding
+    PIIFinding,
+    ArbitrationFinding,
+    ArbitrationSearchResult,
+    ExportControlResult,
+    ExportControlFinding,
+    LobbyingSearchResult,
+    LobbyingActivity
 )
 from .utils import save_or_print_results
 from .database import save_scan_to_db, get_scan_from_db, update_scan_in_db
 from .config_loader import API_KEYS
 from .http_client import sync_client
 from .project_manager import resolve_target
+from .google_search import search_google 
 
 logger = logging.getLogger(__name__)
 
+
+
+
 # --- PII Redaction Engine ---
 
-# More comprehensive regex patterns
 PII_PATTERNS = {
     "Email": r"[\w\.-]+@[\w\.-]+\.\w+",
     "Phone (US)": r"\(?\b\d{3}\)?[\s\.-]?\d{3}[\s\.-]?\d{4}\b",
@@ -96,16 +105,6 @@ def filter_pii_data(
     """
     A real-time filtering engine to flag and redact PII from collected data
     using a comprehensive set of regex patterns.
-
-    Args:
-        data (Dict[str, Any]): The raw data collected from a module.
-        module_name (str): The name of the module that collected the data.
-        frameworks (List[str]): List of frameworks (e.g., "GDPR", "CCPA").
-
-    Returns:
-        A tuple containing:
-        - ComplianceCheckResult: A report on the PII found.
-        - Dict[str, Any]: The data dictionary, modified in-place with redactions.
     """
     logger.info(f"Running compliance check on data from '{module_name}'...")
     result = ComplianceCheckResult(
@@ -113,7 +112,6 @@ def filter_pii_data(
     )
     result.total_items_scanned = 1  # We scan the whole blob as one item
 
-    # The 'data' dict is modified IN-PLACE
     _traverse_and_redact(data, result)
     
     result.total_findings = len(result.findings)
@@ -129,18 +127,14 @@ def filter_pii_data(
     return result, data # Return both the report and the modified data
 
 
-# --- CourtListener ---
+# --- CourtListener (Existing) ---
+# This covers "Litigation & Legal Risk" (Court Cases)
 
 def search_court_dockets(company_name: str) -> DocketSearchResult:
     """
     Searches for court dockets related to a company name using the CourtListener API.
-
-    Args:
-        company_name (str): The name of the company to search for in court records.
-
-    Returns:
-        DocketSearchResult: A Pydantic model with the search results.
     """
+    # ... (existing function code) ...
     api_key = API_KEYS.courtlistener_api_key
     if not api_key:
         return DocketSearchResult(
@@ -175,25 +169,58 @@ def search_court_dockets(company_name: str) -> DocketSearchResult:
             query=company_name, error=f"An API error occurred: {e}"
         )
 
+# --- NEW: Arbitration & Disputes Search ---
+# This expands "Litigation & Legal Risk" (Disputes, Arbitration)
 
-# --- OpenSanctions ---
+def search_arbitration_records(entity_name: str) -> ArbitrationSearchResult:
+    """
+    Searches for public records of arbitration and major legal disputes
+    using a general web search.
+    """
+    logger.info(f"Searching for arbitration/disputes involving: {entity_name}")
+    query = f'"{entity_name}" AND (arbitration OR "legal dispute" OR lawsuit OR settlement)'
+    
+    try:
+        # Assumes search_google returns List[Dict[str, str]]
+        # with keys 'title', 'url', 'snippet'
+        search_results = search_google(query, num_results=10)
+        
+        findings = []
+        for res in search_results:
+            title = res.get("title", "No Title")
+            url = res.get("url")
+            snippet = res.get("snippet", "No Snippet")
+            
+            case_type = "Arbitration" if "arbitration" in snippet.lower() else "Dispute/Litigation"
+            
+            findings.append(ArbitrationFinding(
+                case_title=title,
+                source_url=url,
+                snippet=snippet,
+                case_type=case_type
+            ))
+
+        return ArbitrationSearchResult(query=entity_name, findings=findings)
+        
+    except Exception as e:
+        logger.error(f"Failed to search for arbitration data for {entity_name}: {e}")
+        return ArbitrationSearchResult(
+            query=entity_name, error=f"An API error occurred: {e}"
+        )
+
+
+# --- OpenSanctions (Existing) ---
+# This covers "Sanctions & Export Controls" (Sanctions)
 
 def screen_for_sanctions(entity_name: str) -> SanctionsScreeningResult:
     """
     Screens an entity name against international sanctions lists using the
     free OpenSanctions API.
-
-    Args:
-        entity_name (str): The name of the company, person, or entity to screen.
-
-    Returns:
-        SanctionsScreeningResult: A Pydantic model with the screening results.
     """
+    # ... (existing function code) ...
     logger.info(f"Screening '{entity_name}' against OpenSanctions lists...")
     
     base_url = "https://api.opensanctions.org/search"
-    # Note: OpenSanctions free API doesn't require a key, but is rate-limited.
-    # A commercial provider would require an API key in headers.
     params = {
         "q": entity_name,
         "limit": 10
@@ -214,8 +241,7 @@ def screen_for_sanctions(entity_name: str) -> SanctionsScreeningResult:
             programs = props.get("program", [])
             addresses = props.get("address", [])
             
-            # Use score to filter out low-confidence matches
-            if res.get("score", 0) < 60: # Heuristic threshold
+            if res.get("score", 0) < 60:
                 continue
 
             hit = SanctionedEntity(
@@ -238,20 +264,107 @@ def screen_for_sanctions(entity_name: str) -> SanctionsScreeningResult:
             query=entity_name, error=f"An API error occurred: {e}"
         )
 
+# --- NEW: Export Controls Check ---
+# This expands "Sanctions & Export Controls" (Trade Restrictions, Embargoes)
 
-# --- OpenCorporates ---
+def check_export_controls(entity_name: str, country_code: str = "US") -> ExportControlResult:
+    """
+    Checks for entity inclusion in export control lists (e.g., US Consolidated
+    Screening List) using a general web search.
+    """
+    logger.info(f"Checking export controls for: {entity_name} (Country: {country_code})")
+    
+    # This query targets the official US CSL search tool and other .gov sites
+    query = (
+        f'"{entity_name}" site:gov '
+        f'(("Consolidated Screening List" OR "Entity List" OR OFAC OR ITAR OR EAR))'
+    )
+    
+    try:
+        search_results = search_google(query, num_results=5)
+        
+        findings = []
+        for res in search_results:
+            snippet = res.get("snippet", "")
+            
+            # Simple keyword matching for list names
+            source_list = "Unknown"
+            if "Consolidated Screening List" in snippet or "trade.gov" in res.get("url"):
+                source_list = "US Consolidated Screening List"
+            elif "OFAC" in snippet:
+                source_list = "OFAC"
+            elif "Entity List" in snippet or "bis.doc.gov" in res.get("url"):
+                source_list = "BIS Entity List"
+                
+            findings.append(ExportControlFinding(
+                entity_name=entity_name,
+                source_list=source_list,
+                source_url=res.get("url"),
+                details=snippet
+            ))
+
+        return ExportControlResult(query=entity_name, findings=findings)
+        
+    except Exception as e:
+        logger.error(f"Failed to check export controls for {entity_name}: {e}")
+        return ExportControlResult(
+            query=entity_name, error=f"An API error occurred: {e}"
+        )
+
+
+# --- NEW: Lobbying & Political Influence ---
+
+def search_lobbying_data(entity_name: str) -> LobbyingSearchResult:
+    """
+    Searches for lobbying expenditures and political donations using a
+    general web search targeting sites like OpenSecrets.
+    """
+    logger.info(f"Searching for lobbying/political influence data for: {entity_name}")
+    
+    # Query targets common data sources
+    queries = [
+        f'"{entity_name}" lobbying expenditures site:opensecrets.org',
+        f'"{entity_name}" political donations site:fec.gov'
+    ]
+    
+    try:
+        all_activities = []
+        for query in queries:
+            search_results = search_google(query, num_results=3)
+            for res in search_results:
+                # This is a heuristic. A real implementation would need
+                # a dedicated scraper or API for OpenSecrets/FEC.
+                # We'll use the snippet to find money.
+                snippet = res.get("snippet", "")
+                amount_match = re.search(r"\$([\d,]+)", snippet)
+                
+                if amount_match:
+                    amount = float(amount_match.group(1).replace(",", ""))
+                    all_activities.append(LobbyingActivity(
+                        payee="Unknown (from search snippet)",
+                        amount=amount,
+                        date="Unknown",
+                        source_url=res.get("url"),
+                        purpose=snippet
+                    ))
+
+        return LobbyingSearchResult(query=entity_name, activities=all_activities)
+        
+    except Exception as e:
+        logger.error(f"Failed to search for lobbying data for {entity_name}: {e}")
+        return LobbyingSearchResult(
+            query=entity_name, error=f"An API error occurred: {e}"
+        )
+
+
+# --- OpenCorporates (Existing) ---
 
 def get_ubo_data(company_name: str) -> UboResult:
     """
     Retrieves corporate records and officers (as a proxy for UBOs)
     using the OpenCorporates API. This is a 2-step process.
-
-    Args:
-        company_name (str): The name of the company.
-
-    Returns:
-        UboResult: A Pydantic model with UBO data.
     """
+    # ... (existing function code) ...
     logger.info(f"Retrieving corporate data for '{company_name}'...")
     api_key = API_KEYS.opencorporates_api_key
     if not api_key:
@@ -260,7 +373,6 @@ def get_ubo_data(company_name: str) -> UboResult:
             error="OpenCorporates API key (opencorporates_api_key) not found in .env file.",
         )
 
-    # --- Step 1: Search for the company to get its unique identifier ---
     search_url = "https://api.opencorporates.com/v0.4/companies/search"
     search_params = {
         "q": company_name,
@@ -277,7 +389,6 @@ def get_ubo_data(company_name: str) -> UboResult:
         if not companies:
             return UboResult(company_name=company_name, ultimate_beneficial_owners=[], error="Company not found.")
 
-        # Take the top search result
         top_company = companies[0]["company"]
         company_jurisdiction = top_company.get("jurisdiction_code")
         company_number = top_company.get("company_number")
@@ -285,9 +396,6 @@ def get_ubo_data(company_name: str) -> UboResult:
         
         logger.info(f"Found company: {resolved_company_name}. Fetching full record...")
 
-        # --- Step 2: Fetch the full company record using its identifier ---
-        # This endpoint provides officer data, which is our best proxy for UBOs
-        # on most OpenCorporates plans.
         record_url = f"https://api.opencorporates.com/v0.4/companies/{company_jurisdiction}/{company_number}"
         record_params = {
             "api_token": api_key
@@ -313,12 +421,11 @@ def get_ubo_data(company_name: str) -> UboResult:
             if not officer_name:
                 continue
 
-            # This is a proxy. A true PEP check would involve screening the name.
             is_pep = any(kw in officer.get("position", "").lower() for kw in ["political", "government", "minister"])
 
             ubos.append(UboData(
                 name=officer_name,
-                ownership_percentage=0.0, # This data is rarely available
+                ownership_percentage=0.0,
                 is_pep=is_pep,
                 details=f"Position: {officer.get('position', 'N/A')}",
                 nationality=officer.get("nationality"),
@@ -328,7 +435,7 @@ def get_ubo_data(company_name: str) -> UboResult:
         return UboResult(
             company_name=resolved_company_name,
             ultimate_beneficial_owners=ubos,
-            corporate_structure=record_data # Store the full record for context
+            corporate_structure=record_data
         )
 
     except Exception as e:
@@ -340,7 +447,7 @@ def get_ubo_data(company_name: str) -> UboResult:
 
 # --- Typer CLI Application ---
 
-legint_app = typer.Typer()
+legint_app = typer.Typer(help="Legal Intelligence (LEGINT) tools for compliance, sanctions, and litigation.")
 
 @legint_app.command("docket-search")
 def run_docket_search(
@@ -354,7 +461,7 @@ def run_docket_search(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """Searches court records for dockets related to a company."""
+    """(Existing) Searches court records for dockets related to a company."""
     try:
         target_company = resolve_target(company_name, required_assets=["company_name"])
 
@@ -366,6 +473,37 @@ def run_docket_search(
         save_or_print_results(results_dict, output_file)
         save_scan_to_db(
             target=target_company, module="legint_docket_search", data=results_dict
+        )
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+
+# --- NEW CLI COMMAND ---
+@legint_app.command("arbitration-search")
+def run_arbitration_search(
+    entity_name: Optional[str] = typer.Option(
+        None,
+        "--entity-name",
+        "-n",
+        help="The entity to search for arbitration/disputes. Uses active project if not provided.",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """(New) Searches public web for arbitration cases and legal disputes."""
+    try:
+        target_entity = resolve_target(entity_name, required_assets=["company_name"])
+
+        results_model = search_arbitration_records(target_entity)
+        if results_model.error:
+            typer.echo(f"Error: {results_model.error}", err=True)
+            raise typer.Exit(code=1)
+        
+        results_dict = results_model.model_dump(exclude_none=True, by_alias=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=target_entity, module="legint_arbitration_search", data=results_dict
         )
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
@@ -385,16 +523,22 @@ def run_sanctions_screener(
         "--ubo",
         help="Also attempt to find and screen Ultimate Beneficial Owners (UBOs).",
     ),
+    # --- NEW OPTION ---
+    include_export_controls: bool = typer.Option(
+        False,
+        "--export-controls",
+        help="Also screen against export control lists (e.g., US Entity List).",
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
-    """Screens an entity and (optionally) its UBOs against sanctions lists."""
+    """(Updated) Screens entity/UBOs against sanctions and export control lists."""
     try:
         target_entity = resolve_target(entity_name, required_assets=["company_name"])
         all_results = {}
         
-        # 1. Screen the primary entity
+        # 1. Screen the primary entity (OpenSanctions)
         typer.echo(f"Screening primary entity: {target_entity}")
         sanctions_results = screen_for_sanctions(target_entity)
         all_results["primary_entity_screening"] = sanctions_results.model_dump(exclude_none=True)
@@ -415,7 +559,6 @@ def run_sanctions_screener(
             for ubo in ubo_data.ultimate_beneficial_owners:
                 typer.echo(f"Screening officer/UBO: {ubo.name}")
                 ubo_sanctions = screen_for_sanctions(ubo.name)
-                # We also add the PEP status from the UBO data to the screening result
                 if ubo.is_pep:
                     ubo_sanctions.hits_found += 1
                     ubo_sanctions.entities.append(SanctionedEntity(
@@ -428,11 +571,51 @@ def run_sanctions_screener(
                 ubo_screenings.append(ubo_sanctions.model_dump(exclude_none=True))
             all_results["ubo_screenings"] = ubo_screenings
 
+        # 3. Handle Export Controls if requested
+        if include_export_controls:
+            typer.echo(f"Checking export control lists for: {target_entity}")
+            export_results = check_export_controls(target_entity)
+            all_results["export_control_screening"] = export_results.model_dump(exclude_none=True, by_alias=True)
+            if export_results.error:
+                typer.echo(f"Error checking export controls: {export_results.error}", err=True)
+
+
         save_or_print_results(all_results, output_file)
         save_scan_to_db(
             target=target_entity, module="legint_sanctions_screener", data=all_results
         )
 
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+
+# --- NEW CLI COMMAND ---
+@legint_app.command("lobbying-search")
+def run_lobbying_search(
+    entity_name: Optional[str] = typer.Option(
+        None,
+        "--entity-name",
+        "-n",
+        help="The entity to search for lobbying data. Uses active project if not provided.",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """(New) Searches for political donations and lobbying expenditures."""
+    try:
+        target_entity = resolve_target(entity_name, required_assets=["company_name"])
+
+        results_model = search_lobbying_data(target_entity)
+        if results_model.error:
+            typer.echo(f"Error: {results_model.error}", err=True)
+            raise typer.Exit(code=1)
+        
+        results_dict = results_model.model_dump(exclude_none=True, by_alias=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=target_entity, module="legint_lobbying_search", data=results_dict
+        )
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)
@@ -459,10 +642,9 @@ def run_compliance_check(
     ),
 ):
     """
-    Filters a stored scan result for PII and compliance issues.
-    By default, this command is non-destructive and only generates a report.
-    Use --redact to permanently modify the stored scan.
+    (Existing) Filters a stored scan result for PII and compliance issues.
     """
+    # ... (existing function code) ...
     try:
         scan = get_scan_from_db(scan_id)
         if not scan:
@@ -472,8 +654,6 @@ def run_compliance_check(
         typer.echo(f"Checking scan {scan_id} (Module: {scan.module}) for compliance...")
         scan_data = json.loads(scan.result)
         
-        # Run the filtering logic
-        # This function modifies scan_data IN-PLACE
         check_results, modified_data = filter_pii_data(scan_data, scan.module, frameworks)
         
         results_dict = check_results.model_dump(exclude_none=True, by_alias=True)
@@ -483,13 +663,11 @@ def run_compliance_check(
                 typer.echo(f"[DANGER] Redacting {check_results.total_findings} items and overwriting scan {scan_id} in database...")
                 update_scan_in_db(scan_id, json.dumps(modified_data))
                 typer.echo("[SUCCESS] Scan has been permanently redacted.")
-                # Save the *report* to the file
                 save_or_print_results(results_dict, output_file)
             else:
                 typer.echo("No PII found. No redaction necessary.")
                 save_or_print_results(results_dict, output_file)
         else:
-            # Default: Just save/print the compliance report
             typer.echo("Run with --redact to save changes to the database.")
             save_or_print_results(results_dict, output_file)
         

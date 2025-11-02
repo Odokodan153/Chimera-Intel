@@ -4,13 +4,16 @@ Module for Financial Intelligence (FININT).
 Provides tools to analyze financial data, track insider trading, and assess
 the financial health and risks of a company.
 """
-
+import networkx as nx
+from pyvis.network import Network
+from typing_extensions import Annotated
+from rich.panel import Panel
 import typer
 import logging
 from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
-
+from datetime import datetime
 from .schemas import (
     InsiderTradingResult,
     InsiderTransaction,
@@ -18,13 +21,18 @@ from .schemas import (
     TrademarkSearchResult,
     CrowdfundingProject,         
     CrowdfundingAnalysisResult,  
-    CrowdfundingCreator,         
+    CrowdfundingCreator,
+    FinancialTransaction,
+    MoneyFlowGraph,
+    AmlSimulationResult,
+    ScenarioImpact,      
 )
 from .utils import save_or_print_results
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
 from .http_client import sync_client
 from .project_manager import resolve_target
+from .ai_core import analyze_transaction_patterns
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -373,3 +381,276 @@ def run_crowdfunding_analysis(
     save_scan_to_db(
         target=keyword, module="finint_crowdfunding", data=results_dict
     )
+
+# --- Advanced AML & Scenario Simulation Features ---
+
+def get_transactions_from_db(target: str) -> List[FinancialTransaction]:
+    """
+    Mock function to retrieve financial transactions for a target
+    from a hypothetical 'financial_transactions' table.
+    In a real app, this would be a complex query.
+    """
+    logger.info(f"Fetching transactions for {target} (MOCK DATA)")
+    # This is mock data for demonstration.
+    return [
+        FinancialTransaction(transaction_id="T1001", from_account="Acct_A", to_account="Acct_B", amount=9000, timestamp=datetime(2023, 1, 1, 10, 0, 0)),
+        FinancialTransaction(transaction_id="T1002", from_account="Acct_A", to_account="Acct_C", amount=8500, timestamp=datetime(2023, 1, 1, 11, 0, 0)),
+        FinancialTransaction(transaction_id="T1003", from_account="Acct_B", to_account="Acct_D", amount=8800, timestamp=datetime(2023, 1, 2, 12, 0, 0)),
+        FinancialTransaction(transaction_id="T1004", from_account="Acct_C", to_account="Acct_D", amount=8300, timestamp=datetime(2023, 1, 2, 13, 0, 0)),
+        FinancialTransaction(transaction_id="T1005", from_account="Acct_D", to_account="SUSPICIOUS_NODE_1", amount=17000, timestamp=datetime(2023, 1, 3, 14, 0, 0)),
+        FinancialTransaction(transaction_id="T1006", from_account="Acct_F", to_account="SUSPICIOUS_NODE_1", amount=50000, timestamp=datetime(2023, 1, 3, 15, 0, 0)),
+        FinancialTransaction(transaction_id="T1007", from_account="SUSPICIOUS_NODE_1", to_account="Offshore_E", amount=65000, timestamp=datetime(2023, 1, 4, 10, 0, 0)),
+        FinancialTransaction(transaction_id="T1008", from_account="Acct_G", to_account="Acct_H", amount=25000, timestamp=datetime(2023, 1, 5, 9, 0, 0)),
+    ]
+
+def build_transaction_graph(
+    transactions: List[FinancialTransaction],
+) -> nx.DiGraph:
+    """Builds a NetworkX graph from a list of transactions."""
+    g = nx.DiGraph()
+    for t in transactions:
+        if g.has_edge(t.from_account, t.to_account):
+            g[t.from_account][t.to_account]["amount"] += t.amount
+            g[t.from_account][t.to_account]["transactions"] += 1
+            g[t.from_account][t.to_account]["label"] = f"${g[t.from_account][t.to_account]['amount']:,.2f} ({g[t.from_account][t.to_account]['transactions']} txns)"
+        else:
+            g.add_edge(t.from_account, t.to_account, amount=t.amount, transactions=1, label=f"${t.amount:,.2f} (1 txn)")
+    return g
+
+
+@finint_app.command("visualize-flow")
+def run_visualize_money_flow(
+    target: str = typer.Argument(..., help="Target entity to analyze money flow for."),
+    output_file: str = typer.Option(
+        ..., "--output", "-o", help="Save the graph to an HTML file."
+    ),
+    highlight: Optional[List[str]] = typer.Option(
+        None, "--highlight", "-h", help="List of suspicious nodes to highlight in red."
+    ),
+):
+    """
+    Analyzes financial transactions and builds a money flow network graph.
+    (Re-uses graph logic from graph_analyzer.py)
+    """
+    console.print(f"Building money flow graph for [bold cyan]{target}[/bold cyan]...")
+    
+    # 1. Get transaction data (using mock function)
+    transactions = get_transactions_from_db(target)
+    if not transactions:
+        console.print("[yellow]No transactions found for target.[/yellow]")
+        return
+
+    # 2. Build the graph object (re-using pyvis from graph_analyzer.py)
+    net = Network(height="800px", width="100%", notebook=True, directed=True)
+    
+    nodes = set()
+    highlight_nodes = highlight or []
+
+    for t in transactions:
+        nodes.add(t.from_account)
+        nodes.add(t.to_account)
+        
+        net.add_edge(
+            t.from_account,
+            t.to_account,
+            label=f"${t.amount:,.2f}",
+            title=f"ID: {t.transaction_id}<br>Time: {t.timestamp}",
+            value=t.amount, # for scaling edge width
+        )
+
+    for node_id in nodes:
+        color = "#FF6347" if node_id in highlight_nodes else "#4682B4" # Red or Blue
+        size = 25 if node_id in highlight_nodes else 15
+        net.add_node(node_id, label=node_id, color=color, size=size, title=node_id)
+
+    # 3. Save graph
+    try:
+        net.show(output_file)
+        console.print(f"[bold green]Successfully built graph.[/bold green]")
+        console.print(f"[cyan]Money flow visualization saved to {output_file}[/cyan]")
+        
+        result = MoneyFlowGraph(
+            graph_file=output_file,
+            total_nodes=len(net.nodes),
+            total_edges=len(net.edges),
+            suspicious_nodes=highlight_nodes,
+        ).model_dump()
+        
+        save_scan_to_db(
+            target=target, module="finint_money_flow", data=result
+        )
+    except Exception as e:
+        console.print(f"[bold red]Error saving graph:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@finint_app.command("detect-patterns")
+def run_aml_pattern_detection(
+    target: str = typer.Argument(..., help="Target entity to scan for AML patterns."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Uses AI to detect emerging money laundering techniques or behavior changes.
+    (Calls new ai_core.py function)
+    """
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not found.")
+        raise typer.Exit(code=1)
+
+    console.print(f"Running AI pattern detection for [bold cyan]{target}[/bold cyan]...")
+    
+    # 1. Get transaction data
+    transactions = get_transactions_from_db(target)
+    if not transactions:
+        console.print("[yellow]No transactions found for target.[/yellow]")
+        return
+
+    # 2. Call AI Core function
+    with console.status("[bold green]AI is analyzing transaction patterns...[/]"):
+        results_model = analyze_transaction_patterns(target, transactions, api_key)
+
+    if results_model.error:
+        console.print(f"[bold red]Error:[/bold red] {results_model.error}")
+        raise typer.Exit(code=1)
+    
+    if not results_model.patterns_detected:
+        console.print(f"[green]AI analysis complete:[/green] {results_model.summary}")
+        return
+
+    console.print(f"[bold green]AI Analysis Complete. {results_model.summary}[/bold green]")
+    
+    # 3. Display results in a table
+    table = Table(
+        title=f"Suspicious Patterns Detected for {target}",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    table.add_column("Pattern Type", style="cyan")
+    table.add_column("Confidence")
+    table.add_column("Involved Accounts")
+    table.add_column("Description")
+
+    for pattern in results_model.patterns_detected:
+        table.add_row(
+            pattern.pattern_type,
+            f"{pattern.confidence_score:.0%}",
+            ", ".join(pattern.involved_accounts),
+            pattern.description,
+        )
+    console.print(table)
+    
+    results_dict = results_model.model_dump(exclude_none=True)
+    if output_file:
+        save_or_print_results(results_dict, output_file)
+    
+    save_scan_to_db(
+        target=target, module="finint_aml_patterns", data=results_dict
+    )
+
+
+@finint_app.command("simulate-scenario")
+def run_scenario_simulation(
+    target_node: Annotated[
+        str,
+        typer.Option(
+            ...,
+            "--node",
+            "-n",
+            help="The financial node (account) to affect.",
+        ),
+    ],
+    scenario: Annotated[
+        str,
+        typer.Option(
+            "sanction", # Default scenario
+            "--scenario",
+            "-s",
+            help="The scenario to run (e.g., 'sanction', 'seizure').",
+        ),
+    ],
+    target_entity: Optional[str] = typer.Option(
+        None,
+        "--target",
+        "-t",
+        help="The overall target entity (for data retrieval). Uses node if not set.",
+    ),
+):
+    """
+    Tests "what-if" scenarios (e.g., sanctions) on a detected network.
+    (Re-uses graph logic from attack_path_simulator.py)
+    """
+    target = target_entity or target_node
+    console.print(
+        f"Simulating scenario '[bold yellow]{scenario}[/bold yellow]' on node '[bold red]{target_node}[/bold red]'..."
+    )
+
+    # 1. Get transactions and build graph
+    transactions = get_transactions_from_db(target)
+    if not transactions:
+        console.print("[yellow]No transactions found to build network.[/yellow]")
+        return
+        
+    g = build_transaction_graph(transactions)
+
+    if target_node not in g:
+        console.print(f"[bold red]Error:[/bold red] Node '{target_node}' not found in the transaction graph.")
+        raise typer.Exit(code=1)
+
+    # 2. Run simulation
+    # This is a "downstream" simulation: what nodes are fed by the target_node?
+    # Re-uses logic from attack_path_simulator.py (graph traversal)
+    try:
+        # nx.descendants finds all nodes reachable from target_node
+        downstream_nodes = list(nx.descendants(g, target_node))
+        total_value_frozen = 0
+        
+        # Find all paths from the sanctioned node and sum the value
+        for node in downstream_nodes:
+            if g.has_edge(target_node, node):
+                 total_value_frozen += g[target_node][node]["amount"]
+            
+            # This traces all paths, which might be complex
+            # for path in nx.all_simple_paths(g, source=target_node, target=node):
+            #     pass # More complex value tracing logic would go here
+
+        if not downstream_nodes:
+            console.print(
+                f"[green]Scenario complete.[/green] Node '{target_node}' is a terminal node. No downstream impact."
+            )
+            return
+
+        impact = ScenarioImpact(
+            node_affected=target_node,
+            impact_type=scenario,
+            affected_downstream_nodes=downstream_nodes,
+            total_value_frozen=total_value_frozen # This is a simplified calculation
+        )
+        
+        result_model = AmlSimulationResult(
+            scenario_description=f"'{scenario}' applied to '{target_node}'",
+            impacts=[impact]
+        )
+
+        # 3. Display results
+        panel_content = (
+            f"Affected Downstream Nodes: [bold cyan]{', '.join(downstream_nodes)}[/bold cyan]\n"
+            f"Total Direct Outflow Value Frozen: [bold red]${total_value_frozen:,.2f}[/bold red]"
+        )
+        console.print(
+            Panel(
+                panel_content,
+                title=f"[bold green]Simulation Impact Report[/bold green]",
+                border_style="green",
+            )
+        )
+        
+        save_scan_to_db(
+            target=target, module="finint_aml_simulation", data=result_model.model_dump()
+        )
+
+    except Exception as e:
+        console.print(f"[bold red]An error occurred during simulation:[/bold red] {e}")
+        raise typer.Exit(code=1)

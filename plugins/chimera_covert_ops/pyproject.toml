@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_covert_ops"
+version = "0.1.0"
+authors = [
+  { name="Chimera Intel Developer", email="dev@chimera.ai" },
+]
+description = "A plugin for covert digital operations."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "chimera-intel",  # Depends on the core package
+]
+
+[project.entry-points."chimera_intel.plugins"]
+chimera_covert_ops = "chimera_covert_ops.main:CovertOpsPlugin"
+
+[project.urls]
+"Homepage" = "https://github.com/chimera-intel/chimera-intel"
+"Bug Tracker" = "https://github.com/chimera-intel/chimera-intel/issues"

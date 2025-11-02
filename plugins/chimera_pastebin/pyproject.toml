@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_pastebin"
+version = "0.1.0"
+authors = [{ name="Chimera Intel" }]
+description = "Chimera Intel plugin for monitoring paste sites for leaks."
+requires-python = ">=3.8"
+dependencies = [
+    # Add dependencies required by this plugin
+    # e.g., "chimera-intel" if it's a package
+]
+
+[project.entry-points."chimera_intel.plugins"]
+pastebin_monitor = "chimera_pastebin.main:load_plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

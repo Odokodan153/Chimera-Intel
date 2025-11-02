@@ -19,6 +19,11 @@ from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetecti
 from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult, GraphNarrativeResult
 from .graph_db import build_and_save_graph
 import json
+from .schemas import (
+    AmlAnalysisResult, 
+    AmlPattern, 
+    FinancialTransaction
+)
 import os
 
 # Get a logger instance for this specific file
@@ -373,3 +378,71 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
     return GraphNarrativeResult(
         narrative_text=swot_result.analysis_text, error=swot_result.error
     )
+
+def analyze_transaction_patterns(
+    target: str, transactions: List[FinancialTransaction], api_key: str
+) -> AmlAnalysisResult:
+    """
+    Uses a generative AI model to detect money laundering patterns in transaction data.
+    """
+    if not api_key:
+        return AmlAnalysisResult(target=target, error="Google API key not found.")
+    
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
+
+    # Create a simplified string representation of transactions for the prompt
+    transaction_logs = "\n".join(
+        [
+            f"ID: {t.transaction_id}, From: {t.from_account}, To: {t.to_account}, Amount: {t.amount} {t.currency}"
+            for t in transactions[:50] # Limit tokens to manage prompt size
+        ]
+    )
+    
+    prompt = f"""
+    You are an expert anti-money laundering (AML) investigator.
+    Analyze the following financial transaction logs for the target '{target}'.
+    Identify any suspicious patterns like 'Structuring' (many small deposits to avoid reporting), 
+    'Smurfing' (using many people for small transactions), 'Layering' (complex web of transactions 
+    to hide the source), or 'Integration' (moving money into legitimate assets).
+    
+    Provide your analysis in a structured JSON format. The root object should be
+    a JSON list of "AmlPattern" objects. Each object must have:
+    - "pattern_type": (e.g., "Structuring", "Layering")
+    - "description": (A brief explanation of why this pattern is suspicious)
+    - "involved_accounts": (A list of account IDs involved in this specific pattern)
+    - "confidence_score": (A float between 0.0 and 1.0)
+    - "evidence": (A list of transaction IDs that support this finding)
+
+    If no patterns are found, return an empty list.
+
+    Transaction Logs:
+    {transaction_logs}
+
+    JSON Output:
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        
+        # Clean and parse the JSON response
+        json_text = response.text.strip().lstrip("```json").rstrip("```")
+        parsed_json = json.loads(json_text)
+
+        patterns = [AmlPattern.model_validate(p) for p in parsed_json]
+        
+        summary = f"Detected {len(patterns)} potential AML patterns."
+        if not patterns:
+            summary = "No significant AML patterns detected."
+
+        return AmlAnalysisResult(
+            target=target,
+            patterns_detected=patterns,
+            summary=summary
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to analyze AML patterns for {target}: {e}", exc_info=True)
+        return AmlAnalysisResult(
+            target=target, error=f"AI analysis failed: {e}"
+        )

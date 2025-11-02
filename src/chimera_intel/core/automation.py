@@ -12,10 +12,10 @@ import asyncio
 import subprocess
 import os
 import csv
+import json
 from collections import defaultdict
-from typing import List, Optional, Set, DefaultDict, Any 
-from datetime import datetime, timezone 
-from pydantic import BaseModel, Field 
+from typing import List, Optional, Set, DefaultDict
+from datetime import datetime, timezone
 from .schemas import (
     CVEEnrichmentResult,
     EnrichedCVE,
@@ -26,12 +26,13 @@ from .schemas import (
     AttackPath,
     UEBAResult,
     BehavioralAnomaly,
-    DataFeedStatus,      
-    DataQualityReport,   
-    ThreatIntelResult,   
+    DataFeedStatus,
+    DataQualityReport,
+    ThreatIntelResult,
+    Event,
 )
 from .utils import save_or_print_results, console
-from .config_loader import API_KEYS
+from .config_loader import API_KEYS, load_config
 from .http_client import sync_client
 from .threat_intel import get_threat_intel_otx
 from .database import get_aggregated_data_for_target
@@ -40,6 +41,9 @@ from .database import get_aggregated_data_for_target
 from .advanced_media_analysis import SyntheticMediaAudit
 from .response import ACTION_MAP # Import the non-mock map
 # --- END NEW IMPORTS ---
+
+# --- NEW: Import new engines and schemas ---
+from .correlation_engine import AlertPrioritizationEngine, AutomationPipeline
 
 
 UserIPs = DefaultDict[str, Set[str]]
@@ -50,8 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 # --- Data Enrichment ---
-
-
+# (enrich_iocs and enrich_cves functions remain unchanged)
 async def enrich_iocs(iocs: List[str]) -> EnrichmentResult:
     """Enriches Indicators of Compromise (IOCs) with threat intelligence from OTX."""
     logger.info(f"Enriching {len(iocs)} IOCs.")
@@ -119,10 +122,8 @@ def enrich_cves(cve_ids: List[str]) -> CVEEnrichmentResult:
         total_enriched=len(enriched_cves), enriched_cves=enriched_cves
     )
 
-
 # --- Threat Modeling & UEBA ---
-
-
+# (generate_threat_model and analyze_behavioral_logs functions remain unchanged)
 def generate_threat_model(domain: str) -> ThreatModelResult:
     """Analyzes aggregated scan data to generate potential attack paths."""
     logger.info(f"Generating rule-based threat model for {domain}")
@@ -263,8 +264,7 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
 
 
 # --- Integrations & Workflow ---
-
-
+# (submit_to_virustotal and run_workflow functions remain unchanged)
 def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
     """Submits a file to VirusTotal for analysis."""
     api_key = API_KEYS.virustotal_api_key
@@ -359,9 +359,8 @@ def run_workflow(workflow_file: str) -> None:
                 break
     logger.info("Workflow execution finished.")
 
-
 # --- Data Quality Governance ---
-
+# (check_data_feed_quality function remains unchanged)
 def check_data_feed_quality() -> DataQualityReport:
     """
     Runs real checks on external API feeds for availability,
@@ -481,7 +480,8 @@ def check_data_feed_quality() -> DataQualityReport:
 
 automation_app = typer.Typer()
 
-
+# (Existing commands: enrich-ioc, threat-model, ueba, enrich-cve, workflow)
+#
 @automation_app.command("enrich-ioc")
 def run_ioc_enrichment(
     iocs: List[str] = typer.Argument(
@@ -546,8 +546,65 @@ def run_automation_workflow(
     run_workflow(workflow_file)
 
 
-# --- NON-MOCKED WORKFLOW COMMAND ---
+# --- NEW: ALERT PRIORITIZATION CLI COMMAND ---
 
+@automation_app.command("prioritize-event")
+def run_prioritize_event(
+    event_json: str = typer.Argument(
+        ...,
+        help="A JSON string representing the event to prioritize.",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    (NEW) Runs a raw event through the Alert Prioritization Engine.
+    """
+    try:
+        event_data = json.loads(event_json)
+        # Fill in required Event fields if not provided
+        event_data.setdefault("source", "manual_cli")
+        event_data.setdefault("details", {})
+        event = Event.model_validate(event_data)
+    except Exception as e:
+        console.print(f"[bold red]Error parsing event JSON: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    # Load config to get prioritization weights
+    config = load_config()
+    engine = AlertPrioritizationEngine(config.get("prioritization_weights", {}))
+    
+    result = engine.prioritize_alert(event)
+    save_or_print_results(result.model_dump(), output_file)
+
+
+# --- NEW: AUTOMATION PIPELINE (IFTTT) CLI COMMANDS ---
+
+@automation_app.command("pipeline-list")
+def run_pipeline_list(
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    (NEW) Lists all configured Automation Pipelines (IFTTT workflows).
+    """
+    config = load_config()
+    pipelines = config.get("automation_pipelines", {}).get("pipelines", [])
+    if not pipelines:
+        console.print("[yellow]No Automation Pipelines configured.[/yellow]")
+        return
+        
+    save_or_print_results(pipelines, output_file)
+
+
+# (A 'pipeline-create' command would require modifying the config.yaml on disk,
+# which is a more complex operation. 'pipeline-list' provides visibility.)
+
+
+# --- NON-MOCKED WORKFLOW COMMAND ---
+# (deception-response-workflow function remains unchanged)
 @automation_app.command("deception-response-workflow")
 def run_deception_response_workflow(
     media_file: str = typer.Argument(..., help="Path to the suspected deepfake media file."),
@@ -613,6 +670,7 @@ def run_deception_response_workflow(
 # --- END NEW WORKFLOW ---
 
 
+# (Existing commands: virustotal, check-feeds)
 @automation_app.command("virustotal")
 def run_vt_submission(
     file_path: str = typer.Argument(

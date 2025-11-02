@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-arg"
+version = "0.1.0"
+description = "A Chimera Intel plugin for the Adversary Research Grid (ARG)."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# This plugin depends on the core chimera-intel package.
+# Add any other specific dependencies for this plugin here.
+# We assume 'neo4j' and 'pydantic' are dependencies of the core package.
+dependencies = [
+    "chimera-intel"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/user/Chimera-Intel"
+"Bug Tracker" = "https://github.com/user/Chimera-Intel/issues"
+
+# This section is crucial for the plugin system
+[project.entry-points."chimera_intel.plugins"]
+# "arg" is the command name (e.g., `chimera arg ...`)
+# "chimera_arg.main:AdversaryResearchGridPlugin" is the path to your plugin class
+arg = "chimera_arg.main:AdversaryResearchGridPlugin"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_disinfo"
+version = "0.1.0"
+authors = [{ name="Chimera Intel" }]
+description = "Chimera Intel plugin for disinformation and synthetic narrative analysis."
+requires-python = ">=3.8"
+dependencies = [
+    # Add dependencies required by this plugin
+    # e.g., "chimera-intel" if it's a package
+]
+
+[project.entry-points."chimera_intel.plugins"]
+disinfo_audit = "chimera_disinfo.main:load_plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

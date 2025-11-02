@@ -5,7 +5,7 @@ Tests for the Disinformation Analyzer module.
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch
-
+from chimera_intel.core.schemas import SyntheticNarrativeMapResult
 from chimera_intel.core.disinformation_analyzer import (
     analyze_text_for_synthesis,
     map_synthetic_narrative,
@@ -106,3 +106,65 @@ def test_cli_synthetic_narrative_map(mock_track_narrative):
     assert "Mapping synthetic narrative for" in result.stdout
     assert "Detected 2 suspected synthetic items" in result.stdout
     assert "'Tweet': 2" in result.stdout
+
+# Mock the narrative_analyzer which is imported by disinformation_analyzer
+@pytest.fixture(autouse=True)
+def mock_narrative_tracker():
+    with patch("chimera_intel.core.disinformation_analyzer.track_narrative") as mock_track:
+        mock_track.return_value = [
+            {"source": "Twitter", "type": "social", "content": "This product is great!", "sentiment": 0.8},
+            {"source": "News", "type": "news", "content": "As an AI language model, I must say this product is revolutionary.", "sentiment": 0.9},
+        ]
+        yield mock_track
+
+@patch("chimera_intel.core.disinformation_analyzer.save_scan_to_db")
+def test_run_synthetic_narrative_map_cli(mock_db, mock_narrative_tracker):
+    """Tests the existing synthetic-narrative-map command."""
+    
+    result = runner.invoke(disinformation_app, ["synthetic-narrative-map", "MyProduct"])
+    
+    assert result.exit_code == 0
+    assert "Mapping synthetic narrative" in result.stdout
+    assert "MyProduct" in result.stdout
+    assert "Detected 1 suspected synthetic items" in result.stdout
+    assert "'news': 1" in result.stdout
+    #
+    # Ensure the DB save is called
+    mock_db.assert_called_once()
+    args, kwargs = mock_db.call_args
+    assert kwargs["target"] == "MyProduct"
+    assert kwargs["module"] == "synthetic_narrative_map"
+    assert kwargs["data"]["synthetic_items_detected"] == 1
+
+
+@patch("chimera_intel.core.disinformation_analyzer.map_synthetic_narrative")
+@patch("chimera_intel.core.disinformation_analyzer.save_scan_to_db")
+def test_run_disinformation_audit_cli(mock_db, mock_map, mock_narrative_tracker):
+    """Tests the new 'audit' CLI command."""
+    
+    # Mock the main function it calls
+    mock_result = SyntheticNarrativeMapResult(
+        query="MyBrand",
+        total_items_found=10,
+        synthetic_items_detected=2,
+        synthetic_items_by_type={"social": 2}
+    )
+    mock_map.return_value = mock_result
+    
+    result = runner.invoke(disinformation_app, ["audit", "MyBrand"])
+    
+    assert result.exit_code == 0
+    assert "Running Disinformation Audit" in result.stdout
+    assert "MyBrand" in result.stdout
+    assert "Detected 2 suspected synthetic items" in result.stdout
+    assert "'social': 2" in result.stdout
+    
+    # Ensure it calls the reused function
+    mock_map.assert_called_with("MyBrand")
+    
+    # Ensure it saves to the DB with the correct module name
+    mock_db.assert_called_once()
+    args, kwargs = mock_db.call_args
+    assert kwargs["target"] == "MyBrand"
+    assert kwargs["module"] == "disinformation_audit"
+    assert kwargs["data"]["synthetic_items_detected"] == 2

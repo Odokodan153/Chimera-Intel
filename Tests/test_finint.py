@@ -2,7 +2,8 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import typer
-
+import pytest
+from datetime import datetime
 from chimera_intel.core.finint import (
     get_insider_transactions,
     finint_app,
@@ -13,6 +14,9 @@ from chimera_intel.core.schemas import (
     InsiderTransaction,
     CrowdfundingAnalysisResult,
     CrowdfundingProject,
+    FinancialTransaction, 
+    AmlPattern,
+    AmlAnalysisResult
 )
 
 runner = CliRunner()
@@ -254,7 +258,99 @@ class TestFinint(unittest.TestCase):
         mock_analyze_crowdfunding.assert_called_with("Test Gadget")
         self.assertIn("Crowdfunding Projects for 'Test Gadget'", result.stdout)
         self.assertIn("Test Gadget Pro", result.stdout)
+@pytest.fixture
+def mock_transactions():
+    """Provides a list of mock transactions for testing."""
+    return [
+        FinancialTransaction(transaction_id="T1001", from_account="Acct_A", to_account="Acct_B", amount=9000, timestamp=datetime(2023, 1, 1, 10, 0, 0)),
+        FinancialTransaction(transaction_id="T1003", from_account="Acct_B", to_account="Acct_D", amount=8800, timestamp=datetime(2023, 1, 2, 12, 0, 0)),
+        FinancialTransaction(transaction_id="T1005", from_account="Acct_D", to_account="SUSPICIOUS_NODE_1", amount=17000, timestamp=datetime(2023, 1, 3, 14, 0, 0)),
+    ]
 
+@patch("chimera_intel.core.finint.get_transactions_from_db")
+@patch("chimera_intel.core.finint.save_scan_to_db")
+@patch("pyvis.network.Network.show") # Mock the actual graph file generation
+def test_run_visualize_money_flow(mock_pyvis_show, mock_save_db, mock_get_tx, mock_transactions, tmp_path):
+    """
+    Tests the visualize-flow command.
+    It should create an HTML file and highlight the specified node.
+    """
+    mock_get_tx.return_value = mock_transactions
+    output_file = tmp_path / "money_flow.html"
+
+    result = runner.invoke(
+        finint_app,
+        ["visualize-flow", "test_target", "--output", str(output_file), "--highlight", "SUSPICIOUS_NODE_1"],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stdout}"
+    assert "Money flow visualization saved to" in result.stdout
+    assert str(output_file) in result.stdout
+    mock_pyvis_show.assert_called_with(str(output_file))
+    mock_save_db.assert_called_once()
+    assert mock_save_db.call_args[1]["module"] == "finint_money_flow"
+    assert mock_save_db.call_args[1]["data"]["suspicious_nodes"] == ["SUSPICIOUS_NODE_1"]
+
+@patch("chimera_intel.core.finint.get_transactions_from_db")
+@patch("chimera_intel.core.finint.save_scan_to_db")
+@patch("chimera_intel.core.finint.analyze_transaction_patterns")
+@patch("chimera_intel.core.finint.API_KEYS", MagicMock(google_api_key="test_key123"))
+def test_run_aml_pattern_detection(mock_ai_analyze, mock_save_db, mock_get_tx, mock_transactions):
+    """
+    Tests the detect-patterns command.
+    It should call the AI core function and display the results.
+    """
+    mock_get_tx.return_value = mock_transactions
+    mock_pattern = AmlPattern(
+        pattern_type="Layering",
+        description="Funds moved through multiple accounts",
+        involved_accounts=["Acct_A", "Acct_B", "Acct_D"],
+        confidence_score=0.95,
+        evidence=["T1001", "T1003"]
+    )
+    mock_ai_analyze.return_value = AmlAnalysisResult(
+        target="test_target",
+        patterns_detected=[mock_pattern],
+        summary="Detected 1 pattern"
+    )
+
+    result = runner.invoke(
+        finint_app,
+        ["detect-patterns", "test_target"],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stdout}"
+    assert "AI Analysis Complete" in result.stdout
+    assert "Layering" in result.stdout
+    assert "Acct_A, Acct_B, Acct_D" in result.stdout
+    assert "95%" in result.stdout
+    mock_ai_analyze.assert_called_with("test_target", mock_transactions, "test_key123")
+    mock_save_db.assert_called_once()
+    assert mock_save_db.call_args[1]["module"] == "finint_aml_patterns"
+
+@patch("chimera_intel.core.finint.get_transactions_from_db")
+@patch("chimera_intel.core.finint.save_scan_to_db")
+def test_run_scenario_simulation(mock_save_db, mock_get_tx, mock_transactions):
+    """
+    Tests the simulate-scenario command.
+    It should build an in-memory graph and trace descendants.
+    """
+    mock_get_tx.return_value = mock_transactions
+
+    result = runner.invoke(
+        finint_app,
+        ["simulate-scenario", "--node", "Acct_A", "--target", "test_target"],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stdout}"
+    assert "Simulation Impact Report" in result.stdout
+    # Verifies the graph traversal (A -> B -> D -> SUSPICIOUS_NODE_1)
+    assert "Acct_B" in result.stdout
+    assert "Acct_D" in result.stdout
+    assert "SUSPICIOUS_NODE_1" in result.stdout
+    assert "$9,000.00" in result.stdout # Direct outflow from Acct_A
+    mock_save_db.assert_called_once()
+    assert mock_save_db.call_args[1]["module"] == "finint_aml_simulation"
 
 if __name__ == "__main__":
     unittest.main()
