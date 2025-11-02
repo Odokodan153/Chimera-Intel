@@ -75,3 +75,101 @@ def test_ot_recon_shodan_api_error(mocker):
     assert result.exit_code == 1, result.output
     # Match the exact error output from the command
     assert "Error: Invalid API key." in result.output
+
+def test_ot_recon_success(mocker):
+    """
+    Tests the ot-recon command with a successful Shodan API response.
+    """
+    # FIX: Patch the API key attribute using patch.object
+    mocker.patch.object(API_KEYS, "shodan_api_key", "fake_shodan_key")
+
+    # FIX: Inline the fixture logic
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.host.return_value = {
+        "ip_str": "192.168.1.1",
+        "org": "Test Industrial Inc.",
+        "city": "Cyberville",
+        "country_name": "Techland",
+        "ports": [502, 20000],
+        "data": [{"port": 502, "data": "Modbus Device", "product": "Modicon PLC"}],
+    }
+    mocker.patch("shodan.Shodan", return_value=mock_api_instance)
+
+    # --- FIX: Invoke *without* the "recon" command name ---
+    # NOTE: The command is 'recon', which is the default, but we invoke it by name
+    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- END FIX ---
+
+    assert result.exit_code == 0, result.output
+    assert "Performing OT reconnaissance on: 192.168.1.1" in result.output
+    assert "Organization: Test Industrial Inc." in result.output
+    assert "Open Ports: 502, 20000" in result.output
+    assert "Identified potential ICS/SCADA protocols" in result.output
+    assert "- MODBUS" in result.output
+
+
+def test_ot_recon_no_api_key(mocker):
+    """
+    Tests the ot-recon command when the Shodan API key is missing.
+    """
+    # FIX: Patch the API key to None using patch.object
+    mocker.patch.object(API_KEYS, "shodan_api_key", None)
+
+    # --- FIX: Invoke *without* the "recon" command name ---
+    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- END FIX ---
+
+    assert result.exit_code == 1, result.output
+    assert "Error: SHODAN_API_KEY not found in .env file." in result.output
+
+
+def test_ot_recon_shodan_api_error(mocker):
+    """
+    Tests the ot-recon command when the Shodan API returns an error.
+    """
+    # FIX: Patch the API key using patch.object
+    mocker.patch.object(API_KEYS, "shodan_api_key", "fake_shodan_key")
+
+    # FIX: Inline the mock setup and configure the side effect
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.host.side_effect = shodan.APIError("Invalid API key.")
+    mocker.patch("shodan.Shodan", return_value=mock_api_instance)
+
+    # --- FIX: Invoke *without* the "recon" command name ---
+    result = runner.invoke(ot_intel_app, ["recon", "--ip-address", "192.168.1.1"])
+    # --- END FIX ---
+
+    assert result.exit_code == 1, result.output
+    # Match the exact error output from the command
+    assert "Error: Invalid API key." in result.output
+
+
+# --- NEW TEST ---
+def test_ot_iot_scan_success(mocker):
+    """
+    Tests the new iot-scan command with a successful Shodan search response.
+    """
+    mocker.patch.object(API_KEYS, "shodan_api_key", "fake_shodan_key")
+
+    mock_api_instance = mocker.MagicMock()
+    mock_api_instance.search.return_value = {
+        "total": 1,
+        "matches": [
+            {
+                "ip_str": "100.200.100.200",
+                "port": 80,
+                "org": "CameraNet",
+                "hostnames": ["cam.example.com"],
+                "data": "HTTP/1.1 200 OK\nServer: IP Camera",
+            }
+        ],
+    }
+    mocker.patch("shodan.Shodan", return_value=mock_api_instance)
+
+    result = runner.invoke(ot_intel_app, ["iot-scan", "--query", "webcam"])
+
+    assert result.exit_code == 0, result.output
+    assert "Scanning for IoT devices with query: webcam" in result.output
+    assert "Total: 1" in result.output
+    assert "IP: 100.200.100.200" in result.output
+    assert "Data: HTTP/1.1 200 OK\nServer: IP Camera" in result.output

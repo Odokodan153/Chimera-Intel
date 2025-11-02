@@ -6,8 +6,10 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 import whois
+from typing import Optional, Dict, Any
 from datetime import datetime
 import typer
+from .schemas import CredibilityResult, DataVerificationResult, CRAAPScore, BaseResult
 from rich.console import Console
 from rich.panel import Panel
 from .config_loader import API_KEYS
@@ -149,7 +151,90 @@ async def assess_source_credibility(url: str) -> CredibilityResult:
             factors=[],
             error=f"An error occurred: {e}",
         )
+async def assess_data_reliability(
+    source_identifier: str,
+    data: Dict[str, Any],
+    timestamp: Optional[datetime] = None,
+) -> DataVerificationResult:
+    """
+    Implements a CRAAP-like model to assign a Source Reliability Score.
+    
+    This is a simplified example. A real implementation would involve
+    much more complex logic, ML models, and source reputation databases.
+    """
+    try:
+        scores = {}
+        
+        # 1. Currency
+        data_age_days = 30 # Default age if no timestamp
+        if timestamp:
+            # Ensure timestamp is offset-aware for comparison
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
+            data_age_days = (datetime.now(timestamp.tzinfo) - timestamp).days
+        
+        if data_age_days < 7:
+            scores["currency"] = 5.0
+        elif data_age_days < 30:
+            scores["currency"] = 4.0
+        elif data_age_days < 180:
+            scores["currency"] = 2.5
+        else:
+            scores["currency"] = 1.0
 
+        # 2. Authority (Example logic)
+        # In a real app, you'd check this against a trusted source list.
+        trusted_sources = ["otx.alienvault.com", "vulners.com", "nvd.nist.gov", "hibp.com"]
+        if any(trusted in source_identifier for trusted in trusted_sources):
+            scores["authority"] = 5.0
+        elif "local scan" in source_identifier.lower() or "nmap" in source_identifier.lower():
+            scores["authority"] = 4.0 # Data from our own tools
+        elif "google.com" in source_identifier.lower() or "gnews" in source_identifier.lower():
+            scores["authority"] = 3.0 # General search
+        else:
+            scores["authority"] = 2.0 # Unknown
+
+        # 3. Accuracy (Example logic)
+        # Check for completeness and errors
+        if data.get("error"):
+            scores["accuracy"] = 1.0
+        elif len(data.keys()) > 5: # More fields = more complete
+            scores["accuracy"] = 4.5
+        elif len(data.keys()) > 2:
+            scores["accuracy"] = 3.5
+        else:
+            scores["accuracy"] = 2.0
+        
+        # 4. Relevance & Purpose (Mocked for this example)
+        scores["relevance"] = 4.0 # Assumed to be relevant if it was collected
+        scores["purpose"] = 4.0 # Assumed to be objective unless proven otherwise
+        
+        craap = CRAAPScore(
+            currency=scores["currency"],
+            relevance=scores["relevance"],
+            authority=scores["authority"],
+            accuracy=scores["accuracy"],
+            purpose=scores["purpose"],
+            overall_score=sum(scores.values()) / 5.0
+        )
+        
+        # Convert 0-5 scale to 0-100
+        reliability_score = craap.overall_score * 20 
+
+        return DataVerificationResult(
+            source_identifier=source_identifier,
+            reliability_score=round(reliability_score, 2),
+            craap_assessment=craap,
+            error=None
+        )
+
+    except Exception as e:
+        logger.error(f"Error during data verification for '{source_identifier}': {e}", exc_info=True)
+        return DataVerificationResult(
+            source_identifier=source_identifier,
+            reliability_score=0.0,
+            error=str(e)
+        )
 
 # --- CLI Integration ---
 

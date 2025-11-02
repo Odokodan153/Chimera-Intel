@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_cultural_sentiment"
+version = "0.1.0"
+authors = [
+  { name="Chimera Intel Developer", email="dev@chimera.ai" },
+]
+description = "A Chimera Intel plugin for cultural sentiment analysis."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "chimera_intel",
+]
+
+[project.entry-points."chimera_intel.plugins"]
+cultural_sentiment = "chimera_cultural_sentiment.main:register"

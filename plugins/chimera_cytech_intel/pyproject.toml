@@ -1,0 +1,23 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "chimera-cytech-intel"
+version = "0.1.0"
+description = "Cyber & Technology (CyTech) Intelligence plugin for Chimera Intel."
+authors = ["Chimera Intel Team <contact@chimera-intel.ai>"]
+readme = "README.md"
+packages = [{ include = "chimera_cytech_intel", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# This line tells poetry to install the main chimera-intel package
+# from the root of the monorepo in editable mode.
+chimera-intel = { path = "../../", develop = true }
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This entry point tells the Chimera plugin manager:
+# "The plugin named 'cytech-intel' is implemented by the
+# 'CyTechIntelPlugin' class inside the 'chimera_cytech_intel.main' module."
+"cytech-intel" = "chimera_cytech_intel.main:CyTechIntelPlugin"

@@ -18,8 +18,14 @@ from chimera_intel.core.narrative_analyzer import narrative_analyzer_app
 from chimera_intel.core.attack_path_simulator import attack_path_simulator_app
 from chimera_intel.core.cultint import cultint_app
 from chimera_intel.core.strategic_forecaster import forecaster_app
-
-
+from chimera_intel.core.attribution import attribution_app
+from chimera_intel.core.cognitive_mapping_analyzer import cognitive_mapping_app
+from chimera_intel.core.complexity_analyzer import complexity_analyzer_app
+from chimera_intel.core.alternative_hypothesis_generator import alternative_hypothesis_app
+from chimera_intel.core.multimodal_reasoning import multimodal_reasoning_app
+from chimera_intel.core.event_modeling import event_modeling_app
+from chimera_intel.core.sentiment_time_series import sentiment_time_series_app
+from chimera_intel.core.bias_audit import bias_audit_app
 class AnalysisPlugin(ChimeraPlugin):
     """Analysis plugin."""
 
@@ -53,7 +59,47 @@ class AnalysisPlugin(ChimeraPlugin):
         analysis_app.add_typer(attack_path_simulator_app, name="simulate")
         analysis_app.add_typer(cultint_app, name="cultint")
         analysis_app.add_typer(forecaster_app, name="forecast")
-
+        analysis_app.add_typer(
+            attribution_app,
+            name="attribution",
+            help="Run threat actor attribution and scoring."
+        )
+        analysis_app.add_typer(
+            cognitive_mapping_app,
+            name="cognitive-mapping",
+            help="Builds cognitive models of key individuals."
+        )
+        analysis_app.add_typer(
+            complexity_analyzer_app,
+            name="complexity-analysis",
+            help="Maps system interdependencies and predicts cascading failures."
+        )
+        analysis_app.add_typer(
+            alternative_hypothesis_app,
+            name="alternative-hypothesis",
+            help="Generates competing hypotheses to mitigate confirmation bias."
+        )
+        analysis_app.add_typer(
+            multimodal_reasoning_app,
+            name="multimodal-reasoning",
+            help="Reasons across different data types (text, image, geo, etc.)."
+        )
+        analysis_app.add_typer(
+            event_modeling_app,
+            name="event-modeling",
+            help="Reconstructs a verifiable sequence of events from raw data."
+        )
+        analysis_app.add_typer(
+            sentiment_time_series_app,
+            name="sentiment-time-series",
+            help="Tracks sentiment over time and flags significant shifts."
+        )
+        analysis_app.add_typer(
+            bias_audit_app,
+            name="bias-audit",
+            help="Meta-analysis to detect bias or gaps in reports."
+        )
+        
         return analysis_app
 
     def initialize(self):

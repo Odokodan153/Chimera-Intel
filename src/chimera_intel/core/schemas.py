@@ -13,7 +13,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from datetime import datetime
+from datetime import datetime, date, timezone
+import pandas as pd
+import numpy as np
 from pydantic import BaseModel, Field, validator, EmailStr
 import uuid
 from enum import Enum
@@ -1935,6 +1937,18 @@ class MonopolyAnalysisResult(BaseModel):
     analysis_text: str
     error: Optional[str] = None
 
+class StabilityForecastResult(BaseModel):
+    """
+    Model for the result of a multi-modal stability forecast.
+    """
+    country: str
+    region: Optional[str] = None
+    analysis_text: str
+    short_term_index: float = 0.0
+    long_term_index: float = 0.0
+    key_factors: Dict[str, Any] = Field(default_factory=dict)
+    error: Optional[str] = None
+
 
 # --- Aviation Intelligence (AVINT) Models ---
 
@@ -3082,3 +3096,983 @@ class TwitterStreamResult(BaseModel):
     total_tweets_found: int = 0
     tweets: List[Tweet] = []
     error: Optional[str] = None
+
+# ---  MLINT Schemas ---
+
+class BaseResult(BaseModel):
+    error: Optional[str] = None
+
+class JurisdictionRisk(BaseModel):
+    country: str
+    risk_level: str = "Low"
+    is_fatf_grey_list: bool = False
+    is_fatf_black_list: bool = False
+    risk_score: int = 0
+    details: str
+
+class EntityRiskResult(BaseResult):
+    company_name: str
+    jurisdiction: str
+    risk_score: int = Field(default=0, description="Composite risk score (0-100)")
+    risk_factors: List[str] = Field(default_factory=list, description="Explainable reasons for the score")
+    pep_links: int = Field(default=0, description="Number of linked Politically Exposed Persons")
+    adverse_media_hits: int = Field(default=0, description="Number of negative news articles")
+    shell_company_indicators: List[str] = Field(default_factory=list)
+    sanctions_hits: int = Field(default=0, description="Number of direct hits on sanctions lists")
+
+class CryptoWalletScreenResult(BaseResult):
+    wallet_address: str
+    risk_level: str = "Low"
+    risk_score: int = Field(default=0, description="Risk score (0-100)")
+    known_associations: List[str] = Field(default_factory=list, description="e.g., Known Exchange, Darknet Market")
+    mixer_interaction: bool = Field(default=False, description="Has interacted with a known mixer/tumbler")
+    sanctioned_entity_link: bool = Field(default=False, description="Linked to a sanctioned entity's wallet")
+    
+class Transaction(BaseModel):
+    id: str
+    date: date
+    amount: float
+    currency: str
+    sender_id: str
+    receiver_id: str
+    sender_jurisdiction: Optional[str] = None
+    receiver_jurisdiction: Optional[str] = None
+
+class TransactionAnalysisResult(BaseResult):
+    total_transactions: int
+    total_volume: float
+    structuring_alerts: List[Dict[str, Any]] = Field(default_factory=list)
+    round_tripping_alerts: List[List[str]] = Field(default_factory=list)
+    high_risk_jurisdiction_flows: List[Dict[str, Any]] = Field(default_factory=list)
+    anomaly_score: float = Field(default=0.0, description="ML-based anomaly score (e.g., from Isolation Forest)")
+    anomaly_features_used: List[str] = Field(default_factory=list)
+
+class SwiftTransactionAnalysisResult(BaseResult):
+    file_name: str
+    message_type: str = "MT103"
+    sender_bic: Optional[str] = None
+    receiver_bic: Optional[str] = None
+    mur_code: Optional[str] = None
+    transaction: Optional[Transaction] = None
+    analysis: Optional[TransactionAnalysisResult] = None
+
+
+# --- NEW Schemas (from latest proposal) ---
+
+class UboData(BaseModel):
+    """Represents a single Ultimate Beneficial Owner."""
+    name: str
+    ownership_percentage: float
+    is_pep: bool = False
+    details: str = "Direct Owner"
+    address: Optional[str] = None
+    nationality: Optional[str] = None
+
+class UboData(BaseModel):
+    """Represents a single Ultimate Beneficial Owner."""
+    name: str
+    ownership_percentage: float
+    is_pep: bool = False
+    details: str = "Direct Owner"
+    address: Optional[str] = None
+    nationality: Optional[str] = None
+
+class UboResult(BaseResult):
+    """The result of a UBO investigation for a company."""
+    company_name: str
+    ultimate_beneficial_owners: List[UboData] = Field(default_factory=list)
+    corporate_structure: Dict[str, Any] = Field(default_factory=dict, description="Graph-like structure of parent/subsidiary companies")
+
+class WalletCluster(BaseModel):
+    """Represents a cluster of crypto wallets controlled by a single entity."""
+    main_address: str
+    cluster_id: str
+    addresses: List[str]
+    entity_name: Optional[str] = Field(None, description="Name of the entity, e.g., 'Binance Hot Wallet 7'")
+    confidence: float = Field(0.0, description="Confidence score for the cluster attribution")
+    category: Optional[str] = Field(None, description="e.g., 'Exchange', 'Darknet Market', 'Scam'")
+
+class WalletClusterResult(BaseResult):
+    """The result of a wallet clustering query."""
+    wallet_address: str
+    cluster: Optional[WalletCluster] = None
+
+class GnnAnomalyResult(BaseResult):
+    """The result of a Graph Neural Network anomaly detection model."""
+    entity_id: str # Can be a wallet address, account ID, or company ID
+    anomaly_score: float
+    reason: List[str] = Field(default_factory=list, description="Features contributing to the anomaly (e.g., high centrality, risky counterparties)")
+    graph_neighbors: List[str] = Field(default_factory=list, description="IDs of neighbors that influenced this score")
+
+class StreamingAlert(BaseResult):
+    """A real-time alert generated from the Kafka stream."""
+    timestamp: str
+    transaction_id: str
+    alert_type: str # e.g., "Structuring", "GNN_Anomaly", "Sanctions_Hit", "Typology_Layering"
+    risk_score: int
+    summary: str
+    related_entities: List[str] = Field(default_factory=list)
+    stix_bundle: Optional[Dict[str, Any]] = Field(None, description="Embedded STIX 2.1 bundle for the alert")
+
+class AdverseMediaResult(BaseResult):
+    """Result from NLP analysis of adverse media feeds."""
+    entity_name: str
+    articles_found: int = 0
+    negative_sentiment_score: float = Field(0.0, description="Average negative sentiment (0.0 to 1.0)")
+    key_themes: List[str] = Field(default_factory=list, description="e.g., 'Fraud', 'Sanctions', 'Bribery'")
+
+class GenerativeSummaryResult(BaseResult):
+    """A GenAI-generated summary for an alert or entity."""
+    entity_id: str
+    summary_text: str
+    confidence: float
+    sources_consulted: List[str]
+
+class ScenarioSimulationResult(BaseResult):
+    """Result of a hypothetical laundering path simulation."""
+    scenario_name: str
+    path_found: bool
+    path: List[str] = Field(default_factory=list)
+    weakest_link_node: Optional[str] = None
+    vulnerability_exploited: Optional[str] = None
+
+# --- Data Forensics ---
+
+class ForensicArtifactResult(BaseModel):
+    file_path: str
+    media_type: str = "Image"
+    artifacts_found: List[str] = Field(default_factory=list)
+    confidence_scores: Dict[str, float] = Field(default_factory=dict)
+    error: Optional[str] = None
+
+class DeepfakeAnalysisResult(BaseModel):
+    file_path: str
+    media_type: str = "Video"
+    is_deepfake: bool = False
+    confidence: float = 0.0
+    inconsistencies: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class ProvenanceResult(BaseModel):
+    file_path: str
+    has_c2pa_credentials: bool = False
+    is_valid: bool = False
+    issuer: Optional[str] = None
+    manifest_history: List[Dict] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class NarrativeMapResult(BaseModel):
+    topic: str
+    key_narratives: List[str] = Field(default_factory=list)
+    origin_nodes: List[str] = Field(default_factory=list)
+    spread_velocity: float = 0.0
+    error: Optional[str] = None
+
+class PoisoningDetectionResult(BaseModel):
+    source_url: str
+    is_compromised: bool = False
+    indicators: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    error: Optional[str] = None
+
+# --- Data Fusion (4D Analysis) Models ---
+
+
+class MasterEntityProfile(BaseModel):
+    """
+    A single, resolved "Master Entity Profile" stitched together
+    from multiple data fragments.
+    """
+
+    entity_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    primary_name: Optional[str] = None
+    aliases: List[str] = []
+    
+    # Fused Cyber & Physical Indicators
+    linked_cyber_indicators: List[str] = Field(
+        default_factory=list,
+        description="IPs, domains, emails, usernames, wallet addresses",
+    )
+    linked_physical_locations: List[PhysicalLocation] = Field(
+        default_factory=list
+    )
+    linked_social_profiles: List[SocialProfile] = Field(default_factory=list)
+    
+    resolved_from_fragments: List[str] = Field(
+        default_factory=list,
+        description="Source data points, e.g., 'dark web user:x', 'IP:1.2.3.4'",
+    )
+
+
+class PatternOfLifeEvent(BaseModel):
+    """A single, time-stamped event in a target's pattern of life."""
+
+    timestamp: datetime
+    event_type: str = Field(
+        ..., description="e.g., 'GEOINT', 'AVINT', 'SOCMINT', 'CYBINT'"
+    )
+    summary: str
+    source_data: Dict[str, Any] = Field(
+        default_factory=dict, description="Link to the raw source object if possible"
+    )
+    location: Optional[PhysicalLocation] = None
+
+
+class PatternOfLife(BaseModel):
+    """A 4D (Spatial + Temporal) tracking of a target's life patterns."""
+
+    total_events: int
+    events: List[PatternOfLifeEvent]
+    ai_summary: str = Field(
+        ...,
+        description="AI-generated summary of the target's pattern of life.",
+    )
+
+
+class CognitivePrediction(BaseModel):
+    """
+    A single predictive or prescriptive insight generated
+    by the cognitive modeling engine.
+    """
+
+    prediction_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    prediction_text: str = Field(
+        ..., description="What is likely to happen and why."
+    )
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence in the prediction (0.0 to 1.0)"
+    )
+    justification: str = Field(
+        ..., description="The data points that led to this conclusion."
+    )
+    tactic: str = Field(
+        ..., description="The MITRE ATT&CK tactic or intelligence category."
+    )
+
+
+class DataFusionResult(BaseModel):
+    """
+    The main, top-level result model for a Multi-Modal Data Fusion (4D Analysis) scan.
+    """
+
+    target_identifier: str = Field(
+        ..., description="The initial target query (e.g., name, username, IP)."
+    )
+    master_entity_profile: Optional[MasterEntityProfile] = None
+    pattern_of_life: Optional[PatternOfLife] = None
+    predictions: List[CognitivePrediction] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class InfraPattern(BaseModel):
+    """A matched infrastructure pattern."""
+    pattern_name: str = Field(..., description="Name of the matched APT/TA methodology.")
+    provider: str = Field(..., description="Provider (e.g., 'DigitalOcean', 'Namecheap').")
+    indicator: str = Field(..., description="The specific indicator (e.g., IP, domain, ASN).")
+    confidence: float = Field(..., description="Confidence of the match (0.0 to 1.0).")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Raw data from the source, e.g., Shodan banner.")
+
+class InfraSearchResult(BaseModel):
+    """Result of a collection infrastructure scan."""
+    client_asset: str
+    total_found: int = 0
+    matched_patterns: List[InfraPattern] = []
+    error: Optional[str] = None
+
+class PersonnelRiskScore(BaseModel):
+    """Insider threat risk score for a single individual."""
+    personnel_id: str = Field(..., description="An identifier for the personnel.")
+    risk_score: float = Field(..., description="Calculated risk score (0.0 to 1.0).")
+    key_factors: List[str] = Field(..., description="Primary factors contributing to the score.")
+    
+class InsiderThreatResult(BaseModel):
+    """Result of an insider threat scoring analysis."""
+    total_personnel_analyzed: int
+    high_risk_count: int = 0
+    personnel_scores: List[PersonnelRiskScore] = []
+    error: Optional[str] = None
+
+class MediaVector(BaseModel):
+    """An identified origin or spread vector for media."""
+    platform: str = Field(..., description="The platform (e.g., 'Twitter', 'FringeForumX').")
+    identifier: str = Field(..., description="The post, user, or article ID/URL.")
+    timestamp: Optional[datetime.datetime] = Field(None, description="Timestamp of the post.")
+    is_origin: bool = False
+    snippet: str
+
+class MediaProvenanceResult(BaseModel):
+    """Result of a media manipulation tracking scan."""
+    media_fingerprint: str
+    media_type: str = "unknown"
+    origin_vector: Optional[MediaVector] = None
+    spread_path: List[MediaVector] = []
+    confidence: float = 0.0
+    error: Optional[str] = None
+
+class AttributionScoreResult(BaseModel):
+    """Result of an attribution confidence score calculation."""
+    proposed_actor: str
+    confidence_score: float = Field(..., description="The quantifiable score from 0.0 to 1.0.")
+    total_indicators_provided: int
+    matched_indicators: List[Dict[str, Any]]
+    conflicting_indicators: List[Dict[str, Any]]
+    unknown_indicators: List[Dict[str, Any]]
+    error: Optional[str] = None
+
+# --- Movememtn Intelligence ---
+class FusedLocationPoint(BaseModel):
+    source: str
+    latitude: float
+    longitude: float
+    timestamp: str
+    velocity: Optional[float] = None
+    altitude: Optional[float] = None
+    description: str
+
+
+class MovingTargetResult(BaseModel):
+    target_identifier: str
+    current_location: Optional[FusedLocationPoint] = None
+    historical_track: List[FusedLocationPoint] = []
+    error: Optional[str] = None
+
+class InfluenceMapResult(BaseModel):
+    """
+    Model for the result of a graph-based influence mapping analysis.
+    """
+    target_space: str
+    geography: Optional[str] = None
+    influence_scores: Dict[str, float] = Field(default_factory=dict)
+    analysis_text: str
+    error: Optional[str] = None
+
+class TradeFlowPeriod(BaseModel):
+    """
+    Represents a single data point in a trade flow time-series.
+    """
+    period: int
+    value_usd: float
+    rolling_mean: Optional[float] = None
+    rolling_std: Optional[float] = None
+    baseline_mean: Optional[float] = None
+    baseline_std: Optional[float] = None
+    z_score: Optional[float] = None
+
+    class Config:
+        # This allows NaN values (which pandas creates) to be handled gracefully
+        # without Pydantic throwing an error. They will be set to None.
+        orm_mode = True 
+        validate_assignment = True
+
+    @validator('rolling_mean', 'rolling_std', 'baseline_mean', 'baseline_std', 'z_score', pre=True)
+    def replace_nan_with_none(cls, v):
+        """Replace pandas.NA, numpy.nan, or math.nan with None."""
+        try:
+            if v is None or pd.isna(v) or np.isnan(v):
+                return None
+        except (TypeError, ValueError):
+            pass # Handle non-numeric types if any, though these fields should be numeric
+        return v
+
+class TradeFlowAnomalyResult(BaseModel):
+    """
+    Model for the result of a trade flow anomaly detection scan.
+    """
+    commodity_code: str
+    country_code: str
+    latest_period: Optional[TradeFlowPeriod] = None
+    anomalies_detected: List[TradeFlowPeriod] = []
+    analysis: Optional[str] = None
+    error: Optional[str] = None
+class DroneActivityInfo(BaseModel):
+    """
+    Model for a single detected drone or UAS.
+    """
+    hex: str
+    lat: float
+    lon: float
+    altitude_ft: int
+    speed_kts: int
+    track: int
+    registration: Optional[str] = None
+    aircraft_type: Optional[str] = None
+    anomaly: Optional[str] = None
+
+class DroneActivityResult(BaseModel):
+    """
+    The main, top-level result model for a drone monitoring scan.
+    """
+    location: Dict[str, Any] # e.g., {"lat": 40.7, "lon": -74.0, "radius_km": 5.0}
+    total_drones: int
+    drones: List[DroneActivityInfo] = []
+    error: Optional[str] = None
+
+class PassiveDNSRecord(BaseModel):
+    """Model for a single passive DNS record."""
+    hostname: str
+    record_type: str
+    value: str
+    first_seen: Optional[str] = None
+    last_seen: Optional[str] = None
+    source: str
+
+class PassiveDNSResult(BaseModel):
+    """Model for the result of a passive-dns-query."""
+    query_indicator: str
+    total_records: int
+    records: List[PassiveDNSRecord] = []
+    error: Optional[str] = None
+
+class SourcePoisoningIndicator(BaseModel):
+    """An indicator of potential data poisoning."""
+    indicator_type: str = Field(..., description="e.g., 'Malicious Host', 'Known Disinfo Source', 'Suspicious String'")
+    indicator_value: str
+    description: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+
+class SourcePoisoningResult(BaseModel):
+    """Model for the result of a source-poisoning-detect scan."""
+    source_query: str
+    is_poisoned: bool
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    indicators: List[SourcePoisoningIndicator] = []
+    error: Optional[str] = None
+
+class OpsecScoreFactor(BaseModel):
+    """A single factor contributing to an adversary's OPSEC score."""
+    factor: str
+    description: str
+    score_impact: float = Field(..., description="The positive or negative impact on the 0.0-1.0 score (e.g., -0.3)")
+
+class AdversaryOpsecScoreResult(BaseModel):
+    """Model for the result of an adversary-opsec-score scan."""
+    adversary_identifier: str
+    opsec_score: float = Field(..., ge=0.0, le=1.0, description="OPSEC score (0.0=Bad, 1.0=Excellent)")
+    summary: str
+    factors: List[OpsecScoreFactor] = []
+    error: Optional[str] = None
+
+class SyntheticMediaAuditResult(BaseModel):
+    """
+    Result model for a synthetic-media-audit.
+    Categorizes and scores the AI-generation origin.
+    """
+    file_path: str
+    media_type: str
+    is_synthetic: bool = False
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    suspected_origin_model: str = "Unknown"
+    analysis_details: Dict[str, Any] = Field(default_factory=dict, description="Aggregated findings from other media modules.")
+class SyntheticMediaAuditResult(BaseModel):
+    """
+    Result model for a synthetic-media-audit.
+    Categorizes and scores the AI-generation origin.
+    """
+    file_path: str
+    media_type: str
+    is_synthetic: bool = False
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    suspected_origin_model: str = "Unknown"
+    analysis_details: Dict[str, Any] = Field(default_factory=dict, description="Aggregated findings from other media modules.")
+    error: Optional[str] = None
+
+# --- ADDED: Schemas for new functionality ---
+
+
+# Schemas for Internal: disk-artifact-extractor
+class DigitalArtifact(BaseModel):
+    artifact_type: str = Field(..., description="Type of artifact (e.g., 'Prefetch', 'Shellbag', 'ShimCache').")
+    source_path: str = Field(..., description="Path to the artifact within the disk image.")
+    extracted_to: Optional[str] = Field(None, description="Path where the artifact was extracted on the host.")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Parsed metadata from the artifact.")
+
+
+class ArtifactExtractionResult(BaseModel):
+    image_path: str = Field(..., description="Path to the disk image that was analyzed.")
+    artifacts_found: List[DigitalArtifact] = Field(default_factory=list, description="List of extracted artifacts.")
+    total_extracted: int = Field(0, description="Total number of artifacts extracted.")
+    error: Optional[str] = Field(None, description="Error message if extraction failed.")
+
+
+# Schema for AppInt: deep-metadata-parser
+class DeepMetadata(BaseModel):
+    file_path: str = Field(..., description="Path to the file that was analyzed.")
+    file_type: str = Field(..., description="Detected file type (e.g., 'AutoCAD DXF', 'Shapefile').")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Extracted non-standard metadata.")
+    error: Optional[str] = Field(None, description="Error message if extraction failed.")
+
+
+# Schema for Project: judicial-hold
+class JudicialHoldResult(BaseModel):
+    project_name: str = Field(..., description="The name of the project.")
+    hold_set: bool = Field(False, description="Whether the hold was successfully applied.")
+    reason: str = Field(..., description="The reason for the legal hold.")
+    set_by_user: str = Field(..., description="The user who set the hold.")
+    timestamp: str = Field(..., description="The ISO 8601 timestamp for when the hold was set.")
+    snapshot_details: Optional[str] = Field(None, description="Details of the snapshot taken, e.g., 'Copied 125 scans to archive'.")
+    error: Optional[str] = Field(None, description="Error message if setting the hold failed.")
+
+# Schemas for Auto: data-quality-governance
+class DataFeedStatus(BaseModel):
+    feed_name: str = Field(..., description="Name of the data feed (e.g., 'OTX API', 'Vulners API').")
+    status: str = Field(..., description="Status of the feed ('UP', 'DOWN', 'DEGRADED').")
+    last_checked: str = Field(..., description="ISO 8601 timestamp of the check.")
+    message: Optional[str] = Field(None, description="Additional details (e.g., error message, latency, schema validation failure).")
+
+class DataQualityReport(BaseModel):
+    feeds_checked: int = Field(0, description="Total number of feeds checked.")
+    feeds_down: int = Field(0, description="Number of feeds currently down or degraded.")
+    statuses: List[DataFeedStatus] = Field(default_factory=list, description="List of statuses for each feed.")
+
+class ChainOfCustody(BaseModel):
+    """Model for a cryptographic hash and timestamp to ensure data integrity."""
+    data_hash: str = Field(..., description="Cryptographic hash (e.g., SHA-256) of the raw data.")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="ISO 8601 timestamp of when the data was collected.")
+    source_description: str = Field(..., description="Description of the data source (e.g., 'OTX Pulse 123', 'Nmap scan of 1.2.3.4').")
+
+class EvidentiaryReport(BaseModel):
+    """Model for a report that includes chain of custody information for legal defensibility."""
+    report_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_name: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    evidence_items: List[ChainOfCustody] = Field(default_factory=list)
+    report_hash: Optional[str] = Field(None, description="A final hash of all evidence hashes to 'seal' the report.")
+
+# --- Collaboration Schemas (Report:collaborate) ---
+
+class TaskStatus(str, Enum):
+    """Enumeration for the status of an investigative task."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+class InvestigativeTask(Base):  # type: ignore
+    """ORM Model for a task assigned to a user within a project."""
+    __tablename__ = "investigative_tasks"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = Column(String, ForeignKey("projects.id"), index=True, nullable=False)
+    assigned_to_user_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    created_by_user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(SQLAlchemyEnum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Annotation(Base):  # type: ignore
+    """ORM Model for a user's annotation on a piece of data (e.g., a scan result)."""
+    __tablename__ = "annotations"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = Column(String, ForeignKey("projects.id"), index=True, nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), index=True, nullable=False)
+    scan_result_id = Column(Integer, ForeignKey("scan_results.id"), index=True, nullable=True)
+    target_entity = Column(String, index=True, nullable=True, description="e.g., an IP, domain, or other indicator")
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# --- Data Verification Schemas (Internal:data-verification) ---
+
+class CRAAPScore(BaseModel):
+    """A model for a CRAAP (Currency, Relevance, Authority, Accuracy, Purpose) score."""
+    currency: float = Field(..., ge=0.0, le=5.0, description="Score for how current the information is.")
+    relevance: float = Field(..., ge=0.0, le=5.0, description="Score for how relevant the information is.")
+    authority: float = Field(..., ge=0.0, le=5.0, description="Score for the authority of the source.")
+    accuracy: float = Field(..., ge=0.0, le=5.0, description="Score for the accuracy and correctness of the information.")
+    purpose: float = Field(..., ge=0.0, le=5.0, description="Score for the purpose (e.g., bias) of the information.")
+    overall_score: float = Field(..., ge=0.0, le=5.0, description="The averaged final score (0-5 scale).")
+
+class DataVerificationResult(BaseResult):
+    """Model for the result of a data verification/reliability check."""
+    source_identifier: str = Field(..., description="The feed or data source being scored (e.g., 'otx.alienvault.com', 'Local Scan').")
+    reliability_score: float = Field(..., ge=0.0, le=100.0, description="Overall reliability score (0-100).")
+    craap_assessment: Optional[CRAAPScore] = Field(None, description="Optional detailed CRAAP breakdown.")
+    last_verified: datetime = Field(default_factory=datetime.utcnow)
+
+# --- Custom API Builder Schemas (Internal:custom-API-builder) ---
+
+class CustomAPISource(Base): # type: ignore
+    """
+    ORM Model for a user-defined custom API data source (low-code tool).
+    """
+    __tablename__ = "custom_api_sources"
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    api_endpoint_url = Column(String, nullable=False, description="The URL, with {target} as a placeholder.")
+    http_method = Column(String, default="GET", nullable=False, description="e.g., GET, POST")
+    request_params = Column(JSON, nullable=True, description="Key-value pairs for URL params or JSON body. Use {target} as placeholder.")
+    request_headers = Column(JSON, nullable=True, description="Key-value pairs for headers. Use {target} as placeholder.")
+    data_extraction_path = Column(String, nullable=True, description="JMESPath/JSONPath string to extract relevant data from the response.")
+    created_by_user_id = Column(String, ForeignKey("users.id"), index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class CustomAPIResult(BaseResult):
+    """Model for the result of a scan using a CustomAPISource."""
+    source_name: str
+    raw_response: Dict[str, Any]
+    extracted_data: Optional[Any] = None
+
+class PIIFinding(BaseModel):
+    """Model for a single piece of PII found during a compliance check."""
+    data_field: str = Field(..., description="The field or key where PII was found.")
+    data_snippet: str = Field(..., description="A redacted snippet of the PII.")
+    pii_type: str = Field(..., description="The type of PII (e.g., 'Email', 'Phone', 'Name').")
+    status: str = Field("Redacted", description="Action taken: 'Redacted' or 'Anonymized'.")
+
+class ComplianceCheckResult(BaseResult):
+    """Model for the result of a real-time compliance check for PII/regulatory requirements."""
+    module: str = Field(..., description="The module or data source being checked.")
+    total_items_scanned: int = 0
+    total_findings: int = 0
+    findings: List[PIIFinding] = Field(default_factory=list)
+    regulatory_frameworks: List[str] = Field(default_factory=list, description="e.g., 'GDPR', 'CCPA'.")
+    message: str = "Compliance check complete. PII has been redacted."
+
+class PrivacyImpactReport(BaseResult):
+    """Model for a privacy impact report on gathered intelligence."""
+    target: str = Field(..., description="The person or group being assessed.")
+    summary: str = Field(..., description="AI-generated summary of the privacy impact.")
+    data_collected: List[str] = Field(default_factory=list, description="Categories of data collected.")
+    potential_risks: List[str] = Field(default_factory=list, description="Potential privacy risks identified.")
+    proportionality_assessment: str = Field(..., description="Assessment of whether the data collection is proportionate to the objective.")
+    justification: str = Field(..., description="Justification for the investigation.")
+
+class SyntheticTextAnalysis(BaseModel):
+    is_synthetic: bool = False
+    confidence: float = 0.0
+    evidence: str = "No synthetic indicators found."
+
+class SyntheticNarrativeItem(BaseModel):
+    source: str
+    type: str  # "News" or "Tweet"
+    content: str
+    sentiment: str
+    synthetic_analysis: SyntheticTextAnalysis
+
+class SyntheticNarrativeMapResult(BaseModel):
+    query: str
+    total_items_found: int
+    synthetic_items_detected: int
+    synthetic_items_by_type: Dict[str, int] = Field(default_factory=dict)
+    synthetic_narrative_map: List[SyntheticNarrativeItem] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class VoiceMatch(BaseModel):
+    known_adversary_file: str
+    similarity_score: float = Field(..., ge=0.0, le=1.0)
+    decision: str = "No Match"
+
+class AdversaryVoiceMatchResult(BaseModel):
+    new_audio_file: str
+    match_threshold: float
+    status: str = "Completed"
+    matches_found: List[VoiceMatch] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class ReputationModelResult(BaseModel):
+    query: str
+    media_file: str
+    media_synthetic_confidence: float = 0.0
+    amplification_network_strength: float = 0.0
+    projected_impact_score: float = Field(..., ge=0.0, le=10.0)
+    risk_level: str = "Low"
+    projected_impact_timeline: List[float] = Field(default_factory=list, description="Projected impact score over the next 7 days.")
+    error: Optional[str] = None
+
+# --- Multimodal Reasoning Schemas ---
+
+class MultimodalReasoningResult(BaseResult):
+    """Result of a multimodal reasoning task."""
+    target: str
+    cross_correlations: List[str] = []
+    fused_insights: List[str] = []
+
+
+# --- Event Modeling Schemas ---
+
+class EventEntity(BaseModel):
+    """An entity involved in an event."""
+    name: str
+    type: str  # e.g., "person", "location", "asset", "indicator"
+
+class Event(BaseModel):
+    """A single reconstructed event in a timeline."""
+    timestamp: str
+    event_description: str
+    entities: List[EventEntity] = []
+    source_report_hint: str # A quote or hint from the source data
+
+class EventModelingResult(BaseResult):
+    """Result of an event modeling task."""
+    target: str
+    timeline: List[Event] = []
+    total_events: int = 0
+
+
+# --- Sentiment Time Series Schemas ---
+
+class SentimentDataPoint(BaseModel):
+    """A single point in a sentiment time series."""
+    timestamp: str
+    sentiment_score: float  # -1.0 to 1.0
+    emotional_tone: str     # e.g., "Neutral", "Anger", "Joy"
+    document_hint: str      # A snippet of the source document
+
+class SentimentAnomaly(BaseModel):
+    """A detected anomaly in a sentiment time series."""
+    timestamp: str
+    document_hint: Optional[str] = None
+    shift_direction: str  # "Positive" or "Negative"
+    shift_magnitude: float
+    message: str
+
+class SentimentTimeSeriesResult(BaseResult):
+    """Result of a sentiment time series analysis."""
+    target: str
+    time_series: List[SentimentDataPoint] = []
+    anomalies: List[SentimentAnomaly] = []
+    overall_average_sentiment: float = 0.0
+    total_documents_analyzed: int = 0
+    total_errors: int = 0
+
+
+# --- Bias Audit Schemas ---
+
+class BiasFinding(BaseModel):
+    """A single potential bias detected in a report."""
+    bias_type: str  # e.g., "Confirmation Bias", "Collection Gap"
+    evidence: str
+    recommendation: str
+
+class BiasAuditResult(BaseResult):
+    """Result of a bias audit on a report."""
+    report_identifier: str  # The name/path of the report that was audited
+    findings: List[BiasFinding] = []
+    total_findings: int = 0
+
+# --- Schemas for Supply Chain Risk ---
+
+class SoftwareComponent(BaseModel):
+    """Represents a single software component or dependency."""
+    name: str
+    version: str
+    supplier: Optional[str] = None
+    ecosystem: Optional[str] = "pypi"  # e.g., pypi, npm, maven
+
+class SupplyChainVulnerability(BaseModel):
+    """Details of a vulnerability found in a component."""
+    cve_id: str
+    severity: str  # e.g., "CRITICAL", "HIGH", "MEDIUM", "LOW"
+    description: str
+    component_name: str
+    component_version: str
+
+class SupplyChainRiskResult(BaseModel):
+    """The result of a supply chain risk analysis."""
+    target_components: List[SoftwareComponent]
+    found_vulnerabilities: List[SupplyChainVulnerability] = []
+    risk_score: float = Field(default=0.0, description="Calculated risk score from 0.0 to 10.0")
+    summary: Optional[str] = None
+    error: Optional[str] = None
+
+# --- Schemas for Malware Sandbox ---
+
+class SandboxFile(BaseModel):
+    """Details of the file submitted to the sandbox."""
+    filename: Optional[str] = None
+    file_hash: str = Field(..., description="SHA256 hash of the file")
+    file_type: Optional[str] = None
+
+class SandboxBehavior(BaseModel):
+    """A notable behavior observed during sandbox execution."""
+    category: str  # e.g., "network", "filesystem", "registry"
+    description: str
+    mitre_ttp_id: Optional[str] = None
+    risk_level: str = "INFO" # e.g., "SUSPICIOUS", "MALICIOUS", "INFO"
+
+class SandboxResult(BaseModel):
+    """The result of an automated malware sandbox analysis."""
+    file_details: SandboxFile
+    is_malicious: bool = False
+    malware_family: Optional[str] = None
+    confidence_score: float = Field(default=0.0, description="Confidence in the verdict (0.0 to 1.0)")
+    observed_behaviors: List[SandboxBehavior] = []
+    error: Optional[str] = None
+
+# --- Schemas for Zero-Day Tracking ---
+
+class EmergingExploit(BaseModel):
+    """Information about a newly discovered exploit or zero-day."""
+    exploit_id: str = Field(..., description="A unique ID, e.g., CVE-202X-XXXX or a vendor ID")
+    product: str
+    vendor: str
+    description: str
+    source_url: str
+    discovered_on: str # ISO date string
+    is_zero_day: bool = Field(default=False, description="True if no patch is available")
+
+class ZeroDayTrackingResult(BaseModel):
+    """The result of monitoring for emerging exploits."""
+    query: str  # The product, vendor, or topic being monitored
+    emerging_exploits: List[EmergingExploit] = []
+    summary: Optional[str] = None
+    error: Optional[str] = None
+
+
+class TopicCluster(BaseModel):
+    cluster_id: int
+    cluster_name: str = Field(
+        ..., description="A concise, descriptive name for the topic cluster."
+    )
+    document_indices: List[int] = Field(
+        ..., description="List of zero-based indices of documents in this cluster."
+    )
+    document_hints: List[str] = Field(
+        ..., description="A list of snippets from documents in this cluster."
+    )
+    document_count: int
+
+
+class TopicClusteringResult(BaseModel):
+    total_documents_analyzed: int
+    total_clusters_found: int
+    clusters: List[TopicCluster]
+    unclustered_documents: int = 0
+    error: Optional[str] = None
+
+class ChainOfCustodyEntry(BaseModel):
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    action: str
+    actor: str = "chimera-intel-system"
+    details: str
+
+class AuditableDataReceipt(BaseModel):
+    receipt_id: str
+    target: str
+    source: str
+    content_sha256: str
+    ingest_timestamp: str
+    judicial_hold: bool = False
+    judicial_hold_reason: Optional[str] = None
+    chain_of_custody: list[ChainOfCustodyEntry] = []
+
+class PrivacyImpactReport(BaseModel):
+    report_id: str
+    target: str
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    total_documents_scanned: int
+    documents_with_pii: int
+    overall_risk_level: str  # e.g., "Low", "Medium", "High", "Critical"
+    violation_summary: Dict[str, int] = Field(
+        description="A summary count of PII types found, e.g., {'EMAIL': 5, 'PHONE': 2}"
+    )
+    mitigation_steps: List[str]
+    violations: List[Dict[str, Any]] = Field(
+         description="A list of specific violation details."
+    )
+
+class BuildingFootprint(BaseModel):
+    """
+    Represents a building footprint from OpenStreetMap.
+    """
+    osm_id: int = Field(..., description="OpenStreetMap element ID.")
+    type: str = Field(..., description="Element type (e.g., 'way').")
+    tags: Dict[str, str] = Field(..., description="OSM tags for the building.")
+    geometry: List[Dict[str, float]] = Field(..., description="List of (lat, lon) coordinates defining the building's geometry.")
+
+class FacilityMapResult(BaseModel):
+    """
+    Combined result for facility mapping.
+    """
+    query: str
+    locations_found: List[PhysicalLocation] = Field(default_factory=list)
+    building_footprints: List[BuildingFootprint] = Field(default_factory=list)
+    logistics_route: Optional[Dict[str, Any]] = Field(None, description="Simplified directions summary from Google Maps.")
+    error: Optional[str] = None
+
+class PhysicalEvent(BaseModel):
+    """
+    Represents a detected physical event (e.g., protest, strike).
+    """
+    title: str
+    source_name: str
+    url: str
+    timestamp: Optional[str]
+    location: Optional[str] = None
+    summary: Optional[str] = None
+
+class EventDetectionResult(BaseModel):
+    """
+    Result for a physical event monitoring query.
+    """
+    query: str
+    events_found: List[PhysicalEvent] = Field(default_factory=list)
+    total_events: int = 0
+    error: Optional[str] = None
+
+class AerialVehicleInfo(BaseModel):
+    """
+    Information about a detected aerial vehicle.
+    """
+    hex: str = Field(..., description="ICAO hex identifier.")
+    flight: str = Field(None, description="Flight number or callsign.")
+    lat: float = Field(..., description="Current latitude.")
+    lon: float = Field(..., description="Current longitude.")
+    altitude_ft: int = Field(None, description="Altitude in feet.")
+    speed_kts: int = Field(None, description="Speed in knots.")
+    track_deg: int = Field(None, description="Heading in degrees.")
+    vehicle_type: str = Field(None, description="Aircraft type description.")
+
+class AerialIntelResult(BaseModel):
+    """
+    Result for an aerial intelligence scan.
+    """
+    query_lat: float
+    query_lon: float
+    query_radius_km: int
+    vehicles_found: List[AerialVehicleInfo] = Field(default_factory=list)
+    total_vehicles: int = 0
+    error: Optional[str] = None
+
+class WorldBankIndicator(BaseModel):
+    """Represents a single data point from the World Bank API."""
+    indicator: str
+    country: str
+    country_iso3: str = Field(..., alias="countryiso3code")
+    date: str
+    value: Optional[float]
+    unit: str
+    source_id: str = Field(..., alias="sourceID")
+    last_updated: str = Field(..., alias="lastupdated")
+
+class OpenDataResult(BaseModel):
+    """Result model for open-source financial dataset queries."""
+    query: str
+    total_results: int
+    data_points: List[WorldBankIndicator] = []
+    error: Optional[str] = None
+
+class CrowdfundingCreator(BaseModel):
+    """Nested creator data from Kickstarter API."""
+    name: str
+
+class CrowdfundingProject(BaseModel):
+    """Represents a single crowdfunding project from the API."""
+    platform: str = "Kickstarter" # Set platform default
+    project_name: str = Field(..., alias="name")
+    url: str
+    creator: str # We will flatten the nested object into this field
+    goal: float
+    pledged: float
+    backers: int = Field(..., alias="backers_count")
+    status: str = Field(..., alias="state")
+
+class CrowdfundingAnalysisResult(BaseResult):
+    """Result of a crowdfunding platform analysis."""
+    keyword: str
+    projects: List[CrowdfundingProject] = []

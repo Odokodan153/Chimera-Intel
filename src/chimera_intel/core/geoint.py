@@ -11,12 +11,25 @@ from typing import Optional, List, Set
 import asyncio
 from datetime import datetime
 
-from .schemas import GeointReport, CountryRiskProfile
+# --- MODIFIED IMPORTS ---
+from .schemas import (
+    GeointReport, 
+    CountryRiskProfile, 
+    WifiNetworkInfo, 
+    WifiGeointResult,
+    PhysicalEvent,         # New
+    EventDetectionResult,    # New
+    AerialVehicleInfo,     # New
+    AerialIntelResult        # New
+)
+# --- END MODIFIED IMPORTS ---
+
 from .utils import save_or_print_results, console
 from .database import get_aggregated_data_for_target, save_scan_to_db
 from .http_client import sync_client
 from .project_manager import resolve_target
 from .geo_osint import get_geolocation_data
+from .config_loader import API_KEYS  # Added API_KEYS
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +135,159 @@ async def generate_geoint_report(target: str) -> GeointReport:
     return GeointReport(target=target, country_risk_profiles=risk_profiles)
 
 
+def find_wifi_networks(
+    ssid: Optional[str] = None, lat: Optional[float] = None, lon: Optional[float] = None
+) -> WifiGeointResult:
+    """
+    Searches the WiGLE API for Wi-Fi networks based on location or SSID.
+    """
+    api_key = API_KEYS.wigle_api_key
+    if not api_key:
+        return WifiGeointResult(error="WIGLE_API_KEY not found in .env file.")
+    if not any([ssid, lat and lon]):
+        return WifiGeointResult(
+            error="Must provide either an SSID or both latitude and longitude."
+        )
+    base_url = "https://api.wigle.net/api/v2/network/search"
+    headers = {"Authorization": f"Basic {api_key}", "Accept": "application/json"}
+    params = {}
+    if ssid:
+        params["ssid"] = ssid
+    if lat and lon:
+        params["latrange1"] = lat - 0.01
+        params["latrange2"] = lat + 0.01
+        params["longrange1"] = lon - 0.01
+        params["longrange2"] = lon + 0.01
+
+    try:
+        response = sync_client.get(base_url, params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        if not data.get("success"):
+            return WifiGeointResult(error=data.get("message", "WiGLE API error"))
+        networks = [
+            WifiNetworkInfo.model_validate(n) for n in data.get("results", [])
+        ]
+        return WifiGeointResult(networks_found=networks, total_networks=len(networks))
+    except Exception as e:
+        logger.error(f"Failed to search WiGLE: {e}")
+        return WifiGeointResult(error=f"An API error occurred: {e}")
+
+
+# --- NEW FUNCTION: Event Detection ---
+
+def monitor_physical_events(query: str, domain: Optional[str] = None) -> EventDetectionResult:
+    """
+    Monitors for physical events (strikes, protests, etc.) related to a target
+    using the NewsAPI.
+    """
+    api_key = API_KEYS.news_api_key
+    if not api_key:
+        return EventDetectionResult(query=query, error="NEWS_API_KEY not found in .env file.")
+        
+    search_query = f'"{query}" AND (protest OR strike OR gathering OR "security incident")'
+    params = {
+        "q": search_query,
+        "sortBy": "publishedAt",
+        "pageSize": 20,
+        "apiKey": api_key,
+    }
+    if domain:
+        params["domains"] = domain
+
+    base_url = "https://newsapi.org/v2/everything"
+    
+    try:
+        response = sync_client.get(base_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        events = []
+        for article in data.get("articles", []):
+            events.append(
+                PhysicalEvent(
+                    title=article.get("title"),
+                    source_name=article.get("source", {}).get("name"),
+                    url=article.get("url"),
+                    timestamp=article.get("publishedAt"),
+                    summary=article.get("description"),
+                )
+            )
+        return EventDetectionResult(query=query, events_found=events, total_events=len(events))
+    except Exception as e:
+        logger.error(f"Failed to search NewsAPI for events: {e}")
+        return EventDetectionResult(query=query, error=f"An API error occurred: {e}")
+
+# --- NEW FUNCTION: Drone / Aerial Intelligence ---
+
+def find_aerial_vehicles(lat: float, lon: float, radius_km: int = 50) -> AerialIntelResult:
+    """
+    Integrates open-source UAV/flight tracking data from ADS-B Exchange.
+    """
+    api_key = API_KEYS.adsbexchange_api_key
+    if not api_key:
+        return AerialIntelResult(
+            query_lat=lat, 
+            query_lon=lon, 
+            query_radius_km=radius_km, 
+            error="ADSBEXCHANGE_API_KEY not found in .env file."
+        )
+        
+    # ADS-B Exchange "v2" API endpoint for aircraft in a circle
+    radius_nm = radius_km * 0.539957 # Convert km to nautical miles
+    base_url = f"https://adsbexchange.com/api/v2/lat/{lat}/lon/{lon}/dist/{radius_nm}/"
+    headers = {"api-key": api_key} # Newer versions require an API key
+
+    try:
+        response = sync_client.get(base_url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        vehicles = []
+        for ac in data.get("ac", []):
+            # Try to identify potential drones/UAVs
+            # This is difficult; real-world UAVs often don't broadcast on ADS-B.
+            # We filter for 'UAV' in type or low altitude / slow speed.
+            ac_type = ac.get("t", "N/A")
+            is_uav = "UAV" in ac_type.upper() or "DRONE" in ac_type.upper()
+            
+            # Example filter: low altitude, slow speed, and not a helicopter
+            altitude = ac.get("alt_geom", ac.get("alt_baro", 0))
+            speed = ac.get("gs", 0)
+            if (
+                is_uav or 
+                (altitude < 2000 and speed < 80 and "HELO" not in ac_type.upper())
+            ):
+                vehicles.append(
+                    AerialVehicleInfo(
+                        hex=ac.get("hex", "N/A"),
+                        flight=ac.get("flight", "N/A"),
+                        lat=ac.get("lat", 0.0),
+                        lon=ac.get("lon", 0.0),
+                        altitude_ft=altitude,
+                        speed_kts=speed,
+                        track_deg=ac.get("track", 0),
+                        vehicle_type=ac_type,
+                    )
+                )
+                
+        return AerialIntelResult(
+            query_lat=lat,
+            query_lon=lon,
+            query_radius_km=radius_km,
+            vehicles_found=vehicles,
+            total_vehicles=len(vehicles)
+        )
+    except Exception as e:
+        logger.error(f"Failed to search ADS-B Exchange: {e}")
+        return AerialIntelResult(
+            query_lat=lat, 
+            query_lon=lon, 
+            query_radius_km=radius_km, 
+            error=f"An API error occurred: {e}"
+        )
+
+
 geoint_app = typer.Typer()
 
 
@@ -142,3 +308,81 @@ def run_geoint_analysis(
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=target_name, module="geoint_report", data=results_dict)
+
+
+@geoint_app.command("wifi-locate")
+def run_wifi_geolocation(
+    ssid: Optional[str] = typer.Option(
+        None, "--ssid", "-s", help="The SSID (network name) to search for."
+    ),
+    lat: Optional[float] = typer.Option(
+        None, "--lat", help="The latitude for the center of the search."
+    ),
+    lon: Optional[float] = typer.Option(
+        None, "--lon", help="The longitude for the center of the search."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Finds Wi-Fi networks using WiGLE to map locations and movement.
+    """
+    console.print(
+        f"[cyan]Searching WiGLE for networks (SSID: {ssid}, Lat: {lat}, Lon: {lon})...[/cyan]"
+    )
+    results_model = find_wifi_networks(ssid=ssid, lat=lat, lon=lon)
+    results_dict = results_model.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    if ssid:
+        save_scan_to_db(target=ssid, module="geoint_wifi_locate", data=results_dict)
+
+
+# --- NEW COMMAND: Event Detection ---
+
+@geoint_app.command("monitor-events")
+def run_event_monitoring(
+    target: Optional[str] = typer.Argument(
+        None, help="The target company name. Uses active project."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Monitors for physical events (strikes, protests) related to a target.
+    """
+    target_name = resolve_target(target, required_assets=["company_name"])
+    target_domain = resolve_target(target, required_assets=["domain"])
+
+    console.print(f"[cyan]Monitoring for physical events related to: {target_name}...[/cyan]")
+    results_model = monitor_physical_events(query=target_name, domain=target_domain)
+    results_dict = results_model.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=target_name, module="geoint_event_monitor", data=results_dict
+    )
+
+# --- NEW COMMAND: Aerial Intelligence ---
+
+@geoint_app.command("track-aerial")
+def run_aerial_tracking(
+    lat: float = typer.Option(..., "--lat", help="Latitude for the center of the search."),
+    lon: float = typer.Option(..., "--lon", help="Longitude for the center of the search."),
+    radius_km: int = typer.Option(25, "--radius", "-r", help="Search radius in kilometers."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Finds UAVs / aerial vehicles from open sources (ADS-B) near a location.
+    """
+    console.print(
+        f"[cyan]Searching for aerial vehicles near ({lat}, {lon}) within {radius_km}km...[/cyan]"
+    )
+    results_model = find_aerial_vehicles(lat=lat, lon=lon, radius_km=radius_km)
+    results_dict = results_model.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=f"{lat},{lon}", module="geoint_aerial_intel", data=results_dict
+    )

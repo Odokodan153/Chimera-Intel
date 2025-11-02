@@ -85,3 +85,69 @@ def test_generate_scenario_no_api_key():
 
         assert result.exit_code == 1
         assert "Error: Google API key not configured." in result.stdout
+
+
+# --- New Tests for Phishing Simulation ---
+
+def test_phishing_simulation_success():
+    """
+    Tests successful generation of a phishing simulation.
+    """
+    with (
+        patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys,
+        patch(
+            "chimera_intel.core.red_team.get_data_by_module"
+        ) as mock_get_data,
+        patch(
+            "chimera_intel.core.red_team.generate_swot_from_data"
+        ) as mock_generate_swot,
+    ):
+        # --- Setup Mocks ---
+        mock_api_keys.google_api_key = "test_key"
+        
+        # Simulate finding two types of data
+        mock_get_data.side_effect = [
+            [{"name": "John Doe", "email": "j.doe@example.com"}], # personnel data
+            [{"url": "https://portal.example.com/login"}] # content data
+        ]
+        
+        mock_generate_swot.return_value = SWOTAnalysisResult(
+            analysis_text="Subject: Urgent Action Required: Portal Login", error=None
+        )
+
+        # --- Run Command ---
+        result = runner.invoke(app, ["red-team", "phishing-simulation", "TestCorp"])
+
+        # --- Assertions ---
+        assert result.exit_code == 0
+        assert "Generating phishing simulation for TestCorp..." in result.stdout
+        assert "Phishing Simulation Template for TestCorp" in result.stdout
+        assert "Subject: Urgent Action Required: Portal Login" in result.stdout
+        
+        # Check that it tried to get both data types
+        assert mock_get_data.call_count == 2
+        mock_get_data.assert_any_call("TestCorp", "personnel_osint")
+        mock_get_data.assert_any_call("TestCorp", "offensive_enum_content")
+
+
+def test_phishing_simulation_no_data():
+    """
+    Tests behavior when no OSINT data is found for the simulation.
+    """
+    with (
+        patch("chimera_intel.core.red_team.API_KEYS") as mock_api_keys,
+        patch(
+            "chimera_intel.core.red_team.get_data_by_module"
+        ) as mock_get_data,
+    ):
+        # --- Setup Mocks ---
+        mock_api_keys.google_api_key = "test_key"
+        mock_get_data.return_value = [] # Simulate no data found for either module
+
+        # --- Run Command ---
+        result = runner.invoke(app, ["red-team", "phishing-simulation", "NoDataCorp"])
+
+        # --- Assertions ---
+        assert result.exit_code == 0
+        assert "No OSINT data found for target 'NoDataCorp'" in result.stdout
+        assert "Phishing Simulation Template" not in result.stdout

@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "chimera-purple-team"
+version = "0.1.0"
+description = "Purple teaming plugin for Chimera-Intel"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../../", develop = true}
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+purple_team = "chimera_purple_team.main:PurpleTeamPlugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

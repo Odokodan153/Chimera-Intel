@@ -6,9 +6,9 @@ perspective, generating potential attack vectors and actionable TTPs.
 """
 
 import typer
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
-from .database import get_aggregated_data_for_target
+from .database import get_aggregated_data_for_target, get_data_by_module
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
 from .utils import console
@@ -86,3 +86,89 @@ def run_red_team_analysis(
         # No data found for the target — this is a normal but noteworthy outcome.
 
         console.print(f"No data found for target '{target}'")
+
+
+# --- New Phishing Simulation Functionality ---
+
+def generate_phishing_simulation(target: str) -> Optional[Dict[str, Any]]:
+    """
+    Generates a phishing simulation template based on gathered OSINT.
+    """
+    console.print(
+        f"[bold cyan]Generating phishing simulation for {target}...[/bold cyan]"
+    )
+    
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        raise typer.Exit(code=1)
+
+    # 1. Gather relevant data
+    try:
+        # Get personnel names/emails (assuming a 'personnel_osint' module exists)
+        personnel_data = get_data_by_module(target, "personnel_osint")
+        # Get discovered web content (from 'offensive_enum_content')
+        content_data = get_data_by_module(target, "offensive_enum_content")
+    except Exception as e:
+        console.print(f"[bold red]Database Error:[/bold red] Could not fetch OSINT data: {e}")
+        return None
+
+    if not personnel_data and not content_data:
+        return None # No data to work with
+
+    # 2. Build the AI prompt
+    prompt = f"""
+    As a security awareness auditor, design a realistic phishing simulation template
+    targeting employees of '{target}'.
+    
+    Use the following OSINT data to make the phish highly customized and plausible:
+    
+    **Known Personnel Data (sample):**
+    {personnel_data[:5]} 
+    
+    **Discovered Web Content (e.g., login portals, internal sites):**
+    {content_data[:5]}
+
+    **Task:**
+    Generate a complete phishing simulation with the following components:
+    1.  **Sender Name:** A plausible sender (e.g., "IT Support", "HR Department").
+    2.  **Email Subject:** A compelling, urgent subject line.
+    3.  **Email Body:** The full text of the email. It should be professional,
+        reference one or more pieces of the OSINT data (e.g., a known login portal),
+        and create a sense of urgency to click a link.
+    4.  **Lure/Hook:** Explain the psychological trick used (e.g., "Urgent action required," "Password expiry").
+    
+    Format the output clearly.
+    """
+
+    # 3. Call the AI
+    ai_result = generate_swot_from_data(prompt, api_key)
+
+    if ai_result.error:
+        console.print(f"[bold red]AI Analysis Error:[/bold red] {ai_result.error}")
+        return None
+        
+    return {"phishing_simulation_template": ai_result.analysis_text}
+
+@red_team_app.command("phishing-simulation")
+def run_phishing_simulation(
+    target: str = typer.Argument(
+        ..., help="The target entity to design a simulation for."
+    )
+):
+    """
+    Generates a phishing simulation based on gathered personnel and web OSINT.
+    """
+    try:
+        result = generate_phishing_simulation(target)
+    except typer.Exit as te:
+        raise te
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] Unexpected error: {e}")
+        raise typer.Exit(code=1)
+        
+    if result:
+        console.print(f"\n[bold green]Phishing Simulation Template for {target}:[/bold green]")
+        console.print(result["phishing_simulation_template"])
+    else:
+        console.print(f"No OSINT data found for target '{target}' to generate simulation.")

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-forensics"
+version = "1.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A plugin for Chimera-Intel that provides deepfake detection, image forensics, and disinformation analysis."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# Dependencies specific to the Forensics plugin
+# These are packages used in media_forensics.py that are not
+# in the main chimera-intel pyproject.toml
+dependencies = [
+    "pillow>=10.0.0,<11.0.0",
+    "opencv-python>=4.8.0,<5.0.0",
+    "c2pa-python>=0.8.0,<0.9.0",
+    "beautifulsoup4>=4.12.2,<5.0.0",
+    "lxml>=5.2.2,<6.0.0",
+    "spacy>=3.7.0,<4.0.0",
+    "newspaper3k>=0.2.8,<0.3.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"

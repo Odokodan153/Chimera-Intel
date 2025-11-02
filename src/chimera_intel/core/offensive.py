@@ -10,7 +10,7 @@ import asyncio
 import logging
 import dns.resolver
 import socket  # Import socket to handle gaierror
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Dict, Any
 from .schemas import (
     APIDiscoveryResult,
     DiscoveredAPI,
@@ -21,7 +21,7 @@ from .schemas import (
 )
 from .http_client import async_client
 from .utils import save_or_print_results, console
-from .database import save_scan_to_db
+from .database import save_scan_to_db, get_data_by_module
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +211,62 @@ async def check_for_subdomain_takeover(
         target_domain=domain, potential_takeovers=potential_takeovers
     )
 
+# --- New WiFi Attack Surface Modeling ---
+
+def model_wifi_attack_surface(target: str) -> Optional[Dict[str, Any]]:
+    """
+    (Simulated) Models potential WiFi attack vectors based on SIGINT data.
+    """
+    console.print(
+        f"[bold cyan]Modeling WiFi attack surface for {target}...[/bold cyan]"
+    )
+    
+    # In a real scenario, this requires physical presence and specialized hardware.
+    # We will simulate this by fetching stored SIGINT data from the database.
+    try:
+        # Assuming a 'sigint' module saves data with BSSID, SSID, and security type
+        sigint_data = get_data_by_module(target, "sigint_wifi_scan")
+    except Exception as e:
+        console.print(f"[bold red]Database Error:[/bold red] Could not fetch SIGINT data: {e}")
+        return None
+
+    if not sigint_data:
+        return None # No data
+
+    potential_vectors = []
+    
+    for network in sigint_data:
+        ssid = network.get("ssid", "Unknown")
+        security = network.get("security_type", "Unknown")
+        
+        if security in ["WEP", "WPA-PSK (TKIP)", "Open"]:
+            potential_vectors.append({
+                "ssid": ssid,
+                "bssid": network.get("bssid"),
+                "vulnerability": "Weak/Outdated Encryption",
+                "attack_vector": "Direct password cracking (e.g., Aircrack-ng) or packet sniffing.",
+                "mitigation": "Upgrade to WPA3 or WPA2-AES."
+            })
+        elif "WPA2-PSK" in security:
+            potential_vectors.append({
+                "ssid": ssid,
+                "bssid": network.get("bssid"),
+                "vulnerability": "KRACK (Key Reinstallation Attack)",
+                "attack_vector": "If client/AP is unpatched, allows for man-in-the-middle (MitM) attacks.",
+                "mitigation": "Ensure all clients and APs are fully patched."
+            })
+        
+        # All networks are susceptible to rogue APs
+        potential_vectors.append({
+            "ssid": ssid,
+            "bssid": "N/A (Simulation)",
+            "vulnerability": "Rogue Access Point / Evil Twin",
+            "attack_vector": f"An attacker can broadcast the same SSID ('{ssid}') with a stronger signal to capture credentials.",
+            "mitigation": "Use WPA2/WPA3-Enterprise with 802.1X authentication. Deploy Wireless Intrusion Prevention System (WIPS)."
+        })
+
+    return {"target": target, "potential_wifi_vectors": potential_vectors}
+
 
 # --- Typer CLI Application ---
 
@@ -266,6 +322,29 @@ def run_cloud_takeover_check_cli(  # CHANGED: Made synchronous
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=domain, module="offensive_cloud_takeover", data=results_dict)
+
+
+@offensive_app.command("wifi-attack-surface")
+def run_wifi_attack_surface_cli(
+    target: str = typer.Argument(..., help="The target entity (e.g., 'Corporate-HQ')."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    (Simulated) Models WiFi attack vectors based on stored SIGINT data.
+    """
+    console.print("[bold yellow]Note:[/bold yellow] This simulation uses stored SIGINT data.")
+    console.print("[bold yellow]Real-world use requires physical proximity and authorization.[/bold yellow]")
+    
+    results = model_wifi_attack_surface(target)
+    
+    if results:
+        save_or_print_results(results, output_file)
+        # We can optionally save this analysis back to the DB
+        save_scan_to_db(target=target, module="offensive_wifi_analysis", data=results)
+    else:
+        console.print(f"No SIGINT (WiFi) data found for target '{target}'.")
 
 
 @offensive_app.callback()

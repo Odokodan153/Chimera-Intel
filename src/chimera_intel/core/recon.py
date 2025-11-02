@@ -2,7 +2,7 @@ import typer
 import logging
 import asyncio
 from typing import Optional, List, Dict, Union
-
+from datetime import datetime
 
 from google_play_scraper import search as search_google_play  # type: ignore
 from .schemas import (
@@ -12,6 +12,9 @@ from .schemas import (
     MobileApp,
     ThreatInfraResult,
     RelatedIndicator,
+    # --- NEW SCHEMAS ADDED ---
+    PassiveDNSResult,
+    PassiveDNSRecord,
 )
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
@@ -207,6 +210,76 @@ async def analyze_threat_infrastructure(indicator: str) -> ThreatInfraResult:
     )
 
 
+# --- NEW FUNCTION ADDED ---
+async def query_passive_dns(indicator: str) -> PassiveDNSResult:
+    """
+    Queries the VirusTotal API for passive DNS data on an indicator.
+
+    Args:
+        indicator (str): A domain or IP address.
+
+    Returns:
+        PassiveDNSResult: A Pydantic model with historical DNS records.
+    """
+    api_key = API_KEYS.virustotal_api_key
+    if not api_key:
+        return PassiveDNSResult(
+            query_indicator=indicator,
+            total_records=0,
+            error="VirusTotal API key not found.",
+        )
+    logger.info(f"Querying passive DNS for: {indicator}")
+    headers = {"x-apikey": api_key}
+
+    # Determine if the indicator is an IP or a domain
+    is_ip = all(c.isdigit() or c == "." for c in indicator)
+    url_part = "ip_addresses" if is_ip else "domains"
+
+    url = f"https://www.virustotal.com/api/v3/{url_part}/{indicator}/passive_dns"
+    records: List[PassiveDNSRecord] = []
+
+    try:
+        response = await async_client.get(url, headers=headers, timeout=20)
+        response.raise_for_status()
+        data = response.json().get("data", [])
+
+        for item in data:
+            attributes = item.get("attributes", {})
+            
+            first_seen_ts = attributes.get("first_seen")
+            last_seen_ts = attributes.get("last_seen")
+            
+            first_seen_str = datetime.utcfromtimestamp(first_seen_ts).isoformat() if first_seen_ts else "N/A"
+            last_seen_str = datetime.utcfromtimestamp(last_seen_ts).isoformat() if last_seen_ts else "N/A"
+
+            # Determine hostname and value based on query type
+            hostname = attributes.get("hostname")
+            value = attributes.get("ip_address") if not is_ip else indicator
+
+            records.append(
+                PassiveDNSRecord(
+                    hostname=hostname,
+                    record_type=attributes.get("record_type"),
+                    value=value,
+                    first_seen=first_seen_str,
+                    last_seen=last_seen_str,
+                    source=item.get("type", "passive_dns_record") # Use the item type as the source
+                )
+            )
+        
+        return PassiveDNSResult(
+            query_indicator=indicator,
+            total_records=len(records),
+            records=records
+        )
+    except Exception as e:
+        logger.error(f"Failed to query passive DNS for '{indicator}': {e}")
+        return PassiveDNSResult(
+            query_indicator=indicator,
+            total_records=0,
+            error=f"An error occurred with the VirusTotal API: {e}",
+        )
+
 # --- Typer CLI Application ---
 
 
@@ -301,4 +374,21 @@ def run_threat_infra_recon(
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
         target=target_indicator, module="recon_threat_infra", data=results_dict
+    )
+
+# --- NEW CLI COMMAND ADDED ---
+@recon_app.command("passive-dns-query")
+def run_passive_dns_query(
+    indicator: str = typer.Argument(..., help="The domain or IP to query in pDNS databases."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Queries Passive DNS databases for historical infrastructure connections."""
+    logger.info("Starting Passive DNS query for: '%s'", indicator)
+    results = asyncio.run(query_passive_dns(indicator))
+    results_dict = results.model_dump(exclude_none=True)
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=indicator, module="recon_passive_dns", data=results_dict
     )

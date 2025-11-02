@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-vehicle"
+version = "1.0.0"
+description = "Vehicle (VIN) OSINT plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "httpx>=0.25.0,<0.28.0"
+]
+
+# This section registers the package as a Chimera Intel plugin
+[project.entry-points."chimera_intel.plugins"]
+vehicle = "chimera_vehicle.main:VehiclePlugin"

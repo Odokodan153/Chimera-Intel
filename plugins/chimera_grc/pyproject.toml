@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "chimera-grc"
+version = "0.1.0"
+description = "Chimera Intel plugin for Governance, Risk, and Compliance (GRC) services."
+authors = ["Your Name <you@example.com>"]
+packages = [{ include = "chimera_grc", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../..", develop = true} 
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+grc = "chimera_grc.main:GRCPlugin"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

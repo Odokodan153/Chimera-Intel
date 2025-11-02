@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "chimera-nlp-insights"
+version = "0.1.0"
+description = "Chimera Intel plugin for advanced NLP tasks like sentiment time series and topic clustering."
+authors = ["Your Name <you@example.com>"]
+packages = [{ include = "chimera_nlp_insights", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../..", develop = true} 
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+nlp_insights = "chimera_nlp_insights.main:NLPEnhancementsPlugin"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

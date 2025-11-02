@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_deception_suite"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "chimera-intel", # Assumes the core package is installed
+    "typer",
+    "rich",
+    "pydantic",
+    "statsmodels",   # For reputation_model (ARIMA)
+    "dtw-python",    # For adversary_voice_matcher (DTW)
+    "numpy",
+]
+
+[project.entry-points."chimera.plugins"]
+# Corrected: Points to the new plugin class
+chimera_deception_suite = "chimera_deception_suite.main:DeceptionSuitePlugin"
+
+[project.urls]
+"Homepage" = "https://github.com/user/chimera-intel"

@@ -7,12 +7,19 @@ developers using compromised credentials.
 
 import typer
 import logging
-from typing import Optional, List, Set, Dict
+from typing import Optional, List, Set, Dict, Any
+from typing_extensions import Annotated # Import Annotated
 
+# --- Existing Imports ---
 from .schemas import OpsecReport, CompromisedCommitter
 from .utils import save_or_print_results
 from .database import get_aggregated_data_for_target, save_scan_to_db
 from .project_manager import resolve_target
+
+# --- NEW IMPORTS for OpsecFootprint ---
+from .opsec_footprint import OpsecFootprint
+from .schemas import Organization
+# --- End New Imports ---
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +70,7 @@ def generate_opsec_report(target: str) -> OpsecReport:
     return OpsecReport(target=target, compromised_committers=compromised_committers)
 
 
+# This is the app your plugin imports
 opsec_app = typer.Typer()
 
 
@@ -84,6 +92,47 @@ def run_opsec_analysis(
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
         save_scan_to_db(target=target_name, module="opsec_report", data=results_dict)
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+
+# ---
+# --- NEW 'footprint' Command ---
+# ---
+@opsec_app.command("footprint")
+def run_opsec_footprint(
+    target: Optional[str] = typer.Option(
+        None, "--target", "-t", help="Target company name. Uses active project if None."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save report summary to JSON."
+    ),
+):
+    """
+    Generates a proactive Adversary Risk Exposure Report.
+    """
+    try:
+        target_name = resolve_target(target, required_assets=["company_name", "domain"])
+        
+        # Fetch organization details from project
+        # This is a stub, replace with your actual project logic
+        # e.g., project = get_project(target_name)
+        #       domains = project.get_assets('domain')
+        #       social = project.get_assets('social')
+        org = Organization(
+            name=target_name,
+            domains=["example.com"], # Stub: Replace with real data
+            social_media_handles=["@example"] # Stub: Replace with real data
+        )
+        
+        typer.echo(f"Generating OPSEC Footprint for {org.name}...")
+        orchestrator = OpsecFootprint()
+        report = orchestrator.generate_report(org)
+        typer.echo(f"Report generation complete. Saved to: {report.get('report_path')}")
+        
+        save_or_print_results(report, output_file)
+        save_scan_to_db(target=target_name, module="opsec_footprint_report", data=report)
+
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)

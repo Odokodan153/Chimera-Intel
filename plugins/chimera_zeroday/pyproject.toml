@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_zeroday"
+version = "0.1.0"
+description = "Plugin for emerging exploit and zero-day tracking."
+dependencies = [
+    "chimera_intel",
+    "typer",
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+[project.entry-points."chimera.plugins"]
+# This makes the 'zeroday' command available in the main CLI
+zeroday = "chimera_zeroday.main:plugin_app"
+
+[tool.setuptools.packages.find]
+where = ["src"]

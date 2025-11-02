@@ -26,7 +26,11 @@ from .utils import save_or_print_results, is_valid_domain, console
 from .database import save_scan_to_db
 from .http_client import sync_client
 from .config_loader import API_KEYS
-from .project_manager import get_active_project
+from .project_manager import get_active_project, resolve_target
+# --- NEW IMPORTS ---
+from .leadership_profiler import leadership_profiler_app as profiler_app_instance
+# --- END NEW IMPORTS ---
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +96,6 @@ def get_hiring_trends(domain: str) -> HiringTrendsResult:
                                 trends.get("Data/Analytics", 0) + 1
                             )
                     # Create a unique list of job postings
-
                     unique_postings = {p.title: p for p in postings}.values()
                     return HiringTrendsResult(
                         total_postings=len(postings),
@@ -327,6 +330,15 @@ def get_sec_filings_analysis(ticker: str) -> Optional[SECFilingAnalysis]:
 
 
 corporate_intel_app = typer.Typer()
+
+# --- ADD NEW COMMAND ---
+# Add the app from leadership_profiler.py as a subcommand
+corporate_intel_app.add_typer(
+    profiler_app_instance, 
+    name="leadership-profiler",
+    help="Deep-dive OSINT/HUMINT on key executives."
+)
+# --- END ADD NEW COMMAND ---
 
 
 @corporate_intel_app.command("hr-intel")

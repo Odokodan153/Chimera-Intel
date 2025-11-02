@@ -8,11 +8,12 @@ Now uses a PostgreSQL database for multi-user collaboration.
 import os
 import typer
 import logging
-from datetime import datetime
+from datetime import datetime, timezone # <-- ADDED timezone
 from typing import Optional, List
 import json
+from pydantic import BaseModel, Field # <-- ADDED
 
-from .schemas import ProjectConfig
+from .schemas import ProjectConfig, JudicialHoldResult # <-- ADDED JudicialHoldResult
 from .utils import console
 from .database import get_db_connection
 from .user_manager import get_active_user, get_user_from_db
@@ -205,6 +206,125 @@ def resolve_target(target: Optional[str], required_assets: List[str]) -> str:
         raise typer.Exit(code=1)
 
 
+# --- ADDED: Real Judicial Hold Function ---
+
+def set_judicial_hold(project_name: str, reason: str) -> JudicialHoldResult:
+    """
+    Places a project under judicial hold using a database transaction.
+    
+    This function performs three "real" actions:
+    1. Sets an 'on_hold' flag in the 'projects' table.
+    2. Copies all associated scans to an 'scan_results_archive' table.
+    3. Logs the hold action to a 'judicial_holds' table.
+    
+    NOTE: This assumes you have:
+    - Added `on_hold BOOLEAN DEFAULT FALSE` to your `projects` table.
+    - Created a `judicial_holds` table.
+    - Created a `scan_results_archive` table with the same schema as `scan_results`
+      (plus maybe an `original_scan_id` column).
+    """
+    active_user = get_active_user()
+    if not active_user:
+        return JudicialHoldResult(
+            project_name=project_name, 
+            reason=reason, 
+            set_by_user="Unknown",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            error="You must be logged in to set a judicial hold."
+        )
+    
+    logger.info(f"User '{active_user.username}' attempting to place '{project_name}' on judicial hold.")
+    
+    conn = None
+    snapshot_count = 0
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            # Start transaction
+            
+            # 1. Get project_id and lock the row for update
+            cursor.execute("SELECT id, config FROM projects WHERE name = %s FOR UPDATE", (project_name,))
+            record = cursor.fetchone()
+            if not record:
+                raise ValueError("Project not found.")
+            
+            project_id, config_data = record
+            
+            # Check if config is a dict (from JSONB) or str (from TEXT)
+            if isinstance(config_data, str):
+                config = json.loads(config_data)
+            else:
+                config = config_data
+                
+            if config.get("on_hold", False):
+                 return JudicialHoldResult(
+                    project_name=project_name,
+                    reason=reason,
+                    set_by_user=active_user.username,
+                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    error="Project is already on judicial hold."
+                )
+
+            # 2. Update the project's config to set the on_hold flag
+            # A dedicated 'on_hold' column is better, but this works with the current schema
+            config["on_hold"] = True
+            cursor.execute(
+                "UPDATE projects SET config = %s WHERE id = %s",
+                (json.dumps(config), project_id)
+            )
+
+            # 3. Create immutable snapshot by copying scan results
+            # Assumes 'scan_results_archive' table exists
+            cursor.execute(
+                """
+                INSERT INTO scan_results_archive (project_name, module, timestamp, result)
+                SELECT project_name, module, timestamp, result
+                FROM scan_results
+                WHERE project_name = %s
+                """,
+                (project_name,)
+            )
+            snapshot_count = cursor.rowcount
+
+            # 4. Log the hold action to the 'judicial_holds' table
+            # Assumes 'judicial_holds' table exists
+            cursor.execute(
+                """
+                INSERT INTO judicial_holds (project_id, user_id, reason, created_at)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (project_id, active_user.id, reason, datetime.now(timezone.utc))
+            )
+            
+            # Commit the transaction
+            conn.commit()
+        
+        logger.info(f"Successfully placed '{project_name}' on judicial hold. Archived {snapshot_count} scan results.")
+        return JudicialHoldResult(
+            project_name=project_name,
+            hold_set=True,
+            reason=reason,
+            set_by_user=active_user.username,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            snapshot_details=f"Copied {snapshot_count} scan results to archive."
+        )
+        
+    except Exception as e:
+        if conn:
+            conn.rollback() # Roll back transaction on error
+        logger.error(f"Failed to set judicial hold for '{project_name}': {e}", exc_info=True)
+        return JudicialHoldResult(
+            project_name=project_name,
+            reason=reason,
+            set_by_user=active_user.username,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            error=f"Database error: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 # --- Typer CLI Application ---
 
 
@@ -281,4 +401,28 @@ def share_project_command(
         )
     else:
         console.print("[bold red]Error:[/bold red] Could not share project.")
+        raise typer.Exit(code=1)
+
+
+@project_app.command("judicial-hold") # <-- ADDED
+def judicial_hold_command(
+    project_name: str = typer.Argument(..., help="The name of the project to place on hold."),
+    reason: str = typer.Option(
+        ..., "--reason", "-r", help="The legal reason for placing the hold (e.g., 'Litigation Case #1234')."
+    ),
+):
+    """
+    Places a project and its evidence under a legal hold.
+    This flags the project and snapshots all current scan results to an archive.
+    """
+    result = set_judicial_hold(project_name, reason)
+    if result.hold_set:
+        console.print(
+            f"[bold green]Successfully placed project '{project_name}' on judicial hold.[/bold green]"
+        )
+        console.print(f"  - Reason: {result.reason}")
+        console.print(f"  - Set by: {result.set_by_user}")
+        console.print(f"  - Snapshot: {result.snapshot_details}")
+    else:
+        console.print(f"[bold red]Error:[/bold red] Could not set judicial hold: {result.error}")
         raise typer.Exit(code=1)

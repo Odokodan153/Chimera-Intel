@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-moving-target"
+version = "1.0.0"
+authors = [
+    { name = "Chimera Intel", email = "dev@chimera.intel" },
+]
+description = "A plugin for Chimera-Intel that provides moving target (MOVINT) fusion capabilities."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+# This plugin re-uses core dependencies
+dependencies = [
+    "websockets>=12.0",
+]

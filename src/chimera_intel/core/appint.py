@@ -11,10 +11,41 @@ import subprocess
 import os
 import shutil
 import re
-from typing import Optional, List
-from .schemas import StaticAppAnalysisResult, FoundSecret
+from typing import Optional, List, Dict, Any # <-- ADDED
+from pydantic import BaseModel, Field # <-- ADDED
+from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata # <-- ADDED DeepMetadata
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
+
+# --- ADDED: Imports for real file parsing ---
+try:
+    import ezdxf
+    EZDXF_AVAILABLE = True
+except ImportError:
+    ezdxf = None
+    EZDXF_AVAILABLE = False
+
+try:
+    import shapefile
+    PYSHP_AVAILABLE = True
+except ImportError:
+    shapefile = None
+    PYSHP_AVAILABLE = False
+    
+try:
+    import olefile
+    OLEFILE_AVAILABLE = True
+except ImportError:
+    olefile = None
+    OLEFILE_AVAILABLE = False
+
+try:
+    import exifread
+    EXIFREAD_AVAILABLE = True
+except ImportError:
+    exifread = None
+    EXIFREAD_AVAILABLE = False
+# ---
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +124,99 @@ def analyze_apk_static(file_path: str) -> StaticAppAnalysisResult:
             shutil.rmtree(output_dir)
 
 
+# --- ADDED: Real Deep Metadata Parser ---
+
+def parse_deep_metadata(file_path: str) -> DeepMetadata:
+    """
+    Extracts and correlates non-standard metadata from niche file types
+    using specialized libraries.
+    """
+    logger.info(f"Parsing deep metadata from: {file_path}")
+
+    if not os.path.exists(file_path):
+        return DeepMetadata(file_path=file_path, file_type="Unknown", error="File not found.")
+
+    file_type = "Unknown"
+    metadata: Dict[str, Any] = {}
+    error: Optional[str] = None
+
+    try:
+        lower_path = file_path.lower()
+        
+        # 1. CAD Files (.dwg, .dxf)
+        if (lower_path.endswith(".dwg") or lower_path.endswith(".dxf")):
+            if not EZDXF_AVAILABLE or not ezdxf:
+                error = "ezdxf library not found. Cannot parse CAD files."
+            else:
+                file_type = "AutoCAD Drawing"
+                doc = ezdxf.readfile(file_path)
+                metadata = {
+                    "dxf_version": doc.dxfversion,
+                    "author": doc.header.get('$AUTHOR', 'N/A'),
+                    "last_saved_by": doc.header.get('$LASTSAVEDBY', 'N/A'),
+                    "total_entities": len(doc.modelspace()),
+                    "layers": [layer.dxf.name for layer in doc.layers],
+                }
+
+        # 2. GIS Shapefiles (.shp)
+        elif lower_path.endswith(".shp"):
+            if not PYSHP_AVAILABLE or not shapefile:
+                error = "pyshp library not found. Cannot parse Shapefiles."
+            else:
+                file_type = "GIS Shapefile"
+                with shapefile.Reader(file_path) as shp:
+                    metadata = {
+                        "shape_type": shp.shapeTypeName,
+                        "num_records": shp.numRecords,
+                        "bbox": shp.bbox,
+                        "fields": [f[0] for f in shp.fields[1:]]
+                    }
+
+        # 3. OLE Documents (.doc, .xls, .ppt, .docm, .xlsm)
+        elif any(lower_path.endswith(ext) for ext in ['.doc', '.xls', '.ppt', '.docm', '.xlsm']):
+            if not OLEFILE_AVAILABLE or not olefile:
+                error = "olefile library not found. Cannot parse OLE documents."
+            elif olefile.isOleFile(file_path):
+                file_type = "OLE Document"
+                with olefile.OleFileIO(file_path) as ole:
+                    meta = ole.get_meta()
+                    metadata = {
+                        "streams": ole.listdir(),
+                        "has_macros": ole.exists('Macros') or ole.exists('_VBA_PROJECT_CUR'),
+                        "author": getattr(meta, 'author', b'N/A').decode('utf-8', 'ignore'),
+                        "title": getattr(meta, 'title', b'N/A').decode('utf-8', 'ignore'),
+                        "last_saved_by": getattr(meta, 'last_saved_by', b'N/A').decode('utf-8', 'ignore'),
+                    }
+            else:
+                file_type = "Modern Office Document (XML)"
+                error = "File is a modern Office XML format (e.g., .docx), not an OLE file. Parsing requires different libraries (e.g., python-docx)."
+
+        # 4. Image EXIF Data
+        elif any(lower_path.endswith(ext) for ext in ['.jpg', '.jpeg', '.tif', '.tiff']):
+            if not EXIFREAD_AVAILABLE or not exifread:
+                error = "exifread library not found. Cannot parse EXIF data."
+            else:
+                file_type = "Image (EXIF)"
+                with open(file_path, 'rb') as f:
+                    tags = exifread.process_file(f, details=False)
+                    metadata = {tag: str(value) for tag, value in tags.items() if tag not in ['JPEGThumbnail']}
+
+        else:
+            file_type = "Standard File"
+            metadata = {"info": "File type does not have a specialized metadata parser."}
+            
+        return DeepMetadata(
+            file_path=file_path,
+            file_type=file_type,
+            metadata=metadata,
+            error=error
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed during deep metadata parsing for {file_path}: {e}")
+        return DeepMetadata(file_path=file_path, file_type=file_type, error=str(e))
+
+
 appint_app = typer.Typer()
 
 
@@ -127,6 +251,32 @@ def run_static_apk_analysis(
     except typer.Exit:
         raise
     # --- END FIX ---
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred: {e}[/red]")
+        raise typer.Exit(code=1)
+
+
+@appint_app.command("deep-metadata") # <-- ADDED
+def run_deep_metadata_parser(
+    file_path: str = typer.Argument(..., help="Path to the file to analyze (e.g., .dwg, .shp, .doc, .jpg)."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Extracts non-standard metadata from niche file types.
+    """
+    try:
+        results_model = parse_deep_metadata(file_path)
+        if results_model.error and not results_model.metadata: # Only fail if there's an error AND no metadata
+            console.print(f"[red]Deep metadata parsing failed: {results_model.error}[/red]")
+            raise typer.Exit(code=1)
+
+        results_dict = results_model.model_dump(exclude_none=True)
+        save_or_print_results(results_dict, output_file)
+        
+    except typer.Exit:
+        raise
     except Exception as e:
         console.print(f"[red]An unexpected error occurred: {e}[/red]")
         raise typer.Exit(code=1)

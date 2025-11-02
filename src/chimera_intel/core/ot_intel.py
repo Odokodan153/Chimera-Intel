@@ -7,6 +7,7 @@ import shodan
 from typing import Optional, List
 
 from chimera_intel.core.config_loader import API_KEYS
+from chimera_intel.core.google_search import search as google_search
 
 # Create a new Typer application for OT Intelligence commands
 ot_intel_app = typer.Typer(
@@ -54,6 +55,22 @@ class OTAsset:
             return host_info
         except shodan.APIError as e:
             # Re-raise to be caught by the command handler
+            raise e
+
+    def search_shodan(self, query: str) -> dict:
+        """
+        Performs a search on Shodan.
+
+        Args:
+            query: The Shodan search query.
+
+        Returns:
+            A dictionary containing search results.
+        """
+        try:
+            results = self.api.search(query)
+            return results
+        except shodan.APIError as e:
             raise e
 
 
@@ -119,6 +136,56 @@ def ot_recon(
     # This prevents it from being caught by 'except Exception'
     raise typer.Exit(code=0)
     # --- END FIX ---
+
+
+# --- NEW FUNCTIONALITY ---
+@ot_intel_app.command(
+    name="iot-scan", help="Scan for exposed IoT devices like cameras and sensors."
+)
+def iot_scan(
+    query: str = typer.Option(
+        ...,
+        "--query",
+        help="Search query for IoT devices (e.g., 'webcam', 'sensor', 'camera country:US').",
+    ),
+    limit: int = typer.Option(5, "--limit", help="Number of results to return."),
+):
+    """
+    Uses Shodan to find exposed IoT devices based on a search query.
+    """
+    typer.echo(f"Scanning for IoT devices with query: {query}")
+
+    try:
+        # We can re-use OTAsset to get an API client, even if we don't have a specific IP
+        # We pass a dummy IP, which is valid, just to initialize the class.
+        asset = OTAsset(ip_address="1.1.1.1")
+        results = asset.search_shodan(query)
+
+        typer.echo(f"\n--- Shodan Search Results (Total: {results.get('total', 0)}) ---")
+
+        if not results.get("matches"):
+            typer.echo("No devices found for this query.")
+            raise typer.Exit(code=0)
+
+        for i, match in enumerate(results.get("matches", [])):
+            if i >= limit:
+                break
+            typer.echo(f"\n[bold]Result {i + 1}[/bold]")
+            typer.echo(f"  IP: {match.get('ip_str')}")
+            typer.echo(f"  Port: {match.get('port')}")
+            typer.echo(f"  Hostnames: {', '.join(match.get('hostnames', []))}")
+            typer.echo(f"  Organization: {match.get('org', 'N/A')}")
+            typer.echo(f"  Data: {match.get('data', 'N/A').strip()}")
+            typer.echo("-----------------------------")
+
+    except (ValueError, shodan.APIError) as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    raise typer.Exit(code=0)
 
 
 if __name__ == "__main__":

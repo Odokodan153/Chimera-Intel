@@ -13,7 +13,9 @@ import subprocess
 import os
 import csv
 from collections import defaultdict
-from typing import List, Optional, Set, DefaultDict
+from typing import List, Optional, Set, DefaultDict, Any 
+from datetime import datetime, timezone 
+from pydantic import BaseModel, Field 
 from .schemas import (
     CVEEnrichmentResult,
     EnrichedCVE,
@@ -24,12 +26,21 @@ from .schemas import (
     AttackPath,
     UEBAResult,
     BehavioralAnomaly,
+    DataFeedStatus,      
+    DataQualityReport,   
+    ThreatIntelResult,   
 )
 from .utils import save_or_print_results, console
 from .config_loader import API_KEYS
 from .http_client import sync_client
 from .threat_intel import get_threat_intel_otx
 from .database import get_aggregated_data_for_target
+
+# --- IMPORTS FOR WORKFLOW ---
+from .advanced_media_analysis import SyntheticMediaAudit
+from .response import ACTION_MAP # Import the non-mock map
+# --- END NEW IMPORTS ---
+
 
 UserIPs = DefaultDict[str, Set[str]]
 UserHours = DefaultDict[str, Set[int]]
@@ -42,18 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 async def enrich_iocs(iocs: List[str]) -> EnrichmentResult:
-    """Enriches Indicators of Compromise (IOCs) with threat intelligence from OTX.
-
-    This function takes a list of IOCs (IP addresses, domains, etc.) and queries
-    the AlienVault OTX API to determine if they are associated with known malicious
-    activity.
-
-    Args:
-        iocs (List[str]): A list of indicators to enrich.
-
-    Returns:
-        EnrichmentResult: A Pydantic model containing the enriched IOC data or an error.
-    """
+    """Enriches Indicators of Compromise (IOCs) with threat intelligence from OTX."""
     logger.info(f"Enriching {len(iocs)} IOCs.")
 
     if not API_KEYS.otx_api_key:
@@ -80,15 +80,7 @@ async def enrich_iocs(iocs: List[str]) -> EnrichmentResult:
 
 
 def enrich_cves(cve_ids: List[str]) -> CVEEnrichmentResult:
-    """Enriches a list of CVE IDs with details from the Vulners API.
-
-    Args:
-        cve_ids (List[str]): A list of CVE identifiers (e.g., "CVE-2021-44228").
-
-    Returns:
-        CVEEnrichmentResult: A Pydantic model containing detailed information for
-                             each found CVE or an error.
-    """
+    """Enriches a list of CVE IDs with details from the Vulners API."""
     api_key = API_KEYS.vulners_api_key
     if not api_key:
         return CVEEnrichmentResult(
@@ -132,18 +124,7 @@ def enrich_cves(cve_ids: List[str]) -> CVEEnrichmentResult:
 
 
 def generate_threat_model(domain: str) -> ThreatModelResult:
-    """Analyzes aggregated scan data to generate potential attack paths.
-
-    This function fetches historical scan data for a target and applies a set
-    of rules to identify potential weaknesses that could be chained together
-    in an attack.
-
-    Args:
-        domain (str): The target domain to model threats for.
-
-    Returns:
-        ThreatModelResult: A Pydantic model containing potential attack paths.
-    """
+    """Analyzes aggregated scan data to generate potential attack paths."""
     logger.info(f"Generating rule-based threat model for {domain}")
     aggregated_data = get_aggregated_data_for_target(domain)
     if not aggregated_data or not aggregated_data.get("modules"):
@@ -155,7 +136,6 @@ def generate_threat_model(domain: str) -> ThreatModelResult:
     modules = aggregated_data.get("modules", {})
 
     # Rule 1: Vulnerable public services
-
     vuln_scan = modules.get("vulnerability_scanner", {}).get("scanned_hosts", [])
     for host in vuln_scan:
         for port in host.get("open_ports", []):
@@ -175,7 +155,6 @@ def generate_threat_model(domain: str) -> ThreatModelResult:
                         )
                     )
     # Rule 2: Publicly exposed cloud storage
-
     cloud_scan = modules.get("cloud_osint_s3", {}).get("found_buckets", [])
     for bucket in cloud_scan:
         if bucket.get("is_public"):
@@ -191,7 +170,6 @@ def generate_threat_model(domain: str) -> ThreatModelResult:
                 )
             )
     # Rule 3: Leaked credentials
-
     leaks = modules.get("recon_credentials", {}).get("compromised_credentials", [])
     if leaks:
         leak = leaks[0]
@@ -210,18 +188,7 @@ def generate_threat_model(domain: str) -> ThreatModelResult:
 
 
 def analyze_behavioral_logs(log_file: str) -> UEBAResult:
-    """Analyzes user activity logs to find statistical anomalies.
-
-    This function establishes a baseline of normal activity (login hours, source IPs)
-    for each user from a log file and then flags events that deviate from this baseline.
-    It expects a CSV log with at least the following headers: 'timestamp', 'user', 'source_ip'.
-
-    Args:
-        log_file (str): Path to the user activity log file in CSV format.
-
-    Returns:
-        UEBAResult: A Pydantic model with a list of detected behavioral anomalies.
-    """
+    """Analyzes user activity logs to find statistical anomalies."""
     logger.info(f"Performing statistical UEBA on log file: {log_file}")
     if not os.path.exists(log_file):
         return UEBAResult(
@@ -232,7 +199,6 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
 
     try:
         # --- Stage 1: Build Baselines ---
-
         with open(log_file, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             logs = list(reader)
@@ -246,7 +212,6 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
                     error=f"Log file must contain headers: {', '.join(required_headers)}",
                 )
             # Establish baseline from the first half of the logs
-
             baseline_logs = logs[: len(logs) // 2]
             for row in baseline_logs:
                 user = row["user"]
@@ -260,7 +225,6 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
                     )
                     continue
         # --- Stage 2: Detect Anomalies in the second half ---
-
         anomalies: List[BehavioralAnomaly] = []
         detection_logs = logs[len(logs) // 2 :]
         for row in detection_logs:
@@ -302,18 +266,7 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
 
 
 def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
-    """Submits a file to VirusTotal for analysis.
-
-    This function uploads a file to the VirusTotal API v3. It first gets a URL
-    for the upload and then POSTs the file.
-
-    Args:
-        file_path (str): The local path to the file to submit.
-
-    Returns:
-        VTSubmissionResult: A Pydantic model containing the submission result,
-                            including a permalink to the analysis.
-    """
+    """Submits a file to VirusTotal for analysis."""
     api_key = API_KEYS.virustotal_api_key
     if not api_key:
         return VTSubmissionResult(
@@ -336,7 +289,6 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
 
     try:
         # 1. Get an upload URL
-
         upload_url_response = sync_client.get(
             "https://www.virustotal.com/api/v3/files/upload_url", headers=headers
         )
@@ -344,7 +296,6 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
         upload_url = upload_url_response.json().get("data")
 
         # 2. Upload the file
-
         with open(file_path, "rb") as f:
             files = {"file": (os.path.basename(file_path), f)}
             response = sync_client.post(upload_url, headers=headers, files=files)
@@ -352,8 +303,8 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
         analysis_id = response.json().get("data", {}).get("id")
         if not analysis_id:
             raise ValueError("Could not get analysis ID from VirusTotal response.")
+        
         # Extract the resource ID (SHA256) from the analysis ID
-
         resource_id = analysis_id.split("-")[0]
 
         return VTSubmissionResult(
@@ -374,14 +325,7 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
 
 
 def run_workflow(workflow_file: str) -> None:
-    """Runs a series of Chimera Intel commands defined in a YAML file.
-
-    This function parses a simple YAML workflow file and executes each defined
-    step as a subprocess, calling the main 'chimera' CLI.
-
-    Args:
-        workflow_file (str): Path to the YAML workflow file.
-    """
+    """Runs a series of Chimera Intel commands defined in a YAML file."""
     logger.info(f"Executing workflow from: {workflow_file}")
     try:
         with open(workflow_file, "r") as f:
@@ -400,14 +344,12 @@ def run_workflow(workflow_file: str) -> None:
         command_template = step.get("run")
         if command_template:
             # Substitute {target} placeholder
-
             full_command = f"chimera {command_template.format(target=target)}"
             console.print(
                 f"\n--- [bold cyan]Running Step {i+1}:[/bold cyan] [yellow]{full_command}[/yellow] ---"
             )
             try:
                 # Execute the command as a subprocess
-
                 subprocess.run(full_command, shell=True, check=True, text=True)
             except subprocess.CalledProcessError as e:
                 logger.error(f"Step {i+1} failed with exit code {e.returncode}.")
@@ -418,12 +360,126 @@ def run_workflow(workflow_file: str) -> None:
     logger.info("Workflow execution finished.")
 
 
+# --- Data Quality Governance ---
+
+def check_data_feed_quality() -> DataQualityReport:
+    """
+    Runs real checks on external API feeds for availability,
+    freshness, and schema integrity.
+    """
+    logger.info("Checking data quality of external API feeds...")
+    
+    statuses: List[DataFeedStatus] = []
+    feeds_down = 0
+    now_utc = datetime.now(timezone.utc)
+
+    # --- 1. OTX API Check ---
+    otx_key = API_KEYS.otx_api_key
+    otx_status = DataFeedStatus(feed_name="OTX API", last_checked=now_utc.isoformat(), status="DOWN")
+    if not otx_key:
+        otx_status.message = "API key is missing."
+        feeds_down += 1
+    else:
+        try:
+            response = sync_client.get(
+                "https://otx.alienvault.com/api/v1/indicators/ip/8.8.8.8",
+                headers={"X-OTX-API-KEY": otx_key},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Real Schema Validation
+            ThreatIntelResult.model_validate(data) # Use Pydantic schema
+            
+            # Real Freshness Check
+            modified_str = data.get('modified')
+            if modified_str:
+                modified_time = datetime.fromisoformat(modified_str.replace("Z", "+00:00"))
+                if (now_utc - modified_time).days > 7:
+                    otx_status.status = "DEGRADED"
+                    otx_status.message = f"Data is stale (last modified {modified_time.date()})."
+                    feeds_down += 1
+                else:
+                    otx_status.status = "UP"
+                    otx_status.message = f"OK (Responded in {response.elapsed.total_seconds():.2f}s)"
+            else:
+                otx_status.status = "UP"
+                otx_status.message = f"OK (Responded in {response.elapsed.total_seconds():.2f}s)"
+
+        except Exception as e:
+            otx_status.message = f"Check failed: {e}"
+            feeds_down += 1
+    statuses.append(otx_status)
+
+    # --- 2. Vulners API Check ---
+    vulners_key = API_KEYS.vulners_api_key
+    vulners_status = DataFeedStatus(feed_name="Vulners API", last_checked=now_utc.isoformat(), status="DOWN")
+    if not vulners_key:
+        vulners_status.message = "API key is missing."
+        feeds_down += 1
+    else:
+        try:
+            response = sync_client.post(
+                "https://vulners.com/api/v3/search/id/",
+                json={"apiKey": vulners_key, "id": ["CVE-2021-44228"]},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("result") != "OK" or "data" not in data or "documents" not in data["data"]:
+                vulners_status.status = "DEGRADED"
+                vulners_status.message = "Schema mismatch in response."
+                feeds_down += 1
+            else:
+                vulners_status.status = "UP"
+                vulners_status.message = f"OK (Responded in {response.elapsed.total_seconds():.2f}s)"
+                
+        except Exception as e:
+            vulners_status.message = f"Check failed: {e}"
+            feeds_down += 1
+    statuses.append(vulners_status)
+
+    # --- 3. VirusTotal API Check ---
+    vt_key = API_KEYS.virustotal_api_key
+    vt_status = DataFeedStatus(feed_name="VirusTotal API", last_checked=now_utc.isoformat(), status="DOWN")
+    if not vt_key:
+        vt_status.message = "API key is missing."
+        feeds_down += 1
+    else:
+        try:
+            response = sync_client.get(
+                "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8",
+                headers={"x-apikey": vt_key},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if "data" not in data or "attributes" not in data["data"] or "id" not in data["data"]:
+                vt_status.status = "DEGRADED"
+                vt_status.message = "Schema mismatch in response."
+                feeds_down += 1
+            else:
+                vt_status.status = "UP"
+                vt_status.message = f"OK (Responded in {response.elapsed.total_seconds():.2f}s)"
+
+        except Exception as e:
+            vt_status.message = f"Check failed: {e}"
+            feeds_down += 1
+    statuses.append(vt_status)
+    
+
+    return DataQualityReport(
+        feeds_checked=len(statuses),
+        feeds_down=feeds_down,
+        statuses=statuses
+    )
+
 # --- Typer CLI Application ---
 
-
 automation_app = typer.Typer()
-# FIX: Removed the separate connect_app
-# connect_app = typer.Typer()
 
 
 @automation_app.command("enrich-ioc")
@@ -490,7 +546,73 @@ def run_automation_workflow(
     run_workflow(workflow_file)
 
 
-# FIX: Changed decorator from @connect_app.command to @automation_app.command
+# --- NON-MOCKED WORKFLOW COMMAND ---
+
+@automation_app.command("deception-response-workflow")
+def run_deception_response_workflow(
+    media_file: str = typer.Argument(..., help="Path to the suspected deepfake media file."),
+    target_executive: str = typer.Argument(..., help="Name of the executive or asset being targeted."),
+    confidence_threshold: float = typer.Option(0.7, "--threshold", "-t", help="Confidence threshold (0.0-1.0) to trigger the response."),
+):
+    """
+    Automated workflow to respond to a high-confidence deepfake detection.
+    
+    Verifies the media file and, if it exceeds the threshold,
+    executes a 4-step *REAL* (non-mocked) response:
+    1. Legal Snapshot (Logs to 'legal_hold.log')
+    2. Generate Debunking Script (Saves to .txt)
+    3. Platform Takedown Request (Checks keys, attempts POST)
+    4. Internal Threat Warning (Attempts POST to Slack)
+    """
+    console.print(f"[bold cyan]--- Starting Deception Response Workflow ---[/bold cyan]")
+    
+    if not os.path.exists(media_file):
+        console.print(f"[bold red]Error:[/bold red] Media file not found at {media_file}")
+        raise typer.Exit(code=1)
+        
+    console.print(f"Analyzing media file: {media_file}...")
+    
+    try:
+        audit_result = SyntheticMediaAudit(media_file).analyze()
+    except Exception as e:
+        console.print(f"[bold red]Error during media analysis:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    confidence = round(audit_result.confidence, 2)
+    console.print(f"Deepfake detection confidence: {confidence}")
+
+    if confidence >= confidence_threshold:
+        console.print(f"[bold red]CONFIRMED:[/bold red] High-confidence deepfake detected. (Confidence: {confidence})")
+        console.print("[bold yellow]Executing automated response...[/bold yellow]")
+        
+        # Create a details DICT to pass to the real action functions
+        details = {
+            "media_file": os.path.abspath(media_file),
+            "target": target_executive,
+            "confidence": confidence,
+            "suspected_model": audit_result.suspected_origin_model
+        }
+        
+        # Manually call the (real) actions from the response module
+        try:
+            ACTION_MAP['legal_notification_snapshot'](details)
+            ACTION_MAP['generate_debunking_script'](details)
+            ACTION_MAP['platform_takedown_request'](details)
+            ACTION_MAP['internal_threat_warning'](details)
+        except KeyError as e:
+            console.print(f"[bold red]Workflow Action Error:[/bold red] Action {e} not found in response.ACTION_MAP.")
+        except Exception as e:
+            console.print(f"[bold red]Workflow Execution Error:[/bold red] {e}")
+            
+        console.print("[bold green]--- Deception Response Workflow Completed ---[/bold green]")
+        
+    else:
+        console.print(f"[bold green]INFO:[/bold green] Media confidence ({confidence}) is below threshold ({confidence_threshold}).")
+        console.print("[bold]No automated response actions taken.[/bold]")
+        
+# --- END NEW WORKFLOW ---
+
+
 @automation_app.command("virustotal")
 def run_vt_submission(
     file_path: str = typer.Argument(
@@ -504,3 +626,21 @@ def run_vt_submission(
     results = submit_to_virustotal(file_path)
     results_dict = results.model_dump()
     save_or_print_results(results_dict, output_file)
+
+
+@automation_app.command("check-feeds")
+def run_data_quality_check(
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Checks the status, freshness, and schema integrity of all external data feeds."""
+    results = check_data_feed_quality() # Fixed recursive call
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    
+    if results.feeds_down > 0:
+        console.print(f"[bold red]Warning: {results.feeds_down} data feed(s) are down or degraded.[/bold red]")
+        raise typer.Exit(code=1)
+    else:
+        console.print("[bold green]All data feeds are UP and responding correctly.[/bold green]")

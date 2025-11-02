@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_advanced_media"
+version = "0.2.0" # Incremented version
+authors = [
+    { name="Chimera-Intel", email="author@example.com" },
+]
+description = "A plugin for advanced media forensics, deepfake detection, and provenance checking."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # --- ADDED REAL DEPENDENCIES ---
+    "opencv-python-headless",
+    "numpy",
+    "Pillow",
+    "scikit-image",
+    "librosa",
+    "c2pa"
+    # Note: ffmpeg (for ffprobe) is an external dependency
+    # and must be installed separately on the host system.
+]
+
+[project.entry-points."chimera_intel.plugin"]
+advanced_media_plugin = "chimera_advanced_media.main:AdvancedMediaPlugin"

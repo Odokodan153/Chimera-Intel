@@ -3,6 +3,7 @@ from rich.console import Console
 from collections import Counter
 from Wappalyzer import Wappalyzer, WebPage
 from app_store_scraper import AppStore
+from google_play_scraper import search, app  # Added google-play-scraper
 from textblob import TextBlob
 
 app = typer.Typer(no_args_is_help=True, help="Product Intelligence (PRODINT) tools.")
@@ -37,9 +38,9 @@ class ProdInt:
         Analyzes app store reviews to gauge sentiment and estimate churn risk.
         """
         try:
-            app = AppStore(country=country, app_name=app_id)
-            app.review(how_many=review_count)
-            reviews = app.reviews
+            app_store = AppStore(country=country, app_name=app_id)
+            app_store.review(how_many=review_count)
+            reviews = app_store.reviews
 
             if not reviews:
                 console.print("[yellow]No reviews found for this app ID.[/yellow]")
@@ -76,6 +77,53 @@ class ProdInt:
                 f"[bold red]Error fetching or analyzing app reviews: {e}[/bold red]"
             )
             return {}
+
+    def monitor_developer_apps(self, developer_name: str, country: str = "us") -> dict:
+        """
+        Monitors the Google Play Store for apps released by a specific developer.
+        """
+        try:
+            # Search for apps matching the developer name
+            search_results = search(
+                query=developer_name,
+                page=1,
+                country=country,
+            )
+            
+            developer_apps = [
+                r for r in search_results if r["developer"] == developer_name
+            ]
+            
+            if not developer_apps:
+                return {
+                    "developer_name": developer_name,
+                    "apps_found": 0,
+                    "apps": [],
+                }
+            
+            app_details_list = []
+            for app_result in developer_apps:
+                app_id = app_result["appId"]
+                # Fetch detailed info for each app
+                details = app(app_id, lang="en", country=country)
+                app_details_list.append({
+                    "app_id": app_id,
+                    "title": details["title"],
+                    "version": details.get("version", "N/A"),
+                    "updated": details.get("updated", "N/A"),
+                    "permissions": [p.get("permission") for p in details.get("permissions", []) if p.get("permission")]
+                })
+            
+            return {
+                "developer_name": developer_name,
+                "apps_found": len(app_details_list),
+                "apps": app_details_list,
+            }
+        except Exception as e:
+            console.print(
+                f"[bold red]Error searching for developer apps: {e}[/bold red]"
+            )
+            return {"developer_name": developer_name, "error": str(e)}
 
     def find_feature_gaps(
         self, our_features: list, competitor_features: list, requested_features: list
@@ -117,7 +165,7 @@ def teardown(
 @app.command(name="churn-analysis")
 def churn_analysis(
     app_id: str = typer.Argument(
-        ..., help="The app ID from the Google Play Store (e.g., com.google.android.gm)."
+        ..., help="The app ID from the Apple App Store (e.g., 'facebook')."
     ),
     country: str = typer.Option(
         "us", "--country", "-c", help="The two-letter country code for the App Store."
@@ -126,7 +174,7 @@ def churn_analysis(
         200, "--reviews", "-r", help="Number of recent reviews to analyze."
     ),
 ):
-    """Analyzes Google Play Store reviews to estimate churn risk."""
+    """Analyzes Apple App Store reviews to estimate churn risk."""
     prodint = ProdInt()
     data = prodint.analyze_churn_risk(app_id, country, reviews)
     if data:
@@ -135,6 +183,25 @@ def churn_analysis(
         )
         console.print_json(data=data)
 
+
+@app.command(name="monitor-dev")
+def monitor_dev(
+    developer_name: str = typer.Argument(
+        ..., help="The exact developer name as it appears on the Google Play Store."
+    ),
+    country: str = typer.Option(
+        "us", "--country", "-c", help="The two-letter country code for the Play Store."
+    ),
+):
+    """Monitors the Google Play Store for apps by a specific developer."""
+    prodint = ProdInt()
+    data = prodint.monitor_developer_apps(developer_name, country)
+    if data:
+        console.print(
+            f"[bold green]App Store Monitor for Developer: {developer_name}[/bold green]"
+        )
+        console.print_json(data=data)
+        
 
 @app.command(name="feature-gaps")
 def feature_gaps():

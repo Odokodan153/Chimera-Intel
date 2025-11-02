@@ -1,5 +1,8 @@
 """
 Public Infrastructure & Utilities Intelligence Module for Chimera Intel.
+
+Finds dependencies on critical infrastructure like power, water, communications,
+and logistics hubs (ports, airports).
 """
 
 import os
@@ -8,6 +11,11 @@ from typing_extensions import Annotated
 from geopy.geocoders import Nominatim
 import overpy
 import requests
+from rich.console import Console
+
+# Create a rich console
+
+console = Console()
 
 # Create a new Typer application for Infrastructure Intelligence commands
 
@@ -17,11 +25,12 @@ infrastructure_intel_app = typer.Typer(
 )
 
 
-def find_nearby_substations(lat: float, lon: float, radius: int = 5000) -> list:
+def find_nearby_substations(
+    api: overpy.Overpass, lat: float, lon: float, radius: int = 5000
+) -> list:
     """
     Finds electrical substations near a given set of coordinates using the Overpass API.
     """
-    api = overpy.Overpass()
     query = f"""
     [out:json];
     (
@@ -37,6 +46,7 @@ def find_nearby_substations(lat: float, lon: float, radius: int = 5000) -> list:
     for node in result.nodes:
         substations.append(
             {
+                "type": "Substation",
                 "name": node.tags.get("name", "N/A"),
                 "operator": node.tags.get("operator", "N/A"),
                 "lat": float(node.lat),
@@ -53,9 +63,9 @@ def find_nearby_cell_towers(lat: float, lon: float) -> list:
     """
     api_key = os.getenv("OPENCELLID_API_KEY")
     if not api_key:
-        typer.secho(
+        console.print(
             "Warning: OPENCELLID_API_KEY environment variable not set. Skipping cell tower search.",
-            fg=typer.colors.YELLOW,
+            style="yellow",
         )
         return []
     url = "https://opencellid.org/cell/getInArea"
@@ -69,20 +79,22 @@ def find_nearby_cell_towers(lat: float, lon: float) -> list:
         response.raise_for_status()
         return response.json().get("cells", [])
     except requests.exceptions.RequestException as e:
-        typer.secho(f"Error fetching cell tower data: {e}", fg=typer.colors.RED)
+        console.print(f"Error fetching cell tower data: {e}", style="red")
         return []
 
 
-def find_nearby_water_sources(lat: float, lon: float, radius: int = 5000) -> list:
+def find_nearby_water_sources(
+    api: overpy.Overpass, lat: float, lon: float, radius: int = 5000
+) -> list:
     """
     Finds nearby water towers and reservoirs using the Overpass API.
     """
-    api = overpy.Overpass()
     query = f"""
     [out:json];
     (
       node["man_made"="water_tower"](around:{radius},{lat},{lon});
       way["natural"="water"](around:{radius},{lat},{lon});
+      way["landuse"="reservoir"](around:{radius},{lat},{lon});
     );
     out center;
     """
@@ -101,13 +113,80 @@ def find_nearby_water_sources(lat: float, lon: float, radius: int = 5000) -> lis
     for way in result.ways:
         water_sources.append(
             {
-                "type": "Water Body",
+                "type": "Water Body"
+                if way.tags.get("natural") == "water"
+                else "Reservoir",
                 "name": way.tags.get("name", "N/A"),
                 "lat": float(way.center_lat),
                 "lon": float(way.center_lon),
             }
         )
     return water_sources
+
+
+# --- NEW FUNCTION ---
+
+def find_nearby_airports(
+    api: overpy.Overpass, lat: float, lon: float, radius: int = 25000
+) -> list:
+    """
+    Finds airports and major aerodromes near coordinates using the Overpass API.
+    (Search radius is larger by default)
+    """
+    query = f"""
+    [out:json];
+    (
+      node["aeroway"="aerodrome"](around:{radius},{lat},{lon});
+      way["aeroway"="aerodrome"](around:{radius},{lat},{lon});
+    );
+    out center;
+    """
+    result = api.query(query)
+    airports = []
+    for item in result.nodes + result.ways:
+        airports.append(
+            {
+                "type": "Airport/Aerodrome",
+                "name": item.tags.get("name", "N/A"),
+                "iata": item.tags.get("iata", "N/A"),
+                "lat": float(item.lat if item.is_node else item.center_lat),
+                "lon": float(item.lon if item.is_node else item.center_lon),
+            }
+        )
+    return airports
+
+
+# --- NEW FUNCTION ---
+
+def find_nearby_ports(
+    api: overpy.Overpass, lat: float, lon: float, radius: int = 25000
+) -> list:
+    """
+    Finds maritime ports and harbours near coordinates using the Overpass API.
+    (Search radius is larger by default)
+    """
+    query = f"""
+    [out:json];
+    (
+      node["landuse"="port"](around:{radius},{lat},{lon});
+      way["landuse"="port"](around:{radius},{lat},{lon});
+      node["harbour"="yes"](around:{radius},{lat},{lon});
+      way["harbour"="yes"](around:{radius},{lat},{lon});
+    );
+    out center;
+    """
+    result = api.query(query)
+    ports = []
+    for item in result.nodes + result.ways:
+        ports.append(
+            {
+                "type": "Port/Harbour",
+                "name": item.tags.get("name", "N/A"),
+                "lat": float(item.lat if item.is_node else item.center_lat),
+                "lon": float(item.lon if item.is_node else item.center_lon),
+            }
+        )
+    return ports
 
 
 @infrastructure_intel_app.command(
@@ -121,12 +200,21 @@ def infrastructure_dependency(
             help="The physical address to analyze for infrastructure dependencies.",
         ),
     ],
+    radius: int = typer.Option(
+        5000, "--radius", "-r", help="Search radius in meters for most utilities."
+    ),
+    logistics_radius: int = typer.Option(
+        25000,
+        "--logistics-radius",
+        "-l",
+        help="Larger search radius for ports/airports (in meters).",
+    ),
 ):
     """
     Identifies and assesses the public and semi-public infrastructure that a
-    target company relies on, such as power grids and utility networks.
+    target company relies on, such as power, water, comms, ports, and airports.
     """
-    typer.echo(f"Analyzing infrastructure dependencies for: {address}")
+    console.print(f"Analyzing infrastructure dependencies for: {address}", style="bold")
 
     try:
         # 1. Geocode the address to get its coordinates
@@ -134,49 +222,90 @@ def infrastructure_dependency(
         geolocator = Nominatim(user_agent="chimera-intel")
         location = geolocator.geocode(address)
         if not location:
-            typer.secho(
-                f"Error: Could not geocode the address '{address}'.",
-                fg=typer.colors.RED,
+            console.print(
+                f"Error: Could not geocode the address '{address}'.", style="red"
             )
             raise typer.Exit(code=1)
         lat, lon = location.latitude, location.longitude
-        typer.echo(f"Coordinates found: Latitude={lat:.4f}, Longitude={lon:.4f}")
+        console.print(
+            f"Coordinates found: Latitude={lat:.4f}, Longitude={lon:.4f}",
+            style="green",
+        )
+
+        # Initialize Overpass API
+
+        api = overpy.Overpass()
 
         # 2. Find nearby electrical substations
 
-        substations = find_nearby_substations(lat, lon)
+        with console.status(
+            "[cyan]Searching for electrical infrastructure...[/cyan]"
+        ):
+            substations = find_nearby_substations(api, lat, lon, radius=radius)
         if substations:
-            typer.echo("\n--- Nearby Electrical Substations ---")
+            console.print("\n--- Nearby Electrical Substations ---", style="bold yellow")
             for sub in substations:
-                typer.echo(f"- Name: {sub['name']}, Operator: {sub['operator']}")
-                typer.echo(f"  Coordinates: {sub['lat']:.4f}, {sub['lon']:.4f}")
-            typer.echo("-------------------------------------")
+                console.print(f"- Name: {sub['name']}, Operator: {sub['operator']}")
+                console.print(f"  Coordinates: {sub['lat']:.4f}, {sub['lon']:.4f}")
         else:
-            typer.echo("\nNo electrical substations found within the search radius.")
+            console.print(
+                "\nNo electrical substations found within the search radius."
+            )
+
         # 3. Find nearby cell towers
 
-        cell_towers = find_nearby_cell_towers(lat, lon)
+        with console.status("[cyan]Searching for cell towers...[/cyan]"):
+            cell_towers = find_nearby_cell_towers(lat, lon)
         if cell_towers:
-            typer.echo("\n--- Nearby Cell Towers ---")
+            console.print("\n--- Nearby Cell Towers ---", style="bold yellow")
             for tower in cell_towers[:5]:  # Limit to 5 for brevity
-                typer.echo(
+                console.print(
                     f"- MCC: {tower.get('mcc')}, MNC: {tower.get('mnc')}, LAC: {tower.get('lac')}, Cell ID: {tower.get('cellid')}"
                 )
-                typer.echo(
+                console.print(
                     f"  Coordinates: {tower.get('lat'):.4f}, {tower.get('lon'):.4f}"
                 )
-            typer.echo("--------------------------")
         # 4. Find nearby water sources
 
-        water_sources = find_nearby_water_sources(lat, lon)
+        with console.status("[cyan]Searching for water sources...[/cyan]"):
+            water_sources = find_nearby_water_sources(api, lat, lon, radius=radius)
         if water_sources:
-            typer.echo("\n--- Nearby Water Sources ---")
+            console.print("\n--- Nearby Water Sources ---", style="bold yellow")
             for source in water_sources:
-                typer.echo(f"- Type: {source['type']}, Name: {source['name']}")
-                typer.echo(f"  Coordinates: {source['lat']:.4f}, {source['lon']:.4f}")
-            typer.echo("----------------------------")
+                console.print(f"- Type: {source['type']}, Name: {source['name']}")
+                console.print(
+                    f"  Coordinates: {source['lat']:.4f}, {source['lon']:.4f}"
+                )
+
+        # 5. Find nearby airports (NEW)
+
+        with console.status("[cyan]Searching for airports...[/cyan]"):
+            airports = find_nearby_airports(api, lat, lon, radius=logistics_radius)
+        if airports:
+            console.print("\n--- Nearby Airports ---", style="bold yellow")
+            for port in airports:
+                console.print(
+                    f"- Name: {port['name']}, IATA Code: {port.get('iata', 'N/A')}"
+                )
+                console.print(f"  Coordinates: {port['lat']:.4f}, {port['lon']:.4f}")
+        else:
+            console.print("\nNo airports found within the search radius.")
+
+        # 6. Find nearby ports (NEW)
+
+        with console.status("[cyan]Searching for ports/harbours...[/cyan]"):
+            ports = find_nearby_ports(api, lat, lon, radius=logistics_radius)
+        if ports:
+            console.print("\n--- Nearby Ports/Harbours ---", style="bold yellow")
+            for port in ports:
+                console.print(f"- Name: {port['name']}")
+                console.print(f"  Coordinates: {port['lat']:.4f}, {port['lon']:.4f}")
+        else:
+            console.print("\nNo ports or harbours found within the search radius.")
+        console.print("\n" + "-" * 30, style="bold")
+
     except Exception as e:
-        typer.secho(f"An unexpected error occurred: {e}", fg=typer.colors.RED)
+        console.print(f"An unexpected error occurred: {e}", style="red")
         raise typer.Exit(code=1)
 
 

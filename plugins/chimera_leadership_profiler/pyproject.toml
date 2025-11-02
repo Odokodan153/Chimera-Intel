@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_leadership_profiler"
+version = "0.1.0"
+authors = [
+  { name="Chimera Intel Developer", email="dev@chimera.ai" },
+]
+description = "A Chimera Intel plugin for leadership profiling."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "chimera_intel", 
+    # This plugin relies on the core chimera_intel package
+]
+
+[project.entry-points."chimera_intel.plugins"]
+leadership_profiler = "chimera_leadership_profiler.main:register"

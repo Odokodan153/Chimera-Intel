@@ -1,10 +1,19 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import typer
 
-from chimera_intel.core.finint import get_insider_transactions, finint_app
-from chimera_intel.core.schemas import InsiderTradingResult, InsiderTransaction
+from chimera_intel.core.finint import (
+    get_insider_transactions,
+    finint_app,
+    analyze_crowdfunding
+)
+from chimera_intel.core.schemas import (
+    InsiderTradingResult,
+    InsiderTransaction,
+    CrowdfundingAnalysisResult,
+    CrowdfundingProject,
+)
 
 runner = CliRunner()
 
@@ -148,6 +157,103 @@ class TestFinint(unittest.TestCase):
         # Assert
 
         self.assertEqual(result.exit_code, 1)
+
+    @patch("chimera_intel.core.finint.sync_client.get")
+    @patch("chimera_intel.core.finint.API_KEYS")
+    def test_analyze_crowdfunding_real_api(self, mock_api_keys, mock_get):
+        """Tests the crowdfunding analysis by mocking the real API call."""
+        # Arrange
+        mock_api_keys.kickstarter_api_key = "fake_rapidapi_key"
+        
+        # This is the mock JSON response from the RapidAPI endpoint
+        mock_api_response = {
+            "projects": [
+                {
+                    "id": 123,
+                    "name": "Test Gadget Pro",
+                    "url": "https://www.kickstarter.com/projects/test/test-gadget-pro",
+                    "creator": { "name": "Test Creator" },
+                    "goal": 50000.0,
+                    "pledged": 75000.0,
+                    "backers_count": 800,
+                    "state": "successful"
+                }
+            ]
+        }
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_api_response
+        mock_get.return_value = mock_response
+
+        # Act
+        result = analyze_crowdfunding("Test Gadget")
+
+        # Assert
+        self.assertIsInstance(result, CrowdfundingAnalysisResult)
+        self.assertIsNone(result.error)
+        self.assertEqual(len(result.projects), 1)
+        self.assertEqual(result.projects[0].platform, "Kickstarter")
+        self.assertEqual(result.projects[0].project_name, "Test Gadget Pro")
+        self.assertEqual(result.projects[0].creator, "Test Creator") # Check flattened name
+        self.assertEqual(result.projects[0].backers, 800)           # Check aliased field
+        self.assertEqual(result.projects[0].status, "successful")   # Check aliased field
+
+        # Check that the correct API call was made
+        expected_url = "https://kickstarter-data-api.p.rapidapi.com/search"
+        expected_headers = {
+            "X-RapidAPI-Key": "fake_rapidapi_key",
+            "X-RapidAPI-Host": "kickstarter-data-api.p.rapidapi.com"
+        }
+        expected_params = {"query": "Test Gadget"}
+        mock_get.assert_called_with(
+            expected_url,
+            params=expected_params,
+            headers=expected_headers
+        )
+
+    @patch("chimera_intel.core.finint.API_KEYS")
+    def test_analyze_crowdfunding_no_key(self, mock_api_keys):
+        """Tests that the function fails gracefully if no API key is set."""
+        # Arrange
+        mock_api_keys.kickstarter_api_key = None
+
+        # Act
+        result = analyze_crowdfunding("Test Gadget")
+
+        # Assert
+        self.assertIsNone(result.projects)
+        self.assertIsNotNone(result.error)
+        self.assertIn("KICKSTARTER_API_KEY", result.error)
+
+
+    @patch("chimera_intel.core.finint.analyze_crowdfunding")
+    def test_cli_track_crowdfunding(self, mock_analyze_crowdfunding):
+        """Tests the 'track-crowdfunding' CLI command (no change needed here)."""
+        # Arrange
+        mock_analyze_crowdfunding.return_value = CrowdfundingAnalysisResult(
+            keyword="Test Gadget",
+            projects=[
+                CrowdfundingProject(
+                    project_name="Test Gadget Pro",
+                    url="http://example.com",
+                    creator="Creator",
+                    goal=1000,
+                    pledged=5000,
+                    backers=100,
+                    status="successful",
+                )
+            ],
+        )
+
+        # Act
+        result = runner.invoke(finint_app, ["track-crowdfunding", "Test Gadget"])
+
+        # Assert
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_analyze_crowdfunding.assert_called_with("Test Gadget")
+        self.assertIn("Crowdfunding Projects for 'Test Gadget'", result.stdout)
+        self.assertIn("Test Gadget Pro", result.stdout)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ from chimera_intel.core.plugin_interface import ChimeraPlugin
 from chimera_intel.core.defensive import defensive_app
 from chimera_intel.core.vulnerability_scanner import vulnerability_app
 from chimera_intel.core.dark_web_osint import dark_web_app
+from chimera_intel.core.counter_intelligence import counter_intel_app
 from .dark_web_monitor import dark_web_monitor_app
 from .page_monitor import page_monitor_app
 
@@ -16,14 +17,10 @@ class DefensivePlugin(ChimeraPlugin):
 
     @property
     def name(self) -> str:
-        # This defines the top-level command name (e.g., 'chimera defensive')
-
         return "defensive"
 
     @property
     def app(self) -> typer.Typer:
-        # We create a new Typer app here to register all the sub-commands
-
         defensive_group_app = typer.Typer(
             help="Run defensive and vulnerability scans on your own assets."
         )
@@ -32,6 +29,15 @@ class DefensivePlugin(ChimeraPlugin):
             name="checks",
             help="Run standard defensive checks (breaches, leaks, etc.).",
         )
+        
+        # --- NEW COMMAND GROUP ---
+        defensive_group_app.add_typer(
+            counter_intel_app,
+            name="ci",
+            help="Run advanced counter-intelligence scans (infra, insider, media).",
+        )
+        # --- END NEW COMMAND GROUP ---
+        
         defensive_group_app.add_typer(
             vulnerability_app,
             name="vuln",

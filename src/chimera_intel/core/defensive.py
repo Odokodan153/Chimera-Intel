@@ -12,13 +12,16 @@ import logging
 import os
 import subprocess
 import time
-from typing import Any, Dict, Optional, Union
+import asyncio
+import base64
+from urllib.parse import urlparse
+from typing import Any, Dict, Optional, Union, List
 
 import shodan  # type: ignore
 import typer
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.database import save_scan_to_db
-from chimera_intel.core.http_client import sync_client
+from chimera_intel.core.http_client import sync_client, async_client
 from chimera_intel.core.schemas import (
     Certificate,
     CTMentorResult,
@@ -36,6 +39,11 @@ from chimera_intel.core.schemas import (
     ShodanResult,
     SSLLabsResult,
     TyposquatResult,
+    # --- NEW SCHEMAS ADDED ---
+    SourcePoisoningResult,
+    SourcePoisoningIndicator,
+    AdversaryOpsecScoreResult,
+    OpsecScoreFactor,
 )
 from chimera_intel.core.utils import console, is_valid_domain, save_or_print_results
 from httpx import HTTPStatusError, RequestError
@@ -43,9 +51,16 @@ from rich.panel import Panel
 from rich.progress import Progress
 
 # Get a logger instance for this specific file
-
-
 logger = logging.getLogger(__name__)
+
+
+# A static list of known disinformation / high-risk domains for the poisoning check
+# In a real system, this would be fed from a threat intel platform.
+KNOWN_DISINFO_DOMAINS = {
+    "example-disinfo.com",
+    "totally-real-leaks.net",
+    "secret-data.org",
+}
 
 
 # --- Data Gathering Functions for Defensive Intelligence ---
@@ -574,6 +589,184 @@ def analyze_mozilla_observatory(domain: str) -> Optional[MozillaObservatoryResul
         return None
 
 
+# --- NEW FUNCTIONS ADDED ---
+
+async def detect_source_poisoning(query_url: str) -> SourcePoisoningResult:
+    """
+    Monitors a URL for evidence of data poisoning using VirusTotal and a static blocklist.
+
+    Args:
+        query_url (str): The URL of the OSINT feed/article to analyze.
+
+    Returns:
+        SourcePoisoningResult: A Pydantic model with poisoning indicators.
+    """
+    api_key = API_KEYS.virustotal_api_key
+    if not api_key:
+        return SourcePoisoningResult(
+            source_query=query_url,
+            is_poisoned=False,
+            confidence_score=0.0,
+            error="VirusTotal API key not found.",
+        )
+
+    headers = {"x-apikey": api_key}
+    indicators: List[SourcePoisoningIndicator] = []
+    confidence: float = 0.0
+
+    try:
+        parsed_url = urlparse(query_url)
+        domain = parsed_url.netloc
+    except Exception as e:
+        return SourcePoisoningResult(
+            source_query=query_url,
+            is_poisoned=False,
+            confidence_score=0.0,
+            error=f"Could not parse URL: {e}",
+        )
+
+    # 1. Check against hardcoded disinfo list
+    if domain in KNOWN_DISINFO_DOMAINS:
+        indicators.append(
+            SourcePoisoningIndicator(
+                indicator_type="Known Disinfo Source",
+                indicator_value=domain,
+                description="Domain is on a static list of known disinformation providers.",
+                confidence=0.9,
+            )
+        )
+        confidence = max(confidence, 0.9)
+
+    try:
+        # 2. Check URL with VirusTotal
+        url_id = base64.urlsafe_b64encode(query_url.encode()).decode().strip("=")
+        vt_url_endpoint = f"https://www.virustotal.com/api/v3/urls/{url_id}"
+        
+        response_url = await async_client.get(vt_url_endpoint, headers=headers)
+        
+        if response_url.status_code == 200:
+            data = response_url.json().get("data", {}).get("attributes", {})
+            stats = data.get("last_analysis_stats", {})
+            if stats.get("malicious", 0) > 0 or stats.get("suspicious", 0) > 0:
+                indicators.append(
+                    SourcePoisoningIndicator(
+                        indicator_type="Malicious URL",
+                        indicator_value=query_url,
+                        description=f"VirusTotal scan flagged URL as malicious/suspicious ({stats.get('malicious')} malicious, {stats.get('suspicious')} suspicious).",
+                        confidence=0.95,
+                    )
+                )
+                confidence = max(confidence, 0.95)
+        
+        # 3. Check Domain with VirusTotal
+        vt_domain_endpoint = f"https://www.virustotal.com/api/v3/domains/{domain}"
+        response_domain = await async_client.get(vt_domain_endpoint, headers=headers)
+
+        if response_domain.status_code == 200:
+            data = response_domain.json().get("data", {}).get("attributes", {})
+            stats = data.get("last_analysis_stats", {})
+            if stats.get("malicious", 0) > 0 or stats.get("suspicious", 0) > 0:
+                indicators.append(
+                    SourcePoisoningIndicator(
+                        indicator_type="Malicious Host",
+                        indicator_value=domain,
+                        description=f"VirusTotal scan flagged host domain as malicious/suspicious ({stats.get('malicious')} malicious, {stats.get('suspicious')} suspicious).",
+                        confidence=0.7,
+                    )
+                )
+                confidence = max(confidence, 0.7)
+
+    except Exception as e:
+        logger.error(f"VirusTotal API error during poisoning check: {e}")
+        # Don't return here, just log the error and return based on other findings
+
+    return SourcePoisoningResult(
+        source_query=query_url,
+        is_poisoned=bool(indicators),
+        confidence_score=confidence,
+        indicators=indicators,
+    )
+
+
+def calculate_adversary_opsec_score(adversary_id: str) -> AdversaryOpsecScoreResult:
+    """
+    Analyzes TTPs from other modules to assign an OPSEC Failure Score.
+    Score: 1.0 = Perfect OPSEC (no public trace)
+           0.0 = Terrible OPSEC (leaking everywhere)
+
+    Args:
+        adversary_id (str): The identifier for the threat actor (e.g., 'APT28', 'LockBit').
+
+    Returns:
+        AdversaryOpsecScoreResult: A Pydantic model with the calculated score.
+    """
+    score: float = 1.0
+    factors: List[OpsecScoreFactor] = []
+
+    logger.info(f"Calculating OPSEC score for adversary: {adversary_id}")
+
+    # 1. Check for public paste leaks
+    paste_results = search_pastes_api(adversary_id)
+    if paste_results.pastes and len(paste_results.pastes) > 0:
+        score -= 0.3
+        factors.append(
+            OpsecScoreFactor(
+                factor="Public Pastes",
+                description=f"Found {len(paste_results.pastes)} public pastes matching identifier.",
+                score_impact=-0.3,
+            )
+        )
+
+    # 2. Check for GitHub leaks
+    github_key = API_KEYS.github_pat
+    if github_key:
+        github_results = search_github_leaks(adversary_id, github_key)
+        if github_results.items and len(github_results.items) > 0:
+            score -= 0.4
+            factors.append(
+                OpsecScoreFactor(
+                    factor="GitHub Leaks",
+                    description=f"Found {len(github_results.items)} code results on GitHub.",
+                    score_impact=-0.4,
+                )
+            )
+    else:
+        logger.warning("Skipping GitHub check in OPSEC score: GITHUB_PAT not set.")
+
+    # 3. Check for exposed infrastructure on Shodan
+    shodan_key = API_KEYS.shodan_api_key
+    if shodan_key:
+        # Use a broad query for the identifier
+        shodan_results = analyze_attack_surface_shodan(f'"{adversary_id}"', shodan_key)
+        if shodan_results.hosts and len(shodan_results.hosts) > 0:
+            score -= 0.2
+            factors.append(
+                OpsecScoreFactor(
+                    factor="Exposed Infrastructure",
+                    description=f"Found {len(shodan_results.hosts)} exposed assets on Shodan.",
+                    score_impact=-0.2,
+                )
+            )
+    else:
+        logger.warning("Skipping Shodan check in OPSEC score: SHODAN_API_KEY not set.")
+    
+    # Clamp score between 0.0 and 1.0
+    final_score = max(0.0, round(score, 2))
+    
+    summary = "OPSEC appears strong."
+    if final_score < 0.5:
+        summary = "CRITICAL OPSEC failures detected. Adversary is noisy and leaking information."
+    elif final_score < 0.8:
+        summary = "Moderate OPSEC failures detected. Adversary has public traces."
+
+    return AdversaryOpsecScoreResult(
+        adversary_identifier=adversary_id,
+        opsec_score=final_score,
+        summary=summary,
+        factors=factors,
+    )
+
+
 # --- Typer CLI Application ---
 
 
@@ -832,4 +1025,39 @@ def run_secrets_scan(
         target=os.path.basename(directory),
         module="defensive_scan_secrets",
         data=results_dict,
+    )
+
+# --- NEW CLI COMMANDS ADDED ---
+
+@defensive_app.command("source-poisoning-detect")
+def run_source_poisoning_detect(
+    url: str = typer.Argument(..., help="The URL of the OSINT feed/article to check for poisoning."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Monitors a URL for signs of intentional information pollution or malware."""
+    logger.info("Starting source poisoning detection for URL: '%s'", url)
+    results = asyncio.run(detect_source_poisoning(url))
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=url, module="defensive_source_poisoning", data=results_dict
+    )
+
+
+@defensive_app.command("adversary-opsec-score")
+def run_adversary_opsec_score(
+    adversary_id: str = typer.Argument(..., help="The threat actor identifier (e.g., 'APT28', 'LockBit')."),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """Assigns a real-time OPSEC Failure Score to a known adversary."""
+    logger.info("Calculating OPSEC score for adversary: '%s'", adversary_id)
+    results = calculate_adversary_opsec_score(adversary_id)
+    results_dict = results.model_dump()
+    save_or_print_results(results_dict, output_file)
+    save_scan_to_db(
+        target=adversary_id, module="defensive_opsec_score", data=results_dict
     )

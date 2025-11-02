@@ -118,6 +118,8 @@ class ApiKeys(BaseSettings):
     alpha_vantage_api_key: Optional[str] = Field(None, alias="ALPHA_VANTAGE_API_KEY")
     easypost_api_key: Optional[str] = Field(None, alias="EASYPOST_API_KEY")
     finnhub_api_key: Optional[str] = Field(None, alias="FINNHUB_API_KEY")
+    wigle_api_key: Optional[str] = Field(None, alias="WIGLE_API_KEY")
+    kickstarter_api_key: Optional[str] = os.getenv("KICKSTARTER_API_KEY")
 
     # Maritime & Shipping Intelligence Keys
 
@@ -126,6 +128,21 @@ class ApiKeys(BaseSettings):
     # Weather & Environmental Intelligence Keys
 
     openweathermap_api_key: Optional[str] = Field(None, alias="OPENWEATHERMAP_API_KEY")
+
+    # ---: MLINT (Money Laundering Intel) Keys ---
+    
+    # Basic AML/UBO/Sanctions
+    aml_api_key: Optional[str] = Field(None, alias="AML_API_KEY")
+    world_check_api_key: Optional[str] = Field(None, alias="WORLD_CHECK_API_KEY")
+    
+    # On-chain Crypto Analytics
+    chain_api_key: Optional[str] = Field(None, alias="CHAIN_API_KEY") # Generic
+    chainalysis_api_key: Optional[str] = Field(None, alias="CHAINALYSIS_API_KEY")
+    trm_labs_api_key: Optional[str] = Field(None, alias="TRM_LABS_API_KEY")
+    nansen_api_key: Optional[str] = Field(None, alias="NANSEN_API_KEY")
+
+    # Global Banking
+    swift_gpi_api_key: Optional[str] = Field(None, alias="SWIFT_GPI_API_KEY")
 
     # ---: Database Credentials ---
 
@@ -140,6 +157,13 @@ class ApiKeys(BaseSettings):
     neo4j_uri: Optional[str] = Field(None, alias="NEO4J_URI")
     neo4j_user: Optional[str] = Field(None, alias="NEO4J_USER")
     neo4j_password: Optional[str] = Field(None, alias="NEO4J_PASSWORD")
+    
+    # ---: Streaming (Kafka) Credentials ---
+    
+    kafka_bootstrap_servers: Optional[str] = Field(None, alias="KAFKA_BOOTSTRAP_SERVERS")
+    kafka_topic_transactions: Optional[str] = Field("mlint_transactions", alias="KAFKA_TOPIC_TRANSACTIONS")
+    kafka_topic_alerts: Optional[str] = Field("mlint_alerts", alias="KAFKA_TOPIC_ALERTS")
+    kafka_consumer_group: Optional[str] = Field("mlint_processor_group", alias="KAFKA_CONSUMER_GROUP")
 
     # FIX: Change type hint from Optional[PostgresDsn] to Optional[str]
     database_url: Optional[str] = None
@@ -234,3 +258,26 @@ def load_config_from_yaml() -> AppConfig:
 
 CONFIG = load_config_from_yaml()
 API_KEYS = ApiKeys()  # type: ignore
+
+# --- MLINT Specific Configurations ---
+
+# Load MLINT API URLs from .env
+MLINT_AML_API_URL = os.getenv("MLINT_AML_API_URL", "https://api.amlcheck.com/v1/entity-screen")
+MLINT_CHAIN_API_URL = os.getenv("MLINT_CHAIN_API_URL", "https://api.chainanalysis.com/v1/address-screen")
+
+# Load configurable risk weights from .env
+try:
+    MLINT_RISK_WEIGHTS = {
+        "fatf_black_list": int(os.getenv("MLINT_RISK_WEIGHT_FATF_BLACK_LIST", 50)),
+        "fatf_grey_list": int(os.getenv("MLINT_RISK_WEIGHT_FATF_GREY_LIST", 25)),
+        "pep_link": int(os.getenv("MLINT_RISK_WEIGHT_PEP_LINK", 30)),
+        "sanctions_hit": int(os.getenv("MLINT_RISK_WEIGHT_SANCTIONS_HIT", 70)),
+        "adverse_media": int(os.getenv("MLINT_RISK_WEIGHT_ADVERSE_MEDIA", 5)),
+        "shell_indicator": int(os.getenv("MLINT_RISK_WEIGHT_SHELL_INDICATOR", 10)),
+    }
+except ValueError as e:
+    logger.warning(f"Could not parse MLINT_RISK_WEIGHTS from .env. Using defaults. Error: {e}")
+    MLINT_RISK_WEIGHTS = {
+        "fatf_black_list": 50, "fatf_grey_list": 25, "pep_link": 30,
+        "sanctions_hit": 70, "adverse_media": 5, "shell_indicator": 10,
+    }

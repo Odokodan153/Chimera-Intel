@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-mlint"
+version = "2.0.0" # Version bump for new architecture
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A plugin for Chimera-Intel that provides advanced, scalable money laundering intelligence (MLINT) capabilities."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# Dependencies specific to the MLINT plugin
+dependencies = [
+    "python-stdnum>=1.18,<2.0",
+    "pandas>=2.0.0,<3.0.0",
+    "networkx>=3.0,<4.0",
+    "stix2>=3.0.0,<4.0.0",
+    "scikit-learn>=1.3.0,<2.0.0", 
+    "httpx>=0.25.0,<0.28.0",
+    "pyvis>=0.3.0,<0.4.0",
+    "anyio>=4.0.0,<5.0.0",
+    "swiftmessage>=0.5.0,<0.6.0",
+    
+    # [ENHANCEMENT] Dependencies for Advanced Architecture
+    
+    # Graph Database (Neo4j)
+    "neo4j>=5.10.0,<6.0.0",
+    
+    # Streaming (Kafka)
+    "kafka-python>=2.0.0,<3.0.0",
+    
+    # Scalable Data Processing (Spark/Dask)
+    "dask[dataframe]>=2023.0.0,<2025.0.0",
+    
+    # Advanced ML (GNNs, LSTMs)
+    "torch>=2.0.0,<3.0.0",
+    # "torch_geometric" # Uncomment if/when GNN models are implemented
+    # "tensorflow>=2.10.0,<3.0.0" # Alternative for LSTMs
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IgnacioIliev/chimera-intel"
+"Bug Tracker" = "https://github.com/IgnacioIliev/chimera-intel/issues"
