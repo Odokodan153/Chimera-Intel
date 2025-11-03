@@ -3,6 +3,7 @@ from typer.testing import CliRunner
 import psycopg2
 import requests
 import pandas as pd
+from chimera_intel.core.schemas import AIResult
 from unittest.mock import patch, MagicMock, mock_open, ANY
 from chimera_intel.core.autonomous import autonomous_app, trigger_retraining_pipeline
 
@@ -494,3 +495,70 @@ def test_backtest_db_error(runner, mock_db_connection_error):
     assert result.exit_code == 1
     assert "Database Error:" in result.stdout
     assert "Test DB Error" in result.stdout
+
+@patch("chimera_intel.core.autonomous.get_db_connection")
+@patch("chimera_intel.core.autonomous.generate_swot_from_data")
+@patch("chimera_intel.core.autonomous.trigger_retraining_pipeline")
+def test_optimize_models(mock_trigger, mock_ai, mock_db_conn):
+    # Mock database records
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [
+        ("Scenario A", True, "Outcome 1"),
+        ("Scenario B", False, "Outcome 2"),
+    ]
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_db_conn.return_value = mock_conn
+    
+    # Mock AI result
+    mock_ai.return_value = AIResult(analysis_text="Optimization plan content", error=None)
+
+    result = runner.invoke(autonomous_app, ["optimize-models", "--auto-trigger"])
+    
+    assert result.exit_code == 0
+    assert "Model Optimization Plan" in result.stdout
+    assert "Optimization plan content" in result.stdout
+    mock_trigger.assert_called_once_with("Optimization plan content")
+
+@patch("chimera_intel.core.autonomous.generate_swot_from_data")
+def test_simulate_scenario(mock_ai):
+    """
+    Tests the new 'simulate' command.
+    """
+    # 1. Mock the AI response
+    report_text = "1. Outcome: Success\n2. Risks: None\n3. Opportunities: Many"
+    mock_ai.return_value = AIResult(analysis_text=report_text, error=None)
+
+    # 2. Run the command
+    result = runner.invoke(
+        autonomous_app,
+        ["simulate", "--scenario", "What if we launch product X?"],
+        input="What if we launch product X?\n" # Handle prompt
+    )
+
+    # 3. Assert results
+    assert result.exit_code == 0
+    assert "Running predictive simulation" in result.stdout
+    assert "Scenario Simulation Report" in result.stdout
+    assert "Opportunities: Many" in result.stdout
+    
+    # Check that the AI was called with the correct prompt
+    mock_ai.assert_called_once_with(ANY, ANY)
+    assert "You are a strategic risk and opportunity analyst" in mock_ai.call_args[0][0]
+    assert "Scenario:\nWhat if we launch product X?" in mock_ai.call_args[0][0]
+
+@patch("chimera_intel.core.autonomous.generate_swot_from_data")
+def test_simulate_scenario_ai_error(mock_ai):
+    """
+    Tests failure if the AI simulation fails.
+    """
+    mock_ai.return_value = AIResult(analysis_text=None, error="AI failed")
+
+    result = runner.invoke(
+        autonomous_app,
+        ["simulate", "--scenario", "Test"],
+        input="Test\n"
+    )
+    
+    assert result.exit_code == 1
+    assert "AI Error: AI failed" in result.stdout

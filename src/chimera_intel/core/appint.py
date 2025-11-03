@@ -11,9 +11,10 @@ import subprocess
 import os
 import shutil
 import re
-from typing import Optional, List, Dict, Any # <-- ADDED
-from pydantic import BaseModel, Field # <-- ADDED
-from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata # <-- ADDED DeepMetadata
+from typing import Optional, List, Dict, Any 
+from pydantic import Field # <-- ADDED
+# --- MODIFIED: Added DeviceIntelResult ---
+from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata, BaseAnalysisResult
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
@@ -48,6 +49,14 @@ except ImportError:
 # ---
 
 logger = logging.getLogger(__name__)
+
+
+# --- ADDED: Pydantic Schema for Device Intel ---
+class DeviceIntelResult(BaseAnalysisResult):
+    """Results from scanning a connected mobile device."""
+    device_properties: Dict[str, str] = Field(default_factory=dict)
+    installed_packages: List[str] = Field(default_factory=list)
+    hidden_packages: List[str] = Field(default_factory=list)
 
 
 def analyze_apk_static(file_path: str) -> StaticAppAnalysisResult:
@@ -217,6 +226,68 @@ def parse_deep_metadata(file_path: str) -> DeepMetadata:
         return DeepMetadata(file_path=file_path, file_type=file_type, error=str(e))
 
 
+# --- ADDED: Device Intelligence Function ---
+
+def get_device_intel() -> DeviceIntelResult:
+    """
+    Connects to an Android device via ADB to pull device metadata and app lists.
+    
+    NOTE: Requires 'adb' to be installed and a device to be connected.
+    """
+    console.print("[cyan]Querying connected device via ADB...[/cyan]")
+    props = {}
+    all_packages = []
+    
+    try:
+        # 1. Get Device Properties
+        console.print("Fetching device properties...")
+        result_props = subprocess.run(
+            ["adb", "shell", "getprop"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        for line in result_props.stdout.splitlines():
+            match = re.match(r'\[(.*?)\]: \[(.*?)\]', line)
+            if match:
+                key, value = match.groups()
+                if key.startswith("ro.product") or key in ["ro.build.version.sdk", "ro.serialno"]:
+                    props[key] = value
+
+        # 2. Get All Installed Packages
+        console.print("Fetching installed packages (all)...")
+        result_pkgs = subprocess.run(
+            ["adb", "shell", "pm", "list", "packages", "-a"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        all_packages = [line.replace("package:", "") for line in result_pkgs.stdout.splitlines() if line]
+        
+        # 3. (Mock) Identify "hidden" packages (e.g., system apps or those without launchers)
+        # This is a placeholder; real logic would be more complex.
+        hidden = [pkg for pkg in all_packages if "system" in pkg or "android" in pkg]
+
+        return DeviceIntelResult(
+            device_properties=props,
+            installed_packages=all_packages,
+            hidden_packages=hidden
+        )
+        
+    except FileNotFoundError:
+        return DeviceIntelResult(error="adb command not found. Please install the Android SDK Platform-Tools.")
+    except subprocess.CalledProcessError as e:
+        if "no devices" in e.stderr:
+            return DeviceIntelResult(error="No ADB device found. Is it connected and authorized?")
+        return DeviceIntelResult(error=f"ADB command failed: {e.stderr}")
+    except subprocess.TimeoutExpired:
+        return DeviceIntelResult(error="ADB command timed out. Is the device responsive?")
+    except Exception as e:
+        return DeviceIntelResult(error=f"An unexpected error occurred: {e}")
+
+
 appint_app = typer.Typer()
 
 
@@ -274,6 +345,39 @@ def run_deep_metadata_parser(
 
         results_dict = results_model.model_dump(exclude_none=True)
         save_or_print_results(results_dict, output_file)
+        
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred: {e}[/red]")
+        raise typer.Exit(code=1)
+
+
+# --- ADDED: New command for Device Intel ---
+@appint_app.command("device-intel")
+def run_device_intel(
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Scans a connected device via ADB for metadata and 'hidden' apps.
+    """
+    try:
+        results_model = get_device_intel()
+        if results_model.error:
+            console.print(f"[red]Device intel failed: {results_model.error}[/red]")
+            raise typer.Exit(code=1)
+
+        results_dict = results_model.model_dump(exclude_none=True)
+        save_or_print_results(results_dict, output_file)
+        
+        target = results_dict.get("device_properties", {}).get("ro.serialno", "unknown_device")
+        save_scan_to_db(
+            target=target,
+            module="appint_device_intel",
+            data=results_dict,
+        )
         
     except typer.Exit:
         raise

@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "chimera-global-monitor"
+version = "0.1.0"
+description = "Global keyword and blacklist monitoring plugin for Chimera Intel."
+authors = ["Chimera Intel Project"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../../src", develop = true} # Assumes relative path
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+"global-mon" = "chimera_global_monitor.main:GlobalMonitorPlugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

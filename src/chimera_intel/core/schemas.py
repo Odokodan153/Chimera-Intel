@@ -4232,3 +4232,89 @@ class ImageryAnalysisResult(BaseModel):
     correlated_vessel_logs: List[str] = Field(default=[], description="List of vessel IDs/logs (AIS) correlated with activity.")
     correlated_flight_logs: List[str] = Field(default=[], description="List of flight IDs/logs (ADS-B) correlated with activity.")
     error: Optional[str] = Field(None, description="Error message if the analysis failed.")
+
+class AiCoreResult(BaseModel):
+    """
+    Standard return schema for AI core generation functions.
+    """
+    analysis_text: str
+    error: Optional[str] = None
+
+class FaceAnalysisResult(BaseModel):
+    """Result schema for face analysis."""
+    file_path: str
+    faces_found: int = 0
+    face_locations: List[dict] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class VoiceComparisonResult(BaseModel):
+    """Result schema for voice comparison."""
+    file_a: str
+    file_b: str
+    similarity_score: float = 0.0
+    decision: str = "No Match"
+    threshold: float = 0.8
+    error: Optional[str] = None
+
+class ProfileChangeResult(BaseModel):
+    """Result schema for profile change monitoring."""
+    profile_url: str
+    status: str = "No changes detected."
+    changes_found: bool = False
+    diff_lines: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- Schemas for Leak Scanner ---
+
+class HibpBreach(BaseModel):
+    """Details of a single breach from HaveIBeenPwned."""
+    name: str = Field(..., description="The name of the breach.")
+    domain: str = Field(..., description="The domain of the breached site.")
+    breach_date: str = Field(..., description="The date the breach occurred.")
+    description: str = Field(..., description="A description of the breach.")
+    data_classes: List[str] = Field(..., description="A list of data classes that were compromised.")
+
+class SecretFinding(BaseModel):
+    """Represents a potential secret found in a code repository."""
+    file_path: str = Field(..., description="The path to the file containing the secret.")
+    line_number: int = Field(..., description="The line number where the secret was found.")
+    rule_name: str = Field(..., description="The name of the rule that matched.")
+    snippet: str = Field(..., description="A snippet of the line containing the secret.")
+
+class LeakScanResult(BaseModel):
+    """Consolidated results for leak and credential scanning."""
+    target_email: Optional[str] = None
+    target_repo: Optional[str] = None
+    hibp_breaches: List[HibpBreach] = Field(default_factory=list)
+    repo_secrets: List[SecretFinding] = Field(default_factory=list)
+    error: Optional[str] = None
+
+# --- Schemas for Threat Pivoting ---
+
+class AsnInfo(BaseModel):
+    """ASN and network block information for an IP."""
+    asn: Optional[str] = None
+    asn_registry: Optional[str] = None
+    asn_date: Optional[str] = None
+    asn_cidr: Optional[str] = None
+    description: Optional[str] = None
+    country: Optional[str] = None
+    nets: List[Dict[str, Any]] = Field(default_factory=list, description="List of network blocks associated with the ASN.")
+
+class CertInfo(BaseModel):
+    """Information from a Certificate Transparency log entry."""
+    issuer_name: str
+    common_name: str
+    name_value: str
+    entry_timestamp: str
+    not_before: str
+    not_after: str
+
+class PivotResult(BaseModel):
+    """Consolidated results from pivoting on an IOC."""
+    indicator: str = Field(..., description="The IOC (IP or domain) that was pivoted on.")
+    indicator_type: str = Field(..., description="The detected type of the indicator (e.g., ipv4, domain).")
+    asn_info: Optional[AsnInfo] = None
+    reverse_dns: Optional[str] = None
+    related_domains_cert: List[CertInfo] = Field(default_factory=list, description="Domains found via Certificate Transparency.")
+    error: Optional[str] = None

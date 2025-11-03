@@ -8,7 +8,8 @@ from chimera_intel.core.humint import (
     analyze_humint_reports,
     humint_app,
 )
-from chimera_intel.core.schemas import SWOTAnalysisResult
+from chimera_intel.core.schemas import SWOTAnalysisResult, AiCoreResult
+from chimera_intel.core.humint import humint_app
 
 runner = CliRunner()
 
@@ -167,6 +168,52 @@ class TestHumint(unittest.TestCase):
         self.assertIn("AI-Powered Analysis", result.stdout)
         mock_analyze.assert_called_once_with("acquisition")
 
+    @patch("chimera_intel.core.humint.API_KEYS", MagicMock(google_api_key="test_key"))
+    @patch("chimera_intel.core.humint.generate_swot_from_data")
+    def test_cli_simulate_social(mock_generate_swot):
+        """Tests the new simulate-social CLI command."""
+        
+        # Setup mock AI response
+        mock_response_text = "Operative: Hello!\nTarget: Hi.\n[SIMULATION SUMMARY] The simulation was short."
+        mock_ai_result = AiCoreResult(analysis_text=mock_response_text, error=None)
+        mock_generate_swot.return_value = mock_ai_result
+        
+        result = runner.invoke(
+            humint_app,
+            [
+                "simulate-social",
+                "--target", "A disgruntled network engineer.",
+                "--goal", "Find out what firewall they use."
+            ]
+        )
+        
+        assert result.exit_code == 0
+        assert "INITIATING VIRTUAL HUMINT SIMULATION" in result.stdout
+        assert "Virtual HUMINT Simulation Log" in result.stdout
+        assert "Operative: Hello!" in result.stdout
+
+        # Check that the prompt was constructed correctly
+        mock_generate_swot.assert_called_once()
+        prompt = mock_generate_swot.call_args[0][0]
+        assert "Target's Persona: A disgruntled network engineer." in prompt
+        assert "Your Goal: Find out what firewall they use." in prompt
+        assert "Operative's Persona: A curious industry colleague" in prompt
+
+    @patch("chimera_intel.core.humint.API_KEYS", MagicMock(google_api_key=None))
+    def test_cli_simulate_social_no_api_key(mock_db_conn):
+        """Tests that the command fails gracefully if no API key is set."""
+        result = runner.invoke(
+            humint_app,
+            [
+                "simulate-social",
+                "--target", "Test",
+                "--goal", "Test"
+            ]
+        )
+        
+        # Should not error out, just print a message
+        assert result.exit_code == 0 
+        assert "Google API key not configured" in result.stdout
 
 if __name__ == "__main__":
     unittest.main()

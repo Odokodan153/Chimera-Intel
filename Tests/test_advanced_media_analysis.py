@@ -1,16 +1,15 @@
 import unittest
 import os
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from pathlib import Path
 import logging
-
+import pytest
 # --- Dependencies for creating test files ---
 try:
     import numpy as np
     import cv2
-    from PIL import Image, ImageStat
-    import librosa
+    from PIL import Image
     import soundfile as sf
 except ImportError:
     print("Test setup ERROR: Missing dependencies. Please run: pip install numpy opencv-python-headless Pillow librosa soundfile")
@@ -30,9 +29,10 @@ from chimera_intel.core.advanced_media_analysis import (
     DeepfakeMultimodal,
     ContentProvenanceCheck,
     AiGenerationTracer,
-    analyze_advanced_media,
     HAS_FFPROBE,
-    cli_app # <-- Import the Typer app
+    cli_app, 
+    encode_message_in_image, 
+    decode_message_from_image
 )
 
 # Disable logging from the module to keep test output clean
@@ -228,7 +228,78 @@ class TestAdvancedMediaAnalysis(unittest.TestCase):
         result = runner.invoke(cli_app, ["analyze", "non_existent_file.jpg"])
         self.assertEqual(result.exit_code, 0) # Typer commands handle exceptions and print to console
         self.assertIn("File not found", result.stdout)
+@pytest.fixture
+def sample_image(tmp_path):
+    """Create a dummy PNG image for testing."""
+    img_path = tmp_path / "test_image.png"
+    img = Image.new('RGB', (100, 100), color = 'blue')
+    img.save(img_path)
+    return img_path
 
+def test_encode_decode_logic(sample_image):
+    """Test the core steganography functions."""
+    message = "This is a 🕵️ secret!"
+    
+    # 1. Encode
+    encoded_img = encode_message_in_image(str(sample_image), message)
+    
+    # Check that the image is different
+    original_data = list(Image.open(sample_image).getdata())
+    encoded_data = list(encoded_img.getdata())
+    assert original_data != encoded_data
+    
+    # 2. Save and Decode
+    encoded_path = sample_image.parent / "encoded.png"
+    encoded_img.save(encoded_path)
+    
+    decoded_message = decode_message_from_image(str(encoded_path))
+    
+    assert decoded_message == message
+
+def test_decode_no_message(sample_image):
+    """Test decoding an image with no message."""
+    decoded_message = decode_message_from_image(str(sample_image))
+    assert decoded_message is None
+
+def test_message_too_long(sample_image):
+    """Test that encoding fails if the message is too long."""
+    # 100x100 pixels = 10,000 pixels * 3 channels/pixel = 30,000 bits
+    # 30,000 bits / 8 bits/byte = 3,750 bytes
+    long_message = "A" * 4000 
+    
+    with pytest.raises(ValueError, match="Message is too long"):
+        encode_message_in_image(str(sample_image), long_message)
+
+def test_cli_encode_decode(sample_image, tmp_path):
+    """Test the full CLI round-trip."""
+    message = "cli test"
+    output_path = tmp_path / "cli_encoded.png"
+
+    # 1. Encode command
+    result_encode = runner.invoke(
+        cli_app,
+        [
+            "encode-covert",
+            str(sample_image),
+            "--message", message,
+            "--output", str(output_path)
+        ]
+    )
+    assert result_encode.exit_code == 0
+    assert "Message successfully hidden" in result_encode.stdout
+    assert os.path.exists(output_path)
+    
+    # 2. Decode command
+    result_decode = runner.invoke(
+        cli_app,
+        [
+            "decode-covert",
+            str(output_path)
+        ]
+    )
+    assert result_decode.exit_code == 0
+    assert "Message Found" in result_decode.stdout
+    assert message in result_decode.stdout
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_covert_agent"
+version = "0.1.0"
+description = "An AI-driven autonomous agent for multi-step investigations."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "chimera-intel", 
+]
+
+[project.entry-points."chimera.plugins"]
+covert_agent = "chimera_covert_agent.main:plugin"

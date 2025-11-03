@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "chimera-blockchain-tracer"
+version = "0.1.0"
+description = "Cryptocurrency transaction tracing and visualization plugin for Chimera Intel."
+authors = ["Chimera Intel Project"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../../src", develop = true} # Assumes relative path
+pyvis = "^0.3.0"
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+"crypto-trace" = "chimera_blockchain_tracer.main:CryptoTracePlugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

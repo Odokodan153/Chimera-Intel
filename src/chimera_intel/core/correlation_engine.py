@@ -1,8 +1,11 @@
 import logging
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
-import json
-
+import subprocess
+import logging
+from .schemas import Event, PrioritizedAlert, AutomationPipeline
+from .utils import console, send_slack_notification
+from .config_loader import CONFIG
 from .schemas import Event
 from .plugin_manager import PluginManager
 
@@ -319,3 +322,90 @@ class CorrelationEngine:
                     f"Critical CVE {cve_id} found on {event.details.get('source_ip')}"
                 )
                 self._trigger_scan(params, description, event)
+
+def _check_trigger(event: Event, trigger: dict) -> bool:
+    """Checks if an event matches a pipeline trigger."""
+    if event.source != trigger.get("source"):
+        return False
+    
+    if event.type != trigger.get("event_type"):
+        return False
+        
+    if event.score < trigger.get("score_threshold", 0):
+        return False
+        
+    # Add more checks here, e.g., target matching
+    # if "target_pattern" in trigger and not re.match(trigger["target_pattern"], event.target):
+    #     return False
+        
+    return True
+
+def _run_action(event: Event, action: dict):
+    """Executes a defined automation action."""
+    action_type = action.get("type")
+    params = action.get("params", {})
+    
+    # Substitute placeholders like {target} or {source_ip}
+    try:
+        formatted_params = {
+            k: v.format(
+                target=event.target, 
+                source_ip=event.details.get("source_ip", ""),
+                event_type=event.type
+            ) for k, v in params.items()
+        }
+    except KeyError as e:
+        logger.warning(f"Failed to format action params: Missing key {e}")
+        return
+
+    logger.info(f"Running autonomous action: {action_type}")
+    console.print(f"  [bold yellow]Triggering Action:[/bold yellow] {action_type}")
+
+    if action_type == "run_covert_scan":
+        # Example: run a "covert" recon scan
+        scan_module = formatted_params.get("module", "recon")
+        scan_target = formatted_params.get("target", event.target)
+        
+        # Use --stealth flag for "covert"
+        command = f"chimera {scan_module} {scan_target} --stealth --output-db"
+        try:
+            # Run as a detached subprocess
+            subprocess.Popen(command, shell=True)
+            console.print(f"    - [green]Detached scan initiated:[/green] {command}")
+        except Exception as e:
+            logger.error(f"Failed to run autonomous scan: {e}")
+            
+    elif action_type == "send_slack_alert":
+        message = formatted_params.get("message", f"Autonomous Alert for {event.target}")
+        webhook_url = CONFIG.notifications.slack_webhook_url
+        if webhook_url:
+            send_slack_notification(webhook_url, message)
+            console.print("    - [green]Slack notification sent.[/green]")
+        
+    # Add other actions like "set_judicial_hold", "run_workflow", etc.
+    else:
+        logger.warning(f"Unknown autonomous action type: {action_type}")
+
+
+def execute_automation_pipelines(event: Event):
+    """
+    Runs an event through all configured automation pipelines.
+    This is the main entry point for autonomous triggers.
+    """
+    console.print(f"[bold cyan]Running autonomous triggers for event: {event.type} on {event.target}[/bold cyan]")
+    
+    try:
+        pipelines_config = CONFIG.automation_pipelines.get("pipelines", [])
+        if not pipelines_config:
+            logger.info("No automation pipelines configured.")
+            return
+            
+        for pipeline in pipelines_config:
+            if _check_trigger(event, pipeline.get("trigger", {})):
+                console.print(f"[bold green]Event matched pipeline:[/bold green] {pipeline.get('name')}")
+                for action in pipeline.get("actions", []):
+                    _run_action(event, action)
+                    
+    except Exception as e:
+        logger.error(f"Error during automation pipeline execution: {e}", exc_info=True)
+        console.print(f"[bold red]Pipeline Error:[/bold red] {e}")

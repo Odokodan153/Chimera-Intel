@@ -21,9 +21,8 @@ import io
 from typing import Dict, Any, Optional, Tuple, List
 from pathlib import Path
 import os
-import tempfile
 import math
-
+from PIL import Image, ImageChops
 # --- CLI & Utility Imports ---
 try:
     import typer
@@ -645,3 +644,136 @@ def analyze_advanced_media(file_path: str) -> Dict[str, Any]:
 
     logger.info(f"--- Completed Advanced Media Analysis for {file_path} ---")
     return file_results
+
+@cli_app.command(name="encode-covert", help="Hide a secret message in an image (LSB).")
+def run_encode_covert(
+    input_image: Annotated[str, typer.Argument(help="Path to the original image (PNG).")],
+    message: Annotated[str, typer.Option(..., "--message", "-m", help="The secret message to hide.")],
+    output_image: Annotated[str, typer.Option(..., "--output", "-o", help="Path to save the new image.")],
+):
+    """
+    (NEW) Encodes a secret message into an image using LSB steganography.
+    """
+    try:
+        new_img = encode_message_in_image(input_image, message)
+        new_img.save(output_image)
+        console.print(f"[green]Message successfully hidden in {output_image}[/green]")
+    except FileNotFoundError:
+        console.print(f"[bold red]Error:[/bold red] Input file not found: {input_image}")
+    except ValueError as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+    except Exception as e:
+        console.print(f"[bold red]An error occurred:[/bold red] {e}")
+
+@cli_app.command(name="decode-covert", help="Extract a secret message from an image (LSB).")
+def run_decode_covert(
+    input_image: Annotated[str, typer.Argument(help="Path to the image to scan.")],
+):
+    """
+    (NEW) Decodes a secret message from an image.
+    """
+    try:
+        message = decode_message_from_image(input_image)
+        if message:
+            console.print(f"[bold green]Message Found:[/bold green]\n{message}")
+        else:
+            console.print("[yellow]No hidden message found (or end-of-message token missing).[/yellow]")
+    except FileNotFoundError:
+        console.print(f"[bold red]Error:[/bold red] Input file not found: {input_image}")
+    except Exception as e:
+        console.print(f"[bold red]An error occurred:[/bold red] {e}")
+
+
+# -----------------------------------------------------------------
+#
+# B. Core Analysis Logic
+#
+# -----------------------------------------------------------------
+
+# --- NEW COVERT COMMS (STEGANOGRAPHY) FUNCTIONS ---
+
+def _str_to_bin(message: str) -> str:
+    """Converts a UTF-8 string to its binary representation."""
+    return ''.join(format(byte, '08b') for byte in message.encode('utf-8'))
+
+def _bin_to_str(binary: str) -> str:
+    """Converts a binary string back to a UTF-8 string."""
+    try:
+        byte_chunks = [binary[i:i+8] for i in range(0, len(binary), 8)]
+        bytes_list = [int(chunk, 2) for chunk in byte_chunks if len(chunk) == 8]
+        return bytearray(bytes_list).decode('utf-8')
+    except Exception as e:
+        logger.warning(f"Failed to decode binary string: {e}")
+        return "" # Return empty string on decode error
+
+def encode_message_in_image(image_path: str, message: str) -> Image.Image:
+    """
+    Hides a secret message in an image using LSB steganography.
+    """
+    try:
+        img = Image.open(image_path).convert('RGB')
+    except FileNotFoundError:
+        raise
+    
+    # Add a delimiter to know when the message ends
+    message += "::END::"
+    message_bin = _str_to_bin(message)
+    message_len = len(message_bin)
+    
+    img_data = img.getdata()
+    total_pixels = len(img_data)
+    
+    # Need 3 pixels per bit (R, G, B channels)
+    if message_len > total_pixels * 3:
+        raise ValueError(f"Message is too long for this image. Max bits: {total_pixels * 3}")
+        
+    new_data = []
+    data_index = 0
+    
+    for pixel in img_data:
+        if data_index < message_len:
+            # Modify the pixel
+            new_pix = []
+            for i in range(3): # R, G, B
+                if data_index < message_len:
+                    # Modify the LSB
+                    new_val = (pixel[i] & 0xFE) | int(message_bin[data_index])
+                    new_pix.append(new_val)
+                    data_index += 1
+                else:
+                    new_pix.append(pixel[i])
+            new_data.append(tuple(new_pix))
+        else:
+            # No more message, just append the original pixel
+            new_data.append(pixel)
+            
+    new_img = Image.new('RGB', img.size)
+    new_img.putdata(new_data)
+    return new_img
+
+def decode_message_from_image(image_path: str) -> Optional[str]:
+    """
+    Extracts a secret LSB-encoded message from an image.
+    """
+    try:
+        img = Image.open(image_path).convert('RGB')
+    except FileNotFoundError:
+        raise
+        
+    img_data = img.getdata()
+    binary_message = ""
+    delimiter = "::END::"
+    delimiter_bin = _str_to_bin(delimiter)
+
+    for pixel in img_data:
+        for val in pixel[:3]: # R, G, B
+            binary_message += str(val & 1) # Extract LSB
+            
+            # Check if the end of the binary message matches the delimiter
+            if binary_message.endswith(delimiter_bin):
+                # Found the end
+                message_bin_only = binary_message[:-len(delimiter_bin)]
+                return _bin_to_str(message_bin_only)
+    
+    # If we get here, we never found the delimiter
+    return None

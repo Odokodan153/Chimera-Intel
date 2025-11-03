@@ -2,6 +2,9 @@ import typer
 import json
 from pyvis.network import Network  # type: ignore
 import os
+import uuid
+from datetime import datetime
+from chimera_intel.core.schemas import FootprintResult, PersonnelOSINTResult
 from typing import Dict, Any, List, Optional
 import logging
 from .config_loader import CONFIG
@@ -196,7 +199,163 @@ def build_and_save_graph(
             target="", total_nodes=0, total_edges=0, nodes=[], edges=[], error=str(e)
         )
 
+def add_graph_node(tx, label: str, properties: Dict[str, Any], primary_key: str = "id"):
+    """
+    Idempotently creates or merges a node in the graph.
+    
+    Args:
+        tx: The Neo4j transaction.
+        label: The label for the node (e.g., "Domain", "IP").
+        properties: A dictionary of properties for the node.
+        primary_key: The property key to merge on (default: "id").
+    """
+    prop_key = properties.get(primary_key)
+    if not prop_key:
+        logger.warning(f"Node of type {label} missing primary key '{primary_key}'. Skipping.")
+        return
 
+    query = f"""
+    MERGE (n:{label} {{{primary_key}: $prop_key}})
+    ON CREATE SET n = $properties
+    ON MATCH SET n += $properties
+    """
+    tx.run(query, prop_key=prop_key, properties=properties)
+
+def add_graph_relationship(tx, source_label: str, source_id: str, 
+                         target_label: str, target_id: str, 
+                         relationship_type: str, 
+                         source_key: str = "id", target_key: str = "id"):
+    """
+    Creates a relationship between two existing nodes.
+    
+    Args:
+        tx: The Neo4j transaction.
+        source_label: The label of the source node.
+        source_id: The primary key value of the source node.
+        target_label: The label of the target node.
+        target_id: The primary key value of the target node.
+        relationship_type: The type of relationship (e.g., "RESOLVES_TO").
+        source_key: The property key of the source node (default: "id").
+        target_key: The property key of the target node (default: "id").
+    """
+    query = f"""
+    MATCH (a:{source_label} {{{source_key}: $source_id}})
+    MATCH (b:{target_label} {{{target_key}: $target_id}})
+    MERGE (a)-[r:{relationship_type}]->(b)
+    """
+    tx.run(query, source_id=source_id, target_id=target_id)
+
+def process_footprint_for_graph(scan_result: FootprintResult):
+    """
+    Processes a FootprintResult and adds the entities to the Neo4j graph.
+    This demonstrates the domain <-> IP <-> cert correlation.
+    """
+    if not graph_db_instance or not graph_db_instance._driver:
+        logger.warning("Graph DB not connected. Skipping graph processing.")
+        return
+
+    domain = scan_result.domain
+    
+    with graph_db_instance._driver.session() as session:
+        # Add the main domain
+        session.write_transaction(
+            add_graph_node, "Domain", {"id": domain, "name": domain}, "id"
+        )
+        
+        # Add DNS A records (Domain -> IP)
+        if scan_result.footprint.dns_records.get("A"):
+            for ip in scan_result.footprint.dns_records["A"]:
+                session.write_transaction(
+                    add_graph_node, "IP", {"id": ip, "address": ip}, "id"
+                )
+                session.write_transaction(
+                    add_graph_relationship, "Domain", domain, "IP", ip, "RESOLVES_TO"
+                )
+
+        # Add Subdomains (Domain -> Subdomain)
+        if scan_result.footprint.subdomains:
+            for sub in scan_result.footprint.subdomains.results:
+                if sub.domain:
+                    session.write_transaction(
+                        add_graph_node, "Domain", {"id": sub.domain, "name": sub.domain, "is_subdomain": True}, "id"
+                    )
+                    session.write_transaction(
+                        add_graph_relationship, "Domain", domain, "Domain", sub.domain, "HAS_SUBDOMAIN"
+                    )
+
+        # Add TLS Cert (Domain -> Certificate)
+        if scan_result.footprint.tls_cert_info:
+            cert_subject = scan_result.footprint.tls_cert_info.subject
+            if cert_subject:
+                cert_id = cert_subject + "_" + scan_result.footprint.tls_cert_info.not_after
+                cert_props = scan_result.footprint.tls_cert_info.model_dump()
+                cert_props["id"] = cert_id
+                
+                session.write_transaction(
+                    add_graph_node, "Certificate", cert_props, "id"
+                )
+                session.write_transaction(
+                    add_graph_relationship, "Domain", domain, "Certificate", cert_id, "HAS_CERT"
+                )
+
+def process_personnel_for_graph(scan_result: PersonnelOSINTResult):
+    """
+    Processes a PersonnelOSINTResult to link Company <-> Person.
+    """
+    if not graph_db_instance or not graph_db_instance._driver:
+        logger.warning("Graph DB not connected. Skipping graph processing.")
+        return
+
+    company_name = scan_result.organization_name or scan_result.domain
+    
+    with graph_db_instance._driver.session() as session:
+        # Add the company
+        session.write_transaction(
+            add_graph_node, "Company", {"id": company_name, "name": company_name}, "id"
+        )
+        
+        # Add employees (Company -> Person)
+        for emp in scan_result.employee_profiles:
+            person_props = emp.model_dump()
+            person_props["id"] = emp.email
+            session.write_transaction(
+                add_graph_node, "Person", person_props, "id"
+            )
+            session.write_transaction(
+                add_graph_relationship, "Company", company_name, "Person", emp.email, "EMPLOYS"
+            )
+
+def add_annotation_to_node(node_label: str, node_id: str, user: str, content: str, node_key: str = "id") -> str:
+    """
+    Adds an Annotation node to the graph and links it to an existing entity.
+    This implements Feature 7 (Annotation).
+    """
+    if not graph_db_instance or not graph_db_instance._driver:
+        logger.error("Graph DB not connected. Cannot add annotation.")
+        raise typer.Exit(code=1)
+
+    annotation_id = str(uuid.uuid4())
+    annotation_props = {
+        "id": annotation_id,
+        "user": user,
+        "content": content,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    with graph_db_instance._driver.session() as session:
+        # Add the annotation node
+        session.write_transaction(
+            add_graph_node, "Annotation", annotation_props, "id"
+        )
+        # Link annotation to the target node
+        session.write_transaction(
+            add_graph_relationship, 
+            "Annotation", annotation_id,
+            node_label, node_id,
+            "ANNOTATES",
+            "id", node_key
+        )
+    return annotation_id
 # --- Typer CLI Application ---
 
 
@@ -225,3 +384,21 @@ def create_knowledge_graph(
     else:
         output_path = output_file
     build_and_save_graph(data, output_path)
+
+@graph_app.command("add-annotation")
+def cli_add_annotation(
+    node_label: str = typer.Argument(..., help="The label of the node (e.g., 'Domain', 'IP')."),
+    node_id: str = typer.Argument(..., help="The primary ID of the node (e.g., 'example.com', '1.2.3.4')."),
+    content: str = typer.Argument(..., help="The text content of the annotation."),
+    user: str = typer.Option("analyst", "--user", "-u", help="The user adding the annotation."),
+    node_key: str = typer.Option("id", help="The property key of the node to match on.")
+):
+    """
+    Adds an analyst annotation to an entity in the Neo4j graph.
+    """
+    try:
+        annotation_id = add_annotation_to_node(node_label, node_id, user, content, node_key)
+        console.print(f"[bold green]Success:[/bold green] Added annotation {annotation_id} to {node_label} {node_id}.")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] Could not add annotation: {e}")
+        raise typer.Exit(code=1)

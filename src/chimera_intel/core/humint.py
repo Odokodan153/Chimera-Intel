@@ -14,6 +14,13 @@ from .database import get_db_connection
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
 from .utils import console
+from .schemas import HumintScenario
+from .database import get_db_connection
+from .ai_core import generate_swot_from_data
+from chimera_intel.core.schemas import AiCoreResult
+from .config_loader import API_KEYS
+from .utils import console
+from rich.panel import Panel # For better output
 
 # --- HUMINT SCENARIO COMPONENTS (Integrated with System Dependencies) ---
 
@@ -200,6 +207,58 @@ def add_humint_report(source_name: str, content: str) -> None:
     except (psycopg2.Error, ConnectionError) as e:
         console.print(f"[bold red]Database Error:[/bold red] Could not add report: {e}")
 
+def simulate_social_elicitation(
+    target_persona_desc: str, 
+    goal: str,
+    operative_persona: str = "A curious industry colleague"
+) -> AiCoreResult:
+    """
+    Uses the AI Core to simulate a social interaction for intel gathering.
+    """
+    console.print(f"[bold magenta]INITIATING VIRTUAL HUMINT SIMULATION[/bold magenta]")
+    
+    api_key = API_KEYS.google_api_key
+    if not api_key:
+        console.print("[bold red]Error:[/bold red] Google API key not configured.")
+        return AiCoreResult(
+            analysis_text="", 
+            error="Google API key not configured."
+        )
+
+    ai_prompt = f"""
+    You are a professional intelligence analyst running a simulation.
+    Your task is to generate a realistic, simulated social media or chat conversation.
+
+    **Simulation Parameters:**
+    
+    1.  **Your Operative's Persona:** {operative_persona}
+    2.  **Target's Persona:** {target_persona_desc}
+    3.  **Your Goal:** {goal}
+
+    **Instructions:**
+    -   Generate a plausible, multi-turn dialogue (at least 5-7 exchanges).
+    -   The operative should attempt to subtly elicit information related to the goal, without being overt.
+    -   The target should respond in character, potentially being guarded or helpful, depending on the persona.
+    -   Format the output as a script (e.g., "Operative: ...", "Target: ...").
+    -   Conclude the simulation with a one-paragraph summary: "[SIMULATION SUMMARY] ..."
+    """
+
+    console.print(f"  - [cyan]Goal:[/cyan] {goal}")
+    console.print(f"  - [cyan]Target Persona:[/cyan] {target_persona_desc}")
+    
+    with console.status("[bold yellow]Running virtual operative simulation...[/bold yellow]"):
+        ai_result = generate_swot_from_data(ai_prompt, api_key)
+
+    if ai_result.error:
+        console.print(f"[bold red]AI Simulation Error:[/bold red] {ai_result.error}")
+    else:
+        console.print(Panel(
+            ai_result.analysis_text,
+            title="[bold green]Virtual HUMINT Simulation Log[/bold green]",
+            border_style="green"
+        ))
+        
+    return ai_result
 
 def analyze_humint_reports(topic: str) -> Optional[str]:
     """Uses AI to analyze all HUMINT reports related to a specific topic."""
@@ -305,3 +364,26 @@ def cli_analyze(
             f"\n[bold green]AI-Powered HUMINT Analysis for '{topic}':[/bold green]"
         )
         console.print(analysis)
+
+@humint_app.command("simulate-social") 
+def cli_simulate_social_elicitation(
+    target_persona: str = typer.Option(
+        ..., "--target", help="A description of the target's persona."
+    ),
+    goal: str = typer.Option(
+        ..., "--goal", help="The specific piece of information the operative is trying to elicit."
+    ),
+    operative_persona: str = typer.Option(
+        "A curious industry colleague", 
+        "--operative", 
+        help="The persona the virtual operative should adopt."
+    )
+):
+    """
+    (NEW) Runs a virtual HUMINT simulation of a social interaction.
+    """
+    simulate_social_elicitation(
+        target_persona_desc=target_persona,
+        goal=goal,
+        operative_persona=operative_persona
+    )

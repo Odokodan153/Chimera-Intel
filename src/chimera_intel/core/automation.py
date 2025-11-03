@@ -31,6 +31,10 @@ from .schemas import (
     ThreatIntelResult,
     Event,
 )
+import json
+from .schemas import Event
+from .correlation_engine import AlertPrioritizationEngine, execute_automation_pipelines 
+from .config_loader import load_config
 from .utils import save_or_print_results, console
 from .config_loader import API_KEYS, load_config
 from .http_client import sync_client
@@ -702,3 +706,27 @@ def run_data_quality_check(
         raise typer.Exit(code=1)
     else:
         console.print("[bold green]All data feeds are UP and responding correctly.[/bold green]")
+
+@automation_app.command("pipeline-run-trigger") # <-- NEW COMMAND
+def run_pipeline_trigger(
+    event_json: str = typer.Argument(
+        ...,
+        help="A JSON string representing the event to trigger pipelines.",
+    ),
+):
+    """
+    (NEW) Runs a raw event through the Autonomous Workflow Triggers.
+    
+    This will check the event against all configured pipelines
+    in config.yaml and run any matched actions (e.g., covert scans).
+    """
+    try:
+        event_data = json.loads(event_json)
+        event = Event.model_validate(event_data)
+    except Exception as e:
+        console.print(f"[bold red]Error parsing event JSON: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    # The config is loaded automatically by the engine via CONFIG
+    execute_automation_pipelines(event)
+    console.print(f"[bold green]Autonomous trigger check complete for {event.target}.[/bold green]")

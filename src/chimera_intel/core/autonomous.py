@@ -365,3 +365,64 @@ def run_backtesting(
     except Exception as e:
         console.print(f"[bold red]An error occurred during backtesting:[/bold red] {e}")
         raise typer.Exit(code=1)
+    
+@autonomous_app.command(
+    "simulate", help="Run a predictive 'what-if' scenario."
+)
+def simulate_scenario(
+    scenario_description: Annotated[
+        str,
+        typer.Option(
+            "--scenario",
+            "-s",
+            help="The 'what-if' scenario to simulate (e.g., 'If company X launches product Y').",
+            prompt=True,
+        ),
+    ],
+):
+    """
+    Runs a predictive simulation for a given scenario to identify
+    potential risks and opportunities.
+    """
+    console.print(
+        f"Running predictive simulation for scenario: '[bold cyan]{scenario_description}[/bold cyan]'"
+    )
+
+    ai_api_key = API_KEYS.google_api_key
+    if not ai_api_key:
+        console.print(
+            "[bold red]Error:[/bold red] GOOGLE_API_KEY is not set. Cannot perform AI-powered simulation."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        prompt = (
+            "You are a strategic risk and opportunity analyst. Your task is to analyze a hypothetical scenario and predict the likely outcomes. "
+            "Based on the following scenario, generate a report that includes:\n"
+            "1. **Most Likely Outcome:** What is the probable result?\n"
+            "2. **Potential Risks:** What are the key dangers or negative consequences?\n"
+            "3. **Potential Opportunities:** What are the possible upsides or advantages?\n"
+            "4. **Recommended Monitoring Points:** What key indicators should we watch to see how this scenario is developing?\n\n"
+            f"**Scenario:**\n{scenario_description}"
+        )
+
+        ai_result = generate_swot_from_data(prompt, ai_api_key)
+        if ai_result.error:
+            console.print(f"[bold red]AI Error:[/bold red] {ai_result.error}")
+            raise typer.Exit(code=1)
+        
+        prediction_text = ai_result.analysis_text
+
+        console.print(
+            Panel(
+                prediction_text,
+                title="[bold green]Scenario Simulation Report[/bold green]",
+                border_style="green",
+            )
+        )
+
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred during scenario simulation:[/bold red] {e}"
+        )
+        raise typer.Exit(code=1)

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "chimera_active_recon"
+version = "0.1.0"
+description = "Plugin for consent-gated active reconnaissance playbooks."
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera_intel = {path = "../../src", develop = true}
+typer = "^0.9.0"
+beautifulsoup4 = "^4.12.3"
+lxml = "^5.2.1"  # Recommended parser for beautifulsoup
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+active_recon = "chimera_active_recon.main:ActiveReconPlugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -8,10 +8,10 @@ import tweepy
 from rich.console import Console
 from rich.table import Table
 from typing import List, Dict, Any
-
+from rich.panel import Panel
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
-from chimera_intel.core.ai_core import analyze_sentiment
+from chimera_intel.core.ai_core import analyze_sentiment, generate_swot_from_data
 
 console = Console()
 
@@ -134,6 +134,92 @@ def track_narrative(
     # when the function is called as a module utility.
     # raise typer.Exit(code=0)
 
+@narrative_analyzer_app.command(
+    name="map", help="Analyze narrative data to map influence operations."
+)
+def map_influence(
+    query: str = typer.Option(
+        ...,
+        "--track",
+        "-t",
+        help="The keyword or phrase to analyze for influence operations.",
+    ),
+):
+    """
+    Analyzes data from 'track_narrative' to detect how public opinion
+    or corporate messaging is being shaped (info ops).
+    """
+    console.print(
+        f"Mapping influence and information operations for: '[bold cyan]{query}[/bold cyan]'"
+    )
 
+    try:
+        # 1. Reuse existing function to gather data
+        console.print("  [grey50]Step 1: Gathering source data...[/grey50]")
+        # Note: This will print the table from track_narrative first
+        tracking_results = track_narrative(query)
+
+        if not tracking_results:
+            console.print(
+                "[yellow]No tracking results found. Cannot map influence.[/yellow]"
+            )
+            raise typer.Exit()
+
+        console.print("\n  [grey50]Step 2: Analyzing gathered data for influence patterns...[/grey50]")
+
+        # 2. Check for AI key
+        ai_api_key = API_KEYS.google_api_key
+        if not ai_api_key:
+            console.print(
+                "[bold red]Error:[/bold red] GOOGLE_API_KEY is not set. Cannot perform AI-powered analysis."
+            )
+            raise typer.Exit(code=1)
+
+        # 3. Prepare data and prompt for AI analysis
+        content_summary = "\n".join(
+            [
+                f"- (Type: {item['type']}, Source: {item['source']}, Sentiment: {item['sentiment']}): {item['content']}"
+                for item in tracking_results
+            ]
+        )
+
+        prompt = (
+            "You are an expert information operations (IO) and public opinion analyst. "
+            "Your task is to analyze a collection of news articles and social media posts about a specific topic to map influence campaigns. "
+            "Based on the following data, generate a report that includes:\n"
+            "1. **Key Narratives:** What are the 1-3 dominant narratives being pushed?\n"
+            "2. **Key Influencers/Sources:** Which sources or authors appear most frequently or drive the narrative?\n"
+            "3. **Sentiment Skew:** Is there a strong positive or negative skew? Does it seem natural or manufactured?\n"
+            "4. **Signs of Inauthentic Shaping:** Look for repetition, bot-like language, or coordinated messaging across disparate sources. Are there signs of an active 'info op'?\n"
+            "5. **Inferred Objective:** What is the likely goal of the observed narrative shaping (e.g., 'to discredit a product', 'to promote a political figure', 'to shape corporate image')?\n\n"
+            f"**Topic:** {query}\n"
+            f"**Collected Data:**\n{content_summary}"
+        )
+
+        # 4. Call AI for the advanced analysis
+        ai_result = generate_swot_from_data(prompt, ai_api_key)
+        if ai_result.error:
+            console.print(f"[bold red]AI Error:[/bold red] {ai_result.error}")
+            raise typer.Exit(code=1)
+
+        influence_report = ai_result.analysis_text
+
+        console.print(
+            Panel(
+                influence_report,
+                title="[bold green]Narrative Influence Map[/bold green]",
+                border_style="green",
+            )
+        )
+
+    except typer.Exit:
+        # Catch the exit from the underlying track_narrative call if it fails
+        pass
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred during influence mapping:[/bold red] {e}"
+        )
+        raise typer.Exit(code=1)
+    
 if __name__ == "__main__":
     narrative_analyzer_app()
