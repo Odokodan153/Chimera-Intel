@@ -10,49 +10,15 @@ import typer
 import asyncio
 import logging
 import httpx
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Optional
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .project_manager import get_active_project
-
+from .schemas import VehicleScanResult, VehicleInfoResult
 logger = logging.getLogger(__name__)
 
 # NHTSA vPIC API URL for decoding VINs
 VPIC_API_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{vin}?format=json"
-
-
-# --- Pydantic Schemas ---
-
-class VehicleInfoResult(BaseModel):
-    """Pydantic model for holding decoded VIN information."""
-    
-    VIN: Optional[str] = Field(None, description="The VIN queried.")
-    Make: Optional[str] = Field(None, description="Vehicle Manufacturer.")
-    Model: Optional[str] = Field(None, description="Vehicle Model.")
-    ModelYear: Optional[str] = Field(None, description="Vehicle Model Year.")
-    VehicleType: Optional[str] = Field(None, description="Vehicle Type.")
-    BodyClass: Optional[str] = Field(None, description="Vehicle Body Class.")
-    EngineCylinders: Optional[str] = Field(None, description="Number of engine cylinders.")
-    DisplacementL: Optional[str] = Field(None, description="Engine displacement in liters.")
-    FuelTypePrimary: Optional[str] = Field(None, description="Primary fuel type.")
-    PlantCountry: Optional[str] = Field(None, description="Manufacturing plant country.")
-    PlantCity: Optional[str] = Field(None, description="Manufacturing plant city.")
-    Manufacturer: Optional[str] = Field(None, description="Full manufacturer name.")
-    ErrorCode: Optional[str] = Field(None, description="Error code from API.")
-    ErrorText: Optional[str] = Field(None, description="Error description from API.")
-
-    class Config:
-        # Allow extra fields from the API response without failing validation
-        extra = "ignore"
-
-
-class VehicleScanResult(BaseModel):
-    """Pydantic model for the complete VIN scan result."""
-    
-    query_vin: str
-    info: Optional[VehicleInfoResult] = None
-    error: Optional[str] = None
 
 
 async def search_vehicle_vin(vin: str) -> VehicleScanResult:

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_active_ci"
+version = "0.1.1"
+description = "Chimera plugin for active counter-intelligence (domain watch, honey assets, local scans)."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "chimera-intel",
+    "typer[all]",
+]
+
+[project.entry-points."chimera_intel.plugins"]
+# This is the key change: it registers "chimera_active_ci.main:app"
+# as the command "active-ci" in the main CLI
+active-ci = "chimera_active_ci.main:app"

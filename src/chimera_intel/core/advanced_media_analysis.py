@@ -56,9 +56,6 @@ except ImportError:
     print("ERROR: Missing 'c2pa'. Please run: pip install c2pa")
     raise
 
-# --- NEW PYDANTIC IMPORT ---
-from pydantic import BaseModel, Field
-
 # --- Setup ---
 logger = logging.getLogger(__name__)
 console = Console()
@@ -173,19 +170,7 @@ def run_synthetic_media_audit(
 #
 # -----------------------------------------------------------------
 
-# --- NEW RESULT MODEL ADDED ---
-class SyntheticMediaAuditResult(BaseModel):
-    """
-    Result model for a synthetic-media-audit.
-    Categorizes and scores the AI-generation origin.
-    """
-    file_path: str
-    media_type: str
-    is_synthetic: bool = False
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    suspected_origin_model: str = "Unknown"
-    analysis_details: Dict[str, Any] = Field(default_factory=dict, description="Aggregated findings from other media modules.")
-    error: Optional[str] = None
+
 
 
 # --- Helper Utilities ---

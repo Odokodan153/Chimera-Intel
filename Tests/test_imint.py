@@ -1,4 +1,5 @@
 import unittest
+import pathlib
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from PIL import Image
@@ -7,6 +8,7 @@ from chimera_intel.core.imint import (
     analyze_image_metadata,
     analyze_image_content,
     perform_object_detection,
+    perform_local_ocr, # Import new function
     imint_app,
 )
 from chimera_intel.core.schemas import ImageAnalysisResult, ExifData
@@ -87,6 +89,42 @@ class TestImint(unittest.TestCase):
         self.assertEqual(result, "Extracted Text")
         mock_genai.configure.assert_called_with(api_key="fake_google_key")
         mock_model_instance.generate_content.assert_called_once()
+
+    # --- [NEW] Local OCR Tests ---
+
+    @patch("chimera_intel.core.imint.pytesseract")
+    @patch("chimera_intel.core.imint.Image.open")
+    def test_perform_local_ocr_success(self, mock_image_open, mock_pytesseract):
+        """Tests successful local OCR with pytesseract."""
+        # Arrange
+        mock_pytesseract.image_to_string.return_value = "Local OCR Text"
+        
+        # Act
+        result = perform_local_ocr(pathlib.Path("test.jpg"))
+        
+        # Assert
+        self.assertEqual(result, "Local OCR Text")
+        mock_pytesseract.image_to_string.assert_called_once()
+
+    @patch("chimera_intel.core.imint.perform_local_ocr")
+    def test_cli_local_ocr_success(self, mock_perform_ocr):
+        """Tests the 'imint ocr' CLI command."""
+        # Arrange
+        mock_perform_ocr.return_value = "This is test OCR text."
+        
+        # Create a dummy file for the 'exists=True' check
+        with runner.isolated_filesystem():
+            with open("dummy.jpg", "w") as f:
+                f.write("dummy")
+                
+            # Act
+            result = runner.invoke(imint_app, ["ocr", "dummy.jpg"])
+            
+            # Assert
+            self.assertEqual(result.exit_code, 0)
+            self.assertIn("This is test OCR text.", result.stdout)
+            mock_perform_ocr.assert_called_with(pathlib.Path("dummy.jpg"))
+
 
     # --- Satellite Imagery (Object Detection) Tests ---
 

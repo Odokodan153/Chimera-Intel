@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "chimera_image_forensics_pipeline"
+version = "0.1.0"
+description = "A Chimera-Intel plugin for the full image/video forensics pipeline."
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera_intel = {path = "../../", develop = true} 
+# This assumes the plugin is in a directory parallel to the main src
+# Adjust as needed for your project structure
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# Updated entry point to point to the class
+"image_pipeline" = "chimera_image_forensics_pipeline.main:ImageForensicsPipelinePlugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

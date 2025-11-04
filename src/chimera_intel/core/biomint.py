@@ -12,10 +12,8 @@ Requires:
 
 import typer
 import os
-import numpy as np
 import logging
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.adversary_voice_matcher import _extract_features, _compare_features
 from chimera_intel.core.schemas import FaceAnalysisResult,VoiceComparisonResult

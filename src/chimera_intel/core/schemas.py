@@ -4318,3 +4318,258 @@ class PivotResult(BaseModel):
     reverse_dns: Optional[str] = None
     related_domains_cert: List[CertInfo] = Field(default_factory=list, description="Domains found via Certificate Transparency.")
     error: Optional[str] = None
+
+class DomainMonitoringResult(BaseModel):
+    """Result model for domain and account impersonation monitoring."""
+    base_domain: str
+    lookalikes_found: List[str] = Field(default_factory=list)
+    impersonator_accounts: List[Dict[str, str]] = Field(default_factory=list)
+    copyright_misuse: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class HoneyAssetResult(BaseModel):
+    """Result model for a deployed honey asset."""
+    asset_id: str
+    status: str # e.g., "deployed", "error"
+    fingerprint: str
+    tracking_url: str
+    error: Optional[str] = None
+
+class LegalTemplateResult(BaseModel):
+    """Result model for retrieving a legal escalation template."""
+    complaint_type: str
+    template_body: str
+    contacts: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+class ImageAcquisitionTriage(BaseModel):
+    """Step A: Acquisition & Triage"""
+
+    file_name: str
+    file_path: str
+    sha256: str
+    phash: str
+    clip_embedding_shape: Optional[str] = None
+    reverse_search_hits: List[str] = Field(
+        default_factory=list, description="Top URLs from reverse image search."
+    )
+    provenance: Optional[ProvenanceResult] = None
+
+
+class AutomatedTriageResult(BaseModel):
+    """Step B: Automated Triage"""
+
+    exif_analysis: Optional[ImageAnalysisResult] = None
+    ela_triage: Optional[ForensicArtifactResult] = None
+    ocr_text: Optional[str] = None
+    detected_logos: Optional[str] = None
+    detected_face_count: int = 0
+
+
+class SimilarityAttributionResult(BaseModel):
+    """Step C: Similarity & Attribution"""
+
+    is_reused_asset: bool = False
+    similar_assets_found: List[Dict[str, Any]] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+class AudioAnomalyResult(BaseModel):
+    """Step D: Audio Anomaly Detection Result"""
+
+    analysis_skipped: bool = False
+    error: Optional[str] = None
+    spectral_flux_anomalies_detected: int = 0
+    anomaly_timestamps: List[float] = Field(default_factory=list)
+
+
+class ManipulationDetectionResult(BaseModel):
+    """Step D: Deepfake / Manipulation Detection"""
+
+    deepfake_scan: Optional[DeepfakeAnalysisResult] = None
+    audio_anomalies: Optional[AudioAnomalyResult] = None
+    sensor_noise_prnu: str = "Out of Scope (Requires specialized sensor library)"
+
+
+class ImageForensicsReport(BaseModel):
+    """Step E: Final Forensics Report"""
+
+    acquisition_triage: ImageAcquisitionTriage
+    automated_triage: AutomatedTriageResult
+    similarity_attribution: SimilarityAttributionResult
+    manipulation_detection: ManipulationDetectionResult
+    forensic_summary: str = "Analysis complete. Review results."
+
+class IngestionResult(BaseModel):
+    """Result of a single data ingestion task."""
+    url: str
+    status: str
+    content_hash: str
+    s3_key: str
+    postgres_id: int
+    elastic_id: str
+    title: Optional[str] = None
+    error: Optional[str] = None
+
+class SyntheticMediaAuditResult(BaseModel):
+    """
+    Result model for a synthetic-media-audit.
+    Categorizes and scores the AI-generation origin.
+    """
+    file_path: str
+    media_type: str
+    is_synthetic: bool = False
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    suspected_origin_model: str = "Unknown"
+    analysis_details: Dict[str, Any] = Field(default_factory=dict, description="Aggregated findings from other media modules.")
+    error: Optional[str] = None
+
+class MentalModelVector(BaseModel):
+    """
+    A single vector (e.g., bias, value) in a cognitive model.
+    """
+    vector_type: str = Field(..., description="e.g., 'Core Value', 'Decision-Making Bias', 'Mental Model'")
+    description: str = Field(..., description="The specific value or bias (e.g., 'Prioritizes rapid innovation', 'Optimism Bias')")
+    evidence_snippet: Optional[str] = Field(None, description="A key quote or snippet from source material supporting this vector.")
+
+class CognitiveMapResult(BaseModel):
+    """
+    The final, structured result of a cognitive mapping analysis.
+    """
+    person_name: str
+    cognitive_model_summary: Optional[str] = Field(None, description="AI-generated summary of the cognitive model.")
+    key_vectors: List[MentalModelVector] = Field(default_factory=list)
+    predictive_assessment: Optional[str] = Field(None, description="AI-generated prediction of behavior.")
+    error: Optional[str] = None
+
+class FeedConfig(BaseModel):
+    """Configuration for a single data feed."""
+    name: str = Field(..., description="Unique name for the feed source.")
+    type: str = Field(..., description="Type of feed (e.g., 'rss', 'twitter').")
+    url: str = Field(..., description="The URL or API endpoint for the feed.")
+    interval_seconds: int = Field(600, description="How often to poll the feed.")
+    event_type: str = Field("generic_signal", description="The chimera event type to assign.")
+
+class ImageHashResult(BaseModel):
+    """Result model for image perceptual and difference hashes."""
+    file_path: str
+    phash: str = Field(..., help="Perceptual hash of the image.")
+    dhash: str = Field(..., help="Difference hash of the image.")
+
+
+class ReverseImageMatch(BaseModel):
+    """A single match from a reverse image search."""
+    url: str
+    title: str
+
+
+class ReverseImageSearchResult(BaseModel):
+    """Result model for reverse image search."""
+    file_path: str
+    best_guess: Optional[str] = Field(None, help="Best guess label for the image.")
+    matches: List[ReverseImageMatch] = Field([], help="List of matching pages.")
+
+
+class VaultReceipt(BaseModel):
+    """
+    A signed and timestamped receipt for a piece of evidence,
+    proving its existence and integrity at a specific time.
+    """
+    file_path: str
+    file_hash: str = Field(..., help="SHA-256 hash of the original file.")
+    hash_algorithm: str = Field("sha256", help="Algorithm used for file hash.")
+    metadata_hash: str = Field(..., help="SHA-256 hash of the signed metadata.")
+    signature: str = Field(..., help="Base64 encoded digital signature of the metadata_hash.")
+    timestamp_token: Optional[str] = Field(
+        None, help="Base64 encoded RFC3161 timestamp token (if requested)."
+    )
+    timestamp: Optional[datetime] = Field(
+        None, help="The datetime extracted from the timestamp token."
+    )
+class FusedLocationPoint(BaseModel):
+    source: str
+    latitude: float
+    longitude: float
+    timestamp: str
+    velocity: Optional[float] = None
+    altitude: Optional[float] = None
+    description: str
+
+
+class MovingTargetResult(BaseModel):
+    target_identifier: str
+    current_location: Optional[FusedLocationPoint] = None
+    historical_track: List[FusedLocationPoint] = []
+    error: Optional[str] = None
+
+class PasteLeak(BaseModel):
+    id: str
+    source: str # e.g., "Pastebin", "GitHub Gist"
+    url: str
+    content_snippet: str
+    matched_keyword: str
+    leak_type: str # e.g., "API_KEY", "PASSWORD", "CONFIG"
+
+class PasteMonitorResult(BaseModel):
+    keywords_monitored: List[str]
+    leaks_found: List[PasteLeak] = Field(default_factory=list)
+    total_leaks: int = 0
+
+class TrustedMediaAIMetadata(BaseModel):
+    """Schema for AI model usage details."""
+    model_name: str
+    seed: Optional[str] = None
+    prompt: Optional[str] = None
+
+class TrustedMediaManifest(BaseModel):
+    """
+    The sidecar JSON manifest for a master image, as per best practices.
+    """
+    master_sha256: str = Field(..., description="SHA256 hash of the master file.")
+    source_files: List[str] = Field(default_factory=list)
+    editor_id: str
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    ai_models_used: List[TrustedMediaAIMetadata] = Field(default_factory=list)
+    consent_ids: List[str] = Field(default_factory=list)
+    project_id: str
+    license: Optional[str] = "All Rights Reserved"
+    author: Optional[str] = "Chimera-Intel Corp"
+
+class MediaProductionPackage(BaseModel):
+    """Final output package details."""
+    master_file_path: str
+    manifest: TrustedMediaManifest
+    derivatives: List[str] = Field(default_factory=list)
+    manifest_vault_receipt_id: str
+    arg_nodes_created: List[str]
+    arg_rels_created: int
+
+class VehicleInfoResult(BaseModel):
+    """Pydantic model for holding decoded VIN information."""
+    
+    VIN: Optional[str] = Field(None, description="The VIN queried.")
+    Make: Optional[str] = Field(None, description="Vehicle Manufacturer.")
+    Model: Optional[str] = Field(None, description="Vehicle Model.")
+    ModelYear: Optional[str] = Field(None, description="Vehicle Model Year.")
+    VehicleType: Optional[str] = Field(None, description="Vehicle Type.")
+    BodyClass: Optional[str] = Field(None, description="Vehicle Body Class.")
+    EngineCylinders: Optional[str] = Field(None, description="Number of engine cylinders.")
+    DisplacementL: Optional[str] = Field(None, description="Engine displacement in liters.")
+    FuelTypePrimary: Optional[str] = Field(None, description="Primary fuel type.")
+    PlantCountry: Optional[str] = Field(None, description="Manufacturing plant country.")
+    PlantCity: Optional[str] = Field(None, description="Manufacturing plant city.")
+    Manufacturer: Optional[str] = Field(None, description="Full manufacturer name.")
+    ErrorCode: Optional[str] = Field(None, description="Error code from API.")
+    ErrorText: Optional[str] = Field(None, description="Error description from API.")
+
+    class Config:
+        # Allow extra fields from the API response without failing validation
+        extra = "ignore"
+
+
+class VehicleScanResult(BaseModel):
+    """Pydantic model for the complete VIN scan result."""
+    
+    query_vin: str
+    info: Optional[VehicleInfoResult] = None
+    error: Optional[str] = None

@@ -81,7 +81,28 @@ dependencies = [
     "sherlock-project>=0.14.3,<0.15.0",
     "pyais>=2.0.0",
     "wbgapi",
-    "pubchempy>=1.0.4"
+    "pubchempy>=1.0.4",
+    # Added for media_forensics.py & forensic_vault.py
+    "Pillow",
+    "google-cloud-vision",
+    "rfc3161",
+    "cryptography",
+    "c2pa-python",
+    "newspaper3k",
+    
+    # Added for data_pipeline.py
+    "playwright",
+    "beautifulsoup4",
+    "boto3",
+    "elasticsearch-py",
+    "celery[redis]",
+    
+    # Added for advanced media analysis
+    "opencv-python", # Moved from test-heavy
+    "dlib",
+    "face_recognition",
+    "pytesseract",
+    "h5py", # Added for Keras model loading
 ]
 
 [project.optional-dependencies]
@@ -112,6 +133,7 @@ test = [
     "types-python-nmap>=0.7.0.20240428,<0.8.0.0",
     "types-reportlab~=4.2.0",
     "types-sqlalchemy",
+    "types-redis",
 ]
 
 # --- HEAVYWEIGHT TESTING DEPENDENCIES ---
@@ -119,14 +141,14 @@ test = [
 test-heavy = [
     "pyvis",
     "tweepy",
-    "playwright",
-    "beautifulsoup4",
+    # "playwright", # Moved to core
+    # "beautifulsoup4", # Moved to core
     "torch",
     "torchvision",
     "scikit-image",
     "geopy",
     "SQLAlchemy",
-    "opencv-python",
+    # "opencv-python", # Moved to core
     "scapy",
     "librosa",
     "pypatent",
@@ -136,6 +158,8 @@ test-heavy = [
     "overpy",
     "sgp4",
     "skyfield",
+    "imagehash",
+    "spacy",
 ]
 
 docs = [
@@ -184,5 +208,13 @@ module = [
     "docker.*",
     "overpy.*",
     "Wappalyzer.*",
+    "boto3.*",
+    "elasticsearch.*",
+    "celery.*",
+    "redis.*",
+    # Added for new modules
+    "dlib.*",
+    "face_recognition.*",
+    "pytesseract.*",
 ]
 ignore_missing_imports = true

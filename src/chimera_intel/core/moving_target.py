@@ -12,35 +12,15 @@ import websockets
 from typing import Optional, List, Dict, Any
 from chimera_intel.core.schemas import (
     AVINTResult,
-    FlightInfo,
-    SocialOSINTResult,
-    SocialProfile,
+    FusedLocationPoint,
+    MovingTargetResult,
 )
 from chimera_intel.core.utils import save_or_print_results, console
 from chimera_intel.core.database import save_scan_to_db, get_db_connection
 from chimera_intel.core.avint import get_live_flights
 from chimera_intel.core.config_loader import API_KEYS
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
-
-
-class FusedLocationPoint(BaseModel):
-    source: str
-    latitude: float
-    longitude: float
-    timestamp: str
-    velocity: Optional[float] = None
-    altitude: Optional[float] = None
-    description: str
-
-
-class MovingTargetResult(BaseModel):
-    target_identifier: str
-    current_location: Optional[FusedLocationPoint] = None
-    historical_track: List[FusedLocationPoint] = []
-    error: Optional[str] = None
-
 
 async def get_vessel_position_once(imo: str, api_key: str) -> Optional[Dict[str, Any]]:
     """

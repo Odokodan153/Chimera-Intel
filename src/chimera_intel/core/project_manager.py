@@ -8,12 +8,10 @@ Now uses a PostgreSQL database for multi-user collaboration.
 import os
 import typer
 import logging
-from datetime import datetime, timezone # <-- ADDED timezone
+from datetime import datetime, timezone 
 from typing import Optional, List
 import json
-from pydantic import BaseModel, Field # <-- ADDED
-
-from .schemas import ProjectConfig, JudicialHoldResult # <-- ADDED JudicialHoldResult
+from .schemas import ProjectConfig, JudicialHoldResult 
 from .utils import console
 from .database import get_db_connection
 from .user_manager import get_active_user, get_user_from_db

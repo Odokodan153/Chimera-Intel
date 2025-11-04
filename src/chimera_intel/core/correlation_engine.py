@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Any, List
-from pydantic import BaseModel, Field
 import subprocess
 import logging
 from .schemas import Event, PrioritizedAlert, AutomationPipeline
@@ -10,48 +9,6 @@ from .schemas import Event
 from .plugin_manager import PluginManager
 
 logger = logging.getLogger(__name__)
-
-
-# --- NEW SCHEMAS ---
-# (These would normally be in schemas.py, adding here for clarity)
-
-
-class PrioritizedAlert(BaseModel):
-    """
-    An alert produced by the Prioritization Engine, ranking an event.
-    """
-
-    event: Event
-    priority: str = Field(..., description="High, Medium, or Low")
-    confidence: float = Field(
-        ..., description="Confidence in the event data (0.0 to 1.0)"
-    )
-    impact: float = Field(
-        ..., description="Potential impact of the event (0.0 to 1.0)"
-    )
-    ranking_score: float = Field(
-        ..., description="Overall calculated score for prioritization"
-    )
-    domain: str = Field(..., description="The intelligence domain (cyber, finance, personnel, etc.)")
-
-
-class AutomationPipeline(BaseModel):
-    """
-    Defines an 'if-this-then-that' automation pipeline.
-    """
-
-    name: str
-    trigger: Dict[str, Any] = Field(
-        ...,
-        description="The 'IF' condition to check against a PrioritizedAlert",
-    )
-    actions: List[Dict[str, Any]] = Field(
-        ..., description="The 'THEN-THAT' actions to execute"
-    )
-
-
-# --- NEW: ALERT PRIORITIZATION ENGINE ---
-
 
 class AlertPrioritizationEngine:
     """

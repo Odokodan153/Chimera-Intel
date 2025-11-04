@@ -13,9 +13,7 @@ import feedparser
 import hashlib
 import typer
 from typing import List, Set, Dict, Any, Optional
-from pydantic import BaseModel, Field
-from datetime import datetime, timezone, timedelta
-
+from datetime import datetime, timezone
 from .schemas import Event
 from .correlation_engine import CorrelationEngine
 from .http_client import async_client
@@ -25,18 +23,7 @@ from .plugin_manager import PluginManager
 
 logger = logging.getLogger(__name__)
 
-# --- Pydantic Schemas ---
-
-class FeedConfig(BaseModel):
-    """Configuration for a single data feed."""
-    name: str = Field(..., description="Unique name for the feed source.")
-    type: str = Field(..., description="Type of feed (e.g., 'rss', 'twitter').")
-    url: str = Field(..., description="The URL or API endpoint for the feed.")
-    interval_seconds: int = Field(600, description="How often to poll the feed.")
-    event_type: str = Field("generic_signal", description="The chimera event type to assign.")
-
 # --- Feed Handlers ---
-
 class RSSFeedHandler:
     """Handles fetching and parsing of RSS feeds."""
 

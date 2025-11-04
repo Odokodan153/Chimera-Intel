@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "chimera_trusted_media"
+version = "0.1.0"
+description = "Plugin for trusted media production workflows."
+authors = ["Chimera-Intel"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera_intel = {path = "../../", develop = true}
+# Add the new dependencies this module requires
+pillow = "*"
+c2pa-python = "*" 
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+"trusted_media" = "chimera_trusted_media.main:plugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

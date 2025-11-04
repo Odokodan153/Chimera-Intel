@@ -7,32 +7,11 @@ Detects accidental leaks of secrets, configurations, or credentials.
 import typer
 import logging
 import re
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
-from .schemas import BaseAnalysisResult # Assuming schemas.py has this
-from .config_loader import API_KEYS
-from .http_client import sync_client
+from typing import Optional, List
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
-
-# --- Schemas ---
-# (Can be moved to schemas.py)
-
-class PasteLeak(BaseModel):
-    id: str
-    source: str # e.g., "Pastebin", "GitHub Gist"
-    url: str
-    content_snippet: str
-    matched_keyword: str
-    leak_type: str # e.g., "API_KEY", "PASSWORD", "CONFIG"
-
-class PasteMonitorResult(BaseAnalysisResult):
-    keywords_monitored: List[str]
-    leaks_found: List[PasteLeak] = Field(default_factory=list)
-    total_leaks: int = 0
-
 
 # Define common regex patterns for secrets
 SECRET_REGEX = {

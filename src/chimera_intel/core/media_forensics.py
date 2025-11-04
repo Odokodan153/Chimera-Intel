@@ -6,7 +6,7 @@ verify provenance, and analyze disinformation campaigns.
 
 NOTE ON DEPENDENCIES:
 This module requires several new libraries. You will need to install them:
-pip install pillow numpy tensorflow opencv-python c2pa-python httpx beautifulsoup4 python-whois scikit-learn networkx spacy newspaper3k
+pip install pillow numpy tensorflow opencv-python c2pa-python httpx beautifulsoup4 python-whois scikit-learn networkx spacy newspaper3k dlib face_recognition
 python -m spacy download en_core_web_sm
 """
 
@@ -23,14 +23,22 @@ import httpx
 import whois
 import newspaper
 import spacy
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from PIL import Image, ImageChops, ImageEnhance, ExifTags
-from pydantic import BaseModel, Field
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
 import networkx as nx
+from rich.console import Console
+from rich.table import Table
+
+# Imports for Face Recognition
+try:
+    import face_recognition
+except ImportError:
+    face_recognition = None
+
 from chimera_intel.core.schemas import (ForensicArtifactResult,
                                         DeepfakeAnalysisResult,
                                         ProvenanceResult,
@@ -45,6 +53,8 @@ except IOError:
     print("Spacy model 'en_core_web_sm' not found.")
     print("Please run: python -m spacy download en_core_web_sm")
     nlp = None
+
+console = Console()
 
 # --- [USER MUST PROVIDE] ---
 # You must provide a path to a pre-trained deepfake detection model.
@@ -400,6 +410,100 @@ def source_poisoning_detect(source_url: str) -> PoisoningDetectionResult:
     return result
 
 
+# --- [NEW] Face Recognition ---
+
+def _check_face_rec_imports():
+    """Checks if face_recognition is installed."""
+    if face_recognition is None:
+        console.print("[bold red]Error: 'face_recognition' library not installed.[/bold red]")
+        console.print("Please run: [cyan]pip install dlib face_recognition[/cyan]")
+        console.print("Note: 'dlib' may require C++ build tools (like CMake) to be installed first.")
+        raise typer.Exit(code=1)
+
+def find_faces(image_path: pathlib.Path, model: str = "hog") -> List[Dict[str, Any]]:
+    """Finds faces in an image and returns their locations."""
+    _check_face_rec_imports()
+    try:
+        image = face_recognition.load_image_file(str(image_path))
+        face_locations = face_recognition.face_locations(image, model=model)
+        
+        results = []
+        for i, (top, right, bottom, left) in enumerate(face_locations):
+            results.append({
+                "face_id": i + 1,
+                "location_box": f"({top}, {right}, {bottom}, {left})"
+            })
+        return results
+    except Exception as e:
+        console.print(f"[bold red]Error during face detection:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+def get_face_encodings(image_path: pathlib.Path) -> List[List[float]]:
+    """Generates 128-d face encodings for all faces in an image."""
+    _check_face_rec_imports()
+    try:
+        image = face_recognition.load_image_file(str(image_path))
+        # Find locations first
+        face_locations = face_recognition.face_locations(image)
+        if not face_locations:
+            return []
+        
+        # Get encodings for the found locations
+        encodings = face_recognition.face_encodings(image, known_face_locations=face_locations)
+        # Convert numpy arrays to lists for JSON serialization
+        return [enc.tolist() for enc in encodings]
+    except Exception as e:
+        console.print(f"[bold red]Error generating face encodings:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+def compare_faces(
+    known_image_path: pathlib.Path,
+    unknown_image_path: pathlib.Path,
+    tolerance: float = 0.6
+) -> List[Dict[str, Any]]:
+    """Compares faces in an unknown image against a known image."""
+    _check_face_rec_imports()
+    try:
+        # Load known image and get first encoding
+        known_image = face_recognition.load_image_file(str(known_image_path))
+        known_encodings = face_recognition.face_encodings(known_image)
+        
+        if not known_encodings:
+            console.print(f"[bold red]Error:[/bold red] No faces found in known image '{known_image_path.name}'.")
+            raise typer.Exit(code=1)
+        
+        # Use only the first known face
+        known_encoding = known_encodings[0]
+
+        # Load unknown image and get all encodings
+        unknown_image = face_recognition.load_image_file(str(unknown_image_path))
+        unknown_locations = face_recognition.face_locations(unknown_image)
+        unknown_encodings = face_recognition.face_encodings(unknown_image, known_face_locations=unknown_locations)
+
+        if not unknown_encodings:
+            console.print(f"[bold yellow]Warning:[/bold yellow] No faces found in unknown image '{unknown_image_path.name}'.")
+            return []
+        
+        results = []
+        for i, (unknown_encoding, location) in enumerate(zip(unknown_encodings, unknown_locations)):
+            # See if the face is a match
+            matches = face_recognition.compare_faces([known_encoding], unknown_encoding, tolerance=tolerance)
+            # Get distance (lower is better)
+            face_distance = face_recognition.face_distance([known_encoding], unknown_encoding)[0]
+            
+            results.append({
+                "face_id": i + 1,
+                "location": f"({location[0]}, {location[1]}, {location[2]}, {location[3]})",
+                "is_match": bool(matches[0]),
+                "distance": float(face_distance),
+                "tolerance": tolerance
+            })
+        return results
+    except Exception as e:
+        console.print(f"[bold red]Error comparing faces:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
 # --- Typer CLI Application ---
 
 forensics_app = typer.Typer(
@@ -490,6 +594,80 @@ def cli_detect_poisoning(
         typer.echo(f"Source poisoning check complete. Results saved to: {output}")
     else:
         typer.echo(output_data)
+
+
+# --- [NEW] Face Recognition CLI ---
+
+@forensics_app.command("face-recognize", help="Find, encode, or compare faces in images.")
+def cli_face_recognize(
+    image_path: pathlib.Path = typer.Argument(
+        ..., exists=True, help="Path to the primary image file."
+    ),
+    compare_path: Optional[pathlib.Path] = typer.Option(
+        None,
+        "--compare",
+        "-c",
+        exists=True,
+        help="Path to a second image to compare against.",
+    ),
+    mode: str = typer.Option(
+        "find",
+        "--mode",
+        "-m",
+        help="Mode: 'find' (locate faces), 'encode' (get 128-d encodings), 'compare' (match faces).",
+    ),
+    output: Optional[pathlib.Path] = typer.Option(
+        None, "--output", "-o", help="Path to save JSON result."
+    ),
+):
+    """
+    Performs face detection, encoding, or comparison using dlib.
+    
+    - 'find': Locates all faces in [IMAGE_PATH].
+    - 'encode': Generates 128-d encodings for all faces in [IMAGE_PATH].
+    - 'compare': Compares the first face in [IMAGE_PATH] (as 'known')
+                 against all faces in [COMPARE_PATH] (as 'unknown').
+    """
+    mode = mode.lower()
+    
+    if mode == "find":
+        console.print(f"Finding faces in: [cyan]{image_path.name}[/cyan]")
+        results = find_faces(image_path)
+        console.print(f"Found {len(results)} face(s).")
+        
+    elif mode == "encode":
+        console.print(f"Generating encodings for faces in: [cyan]{image_path.name}[/cyan]")
+        results = get_face_encodings(image_path)
+        console.print(f"Generated {len(results)} encoding(s).")
+        
+    elif mode == "compare":
+        if not compare_path:
+            console.print("[bold red]Error:[/bold red] --compare <path> is required for 'compare' mode.")
+            raise typer.Exit(code=1)
+        console.print(f"Comparing faces in [cyan]{compare_path.name}[/cyan] against [cyan]{image_path.name}[/cyan]")
+        results = compare_faces(image_path, compare_path)
+        
+        # Pretty print table for compare mode
+        table = Table(title="Face Comparison Results")
+        table.add_column("Face ID (Unknown)", style="magenta")
+        table.add_column("Match", style="cyan")
+        table.add_column("Distance (Lower is Better)", style="yellow")
+        
+        for res in results:
+            match_str = "[bold green]Yes[/bold green]" if res["is_match"] else "[bold red]No[/bold red]"
+            table.add_row(str(res["face_id"]), match_str, f"{res['distance']:.4f}")
+        console.print(table)
+        
+    else:
+        console.print(f"[bold red]Error:[/bold red] Invalid mode '{mode}'. Must be 'find', 'encode', or 'compare'.")
+        raise typer.Exit(code=1)
+
+    if output:
+        with open(output, "w") as f:
+            json.dump(results, f, indent=2)
+        console.print(f"Results saved to: {output}")
+    elif mode != "compare": # Compare mode prints its own table
+        console.print(json.dumps(results, indent=2))
 
 
 if __name__ == "__main__":

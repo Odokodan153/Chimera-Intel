@@ -3,6 +3,9 @@ Encrypted Evidence Vault Module.
 
 Handles the secure, encrypted storage and retrieval of sensitive
 intelligence data, integrating with the Data Custodian for provenance.
+
+MODIFIED: This version now uses the local_db_service (SQLite)
+instead of the production 'database.py'.
 """
 
 import typer
@@ -11,11 +14,12 @@ import os
 from cryptography.fernet import Fernet, InvalidToken
 from .schemas import ChainOfCustodyEntry
 from .utils import console
-from .database import ( 
+from .local_db_service import ( 
     save_scan_to_db, 
     get_scan_from_db
 )
-from .data_custodian import create_data_receipt, data_custodian_app
+
+from .data_custodian import create_data_receipt
 from .config_loader import CONFIG
 from datetime import datetime, timezone
 
@@ -26,8 +30,6 @@ vault_app = typer.Typer(
     name="grc", # Use the same name to merge commands
     help="Manages Data Custodian (GRC) and the Encrypted Evidence Vault."
 )
-
-# --- KEY MANAGEMENT ---
 
 def _get_vault_key() -> Fernet:
     """Retrieves the Fernet encryption key from env variables."""
@@ -53,7 +55,6 @@ def decrypt_data(token: bytes) -> bytes:
         logger.error("Failed to decrypt evidence: Invalid token.")
         raise ValueError("Decryption failed. Data may be corrupt or key is wrong.")
 
-# --- VAULT OPERATIONS ---
 
 def store_evidence(
     content: bytes, source: str, target: str
@@ -110,7 +111,10 @@ def retrieve_evidence(receipt_id: str, reason: str) -> bytes:
     try:
         receipt_data = get_scan_from_db(receipt_id)
         if not receipt_data or receipt_data.get("module") != "data_custodian":
-            raise ValueError(f"No data custodian receipt found for ID: {receipt_id}")
+            # Try to fetch from the specific module if not found (fallback)
+            receipt_data = get_scan_from_db(receipt_id, module_name="data_custodian")
+            if not receipt_data:
+                raise ValueError(f"No data custodian receipt found for ID: {receipt_id}")
 
         # Add the access entry
         receipt_data['data']['chain_of_custody'].append(
@@ -148,6 +152,7 @@ def retrieve_evidence(receipt_id: str, reason: str) -> bytes:
         raise
 
 # --- CLI COMMANDS ---
+# (Rest of the file is unchanged from)
 
 @vault_app.command("store")
 def run_store_evidence(
@@ -190,4 +195,3 @@ def run_retrieve_evidence(
             console.print(content.decode('utf-8'))
         except Exception as e:
             console.print(f"[bold red]Error retrieving evidence:[/bold red] {e}")
-

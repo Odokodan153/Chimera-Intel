@@ -8,9 +8,7 @@ their decision-making biases, values, and mental models.
 import typer
 import logging
 import json
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
-
+from typing import Optional, List
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .narrative_analyzer import track_narrative
@@ -22,23 +20,7 @@ logger = logging.getLogger(__name__)
 # --- Pydantic Schemas ---
 # NOTE: These are defined here for encapsulation, as they are specific to this module.
 
-class MentalModelVector(BaseModel):
-    """
-    A single vector (e.g., bias, value) in a cognitive model.
-    """
-    vector_type: str = Field(..., description="e.g., 'Core Value', 'Decision-Making Bias', 'Mental Model'")
-    description: str = Field(..., description="The specific value or bias (e.g., 'Prioritizes rapid innovation', 'Optimism Bias')")
-    evidence_snippet: Optional[str] = Field(None, description="A key quote or snippet from source material supporting this vector.")
 
-class CognitiveMapResult(BaseModel):
-    """
-    The final, structured result of a cognitive mapping analysis.
-    """
-    person_name: str
-    cognitive_model_summary: Optional[str] = Field(None, description="AI-generated summary of the cognitive model.")
-    key_vectors: List[MentalModelVector] = Field(default_factory=list)
-    predictive_assessment: Optional[str] = Field(None, description="AI-generated prediction of behavior.")
-    error: Optional[str] = None
 
 # --- Module Internals ---
 

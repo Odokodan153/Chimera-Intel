@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-forensic-vault"
+version = "0.1.0"
+description = "Chimera plugin for advanced image forensics, hashing, reverse search, and vaulting."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+# --- PLUGIN DEPENDENCIES ---
+# This plugin depends on the core 'chimera-intel' package
+# and any additional libraries not included in the core dependencies.
+dependencies = [
+    "chimera-intel",
+    "imagehash"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+# This entry point registers the plugin with the core application
+forensic_vault = "chimera_forensic_vault.main:ForensicVaultPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

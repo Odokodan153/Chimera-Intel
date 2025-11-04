@@ -8,11 +8,18 @@ and perform object detection on satellite imagery.
 import typer
 import logging
 import os
+import pathlib
 from typing import Optional, Dict, Any
 from PIL import Image
 from PIL.ExifTags import TAGS
 from rich.console import Console
 import google.generativeai as genai
+
+# Import for local OCR
+try:
+    import pytesseract
+except ImportError:
+    pytesseract = None
 
 # Imports for Satellite Analysis
 
@@ -99,6 +106,59 @@ def analyze_content(
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during AI content analysis:[/bold red] {e}"
+        )
+        raise typer.Exit(code=1)
+
+
+# --- [NEW] Local OCR (Pytesseract) ---
+
+def perform_local_ocr(image_path: pathlib.Path) -> str:
+    """
+    Performs Optical Character Recognition (OCR) on a local image
+    using the Tesseract engine.
+    """
+    if pytesseract is None:
+        raise ImportError(
+            "pytesseract not installed. Please run 'pip install pytesseract'."
+        )
+    try:
+        img = Image.open(image_path)
+        text = pytesseract.image_to_string(img)
+        return text
+    except pytesseract.TesseractNotFoundError:
+        console.print(
+            "[bold red]Error: Tesseract OCR engine not found.[/bold red]"
+        )
+        console.print(
+            "Please install it from: https://github.com/tesseract-ocr/tesseract"
+        )
+        raise typer.Exit(code=1)
+    except Exception as e:
+        raise RuntimeError(f"An error occurred during OCR: {e}")
+
+
+@imint_app.command(
+    name="ocr", help="Extract text from an image using local Tesseract OCR."
+)
+def cli_local_ocr(
+    image_path: pathlib.Path = typer.Argument(
+        ..., exists=True, help="Path to the image file to analyze."
+    ),
+):
+    """
+    Extracts text from an image using the local Tesseract OCR engine.
+    This is a local, offline alternative to the 'analyze-content --feature ocr'
+    command, which uses a cloud AI.
+    """
+    console.print(f"Performing local OCR on: [bold cyan]{image_path}[/bold cyan]")
+    try:
+        ocr_text = perform_local_ocr(image_path)
+        console.print("\n--- [bold green]Local OCR Result[/bold green] ---")
+        console.print(ocr_text)
+        console.print("----------------------------------")
+    except Exception as e:
+        console.print(
+            f"[bold red]An error occurred during local OCR:[/bold red] {e}"
         )
         raise typer.Exit(code=1)
 
