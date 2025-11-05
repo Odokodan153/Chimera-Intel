@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_imint_ingestion"
+version = "0.2.0"
+description = "A Chimera Intel plugin for production-grade IMINT ingestion and processing."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # Core framework
+    # "chimera_intel" # Assumed to be installed in the environment
+
+    # --- Production Dependencies ---
+    # Cloud & Storage
+    "boto3",
+    "requests",
+
+    # Image Processing & Hashing
+    "pillow",
+    "imagehash",
+
+    # ML/CV - Enrichment
+    "opencv-python-headless", # For face detection
+    "easyocr",                # For OCR
+    "transformers",           # For CLIP embeddings
+    "torch",                  # For CLIP embeddings
+
+    # API Clients (Connectors)
+    "tweepy",                   # For Twitter/X V2 API
+    "google-api-python-client", # For Google Custom Search API
+    "google-cloud-vision",      # For Logo Detection & Reverse Search
+    "tineye-api",               # For TinEye Reverse Search
+    
+    # DB & Graph
+    "psycopg2-binary",
+    "neo4j"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+imint_ingestion = "chimera_imint_ingestion.main:ImintIngestionPlugin"
+
+[project.urls]
+"Homepage" = "https://github.com/your-repo/Chimera-Intel"

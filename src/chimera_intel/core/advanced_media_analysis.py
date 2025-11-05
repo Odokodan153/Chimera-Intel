@@ -55,6 +55,7 @@ try:
 except ImportError:
     print("ERROR: Missing 'c2pa'. Please run: pip install c2pa")
     raise
+from .schemas import SyntheticMediaAuditResult
 
 # --- Setup ---
 logger = logging.getLogger(__name__)
@@ -169,11 +170,6 @@ def run_synthetic_media_audit(
 # B. Core Analysis Logic
 #
 # -----------------------------------------------------------------
-
-
-
-
-# --- Helper Utilities ---
 
 def _load_image(file_path: Path) -> Tuple[Optional[np.ndarray], Optional[Image.Image]]:
     try:

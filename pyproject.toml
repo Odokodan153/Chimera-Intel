@@ -13,7 +13,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "License":: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Security",
     "Topic :: Utilities",
@@ -98,11 +98,17 @@ dependencies = [
     "celery[redis]",
     
     # Added for advanced media analysis
-    "opencv-python", # Moved from test-heavy
+    "opencv-python",
     "dlib",
     "face_recognition",
     "pytesseract",
-    "h5py", # Added for Keras model loading
+    "h5py",
+    
+    # Added for Vector Search (CLIP/FAISS)
+    "torch",
+    "torchvision",
+    "faiss-cpu",
+    "sentence-transformers",
 ]
 
 [project.optional-dependencies]
@@ -141,14 +147,11 @@ test = [
 test-heavy = [
     "pyvis",
     "tweepy",
-    # "playwright", # Moved to core
-    # "beautifulsoup4", # Moved to core
-    "torch",
-    "torchvision",
+    # "torch", # Moved to core
+    # "torchvision", # Moved to core
     "scikit-image",
     "geopy",
     "SQLAlchemy",
-    # "opencv-python", # Moved to core
     "scapy",
     "librosa",
     "pypatent",
@@ -212,9 +215,11 @@ module = [
     "elasticsearch.*",
     "celery.*",
     "redis.*",
-    # Added for new modules
     "dlib.*",
     "face_recognition.*",
     "pytesseract.*",
+    # Added for Vector Search
+    "faiss.*",
+    "sentence_transformers.*",
 ]
 ignore_missing_imports = true

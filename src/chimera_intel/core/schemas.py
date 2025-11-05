@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, HttpUrl
 from sqlalchemy import (
     Column,
     Integer,
@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     JSON,
+    SQLModel,
     Boolean,
     LargeBinary,
     Enum as SQLAlchemyEnum,
@@ -19,7 +20,6 @@ import numpy as np
 from pydantic import BaseModel, Field, validator, EmailStr
 import uuid
 from enum import Enum
-
 # --- General Purpose Models ---
 
 Base = declarative_base()
@@ -4181,6 +4181,14 @@ class MoneyFlowGraph(BaseModel):
     total_edges: int
     suspicious_nodes: List[str] = []
 
+class AMLAlert(BaseModel):
+    type: str = Field(..., description="Type of alert (e.g., LAYERING, STRAW_COMPANY, STRUCTURING)")
+    entity_id: str = Field(..., description="The primary entity ID that triggered the alert")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for the alert")
+    message: str = Field(..., description="Human-readable summary of the alert")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    evidence: Dict[str, Any] = Field(default_factory=dict, description="Supporting data for the alert")
+
 class AmlPattern(BaseModel):
     """Describes a potential money laundering pattern detected by AI."""
     pattern_type: str = Field(..., description="e.g., 'Structuring', 'Smurfing', 'Layering'")
@@ -4202,7 +4210,25 @@ class ScenarioImpact(BaseModel):
     impact_type: str = Field(..., description="e.g., 'Sanction', 'Seizure'")
     affected_downstream_nodes: List[str]
     total_value_frozen: float
+
+class ReviewCase(SQLModel, table=True):
+    """
+    Database model for a single analyst review case.
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    alert_type: str = Field(index=True)
+    entity_id: str = Field(index=True, description="The *original* entity ID that triggered the alert")
+    status: str = Field(default="OPEN", index=True, description="OPEN, IN_REVIEW, ESCALATED, FALSE_POSITIVE")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    assignee: Optional[str] = Field(default=None, index=True)
+    notes: Optional[str] = None
     
+    # For alert fusion
+    fusion_count: int = Field(default=1, description="Number of identical alerts fused into this one case")
+    
+    # Store the PII-masked alert data as a JSON string
+    alert_json: str = Field(description="The full AMLAlert object, as JSON, with PII masked.")
 class AmlSimulationResult(BaseModel):
     """Result of a 'what-if' scenario simulation."""
     scenario_description: str
@@ -4573,3 +4599,175 @@ class VehicleScanResult(BaseModel):
     query_vin: str
     info: Optional[VehicleInfoResult] = None
     error: Optional[str] = None
+class SyntheticMediaAuditResult(BaseModel):
+    """
+    Result model for a synthetic-media-audit.
+    Categorizes and scores the AI-generation origin.
+    """
+    file_path: str
+    media_type: str
+    is_synthetic: bool = False
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    suspected_origin_model: str = "Unknown"
+    analysis_details: Dict[str, Any] = Field(default_factory=dict, description="Aggregated findings from other media modules.")
+    error: Optional[str] = None
+class ImageSourceType(str, Enum):
+    """Enumeration for the source of an ingested image."""
+    GOOGLE_IMAGES = "google_images"
+    TWITTER = "twitter"
+    INSTAGRAM = "instagram"
+    FACEBOOK = "facebook"
+    YOUTUBE_FRAME = "youtube_frame"
+    REDDIT = "reddit"
+    TIKTOK = "tiktok"
+    PINTEREST = "pinterest"
+    META_AD_LIBRARY = "meta_ad_library"
+    GOOGLE_ADS = "google_ads"
+    ECOMMERCE = "ecommerce" # Amazon, eBay, etc.
+    NEWS = "news"
+    PRESS_RELEASE = "press_release"
+    DARK_WEB = "dark_web"
+    INTERNAL = "internal"
+    PARTNER = "partner"
+    REVERSE_SEARCH = "reverse_search" # TinEye, Google Vision, etc.
+    OTHER = "other"
+
+
+class ImageFeatures(BaseModel):
+    """Indexed features for an ingested image."""
+    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash (e.g., pHash) of the image.")
+    difference_hash: Optional[str] = Field(None, description="Difference hash (dHash) of the image.")
+    embedding_vector_shape: Optional[str] = Field(None, description="Shape of the stored embedding vector (e.g., '1x512').")
+    embedding_model_name: Optional[str] = Field(None, description="Name of the model used for embedding (e.g., 'openai/clip-vit-base-patch32').")
+    embedding_vector_shape: Optional[str] = Field(None, description="Shape of the stored embedding vector (e.g., '1x512').")
+
+class ImageEnrichment(BaseModel):
+    """Enrichment data extracted from an image."""
+    ocr_text: Optional[str] = Field(None, description="Text extracted via OCR.")
+    detected_logos: List[str] = Field(default_factory=list, description="Logos detected in the image.")
+    detected_faces_count: int = Field(0, description="Number of faces detected.")
+    face_locations: Optional[List[Dict[str, Any]]] = Field(None, description="Bounding boxes for detected faces.")
+    # Re-using existing EXIF model
+    exif_data: Optional[ExifData] = Field(None, description="Extracted EXIF metadata.")
+
+
+class IngestedImageRecord(BaseModel):
+    """
+    A normalized record for a single image ingested into the system.
+    This model represents the metadata stored in the database (e.g., Postgres).
+    """
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for this ingestion record.")
+    source_url: HttpUrl = Field(..., description="The original URL where the image was found.")
+    source_type: ImageSourceType = Field(..., description="The category of the source (e.g., 'twitter', 'news').")
+    source_context_url: Optional[HttpUrl] = Field(None, description="The page URL where the image was embedded (e.g., the tweet URL).")
+    
+    ingested_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp of when the image was ingested.")
+    original_timestamp: Optional[datetime] = Field(None, description="The original creation/post-time of the image, if available.")
+
+    # Normalization
+    resolution: Optional[str] = Field(None, description="Image resolution, e.g., '1920x1080'.")
+    mime_type: Optional[str] = Field(None, description="MIME type of the image, e.g., 'image/jpeg'.")
+    file_size_bytes: Optional[int] = Field(None, description="Size of the image file in bytes.")
+
+    # Storage & Hashing
+    storage_key: str = Field(..., description="The key (path) where the raw image is stored (e.g., S3 key).")
+    sha256_hash: str = Field(..., description="SHA-256 hash of the raw image file for deduplication and integrity.")
+
+    # Indexed Features & Enrichment
+    features: Optional[ImageFeatures] = None
+    enrichment: Optional[ImageEnrichment] = None
+
+    # Graph Linking
+    arg_node_id: Optional[str] = Field(None, description="The ID of the corresponding node in the ARG (graph database).")
+    linked_entities: List[str] = Field(default_factory=list, description="List of entity IDs linked to this image in the ARG.")
+    
+    error: Optional[str] = Field(None, description="Any error that occurred during ingestion.")
+
+    class Config:
+        orm_mode = True
+class AiGenerationTraceResult(BaseModel):
+    is_ai_generated: bool
+    confidence_score: float
+    suspected_model: str
+    evidence: List[str]
+    error: Optional[str] = None
+
+
+# New schemas for Forensic Artifact Scan results
+# Used by: ForensicArtifacts
+class ElaResult(BaseModel):
+    status: str
+    mean_ela_value: Optional[float] = None
+    max_ela_value: Optional[float] = None
+    is_suspicious: Optional[bool] = False
+    message: Optional[str] = None
+
+
+class PrnuMatch(BaseModel):
+    status: str
+    noise_residual_variance: Optional[float] = None
+    message: Optional[str] = None
+
+
+class CloneDetection(BaseModel):
+    status: str
+    cloned_keypoints_found: Optional[int] = None
+    is_suspicious: Optional[bool] = False
+    message: Optional[str] = None
+
+
+# THIS IS THE FIX: Define ForensicArtifacts before it is used
+# Used by: BrandMisuseAuditResult
+class ForensicArtifacts(BaseModel):
+    ela_result: ElaResult
+    prnu_match: PrnuMatch
+    clone_detection: CloneDetection
+
+
+# ---
+# NEW COMPINT SCHEMAS (Define these after dependencies)
+# ---
+
+class CompetitiveImintResult(BaseModel):
+    file_path: str
+    use_case: str
+    analysis: str = Field(..., description="The AI-generated analysis for the use case.")
+
+
+class CreativeAttributionResult(BaseModel):
+    file_path: str
+    phash: str
+    clip_embedding_shape: str
+    reverse_search_hits: List[str] = Field(
+        description="Public URLs found matching the image pHash."
+    )
+    # Assumes SimilarityAttributionResult is defined *earlier* in schemas.py
+    internal_similarity: "SimilarityAttributionResult" = Field(
+        description="Similarity results from the internal vector database."
+    )
+
+
+class BrandMisuseAuditResult(BaseModel):
+    file_path: str
+    counterfeit_analysis: str = Field(
+        description="AI analysis on potential brand misuse or counterfeit."
+    )
+    # This now works, because ForensicArtifacts is defined above
+    forensic_artifacts: Optional["ForensicArtifacts"] = Field(
+        description="Forensic scan for manipulation artifacts (e.g., added logos)."
+    )
+
+
+class CounterDisinfoResult(BaseModel):
+    file_path: str
+    # Assumes DeepfakeAnalysisResult is defined *earlier* in schemas.py
+    deepfake_scan: Optional["DeepfakeAnalysisResult"] = None
+    # This now works as AiGenerationTraceResult is defined above
+    ai_trace: Optional["AiGenerationTraceResult"] = None
+
+
+class EvidenceReceiptResult(BaseModel):
+    file_path: str
+    target_project: str
+    receipt_id: str = Field(description="The unique ID for the stored evidence.")
+    message: str = "Successfully encrypted and stored with chain-of-custody."

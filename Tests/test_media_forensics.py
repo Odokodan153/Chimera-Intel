@@ -1,15 +1,27 @@
 import unittest
 import pathlib
+import os
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 import numpy as np
 from PIL import Image
+
 # Module to test
 from chimera_intel.core.media_forensics import (
     forensics_app,
     forensic_artifact_scan,
-    content_provenance_check
+    deepfake_multimodal_scan,
+    content_provenance_check,
+    synthetic_narrative_map,
+    source_poisoning_detect,
+    load_models, # Import for testing
+    _get_default_model_path # Import for testing
 )
+from chimera_intel.core.schemas import (ForensicArtifactResult,
+                                        DeepfakeAnalysisResult,
+                                        ProvenanceResult,
+                                        NarrativeMapResult,
+                                        PoisoningDetectionResult)
 
 runner = CliRunner()
 
@@ -31,7 +43,10 @@ class TestMediaForensics(unittest.TestCase):
         with patch("chimera_intel.core.media_forensics.ImageChops.difference") as mock_diff:
             mock_ela_img = MagicMock()
             mock_ela_img.getextrema.return_value = [(0, 100)]
-            mock_ela_img.convert.return_value.std.return_value = 25 # > 20 threshold
+            # Mock the chain: convert('L').std()
+            mock_grayscale_img = MagicMock()
+            mock_grayscale_img.std.return_value = 25  # > 20 threshold
+            mock_ela_img.convert.return_value = mock_grayscale_img
             
             mock_diff.return_value = mock_ela_img
             
@@ -179,6 +194,89 @@ class TestFaceRecognition(unittest.TestCase):
             self.assertEqual(result.exit_code, 0)
             self.assertIn("No", result.stdout)
             self.assertIn("0.9876", result.stdout)
+
+
+# --- [NEW] Test Class for Deepfake Model Loading ---
+
+class TestDeepfakeModelLoading(unittest.TestCase):
+
+    def setUp(self):
+        # Reset the global variable for a clean test
+        from chimera_intel.core.media_forensics import deepfake_model
+        deepfake_model = None
+        os.environ["DEEPFAKE_MODEL_PATH"] = "" # Ensure env var is clear
+
+    @patch("chimera_intel.core.media_forensics.tf.keras.models.load_model")
+    @patch("chimera_intel.core.media_forensics._download_model")
+    @patch("chimera_intel.core.media_forensics.pathlib.Path.exists")
+    def test_load_models_downloads_if_not_exists(
+        self, mock_exists, mock_download, mock_load_model
+    ):
+        """Tests that load_models() downloads the model if it's not cached."""
+        # Arrange
+        mock_exists.return_value = False # Model does not exist at cache path
+        mock_model_instance = MagicMock()
+        mock_model_instance.input_shape = [None, 256, 256, 3] # Mock shape
+        mock_load_model.return_value = mock_model_instance
+        
+        # Act
+        with patch("chimera_intel.core.media_forensics.face_cascade", MagicMock()):
+            load_models()
+        
+        # Assert
+        mock_download.assert_called_once_with(
+            unittest.mock.ANY, # The URL
+            _get_default_model_path() # The destination path
+        )
+        mock_load_model.assert_called_once_with(str(_get_default_model_path()))
+
+    @patch("chimera_intel.core.media_forensics.tf.keras.models.load_model")
+    @patch("chimera_intel.core.media_forensics._download_model")
+    @patch("chimera_intel.core.media_forensics.pathlib.Path.exists")
+    def test_load_models_uses_cache_if_exists(
+        self, mock_exists, mock_download, mock_load_model
+    ):
+        """Tests that load_models() does *not* download if the model is cached."""
+        # Arrange
+        mock_exists.return_value = True # Model *does* exist at cache path
+        mock_model_instance = MagicMock()
+        mock_model_instance.input_shape = [None, 256, 256, 3] # Mock shape
+        mock_load_model.return_value = mock_model_instance
+        
+        # Act
+        with patch("chimera_intel.core.media_forensics.face_cascade", MagicMock()):
+            load_models()
+        
+        # Assert
+        mock_download.assert_not_called()
+        mock_load_model.assert_called_once_with(str(_get_default_model_path()))
+
+    @patch("chimera_intel.core.media_forensics.tf.keras.models.load_model")
+    @patch("chimera_intel.core.media_forensics._download_model")
+    def test_load_models_uses_env_var_path(
+        self, mock_download, mock_load_model
+    ):
+        """Tests that load_models() prioritizes the DEEPFAKE_MODEL_PATH env var."""
+        # Arrange
+        custom_path = "/custom/path/my_model.h5"
+        os.environ["DEEPFAKE_MODEL_PATH"] = custom_path
+        
+        mock_model_instance = MagicMock()
+        mock_model_instance.input_shape = [None, 256, 256, 3] # Mock shape
+        mock_load_model.return_value = mock_model_instance
+        
+        # We must mock os.path.exists for the *custom_path*
+        with patch("chimera_intel.core.media_forensics.pathlib.Path.exists", return_value=True):
+             with patch("chimera_intel.core.media_forensics.face_cascade", MagicMock()):
+                # Act
+                load_models()
+        
+        # Assert
+        mock_download.assert_not_called()
+        mock_load_model.assert_called_once_with(custom_path)
+        
+        # Clean up env var
+        os.environ["DEEPFAKE_MODEL_PATH"] = ""
 
 
 if __name__ == "__main__":

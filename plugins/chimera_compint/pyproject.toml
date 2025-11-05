@@ -1,0 +1,30 @@
+[project]
+name = "chimera_compint"
+version = "0.1.0"
+description = "A Chimera plugin for high-value competitive image intelligence."
+readme = "README.md"
+requires-python = ">=3.9"
+
+# These dependencies are required by the 'competitive_imint.py' module
+# and the core modules it orchestrates.
+dependencies = [
+    "Pillow",
+    "google-generativeai",
+    "opencv-python-headless",
+    "numpy",
+    "scikit-image",
+    "librosa",
+    "c2pa",
+    "imagehash",
+    "sentence-transformers",
+    "chromadb",
+    "moviepy",
+    "cryptography",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.entry-points."chimera_intel.plugins"]
+compint = "chimera_compint.main:CompetitiveImintPlugin"

@@ -6,7 +6,7 @@ verify provenance, and analyze disinformation campaigns.
 
 NOTE ON DEPENDENCIES:
 This module requires several new libraries. You will need to install them:
-pip install pillow numpy tensorflow opencv-python c2pa-python httpx beautifulsoup4 python-whois scikit-learn networkx spacy newspaper3k dlib face_recognition
+pip install pillow numpy tensorflow opencv-python c2pa-python httpx beautifulsoup4 python-whois scikit-learn networkx spacy newspaper3k dlib face_recognition h5py
 python -m spacy download en_core_web_sm
 """
 
@@ -15,7 +15,8 @@ import json
 import pathlib
 import io
 import re
-import cv2  # OpenCV
+import os
+import cv2  
 import numpy as np
 import tensorflow as tf
 import c2pa
@@ -23,6 +24,7 @@ import httpx
 import whois
 import newspaper
 import spacy
+import requests 
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from PIL import Image, ImageChops, ImageEnhance, ExifTags
@@ -57,38 +59,94 @@ except IOError:
 console = Console()
 
 # --- [USER MUST PROVIDE] ---
-# You must provide a path to a pre-trained deepfake detection model.
-# This model's input shape must match the `MODEL_INPUT_SHAPE` below.
-DEEPFAKE_MODEL_PATH = "path/to/your/deepfake_model.h5"
-MODEL_INPUT_SHAPE = (256, 256)
+# Path to a pre-trained deepfake detection model.
+# If not set, a default model will be downloaded.
+DEEPFAKE_MODEL_PATH = os.environ.get("DEEPFAKE_MODEL_PATH", "")
+MODEL_INPUT_SHAPE = (256, 256) # Model expects 256x256
 deepfake_model = None
 face_cascade = None
 
+# Public URL for a pre-trained Keras XceptionNet model
+# Model from: https://github.com/kai-ni/Deepfake-Detection-using-XceptionNet
+DEFAULT_MODEL_URL = "https://media.githubusercontent.com/media/kai-ni/Deepfake-Detection-using-XceptionNet/main/xception.h5"
+
+def _get_default_model_path() -> pathlib.Path:
+    """Gets the default path for the cached model."""
+    # Use a cache directory within the user's home
+    cache_dir = pathlib.Path.home() / ".cache" / "chimera-intel"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / "deepfake_xception.h5"
+
+def _download_model(url: str, dest_path: pathlib.Path):
+    """Downloads a model file with progress."""
+    console.print(f"Downloading deepfake model to: {dest_path}")
+    try:
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get('content-length', 0))
+            
+            with open(dest_path, 'wb') as f:
+                from rich.progress import track
+                for chunk in track(
+                    r.iter_content(chunk_size=8192), 
+                    description="Downloading...",
+                    total=total_size / 8192
+                ): 
+                    f.write(chunk)
+        console.print("[bold green]Model downloaded successfully.[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red]Failed to download model:[/bold red] {e}")
+        if dest_path.exists():
+            dest_path.unlink() # Clean up partial download
+        raise
+
 def load_models():
     """Load AI models and CV classifiers into memory."""
-    global deepfake_model, face_cascade
+    global deepfake_model, face_cascade, DEEPFAKE_MODEL_PATH
     
-    # Load Deepfake Model (if path is set)
-    if not deepfake_model and pathlib.Path(DEEPFAKE_MODEL_PATH).exists():
+    # --- Load Deepfake Model ---
+    model_path_to_load = DEEPFAKE_MODEL_PATH
+    
+    if not model_path_to_load:
+        # If no path is set via env var, use the default cache path
+        model_path_to_load = _get_default_model_path()
+        
+        if not model_path_to_load.exists():
+            # Download the model if it doesn't exist at the cache path
+            try:
+                _download_model(DEFAULT_MODEL_URL, model_path_to_load)
+            except Exception:
+                console.print("[bold red]Could not download default deepfake model. Deepfake scanning disabled.[/bold red]")
+                model_path_to_load = "" # Prevent load attempt
+    
+    if not deepfake_model and model_path_to_load and pathlib.Path(model_path_to_load).exists():
         try:
-            deepfake_model = tf.keras.models.load_model(DEEPFAKE_MODEL_PATH)
-            print(f"Successfully loaded deepfake model from {DEEPFAKE_MODEL_PATH}")
-        except Exception as e:
-            print(f"Warning: Could not load deepfake model: {e}")
-    elif not deepfake_model:
-        print("Warning: DEEPFAKE_MODEL_PATH not set or file not found.")
-        print("Deepfake scanning will be limited.")
+            deepfake_model = tf.keras.models.load_model(str(model_path_to_load))
+            console.print(f"Successfully loaded deepfake model from {model_path_to_load}")
+            # The downloaded model expects (256, 256, 3)
+            # Let's ensure our shape matches the loaded model
+            global MODEL_INPUT_SHAPE
+            # Get the shape from the model's input layer
+            MODEL_INPUT_SHAPE = tuple(deepfake_model.input_shape[1:3]) # (height, width)
+            console.print(f"Model input shape set to: {MODEL_INPUT_SHAPE}")
 
-    # Load OpenCV Face Classifier
+        except Exception as e:
+            console.print(f"Warning: Could not load deepfake model from {model_path_to_load}: {e}")
+            console.print("This may be due to a TensorFlow/h5py version mismatch.")
+    elif not deepfake_model:
+        console.print("Warning: Deepfake model not loaded.")
+        console.print("Deepfake scanning will be limited.")
+
+    # --- Load OpenCV Face Classifier ---
     try:
         # Get the path to the cascade file
         cascade_path = pathlib.Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
         if not cascade_path.exists():
             raise FileNotFoundError(f"Could not find Haarcascade file at {cascade_path}")
         face_cascade = cv2.CascadeClassifier(str(cascade_path))
-        print("Successfully loaded OpenCV face cascade.")
+        console.print("Successfully loaded OpenCV face cascade.")
     except Exception as e:
-        print(f"Error: Could not load OpenCV face cascade: {e}")
+        console.print(f"Error: Could not load OpenCV face cascade: {e}")
         print("Face detection for deepfake scanning will be disabled.")
 
 
@@ -161,7 +219,7 @@ def deepfake_multimodal_scan(file_path: pathlib.Path) -> DeepfakeAnalysisResult:
     """
     result = DeepfakeAnalysisResult(file_path=str(file_path))
     if not deepfake_model:
-        result.error = "No deepfake detection model is loaded (DEEPFAKE_MODEL_PATH not set or invalid)."
+        result.error = "No deepfake detection model is loaded. Run 'load_models' or check config."
         return result
     if not face_cascade:
         result.error = "No OpenCV face cascade is loaded. Cannot detect faces."
@@ -191,16 +249,20 @@ def deepfake_multimodal_scan(file_path: pathlib.Path) -> DeepfakeAnalysisResult:
                 
                 # Pre-process for the model (must match model's training)
                 try:
+                    # Resize to the model's expected input shape
                     processed_face = cv2.resize(face, MODEL_INPUT_SHAPE) 
-                    processed_face = processed_face / 255.0 # Normalize
+                    # The XceptionNet model expects pixel values in [-1, 1]
+                    processed_face = (processed_face / 255.0) * 2.0 - 1.0
                     processed_face = np.expand_dims(processed_face, axis=0) # Add batch dim
                 except Exception as e:
                     print(f"Skipping face: could not resize. Error: {e}")
                     continue
 
                 # Pass face to the loaded model
-                prediction = deepfake_model.predict(processed_face)[0]
-                frame_predictions.append(prediction[0]) # Assuming model outputs [fake_prob]
+                prediction = deepfake_model.predict(processed_face, verbose=0)[0]
+                # The model outputs [prob_real, prob_fake]
+                fake_prob = prediction[1] 
+                frame_predictions.append(fake_prob)
 
         cap.release()
 
@@ -209,18 +271,18 @@ def deepfake_multimodal_scan(file_path: pathlib.Path) -> DeepfakeAnalysisResult:
             return result
         
         avg_fake_prob = np.mean(frame_predictions)
-        if avg_fake_prob > 0.7: # 70% confidence threshold
+        if avg_fake_prob > 0.5: # 50% confidence threshold
             result.is_deepfake = True
             result.confidence = float(avg_fake_prob)
-            result.inconsistencies = [f"High average frame-level inconsistency ({avg_fake_prob:.2f}) across {len(frame_predictions)} detected faces."]
+            result.inconsistencies = [f"High average fake probability ({avg_fake_prob:.2f}) across {len(frame_predictions)} detected faces."]
         else:
             result.is_deepfake = False
             result.confidence = 1.0 - float(avg_fake_prob) # Confidence in authenticity
-            result.inconsistencies = [f"Low average frame-level inconsistency ({avg_fake_prob:.2f})."]
+            result.inconsistencies = [f"Low average fake probability ({avg_fake_prob:.2f})."]
 
     except Exception as e:
         result.error = f"Failed during deepfake analysis: {e}"
-        if cap.isOpened():
+        if cap and cap.isOpened():
             cap.release()
             
     return result
@@ -410,7 +472,7 @@ def source_poisoning_detect(source_url: str) -> PoisoningDetectionResult:
     return result
 
 
-# --- [NEW] Face Recognition ---
+# --- Face Recognition ---
 
 def _check_face_rec_imports():
     """Checks if face_recognition is installed."""
@@ -538,14 +600,30 @@ def cli_deepfake_scan(
     output: Optional[pathlib.Path] = typer.Option(None, "--output", "-o", help="Path to save JSON result.")
 ):
     """CLI command for deepfake_multimodal_scan."""
+    console.print(f"Scanning for deepfake indicators in: [cyan]{file_path.name}[/cyan]")
     result = deepfake_multimodal_scan(file_path)
+    
+    if result.error:
+        console.print(f"[bold red]Error:[/bold red] {result.error}")
+        raise typer.Exit(code=1)
+
+    # Pretty print table for deepfake results
+    table = Table(title="Deepfake Scan Results")
+    table.add_column("Property", style="magenta")
+    table.add_column("Value", style="cyan")
+    
+    table.add_row("File", str(file_path.name))
+    is_fake_str = "[bold red]Yes[/bold red]" if result.is_deepfake else "[bold green]No[/bold green]"
+    table.add_row("Deepfake Detected", is_fake_str)
+    table.add_row("Confidence", f"{result.confidence:.2%}")
+    table.add_row("Details", "\n".join(result.inconsistencies))
+    console.print(table)
+    
     output_data = result.model_dump_json(indent=2)
     if output:
         with open(output, "w") as f:
             f.write(output_data)
         typer.echo(f"Deepfake scan complete. Results saved to: {output}")
-    else:
-        typer.echo(output_data)
 
 
 @forensics_app.command("provenance-check", help="Verify media provenance using C2PA.")
@@ -596,7 +674,7 @@ def cli_detect_poisoning(
         typer.echo(output_data)
 
 
-# --- [NEW] Face Recognition CLI ---
+# --- Face Recognition CLI ---
 
 @forensics_app.command("face-recognize", help="Find, encode, or compare faces in images.")
 def cli_face_recognize(
