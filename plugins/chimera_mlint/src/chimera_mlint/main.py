@@ -4,7 +4,7 @@ Money Laundering Intelligence (MLINT) Plugin for Chimera Intel.
 
 import typer
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-from chimera_intel.core.mlint import mlint_app  # Import the new Typer app
+from chimera_intel.core.mlint import mlint_app
 
 
 class MlintPlugin(ChimeraPlugin):

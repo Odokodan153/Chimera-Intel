@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "chimera_wargaming"
+version = "0.1.0"
+description = "Chimera-Intel plugin for running massive scenario and wargaming simulations."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+chimera-intel = {path = "../../src", develop = true} # Link to main package
+typer = {extras = ["rich"], version = "^0.12.3"}
+numpy = "^1.26.4"
+
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This line tells the main app:
+# "The 'wargaming' command set is located in the 'plugin' variable
+# inside the 'chimera_wargaming.main' module."
+wargaming = "chimera_wargaming.main:plugin"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

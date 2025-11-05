@@ -2,7 +2,7 @@
 name = "chimera-purple-team"
 version = "0.1.0"
 description = "Purple teaming plugin for Chimera-Intel"
-authors = ["Your Name <you@example.com>"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 
 [tool.poetry.dependencies]
 python = "^3.10"

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chimera-moving-target"
 version = "1.0.0"
 authors = [
-    { name = "Chimera Intel", email = "dev@chimera.intel" },
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 description = "A plugin for Chimera-Intel that provides moving target (MOVINT) fusion capabilities."
 readme = "README.md"

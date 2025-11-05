@@ -2,7 +2,7 @@
 name = "chimera-intel"
 version = "1.0.0"
 description = "A standalone strategic intelligence platform with a powerful deep research module."
-authors = ["Your Name <you@example.com>"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 readme = "README.md"
 
 [tool.poetry.dependencies]

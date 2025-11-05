@@ -2,7 +2,7 @@
 name = "chimera-blockchain-tracer"
 version = "0.1.0"
 description = "Cryptocurrency transaction tracing and visualization plugin for Chimera Intel."
-authors = ["Chimera Intel Project"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"

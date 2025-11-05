@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Chimera-Intel", email = "dev@chimera.ai" }
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

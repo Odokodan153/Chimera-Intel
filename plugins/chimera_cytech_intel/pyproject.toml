@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 name = "chimera-cytech-intel"
 version = "0.1.0"
 description = "Cyber & Technology (CyTech) Intelligence plugin for Chimera Intel."
-authors = ["Chimera Intel Team <contact@chimera-intel.ai>"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 readme = "README.md"
 packages = [{ include = "chimera_cytech_intel", from = "src" }]
 

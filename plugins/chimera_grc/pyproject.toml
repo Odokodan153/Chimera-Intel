@@ -2,7 +2,7 @@
 name = "chimera-grc"
 version = "0.1.0"
 description = "Chimera Intel plugin for Governance, Risk, and Compliance (GRC) services."
-authors = ["Your Name <you@example.com>"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 packages = [{ include = "chimera_grc", from = "src" }]
 
 [tool.poetry.dependencies]

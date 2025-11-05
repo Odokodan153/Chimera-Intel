@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chimera_advanced_media"
 version = "0.2.0" # Incremented version
 authors = [
-    { name="Chimera-Intel", email="author@example.com" },
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 description = "A plugin for advanced media forensics, deepfake detection, and provenance checking."
 readme = "README.md"

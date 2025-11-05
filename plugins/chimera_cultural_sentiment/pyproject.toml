@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "chimera_cultural_sentiment"
 version = "0.1.0"
 authors = [
-  { name="Chimera Intel Developer", email="dev@chimera.ai" },
+  { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 description = "A Chimera Intel plugin for cultural sentiment analysis."
 readme = "README.md"

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "negotiation-engine"
 version = "1.0.0"
 authors = [
-  { name="Your Name", email="you@example.com" },
+  { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
 ]
 description = "A powerful, AI-driven engine for negotiation analysis and simulation."
 readme = "README.md"

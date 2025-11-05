@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera_disinfo"
 version = "0.1.0"
-authors = [{ name="Chimera Intel" }]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 description = "Chimera Intel plugin for disinformation and synthetic narrative analysis."
 requires-python = ">=3.8"
 dependencies = [

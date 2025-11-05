@@ -2,7 +2,7 @@
 name = "chimera-humint"
 version = "0.1.0"
 description = "A plugin for running Human Intelligence (HUMINT) scenarios in Chimera-Intel."
-authors = ["Your Name <you@example.com>"]
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },]
 
 [tool.poetry.dependencies]
 python = "^3.9"

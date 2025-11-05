@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     JSON,
     SQLModel,
+    SQLField,
     Boolean,
     LargeBinary,
     Enum as SQLAlchemyEnum,
@@ -4771,3 +4772,110 @@ class EvidenceReceiptResult(BaseModel):
     target_project: str
     receipt_id: str = Field(description="The unique ID for the stored evidence.")
     message: str = "Successfully encrypted and stored with chain-of-custody."
+
+class EntityRiskResult(BaseResult):
+    company_name: str
+    jurisdiction: str
+    risk_score: int = Field(default=0, description="Composite risk score (0-100)")
+    risk_factors: List[str] = Field(default_factory=list, description="Explainable reasons for the score")
+    pep_links: int = Field(default=0, description="Number of linked Politically Exposed Persons")
+    adverse_media_hits: int = Field(default=0, description="Number of negative news articles")
+    shell_company_indicators: List[str] = Field(default_factory=list)
+    sanctions_hits: int = Field(default=0, description="Number of direct hits on sanctions lists")
+class EntityResolutionResult(BaseModel):
+    """
+    A placeholder for the result of a global entity resolution.
+    This would contain all linked entities (wallets, companies, people)
+    and their risk profiles.
+    """
+    entity_id: str
+    status: str
+    risk_profile: Optional[EntityRiskResult] = None
+    linked_entities: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# --- NEW: Trade-to-Payment Correlation Models (Database-backed) ---
+
+class TradeRecord(SQLModel, table=True):
+    """
+    Database model for a trade record (e.g., from a Bill of Lading).
+    """
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    record_id: str = SQLField(index=True, unique=True, description="Bill of Lading or unique trade ID")
+    exporter_name: str = SQLField(index=True)
+    importer_name: str = SQLField(index=True)
+    amount: float
+    currency: str
+    ship_date: date
+    description_of_goods: str
+
+class PaymentRecord(SQLModel, table=True):
+    """
+    Database model for a financial payment record (e.g., SWIFT, TT).
+    """
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    record_id: str = SQLField(index=True, unique=True, description="SWIFT, wire, or unique transaction ID")
+    sender_name: str = SQLField(index=True)
+    receiver_name: str = SQLField(index=True)
+    amount: float
+    currency: str
+    payment_date: date
+    origin_bank_country: str = SQLField(max_length=3)
+
+class TradeCorrelationResult(BaseModel):
+    """
+    Pydantic model for the result of a trade/payment correlation check.
+    """
+    trade_id: str
+    payment_id: str
+    is_match: bool = False
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    mismatch_reasons: List[str] = Field(default_factory=list)
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+
+# --- PHYSINT Enterprise Schemas ---
+
+class VesselPosition(BaseResult):
+    """Holds live positional data for a maritime vessel from a free AIS API."""
+    imo: int
+    name: str
+    latitude: float
+    longitude: float
+    course: float = Field(..., alias="cog")
+    speed: float = Field(..., alias="sog")
+    timestamp: str = Field(..., alias="last_update")
+
+class TradeManifest(BaseModel):
+    """
+    Represents a single shipping manifest (Bill of Lading).
+    NOTE: This schema is for a proprietary, paid trade data API.
+    """
+    bill_of_lading_id: str
+    shipper_name: str
+    consignee_name: str
+    vessel_imo: Optional[str] = None
+    port_of_lading: str
+    port_of_discharge: str
+    cargo_description: str
+    ship_date: str
+
+class TradeManifestResult(BaseResult):
+    """The result of a trade manifest search for a company."""
+    company_name: str
+    manifests: List[TradeManifest] = Field(default_factory=list)
+    total_manifests: int = 0
+
+class SupplyChainAnomaly(BaseModel):
+    """Represents a single detected supply chain anomaly."""
+    anomaly_type: str  # e.g., "High-Risk Port", "Suspicious Routing"
+    description: str
+    severity: str  # "Low", "Medium", "High"
+    related_bill_of_lading: Optional[str] = None
+    related_vessel_imo: Optional[str] = None
+
+class SupplyChainAnalysisResult(BaseResult):
+    """The final report from a supply chain anomaly analysis."""
+    target_company: str
+    analysis_summary: str
+    anomalies_found: List[SupplyChainAnomaly] = Field(default_factory=list)
+    total_anomalies: int = 0
