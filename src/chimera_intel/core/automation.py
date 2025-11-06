@@ -13,6 +13,8 @@ import subprocess
 import os
 import csv
 import json
+import shlex # NEW: Import for safe subprocess handling
+import re
 from collections import defaultdict
 from typing import List, Optional, Set, DefaultDict
 from datetime import datetime, timezone
@@ -29,7 +31,7 @@ from .schemas import (
     DataFeedStatus,
     DataQualityReport,
     ThreatIntelResult,
-    Event,
+    Event
 )
 import json
 from .schemas import Event
@@ -47,7 +49,9 @@ from .response import ACTION_MAP # Import the non-mock map
 # --- END NEW IMPORTS ---
 
 # --- NEW: Import new engines and schemas ---
-from .correlation_engine import AlertPrioritizationEngine, AutomationPipeline
+from .correlation_engine import AlertPrioritizationEngine
+# NEW: Import for isolated AI layer
+from .ai_core import generate_ai_analysis # CHANGED: Replaced generate_swot_from_data
 
 
 UserIPs = DefaultDict[str, Set[str]]
@@ -58,12 +62,13 @@ logger = logging.getLogger(__name__)
 
 
 # --- Data Enrichment ---
-# (enrich_iocs and enrich_cves functions remain unchanged)
 async def enrich_iocs(iocs: List[str]) -> EnrichmentResult:
     """Enriches Indicators of Compromise (IOCs) with threat intelligence from OTX."""
     logger.info(f"Enriching {len(iocs)} IOCs.")
 
-    if not API_KEYS.otx_api_key:
+    # CHANGED: Hardened API key access
+    if not API_KEYS.get("otx_api_key"):
+        logger.warning("OTX API key not found in .env file.")
         return EnrichmentResult(
             total_enriched=0, error="OTX API key not found in .env file."
         )
@@ -88,8 +93,10 @@ async def enrich_iocs(iocs: List[str]) -> EnrichmentResult:
 
 def enrich_cves(cve_ids: List[str]) -> CVEEnrichmentResult:
     """Enriches a list of CVE IDs with details from the Vulners API."""
-    api_key = API_KEYS.vulners_api_key
+    # CHANGED: Hardened API key access
+    api_key = API_KEYS.get("vulners_api_key")
     if not api_key:
+        logger.warning("Vulners API key not found in .env file.")
         return CVEEnrichmentResult(
             total_enriched=0, error="Vulners API key not found in .env file."
         )
@@ -127,11 +134,80 @@ def enrich_cves(cve_ids: List[str]) -> CVEEnrichmentResult:
     )
 
 # --- Threat Modeling & UEBA ---
-# (generate_threat_model and analyze_behavioral_logs functions remain unchanged)
-def generate_threat_model(domain: str) -> ThreatModelResult:
-    """Analyzes aggregated scan data to generate potential attack paths."""
+
+def _parse_ai_threat_model(domain: str, ai_text: str) -> Optional[ThreatModelResult]:
+    """Helper to parse the unstructured AI text into structured AttackPath objects."""
+    try:
+        paths = []
+        # Use regex to find structured blocks. This is brittle but works for a demo.
+        # A more robust solution would be to ask the AI for JSON output.
+        for match in re.finditer(r"Entry Point: (.*?)\nPath: (.*?)\nTarget: (.*?)\nConfidence: (.*?)\n", ai_text, re.DOTALL | re.IGNORECASE):
+            entry_point, path_str, target, confidence = match.groups()
+            path_steps = [p.strip().lstrip("- ") for p in path_str.strip().split('\n')]
+            paths.append(AttackPath(
+                entry_point=entry_point.strip(),
+                path=path_steps,
+                target=target.strip(),
+                confidence=confidence.strip()
+            ))
+        
+        if not paths:
+            logger.warning("AI model ran but did not return any parsable attack paths.")
+            return None
+            
+        return ThreatModelResult(target_domain=domain, potential_paths=paths)
+    except Exception as e:
+        logger.error(f"Failed to parse AI threat model output: {e}")
+        return None
+
+def _generate_dynamic_threat_model(domain: str, aggregated_data: str) -> Optional[ThreatModelResult]:
+    """
+    (NEW) Dynamically generates a threat model using an AI engine.
+    """
+    logger.info(f"Attempting to generate dynamic threat model for {domain}...")
+    # CHANGED: Hardened API key access
+    api_key = API_KEYS.get("google_api_key")
+    if not api_key:
+        logger.warning("No Google API key found, skipping dynamic threat model.")
+        return None
+
+    prompt = f"""
+    Act as a senior cyber threat analyst. Analyze the following aggregated OSINT data for {domain}
+    and generate a list of potential attack paths.
+    
+    For each path, you MUST format it strictly as follows:
+    Entry Point: [The initial vector, e.g., Public Website]
+    Path:
+    - [Step 1, e.g., Exploit CVE-2021-44228 on port 8080]
+    - [Step 2, e.g., Gain shell access]
+    - [Step 3, e.g., Enumerate internal network]
+    Target: [The final objective, e.g., Internal Network Access]
+    Confidence: [e.g., High, Medium, Low]
+    
+    ---
+    OSINT Data:
+    {aggregated_data}
+    ---
+    
+    Generate at least two distinct attack paths based on the data.
+    """
+
+    try:
+        # CHANGED: Isolated AI layer per recommendation
+        ai_result = generate_ai_analysis(prompt, api_key) 
+        if ai_result.error:
+            logger.error(f"Dynamic threat model AI error: {ai_result.error}")
+            return None
+        
+        return _parse_ai_threat_model(domain, ai_result.analysis_text)
+    except Exception as e:
+        logger.error(f"Dynamic threat model engine failed: {e}")
+        return None
+
+def _generate_rule_based_threat_model(domain: str, aggregated_data: dict) -> ThreatModelResult:
+    """(Fallback) Analyzes aggregated scan data to generate potential attack paths based on rules."""
     logger.info(f"Generating rule-based threat model for {domain}")
-    aggregated_data = get_aggregated_data_for_target(domain)
+    
     if not aggregated_data or not aggregated_data.get("modules"):
         return ThreatModelResult(
             target_domain=domain,
@@ -191,6 +267,34 @@ def generate_threat_model(domain: str) -> ThreatModelResult:
         )
     return ThreatModelResult(target_domain=domain, potential_paths=potential_paths)
 
+def generate_threat_model(domain: str) -> ThreatModelResult:
+    """
+    Analyzes aggregated scan data to generate potential attack paths.
+    Tries a dynamic engine first, then falls back to a rule-based model.
+    """
+    aggregated_data_dict = get_aggregated_data_for_target(domain)
+    
+    if not aggregated_data_dict:
+        return ThreatModelResult(
+            target_domain=domain,
+            error="No historical data found to build a threat model.",
+        )
+    
+    aggregated_data_str = json.dumps(aggregated_data_dict, indent=2, default=str)
+
+    # 1. Try the dynamic, advanced model first
+    dynamic_model = _generate_dynamic_threat_model(domain, aggregated_data_str)
+    if dynamic_model:
+        logger.info("Dynamic threat model generated successfully.")
+        return dynamic_model
+    
+    # 2. Fallback to the rule-based model
+    logger.warning(
+        f"Dynamic threat model generation failed for {domain}. "
+        "Falling back to rule-based model."
+    )
+    return _generate_rule_based_threat_model(domain, aggregated_data_dict)
+
 
 def analyze_behavioral_logs(log_file: str) -> UEBAResult:
     """Analyzes user activity logs to find statistical anomalies."""
@@ -205,17 +309,22 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
     try:
         # --- Stage 1: Build Baselines ---
         with open(log_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            logs = list(reader)
-
-            required_headers = ["timestamp", "user", "source_ip"]
-            if not reader.fieldnames or not all(
-                h in reader.fieldnames for h in required_headers
-            ):
+            # CHANGED: Added stronger validation per Rec #4
+            try:
+                reader = csv.DictReader(f)
+                logs = list(reader)
+                required_headers = ["timestamp", "user", "source_ip"]
+                if not reader.fieldnames or not all(
+                    h in reader.fieldnames for h in required_headers
+                ):
+                    raise ValueError(f"Log file must contain headers: {', '.join(required_headers)}")
+            except (csv.Error, ValueError, TypeError) as e:
+                logger.error(f"Failed to parse CSV or invalid schema for {log_file}: {e}")
                 return UEBAResult(
                     total_anomalies_found=0,
-                    error=f"Log file must contain headers: {', '.join(required_headers)}",
+                    error=f"Failed to parse CSV or invalid schema: {e}",
                 )
+
             # Establish baseline from the first half of the logs
             baseline_logs = logs[: len(logs) // 2]
             for row in baseline_logs:
@@ -268,11 +377,12 @@ def analyze_behavioral_logs(log_file: str) -> UEBAResult:
 
 
 # --- Integrations & Workflow ---
-# (submit_to_virustotal and run_workflow functions remain unchanged)
 def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
     """Submits a file to VirusTotal for analysis."""
-    api_key = API_KEYS.virustotal_api_key
+    # CHANGED: Hardened API key access
+    api_key = API_KEYS.get("virustotal_api_key")
     if not api_key:
+        logger.warning("VirusTotal API key not found.")
         return VTSubmissionResult(
             resource_id="",
             permalink="",
@@ -327,6 +437,15 @@ def submit_to_virustotal(file_path: str) -> VTSubmissionResult:
             error=f"An API error occurred: {e}",
         )
 
+# CHANGED: Whitelist for allowed workflow commands per Rec #2
+ALLOWED_WORKFLOW_CMDS = {
+    "recon",
+    "scan",
+    "offensive",
+    "automation",
+    "cybint",
+    "red-team"
+}
 
 def run_workflow(workflow_file: str) -> None:
     """Runs a series of Chimera Intel commands defined in a YAML file."""
@@ -348,23 +467,54 @@ def run_workflow(workflow_file: str) -> None:
         command_template = step.get("run")
         if command_template:
             # Substitute {target} placeholder
-            full_command = f"chimera {command_template.format(target=target)}"
-            console.print(
-                f"\n--- [bold cyan]Running Step {i+1}:[/bold cyan] [yellow]{full_command}[/yellow] ---"
-            )
+            full_command_str = f"chimera {command_template.format(target=target)}"
+            
+            # CHANGED: Hardened subprocess execution per Rec #2 and #5
             try:
-                # Execute the command as a subprocess
-                subprocess.run(full_command, shell=True, check=True, text=True)
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Step {i+1} failed with exit code {e.returncode}.")
+                # Use shlex.split to safely parse the command string
+                command_parts = shlex.split(full_command_str)
+                
+                # We expect 'chimera' as the first part
+                if not command_parts or command_parts[0] != "chimera":
+                    raise ValueError("Workflow commands must start with 'chimera'.")
+                
+                # Check the module (e.g., 'recon', 'scan') against the whitelist
+                module_command = command_parts[1]
+                if module_command not in ALLOWED_WORKFLOW_CMDS:
+                    raise ValueError(f"Command module '{module_command}' is not permitted in workflows.")
+
+                console.print(
+                    f"\n--- [bold cyan]Running Step {i+1}:[/bold cyan] [yellow]{full_command_str}[/yellow] ---"
+                )
+                
+                # Run safely: shell=False, with a timeout
+                subprocess.run(
+                    command_parts, 
+                    check=True, 
+                    text=True, 
+                    timeout=300 # Added 5-minute timeout per Rec #2
+                )
+                
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                logger.error(f"Step {i+1} ('{full_command_str}') failed: {e}")
                 console.print(
                     f"[bold red]Error during step {i+1}. Aborting workflow.[/bold red]"
                 )
                 break
+            except (ValueError, IndexError) as e:
+                logger.error(f"Step {i+1} ('{full_command_str}') is invalid: {e}")
+                console.print(
+                    f"[bold red]Invalid command in step {i+1}: {e}. Aborting workflow.[/bold red]"
+                )
+                break
+            except FileNotFoundError:
+                logger.error("Critical error: 'chimera' command not found in system path.")
+                console.print("[bold red]Error: 'chimera' command not found. Aborting.[/bold red]")
+                break
+            
     logger.info("Workflow execution finished.")
 
 # --- Data Quality Governance ---
-# (check_data_feed_quality function remains unchanged)
 def check_data_feed_quality() -> DataQualityReport:
     """
     Runs real checks on external API feeds for availability,
@@ -377,10 +527,12 @@ def check_data_feed_quality() -> DataQualityReport:
     now_utc = datetime.now(timezone.utc)
 
     # --- 1. OTX API Check ---
-    otx_key = API_KEYS.otx_api_key
+    # CHANGED: Hardened API key access
+    otx_key = API_KEYS.get("otx_api_key")
     otx_status = DataFeedStatus(feed_name="OTX API", last_checked=now_utc.isoformat(), status="DOWN")
     if not otx_key:
         otx_status.message = "API key is missing."
+        logger.warning("OTX API key not found. Feed check will fail.")
         feeds_down += 1
     else:
         try:
@@ -416,10 +568,12 @@ def check_data_feed_quality() -> DataQualityReport:
     statuses.append(otx_status)
 
     # --- 2. Vulners API Check ---
-    vulners_key = API_KEYS.vulners_api_key
+    # CHANGED: Hardened API key access
+    vulners_key = API_KEYS.get("vulners_api_key")
     vulners_status = DataFeedStatus(feed_name="Vulners API", last_checked=now_utc.isoformat(), status="DOWN")
     if not vulners_key:
         vulners_status.message = "API key is missing."
+        logger.warning("Vulners API key not found. Feed check will fail.")
         feeds_down += 1
     else:
         try:
@@ -445,10 +599,12 @@ def check_data_feed_quality() -> DataQualityReport:
     statuses.append(vulners_status)
 
     # --- 3. VirusTotal API Check ---
-    vt_key = API_KEYS.virustotal_api_key
+    # CHANGED: Hardened API key access
+    vt_key = API_KEYS.get("virustotal_api_key")
     vt_status = DataFeedStatus(feed_name="VirusTotal API", last_checked=now_utc.isoformat(), status="DOWN")
     if not vt_key:
         vt_status.message = "API key is missing."
+        logger.warning("VirusTotal API key not found. Feed check will fail.")
         feeds_down += 1
     else:
         try:

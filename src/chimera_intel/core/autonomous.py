@@ -11,10 +11,12 @@ import psycopg2
 import requests
 import pandas as pd
 from scipy.stats import ks_2samp
+import json  # <-- ADDED IMPORT
 
 from .database import get_db_connection
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
+from .http_client import sync_client  # <-- ADDED IMPORT
 
 console = Console()
 
@@ -56,7 +58,8 @@ def trigger_retraining_pipeline(
     }
 
     try:
-        response = requests.post(webhook_url, headers=headers, json=payload, timeout=30)
+        # --- (REAL IMPLEMENTATION) ---
+        response = sync_client.post(webhook_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
 
         console.print(
@@ -232,11 +235,35 @@ def analyze_ab_test_results(
             console.print(
                 f"\n[bold]Automatically deploying winning variant '{winner_variant}'...[/bold]"
             )
-            # In a real scenario, this would call a deployment API or webhook
-
-            console.print(
-                "  - [green]Deployment triggered successfully (simulated).[/green]"
-            )
+            # --- (REAL IMPLEMENTATION) ---
+            # This now makes a real webhook call instead of simulating.
+            webhook_url = API_KEYS.cicd_webhook_url
+            if not webhook_url:
+                console.print("[bold red]Error: CICD_WEBHOOK_URL is not set. Cannot auto-deploy.[/bold red]")
+                raise typer.Exit(code=1)
+            
+            headers = {"Content-Type": "application/json"}
+            if API_KEYS.cicd_auth_token:
+                headers["Authorization"] = f"Bearer {API_KEYS.cicd_auth_token}"
+            
+            payload = {
+                "event_type": "chimera_model_deployment",
+                "client_payload": {
+                    "model_variant": winner_variant,
+                    "accuracy": winner_accuracy,
+                    "latency": winner_latency,
+                },
+            }
+            try:
+                response = sync_client.post(webhook_url, headers=headers, json=payload, timeout=30)
+                response.raise_for_status()
+                console.print(
+                    "  - [green]Deployment triggered successfully via webhook.[/green]"
+                )
+            except Exception as e:
+                console.print(f"  - [bold red]Error triggering deployment webhook:[/bold red] {e}")
+            # --- (END REAL IMPLEMENTATION) ---
+            
         else:
             console.print(
                 "\n[bold]Note:[/] To automatically deploy the winning variant, use the --auto-deploy flag."
@@ -291,12 +318,17 @@ def detect_data_drift(
         drift_detected = False
         for column in baseline_df.columns:
             if column in new_df.columns:
-                ks_statistic, p_value = ks_2samp(baseline_df[column], new_df[column])
-                if p_value < 0.05:  # Significance level
-                    console.print(
-                        f"  - [bold red]Drift detected in column '{column}'[/bold red] (p-value: {p_value:.4f})"
-                    )
-                    drift_detected = True
+                # Ensure columns are numeric for KS test
+                if pd.api.types.is_numeric_dtype(baseline_df[column]) and pd.api.types.is_numeric_dtype(new_df[column]):
+                    ks_statistic, p_value = ks_2samp(baseline_df[column], new_df[column])
+                    if p_value < 0.05:  # Significance level
+                        console.print(
+                            f"  - [bold red]Drift detected in column '{column}'[/bold red] (p-value: {p_value:.4f})"
+                        )
+                        drift_detected = True
+                else:
+                    console.print(f"  - [dim]Skipping non-numeric column: {column}[/dim]")
+                    
         if not drift_detected:
             console.print(
                 "[bold green]No significant data drift detected.[/bold green]"

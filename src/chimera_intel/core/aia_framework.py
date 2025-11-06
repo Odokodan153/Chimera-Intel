@@ -238,7 +238,7 @@ def synthesize_and_refine(
     """Synthesizes results and calls the reasoning engine to generate new tasks."""
     report = SynthesizedReport(
         objective=plan.objective,
-        summary="Mock summary of completed tasks.",
+        summary="", 
         hypotheses=[],
         recommendations=[],
         key_findings=[],

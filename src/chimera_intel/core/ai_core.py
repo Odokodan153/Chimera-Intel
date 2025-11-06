@@ -15,7 +15,7 @@ from typing import List, Optional, Any, Dict
 import logging
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult
+from .schemas import SentimentAnalysisResult, SWOTAnalysisResult, AnomalyDetectionResult, AiCoreResult
 from .graph_schemas import GraphEdge, GraphNode, EntityGraphResult, GraphNarrativeResult
 from .graph_db import build_and_save_graph
 import json
@@ -120,6 +120,7 @@ def classify_text_zero_shot(
 def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisResult:
     """
     Uses a Generative AI model (Gemini Pro) to create a SWOT analysis from OSINT data.
+    (This is the specific implementation for the 'swot' command).
 
     Args:
         json_data_str (str): A string containing the JSON OSINT data.
@@ -130,7 +131,7 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
     """
     if not api_key:
         return SWOTAnalysisResult(
-            analysis_text="", error="GOOGLE_API_KEY not found in .env file."
+            analysis_text="", error="GOOGLE_API_KEY not found."
         )
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-pro")
@@ -143,6 +144,35 @@ def generate_swot_from_data(json_data_str: str, api_key: str) -> SWOTAnalysisRes
     except Exception as e:
         logger.error("Google AI API error during SWOT generation: %s", e)
         return SWOTAnalysisResult(analysis_text="", error=f"Google AI API error: {e}")
+
+
+def generate_ai_analysis(prompt: str, api_key: str) -> AiCoreResult:
+    """
+    (NEW) Runs a generic AI analysis prompt via the Gemini API.
+    This is the neutral interface to isolate the AI layer for modules
+    like automation and red-teaming.
+
+    Args:
+        prompt (str): The full prompt to send to the generative model.
+        api_key (str): The Google AI API key.
+
+    Returns:
+        AiCoreResult: A Pydantic model containing the analysis_text or an error.
+                            (Re-using AiCoreResult for its generic .analysis_text field)
+    """
+    if not api_key:
+        return AiCoreResult(
+            analysis_text="", error="GOOGLE_API_KEY not found."
+        )
+    
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(prompt)
+        return AiCoreResult(analysis_text=response.text)
+    except Exception as e:
+        logger.error("Google AI API error during generic analysis: %s", e)
+        return AiCoreResult(analysis_text="", error=f"Google AI API error: {e}")
 
 
 def detect_traffic_anomalies(traffic_data: List[float]) -> AnomalyDetectionResult:
@@ -215,12 +245,10 @@ def run_sentiment_analysis(text: str):
 def run_swot_analysis(input_file: str):
     """
     Generates a SWOT analysis from a JSON data file.
-
-    Args:
-        input_file (str): The path to the JSON file containing OSINT data.
+    (This command will continue to use the specific 'generate_swot_from_data' function)
     """
     logger.info("Generating SWOT analysis from file: %s", input_file)
-    api_key = API_KEYS.google_api_key
+    api_key = API_KEYS.get("google_api_key") # Hardened key access
     if not api_key:
         logger.error(
             "Google API key not found. Please set GOOGLE_API_KEY in your .env file."
@@ -231,7 +259,10 @@ def run_swot_analysis(input_file: str):
         with open(input_file, "r") as f:
             data_str = f.read()
         json.loads(data_str)  # Validate JSON
-        swot_result = generate_swot_from_data(data_str, api_key)
+        
+        # This CLI command still calls the original, specific function
+        swot_result = generate_swot_from_data(data_str, api_key) 
+        
         if swot_result.error:
             logger.error("SWOT analysis failed: %s", swot_result.error)
             raise typer.Exit(code=1)
@@ -370,8 +401,12 @@ def generate_narrative_from_graph(target: str, api_key: str) -> GraphNarrativeRe
         "edges": [edge.model_dump() for edge in graph_result.edges],
     }
 
-    swot_result = generate_swot_from_data(
-        f"Analyze the following entity graph and provide a brief intelligence summary:\n{json.dumps(prompt_data, indent=2)}",
+    # This can now use the generic AI function
+    prompt = f"Analyze the following entity graph and provide a brief intelligence summary:\n{json.dumps(prompt_data, indent=2)}"
+    
+    # We can use the new generic function here
+    swot_result = generate_ai_analysis(
+        prompt,
         api_key,
     )
 

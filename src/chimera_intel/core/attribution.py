@@ -17,40 +17,35 @@ from chimera_intel.core.database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
 
-# --- Threat Actor TTP/IOC Database ---
-# In a real system, this would be a large, managed database (e.g., in graph_db).
-# For a functional module, we can use a dictionary or load a JSON file.
-# Format: { "actor_name": { "TTP": ["T1059", "T1078"], "IOC_Hashes": ["hash1"], "Domains": ["evil.com"] } }
-# We'll use a simple TTP-based model for this example.
+# --- (REMOVED) Hardcoded Threat Actor DB ---
+# The THREAT_ACTOR_DB dictionary has been removed.
 
-THREAT_ACTOR_DB: Dict[str, Dict[str, Any]] = {
-    "APT-42": {
-        "ttps": {"T1059.001": 0.8, "T1566.001": 0.7, "T1078": 0.5},
-        "description": "State-sponsored actor focused on espionage."
-    },
-    "FIN-7": {
-        "ttps": {"T1566.001": 0.6, "T1059.003": 0.7, "T1548.002": 0.4},
-        "description": "Financially-motivated group known for PoS malware."
-    },
-    "WizardSpider": {
-        "ttps": {"T1486": 0.9, "T1021.001": 0.6, "T1566.001": 0.5},
-        "description": "Operates Ryuk ransomware."
-    }
-}
+# --- (ADDED) Function to load DB from file ---
+DEFAULT_ACTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "threat_actor_db.json")
 
-
-def load_actor_db_from_file(db_path: str = "threat_actor_db.json") -> Dict[str, Dict[str, Any]]:
-    """Loads a threat actor DB from a JSON file, merging with the default."""
-    db = THREAT_ACTOR_DB.copy()
-    if os.path.exists(db_path):
+def load_actor_db_from_file(db_path: str = DEFAULT_ACTOR_DB_PATH) -> Dict[str, Dict[str, Any]]:
+    """
+    (REAL) Loads a threat actor DB from a JSON file.
+    """
+    if not os.path.exists(db_path):
+        logger.warning(f"Threat actor DB file not found at: {db_path}. Using empty DB.")
+        # Create an empty file to prevent future errors
         try:
-            with open(db_path, "r") as f:
-                external_db = json.load(f)
-            db.update(external_db)  # Merge external DB, overwriting defaults
-            logger.info(f"Successfully loaded and merged external threat actor DB from {db_path}")
-        except Exception as e:
-            logger.error(f"Failed to load external threat actor DB from {db_path}: {e}")
-    return db
+            with open(db_path, "w") as f:
+                json.dump({}, f)
+        except Exception:
+            pass # Failsafe
+        return {}
+        
+    try:
+        with open(db_path, "r") as f:
+            external_db = json.load(f)
+        logger.info(f"Successfully loaded threat actor DB from {db_path}")
+        return external_db
+    except Exception as e:
+        logger.error(f"Failed to load external threat actor DB from {db_path}: {e}")
+        return {}
+# --- (END ADDED FUNCTION) ---
 
 
 def score_attribution_confidence(
@@ -150,7 +145,7 @@ attribution_app = typer.Typer()
 @attribution_app.command("score-actor")
 def run_attribution_score(
     proposed_actor: str = typer.Argument(..., help="The proposed threat actor (e.g., 'APT-42')."),
-    indicators_json: str = typer.Argument(..., help="JSON string of indicators. E.g., '[{\"type\": \"TTP\", \"id\": \"T1059.001\", \"weight\": 0.7}]'"),
+    indicators_json: str = typer.Argument(..., help="JSON string of indicators. E.g., '[{{\"type\": \"TTP\", \"id\": \"T1059.001\", \"weight\": 0.7}}]'"),
     db_path: Optional[str] = typer.Option(None, help="Path to a custom threat actor JSON DB file."),
     output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Save results to a JSON file."),
 ):
@@ -164,8 +159,11 @@ def run_attribution_score(
         console.print(f"[bold red]Error:[/] Invalid JSON format for indicators: {e}", style="red")
         raise typer.Exit(code=1)
 
-    # Load the actor database
-    actor_db = load_actor_db_from_file(db_path) if db_path else THREAT_ACTOR_DB
+    # --- (UPDATED) Load the actor database ---
+    actor_db = load_actor_db_from_file(db_path) if db_path else load_actor_db_from_file()
+    if not actor_db and not db_path:
+        console.print(f"[yellow]Warning:[/yellow] Default threat actor DB is empty or missing ({DEFAULT_ACTOR_DB_PATH}).")
+    # --- (END UPDATE) ---
 
     results = score_attribution_confidence(proposed_actor, indicators, actor_db)
     save_or_print_results(results.model_dump(), output_file)

@@ -226,7 +226,7 @@ def parse_deep_metadata(file_path: str) -> DeepMetadata:
         return DeepMetadata(file_path=file_path, file_type=file_type, error=str(e))
 
 
-# --- ADDED: Device Intelligence Function ---
+# --- REWRITTEN: Device Intelligence Function ---
 
 def get_device_intel() -> DeviceIntelResult:
     """
@@ -236,8 +236,18 @@ def get_device_intel() -> DeviceIntelResult:
     """
     console.print("[cyan]Querying connected device via ADB...[/cyan]")
     props = {}
-    all_packages = []
     
+    def run_adb_command(command: List[str]) -> List[str]:
+        """Helper to run an ADB command and return its output lines."""
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        return [line.replace("package:", "") for line in result.stdout.splitlines() if line]
+
     try:
         # 1. Get Device Properties
         console.print("Fetching device properties...")
@@ -255,25 +265,21 @@ def get_device_intel() -> DeviceIntelResult:
                 if key.startswith("ro.product") or key in ["ro.build.version.sdk", "ro.serialno"]:
                     props[key] = value
 
-        # 2. Get All Installed Packages
-        console.print("Fetching installed packages (all)...")
-        result_pkgs = subprocess.run(
-            ["adb", "shell", "pm", "list", "packages", "-a"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        all_packages = [line.replace("package:", "") for line in result_pkgs.stdout.splitlines() if line]
+        # 2. (REAL) Get Third-Party (user) Installed Packages
+        console.print("Fetching third-party packages...")
+        third_party_packages = run_adb_command(["adb", "shell", "pm", "list", "packages", "-3"])
         
-        # 3. (Mock) Identify "hidden" packages (e.g., system apps or those without launchers)
-        # This is a placeholder; real logic would be more complex.
-        hidden = [pkg for pkg in all_packages if "system" in pkg or "android" in pkg]
+        # 3. (REAL) Get System ("hidden") Packages
+        console.print("Fetching system packages...")
+        system_packages = run_adb_command(["adb", "shell", "pm", "list", "packages", "-s"])
+
+        # Combine them for the "all packages" list
+        all_packages = list(set(third_party_packages + system_packages))
 
         return DeviceIntelResult(
             device_properties=props,
-            installed_packages=all_packages,
-            hidden_packages=hidden
+            installed_packages=all_packages, # Full list
+            hidden_packages=system_packages # System/ROM-installed (replaces mock)
         )
         
     except FileNotFoundError:
@@ -287,6 +293,7 @@ def get_device_intel() -> DeviceIntelResult:
     except Exception as e:
         return DeviceIntelResult(error=f"An unexpected error occurred: {e}")
 
+# --- END REWRITE ---
 
 appint_app = typer.Typer()
 

@@ -1,28 +1,24 @@
 # src/chimera_intel/core/covert_financial_tracking.py
 import logging
+import re
+import asyncio
 from typing import List, Dict, Any
 import typer
-try:
-    from .finint import FinancialIntelAnalyzer
-    from .blockchain_osint import BlockchainOSINT
-    from .cryptocurrency_intel import CryptoIntel
-    from .logistics_intel import LogisticsIntel
-    from .supply_chain_risk import SupplyChainRiskAnalyzer
-    from .dark_web_monitor import DarkWebMonitor
-    from .graph_db import GraphDB  # For linking entities
-except ImportError:
-    # Handle placeholder/mock imports if full modules aren't available
-    logging.warning("Could not import all core modules for CovertFinancialTracker. Using placeholders.")
-    # Define minimal placeholder classes for the linter/type-checker
-    class FinancialIntelAnalyzer: pass
-    class BlockchainOSINT: pass
-    class CryptoIntel: pass
-    class LogisticsIntel: pass
-    class SupplyChainRiskAnalyzer: pass
-    class DarkWebMonitor: pass
-    class GraphDB: pass
+import json
+from .mlint import (
+    screen_entity_for_aml,
+    identify_shell_company_indicators,
+)
+from .finint import get_transactions_from_db, analyze_transaction_patterns
+from .corporate_intel import get_trade_data
+from .dark_web_osint import search_dark_web_engine
+from .graph_db import graph_db_instance, GraphDB  # For linking entities
+from .ai_core import generate_swot_from_data
+from .config_loader import API_KEYS
+# --- End (REAL) Imports ---
 
 logger = logging.getLogger(__name__)
+
 
 class CovertFinancialTracker:
     """
@@ -42,22 +38,14 @@ class CovertFinancialTracker:
         """
         logger.info("Initializing Covert Financial Tracker")
         self.graph_db = graph_db
-        
-        # Initialize (or get instances of) the required modules
-        # In a real application, these might be passed in or retrieved from a central service
-        self.finint = FinancialIntelAnalyzer()
-        self.blockchain = BlockchainOSINT()
-        self.crypto = CryptoIntel()
-        self.logistics = LogisticsIntel()
-        self.supply_chain = SupplyChainRiskAnalyzer()
-        self.dark_web = DarkWebMonitor()
+        # We will call real functions directly, so no need to init classes
+        self.ai_api_key = API_KEYS.google_api_key
 
-    def track_money_laundering(self, targets: List[str]) -> Dict[str, Any]:
+    async def track_money_laundering(self, targets: List[str]) -> Dict[str, Any]:
         """
         Tracks money laundering and dark finance activities.
         - Identifies shell companies
-        - Traces offshore accounts
-        - Analyzes cryptocurrency mixers
+        - Analyzes cryptocurrency transactions
         
         Args:
             targets: A list of entity names (people, orgs) to investigate.
@@ -66,38 +54,42 @@ class CovertFinancialTracker:
             A dictionary containing findings.
         """
         logger.info(f"Tracking money laundering for targets: {targets}")
-        results = {"shell_companies": [], "offshore_accounts": [], "crypto_mixers": {}}
+        results = {"shell_company_indicators": [], "crypto_analysis": []}
+        
+        if not self.ai_api_key:
+            results["error"] = "Google API Key not found, cannot perform analysis."
+            return results
 
-        # 1. Use FinINT for shell companies and offshore accounts
         for target in targets:
-            logger.debug(f"Analyzing {target} with FinINT")
-            if hasattr(self.finint, 'identify_shell_companies'):
-                results["shell_companies"].extend(self.finint.identify_shell_companies(target))
-            if hasattr(self.finint, 'trace_offshore_accounts'):
-                results["offshore_accounts"].extend(self.finint.trace_offshore_accounts(target))
-
-            # 2. Use Blockchain/Crypto modules for mixers
-            if hasattr(self.finint, 'extract_crypto_addresses'):
-                crypto_addresses = self.finint.extract_crypto_addresses(target)
-                for addr in crypto_addresses:
-                    logger.debug(f"Analyzing crypto address {addr}")
-                    mixer_activity = None
-                    if hasattr(self.blockchain, 'check_mixer_activity'):
-                        mixer_activity = self.blockchain.check_mixer_activity(addr)
-                    
-                    if mixer_activity:
-                        results["crypto_mixers"][addr] = mixer_activity
+            logger.debug(f"Analyzing {target} with MLINT and FinINT")
+            
+            # 1. Use MLINT for shell company indicators
+            shell_indicators = identify_shell_company_indicators(target)
+            results["shell_company_indicators"].append({target: shell_indicators})
+            
+            # 2. Extract crypto addresses (simple regex)
+            # In a real system, this would come from other OSINT modules
+            crypto_addresses = re.findall(r"\b(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\b", target)
+            
+            for addr in crypto_addresses:
+                logger.debug(f"Analyzing crypto address {addr}")
+                # Use mock transaction getter (as finint.py is mock)
+                transactions = get_transactions_from_db(addr)
+                if transactions:
+                    # Use real AI pattern detection from finint
+                    pattern_result = analyze_transaction_patterns(addr, transactions, self.ai_api_key)
+                    if not pattern_result.error:
+                        results["crypto_analysis"].append(pattern_result.model_dump())
                         # Link in graph
-                        if hasattr(self.graph_db, 'add_edge'):
-                            self.graph_db.add_node(addr, "crypto_address", {"mixer_activity": True})
-                            self.graph_db.add_edge(target, addr, "HAS_CRYPTO_ADDRESS")
+                        self.graph_db.add_node(addr, "crypto_address", {"analysis_summary": pattern_result.summary})
+                        self.graph_db.add_edge(target, addr, "HAS_CRYPTO_ADDRESS")
 
         logger.info("Money laundering tracking complete.")
         return results
 
-    def track_trade_espionage(self, suspect_actors: List[str]) -> Dict[str, Any]:
+    async def track_trade_espionage(self, suspect_actors: List[str]) -> Dict[str, Any]:
         """
-        Links shipments, ports, and payments to suspect actors.
+        Links shipments to suspect actors and uses AI to assess risk.
         
         Args:
             suspect_actors: A list of entity names to investigate.
@@ -106,48 +98,54 @@ class CovertFinancialTracker:
             A dictionary containing findings.
         """
         logger.info(f"Tracking trade espionage for actors: {suspect_actors}")
-        results = {"suspicious_shipments": [], "linked_payments": []}
+        results = {"suspicious_shipments": []}
+
+        if not self.ai_api_key:
+            results["error"] = "Google API Key not found, cannot perform analysis."
+            return results
 
         for actor in suspect_actors:
             logger.debug(f"Analyzing {actor} for trade espionage")
             
-            # 1. Use LogisticsIntel to find shipments
-            shipments = []
-            if hasattr(self.logistics, 'track_actor_shipments'):
-                shipments = self.logistics.track_actor_shipments(actor)
+            # 1. Use real corporate_intel function to find shipments
+            trade_data = get_trade_data(actor)
+            if trade_data.error or not trade_data.shipments:
+                continue
+
+            # 2. Use AI Core to analyze risk of these shipments
+            prompt = f"""
+            Analyze the following shipments associated with '{actor}'.
+            Identify any high-risk indicators for trade-based espionage,
+            such as shipments to/from high-risk jurisdictions, unusual
+            product descriptions, or connections to sanctioned entities.
             
-            # 2. Use SupplyChainRisk to analyze risk
-            risky_shipments = []
-            if hasattr(self.supply_chain, 'analyze_shipment_risk'):
-                risky_shipments = self.supply_chain.analyze_shipment_risk(shipments)
-            results["suspicious_shipments"].extend(risky_shipments)
-
-            # 3. Use FinINT to link payments
-            for shipment in risky_shipments:
-                payment = None
-                if hasattr(self.finint, 'find_payment_for_shipment'):
-                    payment = self.finint.find_payment_for_shipment(shipment.get("id"))
-                
-                is_suspicious = False
-                if payment and hasattr(self.finint, 'is_payment_suspicious'):
-                    is_suspicious = self.finint.is_payment_suspicious(payment)
-
-                if is_suspicious:
-                    results["linked_payments"].append(payment)
-                    # Link in graph
-                    if hasattr(self.graph_db, 'add_edge'):
-                        self.graph_db.add_node(shipment.get("id"), "shipment", shipment)
-                        self.graph_db.add_node(payment.get("id"), "payment", payment)
-                        self.graph_db.add_edge(actor, shipment.get("id"), "ASSOCIATED_WITH")
-                        self.graph_db.add_edge(shipment.get("id"), payment.get("id"), "PAID_BY")
+            Shipments:
+            {json.dumps([s.model_dump() for s in trade_data.shipments[:10]], indent=2, default=str)}
+            
+            Return a brief risk analysis summary.
+            """
+            ai_summary = generate_swot_from_data(prompt, self.ai_api_key)
+            
+            if not ai_summary.error:
+                results["suspicious_shipments"].append({
+                    "actor": actor,
+                    "ai_risk_summary": ai_summary.analysis_text,
+                    "shipments": trade_data.model_dump()
+                })
+                # Link in graph
+                self.graph_db.add_node(actor, "Entity")
+                for shipment in trade_data.shipments:
+                    shipment_id = f"shipment_{shipment.date}_{shipment.consignee}"
+                    self.graph_db.add_node(shipment_id, "Shipment", shipment.model_dump())
+                    self.graph_db.add_edge(actor, shipment_id, "ASSOCIATED_WITH")
 
         logger.info("Trade espionage tracking complete.")
         return results
 
-    def scan_black_markets(self, keywords: List[str]) -> Dict[str, Any]:
+    async def scan_black_markets(self, keywords: List[str]) -> Dict[str, Any]:
         """
         Detects sales of weapons, software, or sensitive equipment
-        in underground markets.
+        in underground markets using real dark_web_osint.
         
         Args:
             keywords: List of keywords to search for (e.g., "weapon", "exploit").
@@ -157,30 +155,32 @@ class CovertFinancialTracker:
         """
         logger.info(f"Scanning black markets with keywords: {keywords}")
         
-        # Use DarkWebMonitor
-        scan_results = []
-        if hasattr(self.dark_web, 'scan_markets_for_keywords'):
-            scan_results = self.dark_web.scan_markets_for_keywords(keywords)
+        all_listings = []
+        for keyword in keywords:
+            scan_result = await search_dark_web_engine(keyword, engine="ahmia")
+            if not scan_result.error and scan_result.found_results:
+                all_listings.extend(scan_result.found_results)
         
-        # Filter for relevant sales
+        # Filter for relevant sales (simple keyword match)
         filtered_results = [
-            result for result in scan_results 
-            if any(kw in result.get("tags", []) for kw in ["weapon", "software", "equipment", "exploit"])
+            result.model_dump() for result in all_listings 
+            if any(kw in result.title.lower() or (result.description and kw in result.description.lower()) for kw in keywords)
         ]
         
         logger.info(f"Found {len(filtered_results)} relevant black market listings.")
         
         # Add to graph
         for listing in filtered_results:
-            if hasattr(self.graph_db, 'add_edge'):
-                self.graph_db.add_node(listing.get("id"), "black_market_listing", listing)
-                if listing.get("vendor"):
-                    self.graph_db.add_node(listing.get("vendor"), "dark_web_vendor")
-                    self.graph_db.add_edge(listing.get("vendor"), listing.get("id"), "SELLING")
+            self.graph_db.add_node(listing.get("url"), "dark_web_listing", listing)
+            # We can't easily get vendor, so we link the keyword
+            for kw in keywords:
+                if kw in listing.get("title", "").lower():
+                     self.graph_db.add_node(kw, "Keyword")
+                     self.graph_db.add_edge(kw, listing.get("url"), "FOUND_IN")
 
         return {"listings": filtered_results}
 
-    def run_full_analysis(self, targets: List[str], keywords: List[str]) -> Dict[str, Any]:
+    async def run_full_analysis(self, targets: List[str], keywords: List[str]) -> Dict[str, Any]:
         """
         Runs all tracking modules for a comprehensive analysis.
         
@@ -192,28 +192,28 @@ class CovertFinancialTracker:
             A comprehensive report dictionary.
         """
         logger.info(f"Running full covert financial analysis...")
-        money_laundering_report = self.track_money_laundering(targets)
-        trade_espionage_report = self.track_trade_espionage(targets)
-        black_market_report = self.scan_black_markets(keywords)
+        
+        tasks = [
+            self.track_money_laundering(targets),
+            self.track_trade_espionage(targets),
+            self.scan_black_markets(keywords)
+        ]
+        
+        laundering, trade, market = await asyncio.gather(*tasks)
 
         full_report = {
-            "money_laundering": money_laundering_report,
-            "trade_espionage": trade_espionage_report,
-            "black_market_scanning": black_market_report
+            "money_laundering": laundering,
+            "trade_espionage": trade,
+            "black_market_scanning": market
         }
         
         logger.info("Full covert financial analysis complete.")
         return full_report
     
-def get_cft_tracker(ctx: typer.Context) -> CovertFinancialTracker:
+def get_cft_tracker() -> CovertFinancialTracker:
     """Typer dependency injector to get the tracker with GraphDB."""
-    # We assume the main Chimera CLI puts the GraphDB in the context's obj
-    if "graph_db" not in ctx.obj:
-        logger.warning("GraphDB not in context. Creating new instance.")
-        # Fallback in case it's not injected
-        ctx.obj["graph_db"] = GraphDB() 
-        
-    return CovertFinancialTracker(graph_db=ctx.obj["graph_db"])
+    # Use the globally imported graph_db_instance
+    return CovertFinancialTracker(graph_db=graph_db_instance)
     
 cft_app = typer.Typer(
     name="cft",
@@ -221,34 +221,31 @@ cft_app = typer.Typer(
     no_args_is_help=True
 )
 
-@cft_app.command("track-laundering", help="Track shell companies, offshore accounts, and crypto mixers.")
+@cft_app.command("track-laundering", help="Track shell companies, and analyze crypto transactions.")
 def cli_track_laundering(
-    ctx: typer.Context,
     targets: str = typer.Option(..., "--targets", help="Comma-separated list of target entities"),
 ):
-    tracker = get_cft_tracker(ctx)
+    tracker = get_cft_tracker()
     target_list = [t.strip() for t in targets.split(',')]
-    results = tracker.track_money_laundering(target_list)
-    typer.echo(results)
+    results = asyncio.run(tracker.track_money_laundering(target_list))
+    typer.echo(json.dumps(results, indent=2, default=str))
 
 
-@cft_app.command("track-trade", help="Link shipments, ports, and payments to suspect actors.")
+@cft_app.command("track-trade", help="Link shipments to suspect actors and analyze risk.")
 def cli_track_trade_espionage(
-    ctx: typer.Context,
     actors: str = typer.Option(..., "--actors", help="Comma-separated list of suspect actors"),
 ):
-    tracker = get_cft_tracker(ctx)
+    tracker = get_cft_tracker()
     actor_list = [a.strip() for a in actors.split(',')]
-    results = tracker.track_trade_espionage(actor_list)
-    typer.echo(results)
+    results = asyncio.run(tracker.track_trade_espionage(actor_list))
+    typer.echo(json.dumps(results, indent=2, default=str))
 
 
 @cft_app.command("scan-markets", help="Scan black markets for weapons, software, or sensitive equipment.")
 def cli_scan_black_markets(
-    ctx: typer.Context,
     keywords: str = typer.Option(..., "--keywords", help="Comma-separated list of keywords (e.g., 'weapon,exploit')"),
 ):
-    tracker = get_cft_tracker(ctx)
+    tracker = get_cft_tracker()
     keyword_list = [k.strip() for k in keywords.split(',')]
-    results = tracker.scan_black_markets(keyword_list)
-    typer.echo(results)
+    results = asyncio.run(tracker.scan_black_markets(keyword_list))
+    typer.echo(json.dumps(results, indent=2, default=str))

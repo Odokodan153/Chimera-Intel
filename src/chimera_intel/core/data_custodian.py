@@ -3,16 +3,28 @@ Module for Data Custodian (GRC).
 
 Handles auditable integrity, cryptographic timestamping, chain-of-custody,
 and judicial-hold management for all intelligence data.
+
+MODIFIED: This version now uses the local_db_service (SQLite)
+instead of the production 'database.py' to align with evidence_vault.py
+and support updating records.
 """
 
 import typer
 import logging
 import hashlib
+import json  # <-- ADDED IMPORT
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from chimera_intel.core.schemas import ChainOfCustodyEntry, AuditableDataReceipt
 from .utils import save_or_print_results, console
-from .database import save_scan_to_db
+
+# --- (REAL) Replaced database.py with local_db_service.py ---
+from .local_db_service import ( 
+    save_scan_to_db, 
+    get_scan_from_db
+)
+# --- End Import Change ---
+
 from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)
@@ -28,6 +40,7 @@ def create_data_receipt(
     
     now_utc = datetime.now(timezone.utc)
     content_hash = hashlib.sha256(content).hexdigest()
+    # Use the content hash + timestamp to create a unique, deterministic-but-unguessable ID
     receipt_id = f"R-{hashlib.md5(f'{content_hash}{now_utc.isoformat()}'.encode()).hexdigest()}"
     
     entry = ChainOfCustodyEntry(
@@ -45,13 +58,13 @@ def create_data_receipt(
     )
     
     # In a real system, this receipt is saved to a dedicated, immutable DB ledger
-    # For this example, we save it to the general project DB.
+    # For this example, we save it to the general project DB (local_db_service).
     try:
         save_scan_to_db(
             target=target, 
             module="data_custodian", 
             data=receipt.model_dump(), 
-            scan_id=receipt_id
+            scan_id=receipt_id  # Use the receipt_id as the scan_id
         )
     except Exception as e:
         logger.error(f"Failed to save receipt to DB: {e}")
@@ -64,26 +77,29 @@ def set_judicial_hold(
     receipt_id: str, hold: bool, reason: str, target: str
 ) -> Dict[str, Any]:
     """
-    Applies or releases a judicial hold on a data receipt.
+    (REAL) Applies or releases a judicial hold on a data receipt.
     """
     logger.info(f"Setting judicial hold for {receipt_id} to {hold}")
     
-    # This is a mock. In reality, you'd fetch the receipt from the DB.
-    # db = get_db()
-    # receipt_data = db.get_scan(receipt_id)
-    # if not receipt_data:
-    #     raise ValueError(f"Receipt ID {receipt_id} not found.")
-    # receipt = AuditableDataReceipt(**receipt_data['data'])
-    
-    # Mocked receipt for demo:
-    receipt = AuditableDataReceipt(
-        receipt_id=receipt_id,
-        target=target,
-        source="mocked.source.com",
-        content_sha256="mocked_hash",
-        ingest_timestamp=datetime.now(timezone.utc).isoformat()
-    )
+    # --- (REAL IMPLEMENTATION) ---
+    # 1. Fetch the existing receipt
+    try:
+        receipt_record = get_scan_from_db(receipt_id, module_name="data_custodian")
+        if not receipt_record:
+            raise ValueError(f"Receipt ID {receipt_id} not found in 'data_custodian' module.")
+        
+        # 2. Parse the data
+        receipt_data = receipt_record.get("data", {})
+        if not isinstance(receipt_data, dict):
+             receipt_data = json.loads(receipt_data) # Parse from string if needed
+             
+        receipt = AuditableDataReceipt.model_validate(receipt_data)
 
+    except Exception as e:
+        logger.error(f"Failed to fetch or parse receipt {receipt_id}: {e}")
+        return {"status": "error", "message": str(e)}
+
+    # 3. Update the receipt
     action = "JUDICIAL_HOLD_APPLIED" if hold else "JUDICIAL_HOLD_RELEASED"
     receipt.judicial_hold = hold
     receipt.judicial_hold_reason = reason if hold else None
@@ -91,8 +107,19 @@ def set_judicial_hold(
         ChainOfCustodyEntry(action=action, details=reason)
     )
     
-    # Save updated receipt back to DB
-    # save_scan_to_db(...)
+    # 4. Save the updated receipt back to the DB, overwriting the old one
+    try:
+        save_scan_to_db(
+            target=receipt.target,
+            module="data_custodian",
+            data=receipt.model_dump(),
+            scan_id=receipt_id  # This ensures we UPDATE the existing record
+        )
+    except Exception as e:
+        logger.error(f"Failed to save updated receipt {receipt_id}: {e}")
+        return {"status": "error", "message": f"Failed to save update: {e}"}
+    
+    # --- (END REAL IMPLEMENTATION) ---
     
     return {
         "receipt_id": receipt_id,
@@ -152,6 +179,7 @@ def run_judicial_hold_cli(
     with console.status(
         f"[bold yellow]Setting judicial hold for {receipt_id} to {hold}...[/bold yellow]"
     ):
+        # Target is a fallback, but not really used in the real logic
         result = set_judicial_hold(receipt_id, hold, reason, target)
     
     save_or_print_results(result, None)

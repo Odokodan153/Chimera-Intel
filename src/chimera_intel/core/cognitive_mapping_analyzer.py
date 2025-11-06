@@ -9,17 +9,32 @@ import typer
 import logging
 import json
 from typing import Optional, List
+from pydantic import BaseModel, Field
+
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-from .narrative_analyzer import track_narrative
+# --- (REAL) Core Module Imports ---
+from .narrative_analyzer import track_narrative_gnews  # <-- REAL FUNCTION
 from .config_loader import API_KEYS
 from .gemini_client import GeminiClient
+# --- End (REAL) Imports ---
 
 logger = logging.getLogger(__name__)
 
 # --- Pydantic Schemas ---
 # NOTE: These are defined here for encapsulation, as they are specific to this module.
 
+class MentalModelVector(BaseModel):
+    vector_type: str = Field(..., description="e.g., 'Core Value', 'Decision-Making Bias'")
+    description: str = Field(..., description="The specific value or bias, e.g., 'Prioritizes rapid innovation'")
+    evidence_snippet: Optional[str] = Field(None, description="A quote or summary from source material as evidence.")
+
+class CognitiveMapResult(BaseModel):
+    person_name: str
+    cognitive_model_summary: Optional[str] = Field(None, description="AI-generated summary of their decision-making framework.")
+    key_vectors: List[MentalModelVector] = Field(default_factory=list)
+    predictive_assessment: Optional[str] = Field(None, description="AI-generated prediction of behavior under stress.")
+    error: Optional[str] = None
 
 
 # --- Module Internals ---
@@ -30,7 +45,7 @@ gemini_client = GeminiClient()
 
 def generate_cognitive_map(person_name: str) -> CognitiveMapResult:
     """
-    Generates a cognitive map by analyzing public statements.
+    (REAL) Generates a cognitive map by analyzing public statements.
 
     Args:
         person_name (str): The full name of the key individual to analyze.
@@ -41,13 +56,19 @@ def generate_cognitive_map(person_name: str) -> CognitiveMapResult:
     logger.info(f"Generating cognitive map for {person_name}")
     
     # 1. Gather public communications (speeches, interviews)
-    # Use track_narrative to find articles/statements about the person.
-    public_communications = track_narrative(person_name, limit=15)
+    # (REAL) Use the actual function from narrative_analyzer
+    if not API_KEYS.gnews_api_key:
+        return CognitiveMapResult(
+            person_name=person_name,
+            error="GNews API key not configured. Cannot gather communications."
+        )
+        
+    public_communications = track_narrative_gnews(person_name, limit=15)
 
     if not public_communications:
         return CognitiveMapResult(
             person_name=person_name,
-            error="No public communications found for this individual.",
+            error="No public communications found for this individual via GNews.",
         )
 
     # 2. Synthesize communications into a single text block for AI analysis
@@ -67,7 +88,7 @@ def generate_cognitive_map(person_name: str) -> CognitiveMapResult:
     Based on the language, recurring themes, and expressed opinions, create a formal cognitive map.
 
     **Source Material:**
-    {full_text[:4000]}
+    {full_text[:8000]}
 
     **Instructions:**
     Return your analysis as a single JSON object with the following keys:
@@ -98,7 +119,8 @@ def generate_cognitive_map(person_name: str) -> CognitiveMapResult:
 
     # 4. Parse the structured JSON response
     try:
-        data = json.loads(llm_response)
+        json_text = llm_response.strip().lstrip("```json").rstrip("```")
+        data = json.loads(json_text)
         
         summary = data.get("cognitive_model_summary")
         prediction = data.get("predictive_assessment")

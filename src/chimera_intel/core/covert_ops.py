@@ -9,13 +9,16 @@ Provides functionality for:
 import typer
 import httpx
 import asyncio
+import dns.resolver
+import dns.exception
 from typing_extensions import Annotated
+from typing import List, Dict, Set
 from rich.console import Console
 from rich.table import Table
 
 from .database import store_data
-
-console = Console()
+from .http_client import get_async_http_client  # <-- Import real client
+from .utils import console
 
 covert_ops_app = typer.Typer(
     name="covert-ops",
@@ -28,17 +31,34 @@ COMMON_PATHS = [
     "/login",
     "/api",
     "/api/v1",
+    "/api/v2",
+    "/api/v3",
     "/dashboard",
     "/.git/config",
     "/.env",
+    "/.env.production",
+    "/.env.local",
     "/backup.zip",
+    "/backup.sql",
+    "/swagger-ui.html",
+    "/swagger.json",
+    "/openapi.json",
 ]
 
 # Common CNAMEs that might be hijackable if misconfigured
-TAKEOVER_CNAMES = {
-    "sites.github.com": "GitHub Pages",
+# This list is still used, but the check against it is real.
+TAKEOVER_PATTERNS = {
     "s3.amazonaws.com": "Amazon S3",
-    "unclaimed.service.com": "Mock Unclaimed Service",
+    "github.io": "GitHub Pages",
+    "sites.github.com": "GitHub Pages",
+    "herokuapp.com": "Heroku",
+    "pantheonsite.io": "Pantheon",
+    "domains.squarespace.com": "Squarespace",
+    "unbouncepages.com": "Unbounce",
+    "c.storage.googleapis.com": "Google Cloud Storage",
+    ".azurewebsites.net": "Azure App Service",
+    # A generic pattern for unclaimed services
+    "unclaimed": "Possible Unclaimed Service",
 }
 
 
@@ -46,12 +66,19 @@ async def check_path(
     client: httpx.AsyncClient, base_url: str, path: str
 ) -> tuple[str, int] | None:
     """
-    Simulates checking a single path.
-    In a real tool, this would make a request. Here, we just check our mock list.
+    (REAL) Checks a single path using a HEAD request.
     """
-    if path in ["/api", "/admin", "/.env"]:
-        # Simulate finding a sensitive endpoint
-        return (f"{base_url}{path}", 200)
+    url = f"{base_url.rstrip('/')}{path}"
+    try:
+        response = await client.head(url, timeout=10, follow_redirects=False)
+        
+        # Report common "found" codes (2xx, 3xx, 401, 403)
+        # We ignore 404 Not Found.
+        if response.status_code < 404:
+            return (url, response.status_code)
+        
+    except httpx.RequestError as e:
+        console.print(f"[dim]Error checking {url}: {e}[/dim]", style="dim")
     return None
 
 
@@ -59,7 +86,7 @@ async def check_path(
     name="find-hidden-content",
     help="Find hidden API endpoints and unlinked directories.",
 )
-def find_hidden_content(
+async def find_hidden_content(
     target: Annotated[
         str,
         typer.Argument(
@@ -68,32 +95,29 @@ def find_hidden_content(
     ],
 ):
     """
-    Simulates a search for hidden endpoints and directories by checking
+    (REAL) Searches for hidden endpoints and directories by checking
     a predefined list of common sensitive paths.
     """
-    console.print(f"[bold cyan]Simulating hidden content scan on: {target}[/bold cyan]")
+    console.print(f"[bold cyan]Starting hidden content scan on: {target}[/bold cyan]")
     base_url = f"https://{target}"
-
-    # In a real tool, we would use httpx.AsyncClient()
-    # Here we just simulate the results for demonstration.
+    
+    tasks = []
+    results = []
     
     with console.status("[cyan]Scanning common paths...[/cyan]"):
-        # Simulate some delay
-        import time
-        time.sleep(1)
-        
-        # Filter our COMMON_PATHS to find "discovered" ones
-        results = [
-            (f"{base_url}{path}", 200)
-            for path in COMMON_PATHS
-            if path in ["/api", "/admin", "/.env"]
-        ]
+        async with get_async_http_client() as client:
+            for path in COMMON_PATHS:
+                tasks.append(check_path(client, base_url, path))
+            
+            # Run checks in parallel
+            scan_results = await asyncio.gather(*tasks)
+            results = [r for r in scan_results if r is not None]
 
     if not results:
         console.print("[green]No sensitive hidden paths found from common list.[/green]")
         return
 
-    table = Table(title="[bold yellow]Discovered Content (Simulated)[/bold yellow]")
+    table = Table(title="[bold yellow]Discovered Content[/bold yellow]")
     table.add_column("URL", style="cyan")
     table.add_column("Status Code", style="magenta")
 
@@ -116,11 +140,41 @@ def find_hidden_content(
         console.print(f"[red]Error saving to database:[/red] {e}")
 
 
+async def get_subdomains_for_takeover(target: str) -> Set[str]:
+    """
+    (REAL) Helper to get subdomains to check.
+    This re-uses logic from footprint.py, but is simplified.
+    A real implementation would pull this from the database or
+    a full footprint scan.
+    """
+    console.print("[dim]Fetching common subdomains (www, api, blog, dev)...[/dim]")
+    # In a real tool, we'd run a full subdomain enumeration.
+    # For this example, we'll just check a few common ones.
+    common_subs = {"www", "api", "blog", "dev", "store", "jobs", "support", "help"}
+    return {f"{sub}.{target}" for sub in common_subs}
+
+
+async def check_cname(subdomain: str) -> tuple[str, str] | None:
+    """
+    (REAL) Resolves the CNAME record for a subdomain.
+    """
+    try:
+        resolver = dns.resolver.Resolver()
+        answer = await asyncio.to_thread(resolver.resolve, subdomain, "CNAME")
+        if answer:
+            return (subdomain, str(answer[0].target))
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        pass # No CNAME or subdomain doesn't exist
+    except Exception as e:
+        console.print(f"[dim]Error checking CNAME for {subdomain}: {e}[/dim]")
+    return None
+
+
 @covert_ops_app.command(
     name="check-takeover",
     help="Detect subdomain/cloud service hijack opportunities.",
 )
-def check_takeover(
+async def check_takeover(
     target: Annotated[
         str,
         typer.Argument(
@@ -129,35 +183,34 @@ def check_takeover(
     ],
 ):
     """
-    Simulates checking for potential infrastructure takeovers by
-    looking for mock dangling CNAME records.
+    (REAL) Checks for potential infrastructure takeovers by
+    resolving CNAMEs and matching them against known vulnerable patterns.
     """
-    console.print(f"[bold cyan]Simulating infrastructure takeover check on: {target}[/bold cyan]")
+    console.print(f"[bold cyan]Checking for infrastructure takeover on: {target}[/bold cyan]")
 
-    # Mock DNS records for simulation
-    mock_dns_records = {
-        f"www.{target}": "1.2.3.4",
-        f"api.{target}": "5.6.7.8",
-        f"blog.{target}": "sites.github.com", # Potentially vulnerable
-        f"jobs.{target}": "unclaimed.service.com", # Potentially vulnerable
-    }
-
+    subdomains_to_check = await get_subdomains_for_takeover(target)
+    
     findings = []
-    with console.status("[cyan]Checking known subdomains...[/cyan]"):
-        # Simulate some delay
-        import time
-        time.sleep(1)
+    
+    with console.status("[cyan]Checking CNAME records for subdomains...[/cyan]"):
+        tasks = [check_cname(sub) for sub in subdomains_to_check]
+        cname_results = await asyncio.gather(*tasks)
         
-        for subdomain, cname in mock_dns_records.items():
-            if cname in TAKEOVER_CNAMES:
-                service = TAKEOVER_CNAMES[cname]
-                findings.append((subdomain, cname, service))
+        for result in cname_results:
+            if not result:
+                continue
+            
+            subdomain, cname = result
+            for pattern, service in TAKEOVER_PATTERNS.items():
+                if pattern in cname:
+                    findings.append((subdomain, cname, service))
+                    break # Move to the next subdomain
 
     if not findings:
-        console.print("[green]No obvious takeover opportunities found (simulated).[/green]")
+        console.print("[green]No obvious takeover opportunities found.[/green]")
         return
 
-    table = Table(title="[bold red]Potential Takeover Opportunities (Simulated)[/bold red]")
+    table = Table(title="[bold red]Potential Takeover Opportunities[/bold red]")
     table.add_column("Subdomain", style="cyan")
     table.add_column("CNAME Record", style="yellow")
     table.add_column("Vulnerable Service", style="magenta")
@@ -184,4 +237,4 @@ def check_takeover(
 
 
 if __name__ == "__main__":
-    covert_ops_app()
+    asyncio.run(covert_ops_app())

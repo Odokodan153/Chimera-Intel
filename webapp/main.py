@@ -17,13 +17,13 @@ from functools import lru_cache
 # Core Chimera Intel imports
 
 from chimera_intel.core.database import get_db_connection as get_db
-from chimera_intel.core import schemas
+from chimera_intel.core import schemas, models
 from chimera_intel.core.negotiation import NegotiationEngine
 
-
-# This is a placeholder for auth, you'll need to implement it
-def get_current_user():
-    return None
+# --- Removed Placeholder Auth ---
+# Import the real, implemented authentication dependency
+from chimera_intel.webapp.routers.auth import get_current_active_user
+# ---
 
 
 # Configure structured logging
@@ -63,10 +63,10 @@ router = APIRouter()
     response_model=schemas.Negotiation,
     status_code=status.HTTP_201_CREATED,
 )
-def create_negotiation(
+async def create_negotiation(  # <-- Made async
     negotiation: schemas.NegotiationCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_active_user),  # <-- Use real auth
 ):
     """Initializes a new negotiation session with multiple participants."""
     try:
@@ -103,13 +103,13 @@ def create_negotiation(
     "/negotiations/{negotiation_id}/messages",
     response_model=schemas.AnalysisResponse,
 )
-def analyze_new_message(
+async def analyze_new_message(  # <-- Made async
     negotiation_id: str,
     message: schemas.MessageCreate,
     simulation_scenario: Dict[str, int],
     db: Session = Depends(get_db),
     engine: NegotiationEngine = Depends(get_engine),
-    current_user: schemas.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_active_user),  # <-- Use real auth
 ):
     """
     Analyzes a new message and returns a structured response including
@@ -177,12 +177,12 @@ def analyze_new_message(
 
 
 @router.get("/negotiations/{negotiation_id}", response_model=schemas.Negotiation)
-def get_negotiation_history(
+async def get_negotiation_history(  # <-- Made async
     negotiation_id: str,
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    current_user: schemas.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_active_user),  # <-- Use real auth
 ):
     """
     Fetches the full history of a negotiation session with robust pagination.
@@ -211,6 +211,10 @@ async def websocket_endpoint(
     engine: NegotiationEngine = Depends(get_engine),
 ):
     """Handles real-time negotiation chat via WebSocket."""
+    # Note: This websocket auth is still simplified and doesn't use the
+    # main `get_current_active_user` dependency flow, but it's more complete
+    # than the original `main.py` which had no auth at all.
+    # A full implementation would likely use a token validation service.
     await websocket.accept()
     # You will need a way to validate the token passed in the query parameters
     # For simplicity, this is not shown here, but in a real-world application,

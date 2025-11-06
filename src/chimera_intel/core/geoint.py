@@ -10,6 +10,7 @@ import logging
 from typing import Optional, List, Set
 import asyncio
 from datetime import datetime
+import os  # <-- ADDED IMPORT
 
 from .schemas import (
     GeointReport, 
@@ -289,66 +290,75 @@ def find_aerial_vehicles(lat: float, lon: float, radius_km: int = 50) -> AerialI
         )
 
 
-# --- NEW FUNCTION: Planetary-Scale Imagery Analysis (GEOINT++) ---
-
 def analyze_imagery(
     request: ImageryAnalysisRequest, 
-    provider: str = "mock"
+    provider: str = "google_maps"
 ) -> ImageryAnalysisResult:
     """
-    Performs large-scale imagery analysis for change detection, object detection,
-    and activity monitoring.
+    Fetches a high-resolution satellite image for a given location
+    using the Google Maps Static API.
     
-    NOTE: This is a mock function. A real implementation would require a dedicated
-    backend pipeline integrating with providers like Planet, Maxar, or AWS Open Data
-    and running ML models (e.g., YOLO, SAM) at scale.
+    This is a real implementation that fetches and saves an image,
+    replacing the previous mock ML analysis.
     """
-    logger.info(f"Received imagery analysis request for target: {request.target_geofence_id}")
+    logger.info(f"Fetching satellite imagery for: {request.target_geofence_id} at ({request.center_lat}, {request.center_lon})")
     
-    if not API_KEYS.planet_api_key:
-        logger.warning("No PLANET_API_KEY found. Using mock data.")
-        provider = "mock"
-
-    if provider == "mock":
-        # Simulate finding change and detecting objects
-        
-        detected_objects = [
-            DetectedObject(
-                label="Vehicle",
-                confidence=0.85,
-                lat=request.center_lat + 0.001,
-                lon=request.center_lon,
-            ),
-            DetectedObject(
-                label="Storage Tank",
-                confidence=0.92,
-                lat=request.center_lat,
-                lon=request.center_lon + 0.001,
-            ),
-        ]
-        
-        return ImageryAnalysisResult(
-            request_id=request.request_id,
-            status="COMPLETED",
-            change_detected=True,
-            change_summary="New construction detected in northeast quadrant.",
-            objects_detected=detected_objects,
-            total_objects=len(detected_objects),
-            imagery_provider="Mock Satellite Inc.",
-            timestamp_before=datetime(2023, 1, 15).isoformat(),
-            timestamp_after=datetime(2023, 2, 15).isoformat(),
-        )
-    else:
-        # Placeholder for real API call
-        logger.error(f"Imagery provider '{provider}' not implemented.")
+    api_key = API_KEYS.google_maps_api_key
+    if not api_key:
         return ImageryAnalysisResult(
             request_id=request.request_id,
             status="ERROR",
-            error=f"Provider '{provider}' not implemented."
+            error="GOOGLE_MAPS_API_KEY not found in .env file."
         )
 
+    base_url = "https://maps.googleapis.com/maps/api/staticmap"
+    params = {
+        "center": f"{request.center_lat},{request.center_lon}",
+        "zoom": 17, # Street-level zoom
+        "size": "640x640",
+        "maptype": "satellite",
+        "key": api_key,
+    }
 
-# --- END NEW FUNCTION ---
+    try:
+        response = sync_client.get(base_url, params=params)
+        response.raise_for_status() # Will raise error for 4xx/5xx
+
+        # Create directory if it doesn't exist
+        output_dir = "imagery_captures"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Create a unique filename
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{request.target_geofence_id.replace(' ', '_')}_{timestamp_str}.png"
+        output_path = os.path.join(output_dir, filename)
+
+        # Save the image
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+            
+        logger.info(f"Successfully saved satellite image to: {output_path}")
+
+        # Return a result that reflects the new, real functionality
+        return ImageryAnalysisResult(
+            request_id=request.request_id,
+            status="COMPLETED",
+            change_detected=None, # We no longer run ML change detection
+            change_summary="Image saved. Manual analysis required.",
+            objects_detected=[], 
+            total_objects=0,
+            imagery_provider="Google Maps Static API",
+            timestamp_after=datetime.now().isoformat(), # Timestamp of capture
+            local_image_path=output_path # New field to show where the image is
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to fetch Google Maps image: {e}")
+        return ImageryAnalysisResult(
+            request_id=request.request_id,
+            status="ERROR",
+            error=f"Failed to fetch satellite image: {e}"
+        )
 
 
 geoint_app = typer.Typer()
@@ -451,14 +461,14 @@ def run_aerial_tracking(
     )
 
 
-# --- NEW COMMAND: Planetary-Scale Imagery Analysis (GEOINT++) ---
+# --- UPDATED COMMAND: Planetary-Scale Imagery Analysis (GEOINT++) ---
 
 @geoint_app.command("track-imagery")
 def run_imagery_analysis(
     lat: float = typer.Option(..., "--lat", help="Center latitude for the analysis area."),
     lon: float = typer.Option(..., "--lon", help="Center longitude for the analysis area."),
     geofence_id: Optional[str] = typer.Option(
-        None, "--geofence", "-g", help="ID of a pre-defined geofence to analyze."
+        "adhoc_request", "--geofence", "-g", help="ID of a pre-defined geofence to analyze."
     ),
     target: Optional[str] = typer.Option(
         None, help="Target project to associate this analysis with."
@@ -468,36 +478,37 @@ def run_imagery_analysis(
     ),
 ):
     """
-    Analyzes satellite imagery for change detection and object monitoring (GEOINT++).
+    Fetches high-resolution satellite imagery for a specific coordinate.
     
-    This is a high-level simulation. Real implementation is complex.
+    This function uses the Google Maps Static API to save a real
+    satellite image to the 'imagery_captures' directory.
     """
-    if geofence_id:
-        target_name = resolve_target(geofence_id)
-        console.print(f"[cyan]Analyzing imagery for geofence: {target_name}...[/cyan]")
-        db_target = target_name
-    elif target:
+    if geofence_id == "adhoc_request" and target:
+         geofence_id = target
+         
+    if target:
         target_name = resolve_target(target)
-        console.print(f"[cyan]Analyzing imagery near ({lat}, {lon}) for target: {target_name}...[/cyan]")
+        console.print(f"[cyan]Fetching imagery near ({lat}, {lon}) for target: {target_name}...[/cyan]")
         db_target = target_name
     else:
-        console.print(f"[cyan]Analyzing imagery for coordinates: ({lat}, {lon})...[/cyan]")
+        console.print(f"[cyan]Fetching imagery for coordinates: ({lat}, {lon})...[/cyan]")
         db_target = f"{lat},{lon}"
         
-    
-    # In a real app, geofence_id would be used to look up coordinates
-    # For now, we just pass the lat/lon and ID
     
     request = ImageryAnalysisRequest(
         target_geofence_id=geofence_id or "adhoc_request",
         center_lat=lat,
         center_lon=lon,
-        radius_km=5, # Example default
-        analysis_types=["CHANGE_DETECTION", "OBJECT_DETECTION"],
+        radius_km=0, # Not used by this implementation
+        analysis_types=["SATELLITE_CAPTURE"],
     )
     
-    results_model = analyze_imagery(request, provider="mock")
+    results_model = analyze_imagery(request, provider="google_maps")
     results_dict = results_model.model_dump(exclude_none=True)
+
+    if results_model.status == "COMPLETED" and results_model.local_image_path:
+        console.print(f"[bold green]Imagery saved to: {results_model.local_image_path}[/bold green]")
+    
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(
         target=db_target, module="geoint_imagery_analysis", data=results_dict

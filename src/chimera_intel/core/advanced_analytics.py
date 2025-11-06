@@ -36,42 +36,38 @@ class PredictiveScenarioEngine:
         Act as a Predictive Scenario Engine.
         Simulate the following event over {steps} steps:
         Event: {event_description}
-        Initial Variables: {variables}
+        Initial Variables: {json.dumps(variables)}
 
         For each step, project the changes in the variables and provide a brief narrative.
         Conclude with a final summary of the projected outcome and the final state of the variables.
         
-        Format the output as:
-        Step 1:
-        - Narrative: [Narrative for step 1]
-        - Variables: [Updated variables]
-        ...
-        Step {steps}:
-        - Narrative: [Narrative for step {steps}]
-        - Variables: [Updated variables]
+        Return your response as a single, valid JSON object with the following keys:
+        - "simulation_id": (string, use "sim_{{uuid}}")
+        - "event": (string, echo of the event description)
+        - "initial_variables": (object, echo of initial variables)
+        - "steps_run": (integer)
+        - "simulation_steps": (array of objects, one for each step)
+            - "step": (integer)
+            - "narrative": (string)
+            - "variables": (object, updated variables)
+        - "final_summary": (string, overall projected outcome)
+        - "final_state": (object, final variable values)
         
-        Final Summary:
-        - Outcome: [Overall projected outcome]
-        - FinalState: [Final variable values]
+        Return ONLY the JSON object and no other text.
         """
 
         try:
-            response = await self.llm_client.generate_text(prompt)
-            # This is a mock parsing. In a real app, you'd parse the LLM's structured response.
-            sim_result = {
-                "simulation_id": "sim_12345",
-                "event": event_description,
-                "initial_variables": variables,
-                "steps_run": steps,
-                "llm_full_response": response,
-                "final_summary": "Simulation complete. See llm_full_response for details.",
-                "final_state": variables  # Placeholder
-            }
+            response_text = await self.llm_client.generate_text(prompt)
+            # Clean and parse the JSON response
+            json_text = response_text.strip().lstrip("```json").rstrip("```")
+            sim_result = json.loads(json_text)
+            
             logger.info(f"Simulation for '{event_description}' completed successfully.")
             return sim_result
         except Exception as e:
             logger.error(f"Error during simulation: {e}", exc_info=True)
-            return {"error": str(e)}
+            logger.error(f"Raw LLM response was: {response_text}")
+            return {"error": str(e), "raw_response": response_text}
 
 class NarrativeInfluenceTracker:
     """
@@ -102,36 +98,40 @@ class NarrativeInfluenceTracker:
         prompt = f"""
         Act as a Narrative and Influence Analyst.
         Analyze the following data sources related to the topic "{topic}".
-        Identify:
-        1.  **Dominant Narratives**: What are the main stories or viewpoints being pushed?
-        2.  **Misinformation/Disinformation**: Are there any clear signs of coordinated misinformation?
-        3.  **Key Influencers/Sources**: Which sources or actors appear to be driving the narrative?
-        4.  **Emerging Themes**: What new ideas or angles are starting to appear?
-
+        
         Data Sources:
         ---
-        {combined_data}
+        {combined_data[:8000]}
         ---
 
-        Provide a concise summary report.
+        Return your analysis as a single, valid JSON object with the following keys:
+        - "topic": (string, echo of the topic)
+        - "report_summary": (string, a concise 2-3 paragraph summary of the overall narrative landscape)
+        - "dominant_narratives": (array of objects)
+            - "narrative": (string, description of the narrative)
+            - "sentiment": (string, "positive", "negative", "neutral")
+            - "influence_score": (float, 0.0-1.0, your estimate of its influence)
+        - "misinformation_alerts": (array of objects)
+            - "alert": (string, description of a potential misinformation campaign)
+            - "confidence": (float, 0.0-1.0)
+        - "key_influencers": (array of strings, list of sources or actors driving the narrative)
+        - "emerging_themes": (array of strings, new ideas or angles appearing)
+
+        Return ONLY the JSON object and no other text.
         """
 
         try:
-            response = await self.llm_client.generate_text(prompt)
-            analysis = {
-                "topic": topic,
-                "report_summary": response,
-                "detected_narratives": [
-                    {"narrative": "AI is a job killer", "sentiment": "negative", "influence_score": 0.7},
-                    {"narrative": "AI will revolutionize diagnostics", "sentiment": "positive", "influence_score": 0.6}
-                ], # Placeholder
-                "misinformation_alerts": ["Potential bot activity detected promoting narrative 1."] # Placeholder
-            }
+            response_text = await self.llm_client.generate_text(prompt)
+            # Clean and parse the JSON response
+            json_text = response_text.strip().lstrip("```json").rstrip("```")
+            analysis = json.loads(json_text)
+            
             logger.info(f"Narrative tracking for '{topic}' completed.")
             return analysis
         except Exception as e:
             logger.error(f"Error during narrative tracking: {e}", exc_info=True)
-            return {"error": str(e)}
+            logger.error(f"Raw LLM response was: {response_text}")
+            return {"error": str(e), "raw_response": response_text}
 
 class CorporateRiskScorer:
     """
@@ -151,9 +151,9 @@ class CorporateRiskScorer:
 
         :param company_name: The name of the company to score.
         :param signals: A dictionary of signals from different domains.
-                        e.g., {"financial": "Q3 profits missed estimates",
+                        e.g., {{"financial": "Q3 profits missed estimates",
                                "cyber": "Recent data breach reported",
-                               "pr": "Negative press on environmental policy"}
+                               "pr": "Negative press on environmental policy"}}
         :return: A dictionary with an overall risk score and a breakdown by domain.
         """
         logger.info(f"Calculating risk score for: {company_name}")
@@ -167,36 +167,34 @@ class CorporateRiskScorer:
         Analyze the following multi-domain signals:
         {signals_summary}
 
-        Provide:
-        1.  A **Geopolitical Risk Score** (0-100)
-        2.  A **Market Risk Score** (0-100)
-        3.  A **Reputational Risk Score** (0-100)
-        4.  An **Overall Composite Risk Score** (0-100)
-        5.  A brief **Executive Summary** (2-3 sentences) explaining the scores.
-
-        Format your output clearly.
+        Return your analysis as a single, valid JSON object with the following keys:
+        - "company_name": (string, echo of company name)
+        - "overall_risk_score": (integer, 0-100, your composite risk score)
+        - "domain_scores": (object, scores for each domain, 0-100)
+            - "geopolitical": (integer)
+            - "market": (integer)
+            - "reputational": (integer)
+            - "cyber": (integer)
+            - "financial": (integer)
+            - "other": (integer)
+        - "executive_summary": (string, 2-3 sentences explaining the scores)
+        
+        Base all scores *only* on the signals provided.
+        Return ONLY the JSON object and no other text.
         """
 
         try:
-            response = await self.llm_client.generate_text(prompt)
-            # Mock parsing of LLM response
-            risk_profile = {
-                "company_name": company_name,
-                "overall_risk_score": 75,  # Placeholder
-                "domain_scores": {
-                    "geopolitical": 60,
-                    "market": 70,
-                    "reputational": 85,
-                    "cyber": 80 # Derived from signals
-                },
-                "executive_summary": f"High reputational and cyber risk for {company_name}. See llm_response.", # Placeholder
-                "llm_response": response
-            }
+            response_text = await self.llm_client.generate_text(prompt)
+            # Clean and parse the JSON response
+            json_text = response_text.strip().lstrip("```json").rstrip("```")
+            risk_profile = json.loads(json_text)
+
             logger.info(f"Risk score for '{company_name}' calculated.")
             return risk_profile
         except Exception as e:
             logger.error(f"Error during risk score calculation: {e}", exc_info=True)
-            return {"error": str(e)}
+            logger.error(f"Raw LLM response was: {response_text}")
+            return {"error": str(e), "raw_response": response_text}
         
 app = typer.Typer(help="Advanced AI & Analytics CLI Tools")
 
@@ -210,7 +208,7 @@ def simulate_scenario_cli(
     Run the Predictive Scenario Engine.
     Example:
     chimera-intel analytics simulate --event "New competitor enters market" \
-    --vars '{"market_share": 0.6, "price_point": 100}'
+    --vars '{{"market_share": 0.6, "price_point": 100}}'
     """
     typer.echo(f"Running simulation for: {event}")
     try:
@@ -249,13 +247,13 @@ def track_narrative_cli(
 @app.command(name="risk-score")
 def calculate_risk_score_cli(
     company: Annotated[str, typer.Option(..., "--company", help="Company name")],
-    signals_json: Annotated[str, typer.Option(..., "--signals", help="JSON string of risk signals, e.g., '{\"cyber\": \"High vulnerability\", \"pr\": \"Positive news\"}'")]
+    signals_json: Annotated[str, typer.Option(..., "--signals", help="JSON string of risk signals, e.g., '{{\"cyber\": \"High vulnerability\", \"pr\": \"Positive news\"}}'")]
 ):
     """
     Run the Corporate Risk Scorer.
     Example:
     chimera-intel analytics risk-score --company "DemoCorp" \
-    --signals '{"cyber": "High vulnerability detected", "pr": "Positive news"}'
+    --signals '{{"cyber": "High vulnerability detected", "pr": "Positive news"}}'
     """
     typer.echo(f"Calculating risk score for: {company}")
     try:

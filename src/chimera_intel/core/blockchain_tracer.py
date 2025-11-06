@@ -8,11 +8,12 @@ import typer
 import logging
 import httpx
 import os
+import asyncio  # <-- ADDED IMPORT
 from typing import Dict, Any, Optional, List
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-from .http_client import get_async_http_client
-from pyvis.network import Network # Re-use the existing 2D grapher tech
+from .http_client import get_async_http_client  # <-- Use async client
+from pyvis.network import Network  # Re-use the existing 2D grapher tech
 
 logger = logging.getLogger(__name__)
 tracer_app = typer.Typer()
@@ -23,14 +24,15 @@ async def get_address_transactions(
     address: str, chain: str = "bitcoin"
 ) -> Optional[Dict[str, Any]]:
     """
-    Fetches transaction data for a given address from Blockchair.
+    (REAL) Fetches transaction data for a given address from Blockchair.
     
     Note: Free Blockchair API is rate-limited and may not show
     full transaction details.
     """
-    api_key = API_KEYS.blockchair_api_key # Get from .env
+    api_key = API_KEYS.blockchair_api_key  # Get from .env
+    # We need to fetch the full transaction data to get inputs/outputs
     url = f"{BASE_URL}/{chain}/dashboards/address/{address}"
-    params = {"transaction_details": "true", "limit": 10} # Get last 10 txs
+    params = {"transaction_details": "true", "limit": 10}  # Get last 10 txs
     
     if api_key:
         params["key"] = api_key
@@ -46,6 +48,16 @@ async def get_address_transactions(
                 logger.warning(f"No data found for address {address}")
                 return None
             
+            # (REAL) Also fetch the transaction details (inputs/outputs)
+            tx_hashes = data["data"][address].get("transactions", [])
+            if tx_hashes:
+                tx_url = f"{BASE_URL}/{chain}/dashboards/transactions/{','.join(tx_hashes[:10])}" # Limit to 10 hashes for API
+                tx_response = await client.get(tx_url, params={"key": api_key} if api_key else {}, timeout=30.0)
+                tx_data = tx_response.json()
+                
+                # Embed the detailed transaction data into the main response
+                data["data"][address]["transaction_details"] = tx_data.get("data", {})
+                
             return data["data"][address]
             
         except httpx.HTTPStatusError as e:
@@ -59,14 +71,15 @@ async def get_address_transactions(
 def generate_transaction_graph(
     address_data: Dict[str, Any], 
     main_address: str, 
-    output_path: str
+    output_path: str,
+    chain: str = "bitcoin"
 ) -> bool:
     """
-    Generates an interactive Pyvis graph of transaction flows.
+    (REAL) Generates an interactive Pyvis graph of real transaction flows.
     """
-    transactions = address_data.get("transactions", [])
+    transactions = address_data.get("transaction_details", {})
     if not transactions:
-        console.print("[yellow]No transactions found to graph.[/yellow]")
+        console.print("[yellow]No detailed transactions found to graph.[/yellow]")
         return False
 
     net = Network(
@@ -80,10 +93,11 @@ def generate_transaction_graph(
     # Add the main address as the central node
     net.add_node(main_address, label=main_address, color="#ff4757", size=25, title="Target Address")
 
-    for tx in transactions:
-        tx_hash = tx.get("hash")
-        time = tx.get("time")
-        balance_change_btc = tx.get("balance_change") / 100_000_000 # Convert Satoshi
+    unit = "BTC" if chain == "bitcoin" else "ETH"
+
+    for tx_hash, tx in transactions.items():
+        tx_details = tx.get("transaction", {})
+        time = tx_details.get("time")
         
         # Add the transaction node
         net.add_node(
@@ -92,26 +106,34 @@ def generate_transaction_graph(
             color="#feca57", 
             shape="square", 
             size=15,
-            title=f"Time: {time}\nChange: {balance_change_btc:.8f} BTC"
+            title=f"Time: {time}\nHash: {tx_hash}"
         )
         
-        # This is a simplified view. Blockchair's free API doesn't
-        # easily provide the *other* addresses in the tx.
-        # A paid API would give inputs and outputs.
-        # We will simulate by linking to a generic "External" node.
-        
-        if balance_change_btc > 0:
-            # Money IN
-            source_node = f"external_source_{tx_hash[:6]}"
-            net.add_node(source_node, label="External Source", color="#1e90ff", shape="dot", size=10)
-            net.add_edge(source_node, tx_hash, title=f"{balance_change_btc:.8f} BTC", value=abs(balance_change_btc))
-            net.add_edge(tx_hash, main_address)
-        else:
-            # Money OUT
-            dest_node = f"external_dest_{tx_hash[:6]}"
-            net.add_node(dest_node, label="External Destination", color="#576574", shape="dot", size=10)
-            net.add_edge(tx_hash, dest_node, title=f"{balance_change_btc:.8f} BTC", value=abs(balance_change_btc))
-            net.add_edge(main_address, tx_hash)
+        # (REAL) Process Inputs
+        inputs = tx.get("inputs", [])
+        for inp in inputs:
+            input_addr = inp.get("recipient", "Unknown_Input")
+            value = inp.get("value", 0) / (10**8 if chain == "bitcoin" else 10**18) # Convert Satoshi/Wei
+            
+            # Add the input node
+            if not net.get_node(input_addr):
+                net.add_node(input_addr, label=input_addr, color="#1e90ff", shape="dot", size=10)
+            
+            # Draw edge from input address to transaction
+            net.add_edge(input_addr, tx_hash, title=f"{value:.8f} {unit}", value=value)
+            
+        # (REAL) Process Outputs
+        outputs = tx.get("outputs", [])
+        for outp in outputs:
+            output_addr = outp.get("recipient", "Unknown_Output")
+            value = outp.get("value", 0) / (10**8 if chain == "bitcoin" else 10**18)
+            
+            # Add the output node
+            if not net.get_node(output_addr):
+                net.add_node(output_addr, label=output_addr, color="#576574", shape="dot", size=10)
+                
+            # Draw edge from transaction to output address
+            net.add_edge(tx_hash, output_addr, title=f"{value:.8f} {unit}", value=value)
 
     net.save_graph(output_path)
     return True
@@ -126,7 +148,7 @@ async def run_crypto_trace(
     ),
 ):
     """
-    (NEW) Traces transactions for a crypto address and builds a visual dashboard.
+    (REAL) Traces transactions for a crypto address and builds a visual dashboard.
     """
     with console.status(f"[bold cyan]Tracing {address} on {chain}...[/bold cyan]"):
         address_data = await get_address_transactions(address, chain)
@@ -147,7 +169,7 @@ async def run_crypto_trace(
 
     if output_graph:
         with console.status(f"[bold cyan]Generating graph {output_graph}...[/bold cyan]"):
-            success = generate_transaction_graph(address_data, address, output_graph)
+            success = generate_transaction_graph(address_data, address, output_graph, chain)
             if success:
                 console.print(f"[green]Transaction graph saved to {output_graph}[/green]")
             else:

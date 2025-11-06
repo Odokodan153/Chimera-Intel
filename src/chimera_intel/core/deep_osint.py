@@ -5,35 +5,17 @@ from typing import List, Dict, Any, Set
 import networkx as nx
 from chimera_intel.core.graph_db import GraphDB  # Assuming this is your graph database interface
 from chimera_intel.core.plugin_interface import ChimeraPlugin
+import asyncio  # <-- ADDED
 
-# Placeholder for platform-specific API clients
-# You would replace these with actual clients like telethon, discord.py, praw, shodan, etc.
-class ShodanClient:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        logging.info("Mock ShodanClient initialized.")
+# --- Real Client Imports ---
+import shodan  # <-- ADDED
+from .config_loader import API_KEYS  # <-- ADDED
+from .connect import _scrape_telegram, _scrape_discord  # <-- ADDED REAL IMPLEMENTATIONS
+# --- End Real Client Imports ---
 
-    def search_devices(self, query: str) -> List[Dict[str, Any]]:
-        logging.info(f"Mock Shodan search for: {query}")
-        # Mock data representing exposed IoT devices
-        return [
-            {"ip_str": "192.0.2.1", "port": 8080, "org": "Mock ISP", "data": "Mock Camera Feed"},
-            {"ip_str": "198.51.100.5", "port": 502, "org": "Mock Industrial", "data": "Mock Modbus Service"},
-        ]
+logging.basicConfig(level=logging.INFO)  # <-- ADDED basic logging config
+logger = logging.getLogger(__name__)  # <-- Use logger
 
-class DarkSocialAPIClient:
-    def __init__(self, platform: str, api_key: str):
-        self.platform = platform
-        self.api_key = api_key
-        logging.info(f"Mock DarkSocialAPIClient for {platform} initialized.")
-
-    def search_groups(self, keywords: List[str]) -> List[Dict[str, Any]]:
-        logging.info(f"Mock search on {self.platform} for keywords: {keywords}")
-        # Mock data representing content from private groups
-        return [
-            {"platform": self.platform, "group_name": "private-research-1", "author": "user_x", "message": "Discussion about new exploit..."},
-            {"platform": self.platform, "group_name": "dev-channel-3", "author": "user_y", "message": "Sharing internal tool info..."},
-        ]
 
 class DarkSocialMonitor(ChimeraPlugin):
     """
@@ -43,41 +25,72 @@ class DarkSocialMonitor(ChimeraPlugin):
     plugin_name = "dark_social_monitor"
 
     def __init__(self):
-        self.clients = {
-            "telegram": DarkSocialAPIClient(platform="telegram", api_key="TELEGRAM_API_KEY_PLACEHOLDER"),
-            "discord": DarkSocialAPIClient(platform="discord", api_key="DISCORD_API_KEY_PLACEHOLDER"),
-            "reddit_dm": DarkSocialAPIClient(platform="reddit_dm", api_key="REDDIT_API_KEY_PLACEHOLDER"),
-        }
-        logging.info("DarkSocialMonitor initialized.")
+        # Clients are no longer needed here as we use asyncio.run with imported functions
+        logger.info("DarkSocialMonitor initialized.")  # <-- Use logger
 
-    def track_content(self, keywords: List[str]) -> Dict[str, List[Dict[str, Any]]]:
+    def track_content(self, keywords: List[str], telegram_channels: List[str], discord_channels: List[str]) -> Dict[str, List[Dict[str, Any]]]:
         """
         Searches configured dark social platforms for given keywords.
 
         Args:
             keywords: A list of keywords to search for.
+            telegram_channels: List of Telegram channel usernames.
+            discord_channels: List of Discord channel IDs.
 
         Returns:
             A dictionary where keys are platform names and values are
             lists of found content snippets.
         """
-        results = {}
-        for platform, client in self.clients.items():
-            try:
-                platform_results = client.search_groups(keywords)
-                if platform_results:
-                    results[platform] = platform_results
-            except Exception as e:
-                logging.error(f"Failed to track content on {platform}: {e}")
+        results = {"telegram": [], "discord": []}
+        
+        # This is a sync function, so we must use asyncio.run()
+        # to call our async scraping functions from connect.py
+        
+        # Note: The _scrape_telegram/discord functions search
+        # for a single target, not a list of keywords. We'll adapt by searching
+        # for the *first* keyword as a demonstration.
+        
+        target_keyword = keywords[0] if keywords else ""
+        if not target_keyword:
+            return results
+
+        try:
+            logger.info(f"Running Telegram scrape for: {target_keyword}")
+            # This will be slow as it spins up a new event loop
+            telegram_results = asyncio.run(_scrape_telegram(target_keyword, telegram_channels))
+            if telegram_results:
+                results["telegram"] = telegram_results
+        except Exception as e:
+            logger.error(f"Failed to track content on Telegram: {e}")
+
+        try:
+            logger.info(f"Running Discord scrape for: {target_keyword}")
+            discord_results = asyncio.run(_scrape_discord(target_keyword, discord_channels))
+            if discord_results:
+                results["discord"] = discord_results
+        except Exception as e:
+            logger.error(f"Failed to track content on Discord: {e}")
         
         return results
 
     def run(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        data = {
+            "keywords": ["keyword1", "keyword2"],
+            "telegram_channels": ["channel_user_name1"],
+            "discord_channels": ["1234567890"]
+        }
+        """
         keywords = data.get("keywords", [])
+        telegram_channels = data.get("telegram_channels", [])
+        discord_channels = data.get("discord_channels", [])
+        
         if not keywords:
             return {"status": "error", "message": "No keywords provided."}
+        if not telegram_channels and not discord_channels:
+            return {"status": "error", "message": "No channels (telegram_channels or discord_channels) provided."}
         
-        results = self.track_content(keywords)
+        results = self.track_content(keywords, telegram_channels, discord_channels)
         return {"status": "success", "data": results}
 
 
@@ -88,10 +101,15 @@ class IoTDeviceScanner(ChimeraPlugin):
     """
     plugin_name = "iot_device_scanner"
 
-    def __init__(self, shodan_api_key: str = "SHODAN_API_KEY_PLACEHOLDER"):
+    def __init__(self):
         # In a real app, load this from config
-        self.client = ShodanClient(api_key=shodan_api_key)
-        logging.info("IoTDeviceScanner initialized.")
+        self.api_key = API_KEYS.shodan_api_key
+        if not self.api_key:
+            logger.error("SHODAN_API_KEY not found. IoTDeviceScanner will not work.")
+            self.client = None
+        else:
+            self.client = shodan.Shodan(self.api_key)  # <-- REAL CLIENT
+            logger.info("IoTDeviceScanner initialized with real Shodan client.")
 
     def discover_devices(self, query: str) -> List[Dict[str, Any]]:
         """
@@ -103,16 +121,40 @@ class IoTDeviceScanner(ChimeraPlugin):
         Returns:
             A list of found devices with enriched data.
         """
+        if not self.client:
+            return []
+            
         try:
-            return self.client.search_devices(query)
+            results = self.client.search(query, limit=100)
+            
+            # Re-format Shodan results to match the simple mock output
+            devices = [
+                {
+                    "ip_str": res.get("ip_str"),
+                    "port": res.get("port"),
+                    "org": res.get("org"),
+                    "data": res.get("data", "").strip(),
+                    "hostnames": res.get("hostnames", []),
+                    "asn": res.get("asn"),
+                }
+                for res in results.get("matches", [])
+            ]
+            return devices
+            
+        except shodan.APIError as e:
+            logger.error(f"Failed to discover IoT devices (Shodan APIError): {e}")
+            return []
         except Exception as e:
-            logging.error(f"Failed to discover IoT devices: {e}")
+            logger.error(f"Failed to discover IoT devices: {e}")
             return []
 
     def run(self, data: Dict[str, Any]) -> Dict[str, Any]:
         query = data.get("query")
         if not query:
             return {"status": "error", "message": "No query provided."}
+        
+        if not self.client:
+             return {"status": "error", "message": "Shodan API key not configured."}
         
         devices = self.discover_devices(query)
         return {"status": "success", "data": {"devices": devices, "count": len(devices)}}
@@ -131,7 +173,7 @@ class DeepGraphAnalyzer(ChimeraPlugin):
         self.graph_db = graph_db
         # Get the NetworkX graph object from the GraphDB
         self.graph = self.graph_db.get_nx_graph() 
-        logging.info("DeepGraphAnalyzer initialized.")
+        logger.info("DeepGraphAnalyzer initialized.")
 
     def find_indirect_relationships(self, start_node: str, end_node: str, max_depth: int = 3) -> List[List[str]]:
         """
@@ -146,11 +188,11 @@ class DeepGraphAnalyzer(ChimeraPlugin):
             A list of paths, where each path is a list of node names.
         """
         if not self.graph:
-            logging.warning("Graph is not loaded. Cannot perform analysis.")
+            logger.warning("Graph is not loaded. Cannot perform analysis.")
             return []
 
         if start_node not in self.graph or end_node not in self.graph:
-            logging.warning(f"Nodes {start_node} or {end_node} not in graph.")
+            logger.warning(f"Nodes {start_node} or {end_node} not in graph.")
             return []
             
         try:
@@ -166,7 +208,7 @@ class DeepGraphAnalyzer(ChimeraPlugin):
             indirect_paths = [path for path in paths if len(path) > 2]
             return indirect_paths
         except Exception as e:
-            logging.error(f"Error finding indirect paths: {e}")
+            logger.error(f"Error finding indirect paths: {e}")
             return []
 
     def find_all_partnerships(self, company_node: str, relationship_type: str = "PARTNER_OF", depth: int = 2) -> Set[str]:
@@ -181,6 +223,10 @@ class DeepGraphAnalyzer(ChimeraPlugin):
         Returns:
             A set of unique entity names connected via the specified relationship.
         """
+        if not self.graph:
+            logger.warning("Graph is not loaded for partnership analysis.")
+            return set()
+            
         if company_node not in self.graph:
             return set()
 
@@ -208,6 +254,13 @@ class DeepGraphAnalyzer(ChimeraPlugin):
         - 'find_partners': Requires 'company_node', 'relationship_type', 'depth'
         """
         task = data.get("task")
+        
+        # Ensure graph is loaded before running tasks
+        if not self.graph:
+             self.graph = self.graph_db.get_nx_graph()
+             if not self.graph:
+                 return {"status": "error", "message": "GraphDB is not available or empty."}
+                 
         if task == "find_indirect_paths":
             results = self.find_indirect_relationships(
                 start_node=data.get("start_node"),

@@ -10,6 +10,7 @@ from typing_extensions import Annotated
 from rich.panel import Panel
 import typer
 import logging
+import json  # <-- ADDED IMPORT
 from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
@@ -22,7 +23,7 @@ from .schemas import (
     CrowdfundingProject,         
     CrowdfundingAnalysisResult,  
     CrowdfundingCreator,
-    FinancialTransaction,
+    FinancialTransaction,  # <-- This schema is used
     MoneyFlowGraph,
     AmlSimulationResult,
     ScenarioImpact,      
@@ -384,24 +385,29 @@ def run_crowdfunding_analysis(
 
 # --- Advanced AML & Scenario Simulation Features ---
 
-def get_transactions_from_db(target: str) -> List[FinancialTransaction]:
-    """
-    Mock function to retrieve financial transactions for a target
-    from a hypothetical 'financial_transactions' table.
-    In a real app, this would be a complex query.
-    """
-    logger.info(f"Fetching transactions for {target} (MOCK DATA)")
-    # This is mock data for demonstration.
-    return [
-        FinancialTransaction(transaction_id="T1001", from_account="Acct_A", to_account="Acct_B", amount=9000, timestamp=datetime(2023, 1, 1, 10, 0, 0)),
-        FinancialTransaction(transaction_id="T1002", from_account="Acct_A", to_account="Acct_C", amount=8500, timestamp=datetime(2023, 1, 1, 11, 0, 0)),
-        FinancialTransaction(transaction_id="T1003", from_account="Acct_B", to_account="Acct_D", amount=8800, timestamp=datetime(2023, 1, 2, 12, 0, 0)),
-        FinancialTransaction(transaction_id="T1004", from_account="Acct_C", to_account="Acct_D", amount=8300, timestamp=datetime(2023, 1, 2, 13, 0, 0)),
-        FinancialTransaction(transaction_id="T1005", from_account="Acct_D", to_account="SUSPICIOUS_NODE_1", amount=17000, timestamp=datetime(2023, 1, 3, 14, 0, 0)),
-        FinancialTransaction(transaction_id="T1006", from_account="Acct_F", to_account="SUSPICIOUS_NODE_1", amount=50000, timestamp=datetime(2023, 1, 3, 15, 0, 0)),
-        FinancialTransaction(transaction_id="T1007", from_account="SUSPICIOUS_NODE_1", to_account="Offshore_E", amount=65000, timestamp=datetime(2023, 1, 4, 10, 0, 0)),
-        FinancialTransaction(transaction_id="T1008", from_account="Acct_G", to_account="Acct_H", amount=25000, timestamp=datetime(2023, 1, 5, 9, 0, 0)),
-    ]
+def _load_transactions_from_file(filepath: str) -> List[FinancialTransaction]:
+    """ (REAL) Loads financial transactions from a JSON file. """
+    logger.info(f"Loading transactions from {filepath}")
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        
+        # Expecting a list of transaction objects
+        if not isinstance(data, list):
+            raise ValueError("Invalid JSON format. Expected a list of transactions.")
+            
+        transactions = [FinancialTransaction.model_validate(t) for t in data]
+        return transactions
+    except FileNotFoundError:
+        console.print(f"[bold red]Error:[/bold red] Transactions file not found at {filepath}")
+        raise typer.Exit(code=1)
+    except json.JSONDecodeError:
+        console.print(f"[bold red]Error:[/bold red] Could not parse JSON from {filepath}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[bold red]Error loading transactions:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 
 def build_transaction_graph(
     transactions: List[FinancialTransaction],
@@ -421,6 +427,9 @@ def build_transaction_graph(
 @finint_app.command("visualize-flow")
 def run_visualize_money_flow(
     target: str = typer.Argument(..., help="Target entity to analyze money flow for."),
+    transactions_file: str = typer.Option(
+        ..., "--transactions-file", "-f", help="Path to a JSON file containing a list of transactions."
+    ),
     output_file: str = typer.Option(
         ..., "--output", "-o", help="Save the graph to an HTML file."
     ),
@@ -429,18 +438,17 @@ def run_visualize_money_flow(
     ),
 ):
     """
-    Analyzes financial transactions and builds a money flow network graph.
-    (Re-uses graph logic from graph_analyzer.py)
+    Analyzes financial transactions from a file and builds a money flow network graph.
     """
     console.print(f"Building money flow graph for [bold cyan]{target}[/bold cyan]...")
     
-    # 1. Get transaction data (using mock function)
-    transactions = get_transactions_from_db(target)
+    # 1. Get transaction data (from file)
+    transactions = _load_transactions_from_file(transactions_file)
     if not transactions:
-        console.print("[yellow]No transactions found for target.[/yellow]")
+        console.print("[yellow]No transactions found in file.[/yellow]")
         return
 
-    # 2. Build the graph object (re-using pyvis from graph_analyzer.py)
+    # 2. Build the graph object
     net = Network(height="800px", width="100%", notebook=True, directed=True)
     
     nodes = set()
@@ -487,13 +495,15 @@ def run_visualize_money_flow(
 @finint_app.command("detect-patterns")
 def run_aml_pattern_detection(
     target: str = typer.Argument(..., help="Target entity to scan for AML patterns."),
+    transactions_file: str = typer.Option(
+        ..., "--transactions-file", "-f", help="Path to a JSON file containing a list of transactions."
+    ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Save results to a JSON file."
     ),
 ):
     """
-    Uses AI to detect emerging money laundering techniques or behavior changes.
-    (Calls new ai_core.py function)
+    Uses AI to detect emerging money laundering techniques from a transaction file.
     """
     api_key = API_KEYS.google_api_key
     if not api_key:
@@ -503,9 +513,9 @@ def run_aml_pattern_detection(
     console.print(f"Running AI pattern detection for [bold cyan]{target}[/bold cyan]...")
     
     # 1. Get transaction data
-    transactions = get_transactions_from_db(target)
+    transactions = _load_transactions_from_file(transactions_file)
     if not transactions:
-        console.print("[yellow]No transactions found for target.[/yellow]")
+        console.print("[yellow]No transactions found in file.[/yellow]")
         return
 
     # 2. Call AI Core function
@@ -571,6 +581,9 @@ def run_scenario_simulation(
             help="The scenario to run (e.g., 'sanction', 'seizure').",
         ),
     ],
+    transactions_file: str = typer.Option(
+        ..., "--transactions-file", "-f", help="Path to a JSON file containing a list of transactions."
+    ),
     target_entity: Optional[str] = typer.Option(
         None,
         "--target",
@@ -579,8 +592,7 @@ def run_scenario_simulation(
     ),
 ):
     """
-    Tests "what-if" scenarios (e.g., sanctions) on a detected network.
-    (Re-uses graph logic from attack_path_simulator.py)
+    Tests "what-if" scenarios (e.g., sanctions) on a transaction network.
     """
     target = target_entity or target_node
     console.print(
@@ -588,7 +600,7 @@ def run_scenario_simulation(
     )
 
     # 1. Get transactions and build graph
-    transactions = get_transactions_from_db(target)
+    transactions = _load_transactions_from_file(transactions_file)
     if not transactions:
         console.print("[yellow]No transactions found to build network.[/yellow]")
         return
@@ -601,7 +613,6 @@ def run_scenario_simulation(
 
     # 2. Run simulation
     # This is a "downstream" simulation: what nodes are fed by the target_node?
-    # Re-uses logic from attack_path_simulator.py (graph traversal)
     try:
         # nx.descendants finds all nodes reachable from target_node
         downstream_nodes = list(nx.descendants(g, target_node))
@@ -612,10 +623,6 @@ def run_scenario_simulation(
             if g.has_edge(target_node, node):
                  total_value_frozen += g[target_node][node]["amount"]
             
-            # This traces all paths, which might be complex
-            # for path in nx.all_simple_paths(g, source=target_node, target=node):
-            #     pass # More complex value tracing logic would go here
-
         if not downstream_nodes:
             console.print(
                 f"[green]Scenario complete.[/green] Node '{target_node}' is a terminal node. No downstream impact."
