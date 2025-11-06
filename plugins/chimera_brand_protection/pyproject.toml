@@ -1,0 +1,43 @@
+# plugins/chimera_brand_protection/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_brand_protection"
+version = "1.0.0"
+description = "A Chimera Intel plugin for brand protection monitoring, triage, and scoring."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+#
+# "all dependencies" for this plugin:
+#
+# This plugin is part of the 'chimera-intel' monorepo and runs in the same
+# environment. The dependencies listed here are its direct imports,
+# which are expected to be provided (with specific versions)
+# by the main application's top-level 'pyproject.toml'.
+#
+dependencies = [
+    "fastapi>=0.100.0",
+    "pydantic>=1.10.0",
+    "typer>=0.9.0"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+#
+# This is the most important line:
+# It tells the plugin manager to load the class 'BrandProtectionPlugin'
+# from the 'chimera_brand_protection.main' module.
+#
+brand-protection = "chimera_brand_protection.main:BrandProtectionPlugin"
+
+[tool.setuptools.packages.find]
+# This tells setuptools to find the package code in the 'src' directory
+where = ["src"]

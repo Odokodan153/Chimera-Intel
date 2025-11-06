@@ -1,3 +1,4 @@
+# Chimera-Intel/Tests/test_forensic_vault.py
 import unittest
 import os
 import json
@@ -21,6 +22,11 @@ MOCK_DATETIME = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 MOCK_TS_TOKEN_B64 = "dG9rZW4="  # "token"
 MOCK_TS_RESPONSE_BYTES = b"dummy_ts_response_bytes"
 
+# Pre-calculate hash for the solid blue image
+# content = Image.new("RGB", (100, 100), color="blue").tobytes()
+# hashlib.sha256(content).hexdigest() -> 'a8f7d050c567a2167815b3f2f83c0f66b17a637a1f53630f48b111e813f875f0'
+BLUE_IMG_SHA256 = "a8f7d050c567a2167815b3f2f83c0f66b17a637a1f53630f48b111e813f875f0"
+
 
 class TestForensicVault(unittest.TestCase):
     """Test cases for the Forensic Vault & Advanced IMINT module."""
@@ -31,9 +37,9 @@ class TestForensicVault(unittest.TestCase):
         self.test_dir = pathlib.Path("test_vault_data")
         self.test_dir.mkdir(exist_ok=True)
         
-        # Create a dummy image file
-        self.dummy_image_path = self.test_dir / "test_image.jpg"
-        Image.new("RGB", (100, 100), color="blue").save(self.dummy_image_path)
+        # Create a dummy image file (using PNG to test conversion)
+        self.dummy_image_path = self.test_dir / "test_image.png"
+        Image.new("RGB", (100, 100), color="blue").save(self.dummy_image_path, "PNG")
         
         # Create a dummy keypair
         self.key_prefix = self.test_dir / "test_key"
@@ -103,9 +109,10 @@ class TestForensicVault(unittest.TestCase):
         self.assertIn("http://example.com/blue-square", result.stdout)
 
     # --- Test 3: Forensic Vault (Real Signing, Mocked Timestamping) ---
-
+    
+    @patch("chimera_intel.core.forensic_vault.datetime")
     @patch("chimera_intel.core.forensic_vault._get_timestamp_token")
-    def test_cli_create_and_verify_receipt(self, mock_get_timestamp):
+    def test_cli_create_and_verify_receipt(self, mock_get_timestamp, mock_datetime):
         """
         Tests creating a receipt (with real signing, mocked timestamping)
         and then successfully verifying it.
@@ -113,6 +120,7 @@ class TestForensicVault(unittest.TestCase):
         # --- 1. CREATE RECEIPT ---
         
         # Arrange mock for timestamping
+        mock_datetime.now.return_value = MOCK_DATETIME
         mock_get_timestamp.return_value = (MOCK_TS_RESPONSE_BYTES, MOCK_DATETIME)
 
         # Act
@@ -137,10 +145,14 @@ class TestForensicVault(unittest.TestCase):
         
         with open(self.receipt_path, "r") as f:
             receipt_data = json.load(f)
+        
         self.assertEqual(
             receipt_data["timestamp"], MOCK_DATETIME.isoformat()
         )
         self.assertIsNotNone(receipt_data["signature"])
+        # Verify the file hash of the blue PNG
+        self.assertEqual(receipt_data["file_hash"], BLUE_IMG_SHA256)
+
 
         # --- 2. VERIFY RECEIPT ---
         
@@ -149,35 +161,18 @@ class TestForensicVault(unittest.TestCase):
         with patch("chimera_intel.core.forensic_vault.rfc3161.get_tst_info") as mock_get_tst_info:
             
             # Recreate the metadata bytes that *would* have been timestamped
-            file_hash, _, metadata_bytes = \
-                self.runner.invoke(
-                    vault_app, ["create-receipt", "--dry-run"] # Need to implement dry-run
-                ).result # This is complex.
-            
-            # Simpler: Let's just mock the hash check
-            mock_tst_info = {
-                "genTime": MOCK_DATETIME,
-                "messageImprint": {
-                    "hashAlgorithm": {"algorithm": "2.16.840.1.101.3.4.2.1"}, # sha-256
-                    "hashedMessage": hashlib.sha256(b"metadata_bytes_would_be_here").digest()
-                }
-            }
-            # This part is hard to test without re-running the logic.
-            # Let's trust the create logic and patch the verify logic.
-            
-            # This is a better patch target
+            metadata_bytes_to_verify = json.dumps({
+                "file_path": self.dummy_image_path.name,
+                "file_hash": BLUE_IMG_SHA256,
+                "hash_algorithm": "sha256",
+                "created_at": MOCK_DATETIME.isoformat()
+            }, sort_keys=True).encode("utf-8")
+
             mock_tst_info_obj = {
                 "genTime": MOCK_DATETIME,
                 "messageImprint": {
-                    "hashAlgorithm": {"algorithm": "sha-256-oid"},
-                    "hashedMessage": hashlib.sha256(
-                        json.dumps({
-                            "file_path": self.dummy_image_path.name,
-                            "file_hash": "a8f7d050c567a2167815b3f2f83c0f66b17a637a1f53630f48b111e813f875f0", # Pre-calculated hash of the blue image
-                            "hash_algorithm": "sha256",
-                            "created_at": MOCK_DATETIME.isoformat()
-                        }, sort_keys=True).encode("utf-8")
-                    ).digest()
+                    "hashAlgorithm": {"algorithm": "2.16.840.1.101.3.4.2.1"}, # sha-256 OID
+                    "hashedMessage": hashlib.sha256(metadata_bytes_to_verify).digest()
                 }
             }
             mock_get_tst_info.return_value = mock_tst_info_obj
@@ -201,6 +196,63 @@ class TestForensicVault(unittest.TestCase):
             self.assertIn("Signature: VERIFIED", verify_result.stdout)
             self.assertIn("Timestamp: VERIFIED", verify_result.stdout)
             self.assertIn(f"Trusted Time: {MOCK_DATETIME}", verify_result.stdout)
+
+    # --- Test 4: Export Derivative (NEW TEST) ---
+
+    @patch("chimera_intel.core.forensic_vault.datetime")
+    @patch("chimera_intel.core.forensic_vault._get_timestamp_token")
+    def test_cli_export_derivative(self, mock_get_timestamp, mock_datetime):
+        """Tests the new 'export-derivative' CLI command."""
+        # Arrange
+        mock_datetime.now.return_value = MOCK_DATETIME
+        mock_get_timestamp.return_value = (MOCK_TS_RESPONSE_BYTES, MOCK_DATETIME)
+
+        exported_path = self.test_dir / "exported_image.jpg"
+        result_receipt_path = self.test_dir / "exported_image.jpg.receipt.json"
+
+        # Act
+        result = self.runner.invoke(
+            vault_app,
+            [
+                "export-derivative",
+                str(self.dummy_image_path),  # The "master" PNG
+                "--key",
+                str(self.priv_key_path),
+                "--format",
+                "jpg",
+                "--output",
+                str(exported_path),
+                "--tsa-url",
+                MOCK_TSA_URL,
+            ],
+        )
+
+        # Assert
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(exported_path.exists())
+        self.assertTrue(result_receipt_path.exists())
+        
+        # Check hashes in stdout
+        self.assertIn(f"Original Hash (SHA256): {BLUE_IMG_SHA256}", result.stdout)
+        
+        # Load the new JPG and calculate its hash to verify
+        exported_bytes = exported_path.read_bytes()
+        exported_hash = hashlib.sha256(exported_bytes).hexdigest()
+        self.assertIn(f"Exported Hash (SHA256): {exported_hash}", result.stdout)
+        
+        # Check the result receipt
+        with open(result_receipt_path, "r") as f:
+            receipt_data = json.load(f)
+        
+        self.assertEqual(receipt_data["original_file"], self.dummy_image_path.name)
+        self.assertEqual(receipt_data["exported_file"], exported_path.name)
+        self.assertEqual(receipt_data["original_hash_sha256"], BLUE_IMG_SHA256)
+        
+        # Check that the receipt *inside* the result matches the exported file
+        exported_receipt = receipt_data["exported_receipt"]
+        self.assertEqual(exported_receipt["file_hash"], exported_hash)
+        self.assertEqual(exported_receipt["file_path"], exported_path.name)
+        self.assertEqual(exported_receipt["timestamp"], MOCK_DATETIME.isoformat())
 
 
 if __name__ == "__main__":

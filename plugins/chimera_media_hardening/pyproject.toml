@@ -1,0 +1,16 @@
+[project]
+name = "chimera_media_hardening"
+version = "0.2.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A Chimera-Intel plugin for defensive media hardening and provenance."
+dependencies = [
+    "chimera-intel",
+    "Pillow",
+    "c2pa",
+    "imwatermark",
+    "opencv-python",
+    "numpy"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+media_hardening = "chimera_media_hardening.main:MediaHardeningPlugin"

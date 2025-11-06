@@ -1,0 +1,11 @@
+[project]
+name = "chimera_network_scanner"
+version = "0.1.0"
+description = "A Chimera-Intel plugin for network scanning."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+dependencies = [
+    "chimera_intel",
+]
+
+[project.entry-points."chimera_intel.plugins"]
+network_scanner = "chimera_network_scanner.main:NetworkScannerPlugin"

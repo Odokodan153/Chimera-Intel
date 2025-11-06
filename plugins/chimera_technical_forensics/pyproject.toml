@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_technical_forensics"
+version = "0.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A Chimera-Intel plugin for technical forensics (lighting, perspective, sync)."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # This plugin's dependencies are already in the main pyproject.toml
+    # e.g., "opencv-python", "librosa", "face_recognition"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+tech-forensics = "chimera_technical_forensics.main:cli_app"

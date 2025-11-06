@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-intel"
+version = "0.1.0"
+description = "Chimera Intel: A multi-modal intelligence and analysis platform."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# --- Core Dependencies ---
+# These are gathered from all the modules, including image_forensics,
+# response, forensic_vault, and the new playbook.
+dependencies = [
+    # Core CLI and formatting
+    "typer[all]>=0.9.0",  # Includes 'rich'
+    "rich>=13.0.0",
+
+    # Pydantic for schemas
+    "pydantic>=2.0.0",
+
+    # Config and secrets
+    "python-dotenv>=1.0.0",
+    
+    # Database (PostgreSQL)
+    "psycopg2-binary>=2.9.0",
+
+    # HTTP client
+    "httpx>=0.25.0",
+
+    # --- Image/Video/Audio Forensics (image_forensics_pipeline.py) ---
+    "Pillow>=10.0.0",                 # For PIL (Image processing)
+    "imagehash>=4.3.0",               # For pHash, dHash
+    "sentence-transformers>=2.2.0",   # For CLIP embeddings
+    "chromadb-client>=0.4.0",         # Vector DB
+    "moviepy>=1.0.3",                 # Video processing
+    "librosa>=0.10.0",                # Audio analysis
+    "numpy>=1.26.0",                  # Numeric processing for librosa/cv2
+    "opencv-python>=4.8.0",           # For cv2 (Face detection)
+
+    # --- Forensic Vault (forensic_vault.py) ---
+    "cryptography>=41.0.0",           # For signing
+    "rfc3161>=1.0.0",                 # For timestamping
+    "google-cloud-vision>=3.4.0",     # For Reverse Image Search
+]
+
+[project.optional-dependencies]
+# Dependencies for development and testing
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "mypy>=1.5.0",
+    "ruff>=0.1.0",
+    "pre-commit>=3.5.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your-repo/chimera-intel"
+"Bug Tracker" = "https://github.com/your-repo/chimera-intel/issues"
+
+# --- Entry Point ---
+# This makes 'chimera' a command-line tool that runs cli.py
+[project.scripts]
+chimera = "chimera_intel.cli:main_app"
+
+# --- Tool Configuration ---
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Look for packages in the 'src' directory
+
+[tool.ruff]
+line-length = 88
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true

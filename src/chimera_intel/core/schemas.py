@@ -4426,6 +4426,10 @@ class ImageForensicsReport(BaseModel):
     similarity_attribution: SimilarityAttributionResult
     manipulation_detection: ManipulationDetectionResult
     forensic_summary: str = "Analysis complete. Review results."
+    recommended_actions: List[str] = Field(
+        default_factory=list,
+        description="Recommended next steps for an analyst."
+    )
 
 class IngestionResult(BaseModel):
     """Result of a single data ingestion task."""
@@ -4879,3 +4883,130 @@ class SupplyChainAnalysisResult(BaseResult):
     analysis_summary: str
     anomalies_found: List[SupplyChainAnomaly] = Field(default_factory=list)
     total_anomalies: int = 0
+
+class TriageTask(BaseModel):
+    """Model for a single analyst triage task."""
+    task_id: str = Field(default_factory=lambda: f"triage-{uuid.uuid4()}")
+    media_url: str
+    source: str
+    provenance_data: Dict[str, Any] = Field(default_factory=dict)
+    detection_result: ManipulationDetectionResult
+    status: str = "pending"  # pending, confirmed_positive, false_positive
+    analyst_notes: Optional[str] = None
+
+class BrandThreat(BaseModel):
+    """Model for a scored and prioritized threat."""
+    threat_id: str = Field(default_factory=lambda: f"threat-{uuid.uuid4()}")
+    media_url: str
+    source: str
+    triage_status: str
+    detection_score: float = Field(..., ge=0, le=1)
+    reach_score: float = Field(..., ge=0, le=1)
+    final_threat_score: float = Field(..., ge=0, le=1)
+
+class SourceTriageResult(BaseModel):
+    """Result model for a source triage check."""
+    url: str
+    domain: str
+    is_social_media: bool = False
+    domain_creation_date: Optional[datetime] = None
+    domain_age_days: Optional[int] = None
+    page_title: Optional[str] = None
+    profile_details: Dict[str, str] = Field(default_factory=dict)
+    indicators: List[str] = Field(default_factory=list)
+
+class TemporalAnalysisResult(BaseResult):
+    """Result from temporal artifact analysis (e.g., optical flow, 3D-CNN)."""
+    artifacts_found: List[str] = []
+    temporal_inconsistency_score: float = 0.0
+    details: str = ""
+
+class SyntheticVoiceAnalysisResult(BaseResult):
+    """Result from a dedicated synthetic voice detector (ASV)."""
+    is_synthetic: bool = False
+    confidence: float = 0.0
+    details: str = ""
+
+class EnsembleAnalysisResult(BaseResult):
+    """Final combined result from all detectors."""
+    final_fake_probability: float = 0.0
+    frame_analysis: Optional[DeepfakeAnalysisResult] = None
+    temporal_analysis: Optional[TemporalAnalysisResult] = None
+    voice_analysis: Optional[SyntheticVoiceAnalysisResult] = None
+    explainability_report: Dict[str, Any] = {}
+
+class MediaAssetStatus(str, Enum):
+    """Enumeration for the approval status of a media asset."""
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class ConsentRecord(BaseModel):
+    """
+    Model for a consent form log.
+    This record is stored in the vault, and its receipt_id is
+    used in the TrustedMediaManifest.
+    """
+    consent_id: str = Field(
+        default_factory=lambda: f"consent-{uuid.uuid4()}",
+        description="Unique ID for this consent record."
+    )
+    person_name: str
+    contact_info: Optional[str] = None
+    details: str = Field(
+        description="Details of what the consent covers (e.g., 'Use of likeness for Project Orion')."
+    )
+    consent_form_sha256: str = Field(
+        description="SHA-256 hash of the signed consent form file."
+    )
+    consent_form_storage_id: str = Field(
+        description="The receipt_id of the encrypted consent form in the Evidence Vault."
+    )
+    log_timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+class ImageHashResult(BaseModel):
+    phash: Optional[str] = None
+    dhash: Optional[str] = None
+
+class ReverseImageMatch(BaseModel):
+    url: str
+    title: str
+
+class ReverseImageSearchResult(BaseModel):
+    best_guess: Optional[str] = None
+    matches: List[ReverseImageMatch] = Field(default_factory=list)
+
+class VaultReceipt(BaseModel):
+    file_path: str
+    file_hash: str
+    hash_algorithm: str = "sha256"
+    metadata_hash: str
+    signature: str
+    timestamp: Optional[datetime] = None
+    timestamp_token: Optional[str] = None
+
+class VaultExportResult(BaseModel):
+    original_file: str
+    original_hash_sha256: str
+    exported_file: str
+    exported_hash_sha256: str
+    export_format: str
+    exported_receipt: VaultReceipt
+
+class ServiceBanner(BaseModel):
+    name: str = "unknown"
+    banner: str
+    software: Optional[str] = Field(None, description="Parsed software name, e.g., OpenSSH")
+    version: Optional[str] = Field(None, description="Parsed software version, e.g., 8.9p1")
+
+class PortScanResult(BaseModel):
+    port: int
+    is_open: bool
+    service: Optional[ServiceBanner] = None
+
+class NetworkScanReport(BaseModel):
+    target_ip: str
+    ports_scanned: List[int]
+    open_ports: List[PortScanResult]

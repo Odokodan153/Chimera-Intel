@@ -1,0 +1,21 @@
+[project]
+name = "chimera_source_triage"
+version = "0.1.0"
+description = "Plugin for source triage and URL OSINT."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "playwright",
+    "python-whois",
+]
+
+[project.entry-points."chimera_intel.plugins.cli"]
+# This line is changed to point to the class
+source_triage = "chimera_source_triage.main:SourceTriagePlugin"

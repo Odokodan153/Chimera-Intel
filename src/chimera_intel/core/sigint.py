@@ -291,69 +291,6 @@ def analyze_digital_fingerprint(target_domain: str) -> Dict[str, Any]:
     return fingerprint
 
 
-def scan_telemetry_leakage(
-    keywords: List[str],
-) -> Dict[str, Any]:
-    """
-    Scans public sources for accidental telemetry or code leakage.
-    """
-    console.print(f"Scanning for telemetry leakage with keywords: {keywords}...")
-    results = {"github": [], "pastebin": []}
-
-    # Use httpx for async-capable HTTP requests
-    client = httpx.Client(http2=True, timeout=10.0)
-    
-    # Note: A real-world implementation would require a GitHub token passed via headers
-    # and a dedicated service for Pastebin monitoring.
-    headers = {
-        "Accept": "application/vnd.github.v3.text-match+json",
-        # "Authorization": "token YOUR_GITHUB_TOKEN" # Add token here
-    }
-
-
-    # 1. Search GitHub Code
-    try:
-        search_query = "+".join([f'"{k}"' for k in keywords])
-        url = f"https://api.github.com/search/code?q={search_query}"
-        response = client.get(url, headers=headers)
-        response.raise_for_status()
-        gh_results = response.json()
-
-        for item in gh_results.get("items", []):
-            results["github"].append(
-                {
-                    "url": item.get("html_url"),
-                    "repo": item.get("repository", {}).get("full_name"),
-                    "file_path": item.get("path"),
-                    "matches": [
-                        match.get("fragment") for match in item.get("text_matches", [])
-                    ],
-                }
-            )
-
-    except Exception as e:
-        console.print(f"[bold red]GitHub search failed: {e}[/bold red]")
-        results["github"] = f"Error: {e}"
-
-    # 2. Search Pastebin (Simulated)
-    # A real implementation would use a service that legally monitors pastes.
-    try:
-        console.print(
-            "[bold yellow]Pastebin scan is simulated. "
-            "Real-time public scraping is against ToS. "
-            "A proper implementation requires a pro API key or monitoring service."
-            "[/bold yellow]"
-        )
-        results["pastebin"] = "Simulated. No public API for keyword search."
-
-    except Exception as e:
-        results["pastebin"] = f"Error: {e}"
-
-    client.close()
-    console.print("[bold green]Telemetry leakage scan complete.[/bold green]")
-    return results
-
-
 def model_network_traffic(
     pcap_file_path: str, common_ports: Optional[List[int]] = None
 ) -> Dict[str, Any]:
@@ -645,31 +582,6 @@ def cli_analyze_digital_fingerprint(
         save_scan_to_db(
             target=target_domain, module="sigint_fingerprint", data=results
         )
-
-
-@sigint_app.command("scan-telemetry")
-def cli_scan_telemetry_leakage(
-    keywords: List[str] = typer.Argument(
-        ..., help="List of keywords to search for (e.D., 'internal-api', 'dev-key')."
-    ),
-    output_file: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Save the results to a JSON file."
-    ),
-):
-    """Scans public sources (GitHub, Pastebin) for data leakage."""
-    results = scan_telemetry_leakage(keywords)
-    if not results:
-        raise typer.Exit(code=1)
-
-    if output_file:
-        save_or_print_results(results, output_file)
-    else:
-        typer.echo(json.dumps(results, indent=2))
-    if results:
-        save_scan_to_db(
-            target=",".join(keywords), module="sigint_telemetry_leak", data=results
-        )
-
 
 @sigint_app.command("model-traffic")
 def cli_model_network_traffic(

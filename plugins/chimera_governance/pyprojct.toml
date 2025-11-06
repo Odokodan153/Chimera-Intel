@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_governance"
+version = "0.1.0"
+description = "Chimera Intel plugin for media governance, approvals, and consent logs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    # This plugin relies on core modules (Evidence Vault, Schemas)
+    # and does not introduce new external dependencies.
+]
+
+[project.entry-points."chimera_intel.plugins"]
+governance = "chimera_governance.main:create_plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

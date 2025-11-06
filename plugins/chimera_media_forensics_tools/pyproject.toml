@@ -1,0 +1,37 @@
+# plugins/chimera_media_forensics_tools/pyproject.toml
+
+[tool.poetry]
+name = "chimera-media-forensics-tools"
+version = "1.1.0"
+description = "A Chimera-Intel plugin for core media forensics tools (ExifTool, FFmpeg, etc.)"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "chimera_media_forensics_tools", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+# These dependencies are required by the 'real' implementations
+# in media_forensics_tools.py. They should also be added
+# to the main project's pyproject.toml if not already present.
+pillow = "*"
+opencv-python = "*"
+face-recognition = "*"
+torch = "*"
+torchvision = "*"
+tensorflow = "*"
+numpy = "*"
+requests = "*"
+scenedetect = "*"
+scikit-image = "*"
+
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This entry point tells the main chimera_intel app to run the
+# __init_plugin__ function from the main.py file.
+"media_forensics_tools" = "chimera_media_forensics_tools.main:__init_plugin__"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
