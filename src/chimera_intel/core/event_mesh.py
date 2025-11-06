@@ -14,7 +14,7 @@ import hashlib
 import typer
 from typing import List, Set, Dict, Any, Optional
 from datetime import datetime, timezone
-from .schemas import Event
+from .schemas import Event, FeedConfig
 from .correlation_engine import CorrelationEngine
 from .http_client import async_client
 from .utils import console, save_or_print_results

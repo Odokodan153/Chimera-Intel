@@ -3471,6 +3471,27 @@ class InfluenceMapResult(BaseModel):
     influence_scores: Dict[str, float] = Field(default_factory=dict)
     analysis_text: str
     error: Optional[str] = None
+class QuickWinMetricsResult(BaseModel):
+    """
+    Model for the 'quick win' metrics for a project.
+    """
+    project_name: str
+    time_to_first_subdomain_discovery_hours: Optional[float] = Field(
+        None, description="Time from project creation to first new subdomain discovery (in hours)."
+    )
+    corroboration_rate_percent: Optional[float] = Field(
+        None, description="Percentage of findings with 2 or more sources."
+    )
+    false_positive_rate_by_playbook: Dict[str, float] = Field(
+        default_factory=dict, description="FP rate (%) per alert type (playbook)."
+    )
+    mean_time_to_close_alert_hours: Optional[float] = Field(
+        None, description="Average time (in hours) from alert creation to closure (non-OPEN status)."
+    )
+    total_unique_subdomains_found: Optional[int] = Field(
+        None, description="Total unique subdomains found in the latest footprint."
+    )
+    error: Optional[str] = None
 
 class TradeFlowPeriod(BaseModel):
     """
@@ -5010,3 +5031,35 @@ class NetworkScanReport(BaseModel):
     target_ip: str
     ports_scanned: List[int]
     open_ports: List[PortScanResult]
+
+class ActionRiskLevel(str, Enum):
+    """Defines the risk classification for a module or action."""
+    PASSIVE = "Passive"           # E.g., reading local data, simple lookups
+    BENIGN_INTERACTION = "Benign" # E.g., non-intrusive web searches
+    AGGRESSIVE = "Aggressive"     # E.g., network scanning, red team actions
+    DISALLOWED = "Disallowed"     # E.g., actions that are legally prohibited
+
+
+class ActionMetadata(BaseModel):
+    """Stores risk and compliance metadata for a specific action."""
+    description: str
+    risk_level: ActionRiskLevel
+    legal_metadata: str = "No specific legal constraints."
+    consent_required: bool = False
+
+class SharingPolicy(BaseModel):
+    """Defines the rules for generating a shareable report."""
+    anonymize_sources: bool = Field(True, description="Replace all source data with generic placeholders.")
+    aggregate_findings: bool = Field(True, description="Combine all 'Low' and 'Medium' severity findings into a single summary entry.")
+    redact_keywords: Optional[List[str]] = Field(None, description="A list of specific keywords to redact.")
+
+class LabEnvironment(BaseModel):
+    """Represents a provisioned, isolated lab environment."""
+    lab_id: str = Field(..., description="The unique ID of the provisioned container.")
+    lab_name: str
+    target_profile: Dict[str, Any]
+    emulation_plan: Dict[str, Any]
+    status: str = "provisioning"
+    ip_address: str
+    state_file_path: str
+

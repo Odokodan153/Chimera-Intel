@@ -1,0 +1,32 @@
+# Chimera-Intel/plugins/chimera_analyst_opsec/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-analyst-opsec"
+version = "0.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A plugin for managing analyst operational security, including key rotation and session auditing."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# This plugin's code is part of the main chimera-intel package,
+# so its dependencies are met by the core installation.
+# If it had its own dependencies, they would go here.
+dependencies = [
+    # "chimera-intel" (if it's a separate, installable package)
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Look for packages in the 'src' directory
+
+[project.entry-points."chimera.plugins"]
+# This is the magic line that registers the plugin.
+# 'analyst_opsec' = '<package_name>.<module_name>:<Class_Name>'
+analyst_opsec = "chimera_analyst_opsec.main:AnalystOpsecPlugin"

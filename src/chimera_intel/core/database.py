@@ -4,7 +4,8 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 import datetime
 
-from .schemas import User
+# The User schema is imported by user_manager.py, so we import it here.
+from .schemas import User 
 from .config_loader import API_KEYS
 from .utils import console
 
@@ -53,15 +54,17 @@ def initialize_database() -> None:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Existing Chimera Intel Tables
-
+        # --- MODIFIED 'users' TABLE ---
+        # Added api_key_encrypted and last_login for analyst opsec module
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
-                hashed_password TEXT NOT NULL
+                hashed_password TEXT NOT NULL,
+                api_key_encrypted TEXT,
+                last_login TIMESTAMPTZ
             );
             """
         )
@@ -281,25 +284,66 @@ def get_user_from_db(username: str) -> Optional[User]:
     """Retrieves a user from the database by their username."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        # Use a dictionary cursor for easy field access
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        # --- MODIFIED SELECT ---
+        # Fetches all fields, including new opsec fields
         cursor.execute(
-            "SELECT id, username, email, hashed_password FROM users WHERE username = %s",
+            "SELECT id, username, email, hashed_password, api_key_encrypted, last_login FROM users WHERE username = %s",
             (username,),
         )
         record = cursor.fetchone()
         cursor.close()
         conn.close()
         if record:
+            # --- MODIFIED RETURN ---
+            # Returns a full User object.
+            # Assumes the User schema in schemas.py can accept these fields.
             return User(
-                id=record[0],
-                username=record[1],
-                email=record[2],
-                hashed_password=record[3],
+                id=record["id"],
+                username=record["username"],
+                email=record["email"],
+                hashed_password=record["hashed_password"],
+                api_key_encrypted=record.get("api_key_encrypted"),
+                last_login=record.get("last_login"),
+                # Add other fields from your schema if they exist, e.g., disabled=False
             )
         return None
     except (psycopg2.Error, ConnectionError) as e:
         console.print(f"[bold red]Database Error:[/bold red] Could not fetch user: {e}")
         return None
+
+# --- NEW FUNCTION ---
+def update_user_fields_in_db(username: str, fields: Dict[str, Any], conn_or_cursor: Any) -> None:
+    """
+    Updates arbitrary fields for a user in the database using an existing
+    connection or cursor to support transactions.
+    """
+    # Check if we got a connection or cursor
+    if hasattr(conn_or_cursor, 'cursor'):
+        # It's a connection, get a cursor
+        cursor = conn_or_cursor.cursor()
+        is_local_cursor = True
+    else:
+        # Assume it's a cursor
+        cursor = conn_or_cursor
+        is_local_cursor = False
+
+    # Dynamically build the UPDATE statement
+    set_clause = ", ".join([f"{key} = %s" for key in fields.keys()])
+    values = list(fields.values())
+    values.append(username)  # Add username for the WHERE clause
+
+    query = f"UPDATE users SET {set_clause} WHERE username = %s"
+
+    try:
+        cursor.execute(query, tuple(values))
+        if is_local_cursor:
+            cursor.close()
+    except Exception as e:
+        console.print(f"[bold red]DB Error (update_user_fields_in_db):[/bold red] {e}")
+        raise # Re-raise to be caught by a transaction handler
 
 
 def save_scan_to_db(

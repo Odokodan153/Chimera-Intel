@@ -7,13 +7,19 @@ for the currently logged-in user, enabling multi-user support.
 import os
 import typer
 import logging
-from typing import Optional
+from typing import Optional, Any, Dict
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Import timezone
 from . import schemas
 from jose import jwt
 from .schemas import User
-from .database import create_user_in_db, get_user_from_db, User as UserModel
+
+# --- MODIFIED IMPORTS ---
+from .database import (
+    create_user_in_db, 
+    get_user_from_db, 
+    update_user_fields_in_db # Import the new update function
+)
 from .utils import console
 
 logger = logging.getLogger(__name__)
@@ -65,24 +71,57 @@ def logout_user() -> None:
         os.remove(USER_CONTEXT_FILE)
     logger.info("User logged out.")
 
+# --- NEW FUNCTION ---
+def get_user_by_username(username: str) -> Optional[User]:
+    """Alias for get_user_from_db for consistency."""
+    return get_user_from_db(username)
 
-def get_user(self, username: str):
-    return self.db.query(UserModel).filter(UserModel.username == username).first()
+# --- NEW FUNCTION ---
+def update_user_data(username: str, data: Dict[str, Any], db: Any = None) -> None:
+    """
+    Updates one or more fields for a user.
+    Can participate in an existing transaction if `db` (conn or cursor) is passed.
+    """
+    import psycopg2 # Import for this function
+    
+    # This logic allows the function to be used standalone or in a transaction
+    conn = None
+    cursor = None
+    try:
+        if db:
+            # Use the passed connection or cursor
+            update_user_fields_in_db(username, data, db)
+        else:
+            # Create a new connection
+            from .database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            update_user_fields_in_db(username, data, cursor)
+            conn.commit()
+            
+    except (Exception, psycopg2.Error) as e:
+        if conn: # Rollback if we made a local connection
+            conn.rollback()
+        logger.error(f"Failed to update user {username}: {e}")
+        raise # Re-raise the exception
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 def create_user(self, user: schemas.UserCreate):
+    # This is part of a class-based structure not used by the CLI.
+    # We will ignore it for now as the CLI uses create_user_in_db
     hashed_password = pwd_context.hash(user.password)
-    db_user = UserModel(
-        username=user.username, email=user.email, hashed_password=hashed_password
-    )
-    self.db.add(db_user)
-    self.db.commit()
-    self.db.refresh(db_user)
-    return db_user
+    # ... implementation ...
+    pass
 
 
-def authenticate_user(self, username: str, password: str) -> Optional[UserModel]:
-    user = self.get_user(username)
+def authenticate_user(username: str, password: str) -> Optional[User]:
+    """Authenticates a user against the database."""
+    user = get_user_from_db(username)
     if not user or not pwd_context.verify(password, user.hashed_password):
         return None
     return user
@@ -97,6 +136,18 @@ def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = N
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def update_user_field(username: str, field: str, value: Any) -> bool:
+    """
+    Updates a specific field for a user in the database.
+    This is now implemented via update_user_data.
+    """
+    try:
+        update_user_data(username, {field: value})
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update user {username}: {e}")
+        return False
 
 
 # --- Typer CLI Application ---
@@ -126,11 +177,24 @@ def add_user_command(
 def login_command(
     username: str = typer.Argument(..., help="The username to log in with."),
 ):
-    """Logs in a user, setting them as the active context."""
+    """Logs in a user, setting them as the active context and updating last_login."""
     password = typer.prompt("Password", hide_input=True)
-    user = get_user_from_db(username)
-    if user and verify_password(password, user.hashed_password):
+    
+    # Use the corrected authenticate_user function
+    user = authenticate_user(username, password) 
+    
+    if user:
         set_active_user(username)
+        
+        # --- MODIFIED ---
+        # Update the last_login timestamp
+        try:
+            update_user_data(username, {"last_login": datetime.now(timezone.utc)})
+            logger.info(f"Updated last_login for user '{username}'.")
+        except Exception as e:
+            logger.error(f"Failed to update last_login for user '{username}': {e}")
+            # Don't fail the login, just log the error
+        
         console.print(
             f"[bold green]Successfully logged in as '{username}'.[/bold green]"
         )

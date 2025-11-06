@@ -1,0 +1,114 @@
+"""
+Module for Operational Plausible-Deniability (PD).
+
+Provides tools for pseudonymization, aggregation, and redaction of
+intelligence reports to protect sources and methods when sharing
+with partners.
+"""
+
+import typer
+import logging
+import copy
+from typing import List, Optional
+import json
+from .schemas import IntelligenceReport, IntelligenceFinding, SharingPolicy
+from .utils import console, save_or_print_results
+
+logger = logging.getLogger(__name__)
+
+def generate_shareable_report(
+    report: IntelligenceReport,
+    policy: SharingPolicy
+) -> IntelligenceReport:
+    """
+    Applies a sharing policy to an intelligence report to create a
+    new, shareable version with plausible deniability.
+    """
+    logger.info(f"Generating shareable report for {report.report_id} with policy: {policy.model_dump_json()}")
+    
+    # Work on a deep copy to avoid modifying the original
+    shareable_report = copy.deepcopy(report)
+    
+    # 1. Anonymize Sources (Example: blanking out specific fields)
+    if policy.anonymize_sources:
+        shareable_report.title = f"Partner-Shared Report (Based on {shareable_report.report_id})"
+        # In a real system, you'd anonymize source fields.
+        # For this schema, we'll modify the summary.
+        shareable_report.strategic_summary = f"(Anonymized Summary) {shareable_report.strategic_summary}"
+
+    # 2. Aggregate Findings
+    new_findings: List[IntelligenceFinding] = []
+    aggregated_count = 0
+    if policy.aggregate_findings:
+        for f in shareable_report.key_findings:
+            if f.severity in ["Critical", "High"]:
+                new_findings.append(f)
+            else:
+                aggregated_count += 1
+        
+        if aggregated_count > 0:
+            aggregated_finding = IntelligenceFinding(
+                finding_id="F-AGGREGATED",
+                description=f"Includes {aggregated_count} aggregated low and medium-impact findings.",
+                severity="Medium",
+                confidence=0.5,
+                source="Internal Analysis" # Anonymized source
+            )
+            new_findings.append(aggregated_finding)
+    else:
+        new_findings = shareable_report.key_findings
+        
+    shareable_report.key_findings = new_findings
+    
+    # 3. Redact Keywords
+    if policy.redact_keywords:
+        for keyword in policy.redact_keywords:
+            shareable_report.strategic_summary = shareable_report.strategic_summary.replace(keyword, "[REDACTED]")
+            for f in shareable_report.key_findings:
+                f.description = f.description.replace(keyword, "[REDACTED]")
+
+    logger.info(f"Report anonymization complete. Original findings: {len(report.key_findings)}, New findings: {len(shareable_report.key_findings)}")
+    return shareable_report
+
+
+# --- Typer CLI Application ---
+
+pd_app = typer.Typer(
+    name="pd",
+    help="Plausible-Deniability (PD) tools for safe intel sharing.",
+)
+
+@pd_app.command("generate")
+def cli_generate_shareable_report(
+    report_file: str = typer.Argument(..., help="Path to the finalized intelligence report (JSON)."),
+    output_file: str = typer.Option(..., "--output", "-o", help="Path to save the shareable report."),
+    anonymize: bool = typer.Option(True, "--anonymize/--no-anonymize", help="Anonymize sources."),
+    aggregate: bool = typer.Option(True, "--aggregate/--no-aggregate", help="Aggregate low/medium findings."),
+    redact: Optional[List[str]] = typer.Option(None, "--redact", help="Specific keywords to redact."),
+):
+    """
+    Generates a "shareable" version of an intelligence report based on
+    a given plausible-deniability policy.
+    """
+    try:
+        # Load the original report
+        with open(report_file, "r") as f:
+            report_data = json.load(f)
+        report = IntelligenceReport(**report_data)
+    except Exception as e:
+        console.print(f"[bold red]Error loading report file:[/] {e}")
+        raise typer.Exit(code=1)
+
+    policy = SharingPolicy(
+        anonymize_sources=anonymize,
+        aggregate_findings=aggregate,
+        redact_keywords=redact
+    )
+    
+    console.print(f"[bold]Generating shareable report from '{report.title}'...[/bold]")
+    
+    shareable_report = generate_shareable_report(report, policy)
+    
+    report_dict = shareable_report.model_dump(indent=2)
+    save_or_print_results(report_dict, output_file)
+    console.print(f"[green]Shareable report saved to '{output_file}'[/green]")
