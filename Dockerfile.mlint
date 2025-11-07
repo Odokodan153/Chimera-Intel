@@ -1,0 +1,52 @@
+# --- Stage 1: Builder ---
+# Use a full OS image to build wheels for C-extensions
+FROM python:3.11-slim-bookworm as builder
+
+WORKDIR /usr/src/app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install the package builder
+RUN pip install --upgrade pip build
+
+# Copy project files
+COPY pyproject.toml .
+COPY src ./src
+
+# Build wheels
+# This compiles any C-extensions (like in numpy, pandas)
+RUN python -m build --wheel --outdir /usr/src/app/wheels .
+
+# --- Stage 2: Final Production Image ---
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Create a non-root user
+RUN useradd --system --create-home appuser
+USER appuser
+
+# Copy built wheels from builder
+COPY --from=builder /usr/src/app/wheels /wheels
+
+# Install wheels
+# This is much faster than `pip install -r requirements.txt`
+# because the wheels are pre-built
+RUN pip install --no-cache /wheels/*
+
+# Copy models (if they are stored locally and not in S3)
+# You might want to copy models into the image, or fetch them on startup
+COPY iso_forest.joblib .
+COPY xgb_model.joblib .
+
+# Expose ports
+EXPOSE 8000 # FastAPI
+EXPOSE 8001 # Prometheus
+
+# Set default command
+# This runs the 'mlint.py' module, finds the 'cli_app' Typer object,
+# and executes the 'run-realtime-monitor' command, which starts the web server.
+CMD ["python", "-m", "chimera_intel.core.mlint", "run-realtime-monitor", "--host", "0.0.0.0", "--port", "8000"]

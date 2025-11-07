@@ -5063,3 +5063,236 @@ class LabEnvironment(BaseModel):
     ip_address: str
     state_file_path: str
 
+class RiskLevel(str, Enum):
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+    CRITICAL = "Critical"
+
+class AnalystStatus(str, Enum):
+    PENDING_REVIEW = "Pending Review"
+    UNDER_REVIEW = "Under Review"
+    ESCALATED = "Escalated"
+    CLOSED_FALSE_POSITIVE = "Closed (False Positive)"
+    CLOSED_TRUE_POSITIVE_SAR = "Closed (True Positive, SAR Filed)"
+
+class EntityType(str, Enum):
+    WALLET = "Wallet"
+    COMPANY = "Company"
+    PERSON = "Person"
+
+# --- Input & Raw Data Schemas ---
+
+class Transaction(BaseModel):
+    tx_id: str = Field(..., description="Unique transaction identifier")
+    timestamp: datetime = Field(default_factory=datetime.now)
+    amount: float
+    currency: str
+    from_entity: str = Field(..., description="Source entity ID (e.g., wallet, account)")
+    to_entity: str = Field(..., description="Destination entity ID")
+    metadata: Optional[Dict[str, Any]] = None
+
+class SwiftMessage(BaseModel):
+    mt_type: str = Field(..., description="SWIFT Message Type (e.g., MT103)")
+    raw_content: str
+    sender_bic: str
+    receiver_bic: str
+    amount: float
+    currency: str
+    value_date: datetime
+    ordering_customer: str
+    beneficiary_customer: str
+
+class Entity(BaseModel):
+    entity_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    entity_type: EntityType
+    addresses: List[str] = [] # Can be wallet addresses, physical addresses
+    jurisdiction: Optional[str] = None
+
+# --- Intelligence & Analysis Result Schemas ---
+
+class SanctionHit(BaseModel):
+    source_list: str = Field(..., description="e.g., 'OFAC_SDN', 'EU_Consolidated'")
+    entity_name: str
+    match_score: float
+    details: Dict[str, Any]
+
+class UboInfo(BaseModel):
+    company_name: str
+    ubo_name: str
+    ubo_nationality: Optional[str] = None
+    confidence_score: float = Field(..., description="Confidence in the UBO data (Req A2)")
+    source: str = Field(default="OpenCorporates")
+
+class AdverseMediaHit(BaseModel):
+    url: str
+    headline: str
+    source_name: str
+    publish_date: Optional[datetime] = None
+    snippet: str
+    risk_categories: List[str] = [] # e.g., 'Fraud', 'Terrorism', 'Bribery'
+
+class GraphAnalyticsResult(BaseModel):
+    page_rank_score: Optional[float] = None
+    community_id: Optional[int] = None
+    centrality_score: Optional[float] = None
+    connected_high_risk_entities: int = 0
+
+class ExplainabilityResult(BaseModel):
+    # As per Req B3, E5
+    top_contributing_features: Dict[str, float] = Field(..., description="Top 5 features and their SHAP/LIME values")
+    human_readable_summary: str
+
+class SwiftAnalysisResult(BaseModel):
+    risk_score: float # 0.0 - 1.0
+    risk_level: RiskLevel
+    red_flags: List[str] = Field(..., description="List of triggered rules, e.g., 'High-risk jurisdiction'")
+
+# --- Core Risk & Alert Schemas ---
+
+class EntityRiskResult(BaseModel):
+    entity: Entity
+    risk_score: float # 0.0 - 1.0
+    risk_level: RiskLevel
+    sanction_hits: List[SanctionHit] = []
+    ubo_info: Optional[UboInfo] = None
+    adverse_media: List[AdverseMediaHit] = []
+    adverse_media_summary_ai: Optional[str] = None # For mlint_ai
+    graph_analytics: Optional[GraphAnalyticsResult] = None
+    explainability: Optional[ExplainabilityResult] = None
+
+class TransactionAnalysisResult(BaseModel):
+    transaction: Transaction
+    risk_score: float # 0.0 - 1.0
+    risk_level: RiskLevel
+    # As per Req B2: Combine unsupervised + supervised
+    anomaly_score_unsupervised: float # e.g., from IsolationForest
+    risk_score_supervised: float # e.g., from XGBoost
+    explainability: Optional[ExplainabilityResult] = None # As per Req E5
+    contributing_features: Optional[Dict[str, Any]] = None # Feature snapshot
+
+class Alert(BaseModel):
+    # As per Req E3
+    alert_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = Field(default_factory=datetime.now)
+    tx_id: Optional[str] = None
+    entity_id: Optional[str] = None
+    risk_score: float
+    risk_level: RiskLevel
+    reason: str = Field(..., description="Summary of why alert was triggered")
+    feature_snapshot: Dict[str, Any] # Per Req E3
+    analyst_status: AnalystStatus = Field(default=AnalystStatus.PENDING_REVIEW) # Per Req A3
+    analyst_notes: Optional[str] = None
+    tags: List[str] = []
+
+class EntityType(str, Enum):
+    PERSON = "Person"
+    COMPANY = "Company"
+    WALLET = "Wallet"
+
+class RiskLevel(str, Enum):
+    UNKNOWN = "Unknown"
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+    CRITICAL = "Critical"
+
+class AnalystStatus(str, Enum):
+    PENDING_REVIEW = "Pending Review"
+    IN_REVIEW = "In Review"
+    ESCALATED = "Escalated"
+    CLOSED_FALSE_POSITIVE = "Closed (False Positive)"
+    CLOSED_TRUE_POSITIVE = "Closed (True Positive)"
+
+# --- Core Data Models ---
+
+class Entity(BaseModel):
+    name: str
+    entity_type: EntityType
+    jurisdiction: Optional[str] = None
+    addresses: List[str] = Field(default_factory=list)
+    entity_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+class Transaction(BaseModel):
+    tx_id: str
+    from_entity: str # e.g., "acct:12345" or "wallet:0xabc"
+    to_entity: str
+    amount: float
+    currency: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class SwiftMessage(BaseModel):
+    mt_type: str
+    sender_bic: str
+    receiver_bic: str
+    amount: float
+    currency: str
+    raw_content: str
+    message_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+# --- Intelligence Results ---
+
+class SanctionHit(BaseModel):
+    source_list: str
+    entity_name: str
+    match_score: float
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+class PepHit(BaseModel):
+    name: str
+    position: str
+    country: str
+    source_url: str
+
+class UboInfo(BaseModel):
+    company_name: str
+    ubo_name: str
+    confidence_score: float
+    source: str
+
+class AdverseMediaHit(BaseModel):
+    url: str
+    headline: str
+    source_name: str
+    publish_date: Optional[datetime] = None
+    snippet: str
+    risk_categories: List[str] = Field(default_factory=list)
+
+# --- Analysis & Alerting ---
+
+class ExplainabilityResult(BaseModel):
+    top_contributing_features: Dict[str, float]
+    human_readable_summary: str
+
+class TransactionAnalysisResult(BaseModel):
+    transaction: Transaction
+    risk_score: float
+    risk_level: RiskLevel
+    anomaly_score_unsupervised: float
+    risk_score_supervised: float
+    explainability: Optional[ExplainabilityResult] = None
+    contributing_features: Dict[str, Any] = Field(default_factory=dict)
+
+class SwiftAnalysisResult(BaseModel):
+    risk_score: float
+    risk_level: RiskLevel
+    red_flags: List[str] = Field(default_factory=list)
+
+class Alert(BaseModel):
+    alert_id: str = Field(default_factory=lambda: f"ALERT-{uuid.uuid4()}")
+    timestamp: datetime = Field(default_factory=datetime.now)
+    tx_id: Optional[str] = None
+    risk_score: float
+    risk_level: RiskLevel
+    reason: str
+    feature_snapshot: Dict[str, Any] = Field(default_factory=dict)
+    analyst_status: AnalystStatus = AnalystStatus.PENDING_REVIEW
+    tags: List[str] = Field(default_factory=list)
+
+class GnnAnomalyResult(BaseModel):
+    node_id: str
+    node_type: str
+    score: float
+    reason: str
