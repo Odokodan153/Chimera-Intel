@@ -1,490 +1,594 @@
-# Chimera-Intel/Tests/test_mlint.py
-import unittest
-import json
-import tempfile
-import os
-import anyio
-import httpx
+import pytest
+import asyncio
+from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock
+from chimera_intel.core.mlint_schemas import SwiftMessage
+from fastapi.testclient import TestClient
 from typer.testing import CliRunner
-from datetime import date
 import pandas as pd
 
-# Import the app and all functions/schemas to be tested
-from chimera_intel.core.mlint import (
-    mlint_app,
-    analyze_transactions,
-    analyze_entity_risk,
-    get_jurisdiction_risk,
-    get_ubo_data,
-    check_crypto_wallet,
-    export_entity_to_stix,
-    # --- [MLINT 2.0] New Imports ---
-    resolve_entities,
-    correlate_trade_payment,
-    detect_graph_anomalies
-)
-from chimera_intel.core.schemas import (
-    EntityRiskResult,
-    CryptoWalletScreenResult,
-    Transaction,
-    TransactionAnalysisResult,
-    SwiftTransactionAnalysisResult,
-    UboResult,
-    UboData,
-    GnnAnomalyResult,
-    # --- [MLINT 2.0] New Schemas ---
-    EntityLink,
-    EntityResolutionResult,
-    TradeData,
-    PaymentData,
-    TradeCorrelationResult
-)
-
-runner = CliRunner()
+# --- Important: Import the 'api_app' and 'cli_app' from mlint
+# This assumes your project is installed in editable mode (pip install -e .)
+from chimera_intel.core.mlint import api_app, cli_app, load_models
+from chimera_intel.core.mlint_config import settings
+from chimera_intel.core.schemas import Transaction
+from chimera_intel.core import mlint_intel, mlint_ai, mlint_graph
+from chimera_intel.core.mlint_schemas import RiskLevel, GnnAnomalyResult, Entity, EntityType
+# Mark all tests in this file as asyncio
+pytestmark = pytest.mark.asyncio
 
 
-class TestMlint(unittest.TestCase):
-    """
-    Test cases for the advanced, scalable MLINT module (v2).
-    """
+# --- Fixtures ---
 
-    # --- Core Function Tests ---
-
-    def test_get_jurisdiction_risk_lists(self):
-        """Tests all three risk levels for jurisdictions."""
-        # High Risk
-        high = get_jurisdiction_risk("North Korea")
-        self.assertEqual(high.risk_level, "High")
-        self.assertTrue(high.is_fatf_black_list)
-        self.assertEqual(high.risk_score, 90)
+@pytest.fixture(scope="module")
+def client():
+    """Fixture for the FastAPI TestClient."""
+    # Patch external services *before* creating the client
+    with patch("chimera_intel.core.mlint.AIOKafkaConsumer", new_callable=AsyncMock) as mock_consumer, \
+         patch("chimera_intel.core.mlint.AIOKafkaProducer", new_callable=AsyncMock) as mock_producer, \
+         patch("chimera_intel.core.mlint.pika.BlockingConnection") as mock_pika, \
+         patch("chimera_intel.core.mlint.GraphAnalyzer", new_callable=AsyncMock) as mock_graph, \
+         patch("chimera_intel.core.mlint_analysis.redis_client", new_callable=MagicMock) as mock_redis, \
+         patch("chimera_intel.core.mlint.load_models") as mock_load_models:
         
-        # Medium Risk
-        med = get_jurisdiction_risk("Panama")
-        self.assertEqual(med.risk_level, "Medium")
-        self.assertTrue(med.is_fatf_grey_list)
-        self.assertEqual(med.risk_score, 60)
+        # Configure mocks
+        mock_redis.ping.return_value = True
         
-        # Low Risk
-        low = get_jurisdiction_risk("Canada")
-        self.assertEqual(low.risk_level, "Low")
-        self.assertFalse(low.is_fatf_black_list)
-        self.assertEqual(low.risk_score, 10)
+        # Start the TestClient, which triggers the 'startup' event
+        with TestClient(api_app) as test_client:
+            yield test_client
 
-    @patch("chimera_intel.core.mlint.MLINT_AML_API_URL", "http://fake-api.com")
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.get_ubo_data", new_callable=AsyncMock)
-    @patch("chimera_intel.core.mlint.httpx.AsyncClient")
-    def test_analyze_entity_risk_async(self, mock_async_client, mock_get_ubo, mock_api_keys):
-        """Tests the async risk scoring logic, including UBO call."""
-        # Arrange
-        mock_api_keys.aml_api_key = "fake_key"
+@pytest.fixture
+def mock_kafka_message():
+    """Creates a mock aiokafka message."""
+    msg = MagicMock()
+    msg.value = {
+        "tx_id": "tx-123",
+        "from_entity": "acct:sender",
+        "to_entity": "acct:receiver",
+        "amount": 1000.0,
+        "currency": "USD",
+        "timestamp": "2025-11-07T18:00:00Z"
+    }
+    # Mock headers for HMAC signature
+    msg.headers = [('X-Signature', 'mock_valid_signature')]
+    return msg
+
+@pytest.fixture
+def cli_runner():
+    """Fixture for the Typer CLI runner."""
+    return CliRunner()
+
+
+# --- Test Cases ---
+
+class TestMLintProduction:
+
+    # --- Task 1 & 7: API and Model Lifecycle Tests ---
+    def test_health_endpoint(self, client: TestClient):
+        """Tests the /health endpoint."""
+        # Mock the metadata loaded during startup
+        with patch("chimera_intel.core.mlint.MODEL_METADATA", {"xgb_model": {"version": "test.v1"}}):
+            response = client.get("/health")
         
-        # Mock the UBO call
-        mock_get_ubo.return_value = UboResult(
-            company_name="RiskyCo",
-            ultimate_beneficial_owners=[
-                UboData(name="Mr. PEP", ownership_percentage=50.0, is_pep=True)
-            ]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["model_versions"]["xgb_model"]["version"] == "test.v1"
+
+    def test_refresh_models_endpoint_unauthorized(self, client: TestClient):
+        """Tests the /models/refresh endpoint without an API key."""
+        response = client.post("/models/refresh")
+        assert response.status_code == 403 # HTTP 403 Forbidden
+        assert "Invalid API Key" in response.json()["detail"]
+
+    def test_refresh_models_endpoint_authorized(self, client: TestClient):
+        """Tests the /models/refresh endpoint *with* a valid API key."""
+        # Mock the settings to have a key
+        with patch.object(settings, "ADMIN_API_KEY", "test-key-123"), \
+             patch("chimera_intel.core.mlint.load_models") as mock_load:
+            
+            headers = {"X-API-Key": "test-key-123"}
+            response = client.post("/models/refresh", headers=headers)
+        
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+        mock_load.assert_called_with(force=True)
+
+    # --- Task 1: Model Training Metadata Test ---
+    def test_train_models_command_writes_metadata(self, cli_runner: CliRunner):
+        """Tests that the train-models CLI command writes .json metadata files."""
+        
+        # Mock all file I/O and heavy libraries
+        with patch("pandas.read_csv", return_value=pd.DataFrame({"amount": [1,2,3], "feature2": [4,5,6]})), \
+             patch("joblib.dump") as mock_joblib_dump, \
+             patch("builtins.open", new_callable=MagicMock) as mock_open:
+            
+            # Use mock_open.return_value as the file handle
+            mock_file_handle = mock_open.return_value.__enter__.return_value
+            
+            # Run the command
+            result = cli_runner.invoke(cli_app, [
+                "train-models", 
+                "dummy_features.csv",
+                "--labeled-file", "dummy_labels.csv"
+            ])
+
+        assert result.exit_code == 0
+        
+        # Check that we called 'open' for both metadata files
+        call_args_list = mock_open.call_args_list
+        assert any(call[0][0] == f"{settings.iso_forest_model_path}.json" for call in call_args_list)
+        assert any(call[0][0] == f"{settings.supervised_model_path}.json" for call in call_args_list)
+        
+        # Check that we wrote JSON data
+        assert "Wrote metadata" in result.stdout
+
+    # --- Task 2 & 3: Analysis and Redis/Graph Integration ---
+    @patch("chimera_intel.core.mlint_analysis.redis_client")
+    async def test_analyze_transaction_risk_uses_redis(self, mock_redis_client):
+        """Tests that the analysis pipeline calls Redis for history."""
+        from chimera_intel.core.mlint_analysis import analyze_transaction_risk
+
+        # Setup mocks
+        mock_iso = MagicMock()
+        mock_xgb = MagicMock()
+        mock_redis_client.lrange.return_value = [] # Return empty history
+        mock_redis_client.pipeline.return_value = MagicMock()
+        
+        tx = Transaction(
+            tx_id="tx-redis-test",
+            from_entity="acct:test",
+            to_entity="acct:other",
+            amount=100,
+            currency="USD",
+            timestamp=datetime.now()
         )
         
-        # Mock the httpx (AML/Sanctions) call
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
-        mock_response.json.return_value = {
-            "pep_links": 2,
-            "sanctions_hits": 1,
-            "adverse_media_hits": 10,
-            "shell_indicators": ["High-risk nominee director"]
-        }
-        mock_async_client.return_value.__aenter__.return_value.get.return_value = mock_response
-
-        # Act
-        result = anyio.run(analyze_entity_risk, "RiskyCo", "Panama")
-
-        # Assert
-        self.assertIsNone(result.error)
-        self.assertGreater(result.risk_score, 50) # (Grey List + UBO PEP + Sanctions)
-        self.assertEqual(result.pep_links, 3) # 1 from UBO, 2 from (mocked) API
-        self.assertEqual(result.sanctions_hits, 1)
-        self.assertIn("FATF Grey List", result.risk_factors[0])
-        self.assertIn("UBO link to PEP: Mr. PEP", result.risk_factors[1])
-
-    def test_analyze_transactions_batch_deprecation(self):
-        """
-        Tests the deprecated batch transaction analysis.
-        Ensures it uses Dask/ML but correctly skips Neo4j cycle detection.
-        """
-        txns = [
-            Transaction(id="t1", date=date(2023, 1, 1), amount=1000000, currency="USD", sender_id="A", receiver_id="B", sender_jurisdiction="USA", receiver_jurisdiction="IRAN"),
-            Transaction(id="t2", date=date(2023, 1, 1), amount=500, currency="USD", sender_id="C", receiver_id="D", sender_jurisdiction="USA", receiver_jurisdiction="USA"),
-            Transaction(id="t3", date=date(2023, 1, 1), amount=50000, currency="USD", sender_id="E", receiver_id="F", sender_jurisdiction="USA", receiver_jurisdiction="USA"),
-            Transaction(id="t4", date=date(2023, 1, 2), amount=50000, currency="USD", sender_id="F", receiver_id="E", sender_jurisdiction="USA", receiver_jurisdiction="USA"),
-        ]
-        
-        result = analyze_transactions(txns)
-
-        self.assertIsNone(result.error)
-        self.assertGreater(result.anomaly_score, 0)
-        self.assertIn("receiver_jurisdiction_risk", result.anomaly_features_used)
-        self.assertEqual(len(result.round_tripping_alerts), 0)
-
-    # --- [NEW] Core Async Function Unit Tests ---
-
-    @patch("chimera_intel.core.mlint.MLINT_AML_API_URL", "http://fake-ubo-api.com")
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.httpx.AsyncClient")
-    def test_get_ubo_data_success(self, mock_async_client, mock_api_keys):
-        """Tests the UBO data function directly with a mocked successful API response."""
-        mock_api_keys.open_corporates_api_key = "fake_ubo_key"
-        
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "ultimate_beneficial_owners": [
-                {"name": "Owner One", "ownership_percentage": 75.0, "is_pep": True}
-            ],
-            "corporate_structure": {"type": "LLC"}
-        }
-        mock_async_client.return_value.__aenter__.return_value.get.return_value = mock_response
-
-        result = anyio.run(get_ubo_data, "TestCo")
-
-        self.assertIsNone(result.error)
-        self.assertEqual(result.company_name, "TestCo")
-        self.assertEqual(len(result.ultimate_beneficial_owners), 1)
-        self.assertEqual(result.ultimate_beneficial_owners[0].name, "Owner One")
-
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    def test_get_ubo_data_no_key(self, mock_api_keys):
-        """Tests that get_ubo_data fails gracefully without an API key."""
-        mock_api_keys.open_corporates_api_key = None
-        mock_api_keys.world_check_api_key = None
-        
-        result = anyio.run(get_ubo_data, "TestCo")
-        self.assertIn("No UBO API key", result.error)
-
-    @patch("chimera_intel.core.mlint.MLINT_CHAIN_API_URL", "http://fake-chain-api.com")
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.httpx.AsyncClient")
-    def test_check_crypto_wallet_success(self, mock_async_client, mock_api_keys):
-        """Tests the check_crypto_wallet function directly with a mocked successful API response."""
-        mock_api_keys.chain_api_key = "fake_chain_key"
-        
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "risk_score": 95,
-            "associations": ["Darknet Market"],
-            "mixer_interaction": True
-        }
-        mock_async_client.return_value.__aenter__.return_value.get.return_value = mock_response
-
-        result = anyio.run(check_crypto_wallet, "123_bad_address")
-
-        self.assertIsNone(result.error)
-        self.assertEqual(result.risk_level, "High")
-        self.assertTrue(result.mixer_interaction)
-
-    # --- [MLINT 2.0] New Function Tests ---
-
-    @patch("chimera_intel.core.mlint.check_crypto_wallet", new_callable=AsyncMock)
-    @patch("chimera_intel.core.mlint.get_neo4j_driver")
-    def test_resolve_entities_success(self, mock_get_driver, mock_check_wallet):
-        """[MLINT 2.0] Tests the new entity resolution function."""
-        # Arrange
-        # 1. Mock Neo4j
-        mock_driver = MagicMock()
-        mock_session = MagicMock()
-        mock_result = [
-            {
-                "e1_type": "Company", "e1_id": "TestCo",
-                "relationship": "HAS_UBO",
-                "e2_type": "Person", "e2_id": "John Doe"
-            },
-            {
-                "e1_type": "Person", "e1_id": "John Doe",
-                "relationship": "OWNS_WALLET",
-                "e2_type": "Wallet", "e2_id": "123-wallet"
-            },
-        ]
-        mock_session.run.return_value = mock_result
-        mock_driver.session.return_value = mock_session
-        mock_get_driver.return_value = mock_driver
-        
-        # 2. Mock Wallet Check (for MVP features)
-        mock_check_wallet.return_value = CryptoWalletScreenResult(
-            wallet_address="123-wallet", risk_score=90,
-            mixer_interaction=True, sanctioned_entity_link=False
+        await analyze_transaction_risk(
+            tx, mock_iso, mock_xgb, settings.feature_order
         )
+        
+        # Assert Redis was called
+        mock_redis_client.lrange.assert_called_with("acct:test", 0, 99)
+        mock_redis_client.pipeline.return_value.lpush.assert_called_with("acct:test", tx.json())
+        mock_redis_client.pipeline.return_value.ltrim.assert_called_with("acct:test", 0, 99)
 
-        # Act
-        result = anyio.run(
-            resolve_entities,
-            company_names=["TestCo"],
-            wallet_addresses=["123-wallet"],
-            person_names=["John Doe"]
+    # --- Task 5: Advanced SWIFT Analysis Test ---
+    @patch("chimera_intel.core.mlint_analysis.analyze_swift_text_ai", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint_analysis.swift_parser.parse_mt103")
+    async def test_analyze_swift_message_uses_parser_and_ai(self, mock_parse, mock_analyze_ai):
+        """Tests that the SWIFT analyzer uses the parser and AI."""
+        from chimera_intel.core.mlint_analysis import analyze_swift_message
+        
+        # Setup mocks
+        mock_parse.return_value = {
+            "sender": "SENDER NAME",
+            "beneficiary": "BENEFICIARY NAME",
+            "purpose": "payment for goods"
+        }
+        mock_analyze_ai.return_value = ["Vague Payment Description"]
+        
+        msg = SwiftMessage(
+            mt_type="MT103",
+            sender_bic="BANKAUSXXX",
+            receiver_bic="BANKBUSXXX",
+            amount=5000,
+            currency="AUD",
+            raw_content=":50K:SENDER NAME\n:59:BENEFICIARY NAME\n:70:payment for goods\n-}"
         )
+        
+        result = await analyze_swift_message(msg)
+        
+        # Assert parser was called
+        mock_parse.assert_called_with(msg.raw_content)
+        
+        # Assert AI was called with the *parsed text*
+        expected_ai_text = "Sender: SENDER NAME. Beneficiary: BENEFICIARY NAME. Purpose: payment for goods"
+        mock_analyze_ai.assert_called_with(expected_ai_text)
+        
+        # Assert AI results are in the final flags
+        assert "Vague Payment Description" in result.red_flags
 
-        # Assert
-        self.assertIsNone(result.error)
-        self.assertEqual(result.total_entities_found, 4) # TestCo, John Doe, 123-wallet, Mixer
-        
-        # Check graph links
-        link_descs = [l.description for l in result.links]
-        self.assertIn("Found graph link: Company:TestCo -> HAS_UBO -> Person:John Doe", link_descs)
-        self.assertIn("Found graph link: Person:John Doe -> OWNS_WALLET -> Wallet:123-wallet", link_descs)
-        
-        # Check MVP wallet link
-        self.assertIn("Wallet has interacted with a known mixer.", link_descs)
-        self.assertNotIn("Wallet has links to a sanctioned entity.", link_descs)
-
-    @patch("chimera_intel.core.mlint.MLINT_TRADE_API_URL", "http://fake-trade-api.com")
-    @patch("chimera_intel.core.mlint.MLINT_AML_API_URL", "http://fake-payment-api.com")
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.httpx.AsyncClient")
-    def test_correlate_trade_payment_success(self, mock_async_client, mock_api_keys):
-        """[MLINT 2.0] Tests the new trade/payment correlation function."""
-        # Arrange
-        mock_api_keys.trade_api_key = "fake_trade_key"
-        mock_api_keys.aml_api_key = "fake_payment_key"
-        
-        # Mock Trade API Response
-        mock_trade_response = MagicMock()
-        mock_trade_response.raise_for_status = MagicMock()
-        mock_trade_response.json.return_value = {
-            "document_id": "BOL-123", "invoice_amount": 50000.00,
-            "exporter_name": "Global Exporters Inc", "importer_name": "Local Importers Ltd"
-        }
-        
-        # Mock Payment API Response
-        mock_payment_response = MagicMock()
-        mock_payment_response.raise_for_status = MagicMock()
-        mock_payment_response.json.return_value = {
-            "payment_id": "SWIFT-456", "amount": 50000.00,
-            "sender_name": "Global Exporters Inc (Acme)", "receiver_name": "Local Importers Ltd"
-        }
-        
-        # Set client to return different mocks based on URL
-        mock_client_instance = MagicMock()
-        mock_client_instance.get.side_effect = [
-            mock_trade_response, # First call
-            mock_payment_response # Second call
-        ]
-        mock_async_client.return_value.__aenter__.return_value = mock_client_instance
-
-        # Act
-        result = anyio.run(correlate_trade_payment, "SWIFT-456", "BOL-123")
-        
-        # Assert
-        self.assertIsNone(result.error)
-        self.assertTrue(result.is_correlated)
-        self.assertEqual(result.confidence, "High")
-        self.assertEqual(result.correlation_score, 1.0)
-        self.assertEqual(len(result.mismatches), 0)
-        self.assertEqual(result.payment.amount, 50000.00)
-        self.assertEqual(result.trade_document.exporter_name, "Global Exporters Inc")
-
-    # --- STIX Export Test ---
+    # --- Task 4, 6, 8: Kafka Consumer Tests ---
     
-    def test_export_entity_to_stix(self):
-        """Tests the generation of a STIX 2.1 bundle from an EntityRiskResult."""
-        entity_result = EntityRiskResult(
-            company_name="STIX TestCo", jurisdiction="Panama",
-            risk_score=85, risk_factors=["FATF Grey List", "3 PEP Links"],
-            pep_links=3, sanctions_hits=1
-        )
-        stix_bundle_str = export_entity_to_stix(entity_result)
-        stix_bundle = json.loads(stix_bundle_str)
-        
-        self.assertEqual(stix_bundle["type"], "bundle")
-        identity = next(obj for obj in stix_bundle["objects"] if obj["type"] == "identity")
-        indicator = next(obj for obj in stix_bundle["objects"] if obj["type"] == "indicator")
-        self.assertEqual(identity["name"], "STIX TestCo")
-        self.assertEqual(indicator["confidence"], 85)
-
-    # --- CLI Command Tests (Updated) ---
-
-    @patch("chimera_intel.core.mlint.analyze_entity_risk", new_callable=AsyncMock)
-    def test_cli_check_entity_with_outputs(self, mock_analyze_entity):
-        """Tests the 'check-entity' command, including --output and --stix-out flags."""
-        mock_analyze_entity.return_value = EntityRiskResult(
-            company_name="TestCo", jurisdiction="Panama",
-            risk_score=70, risk_factors=["FATF Grey List", "1 PEP Link"],
-        )
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=True, suffix=".json") as tmp_out, \
-             tempfile.NamedTemporaryFile(mode='w', delete=True, suffix=".json") as tmp_stix:
-            
-            result = runner.invoke(
-                mlint_app,
-                [
-                    "check-entity", "--company-name", "TestCo", "--jurisdiction", "Panama",
-                    "--output", tmp_out.name, "--stix-out", tmp_stix.name,
-                ],
-            )
-
-            self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("Entity Risk Report for TestCo", result.stdout)
-            
-            with open(tmp_out.name, 'r') as f:
-                self.assertEqual(json.load(f)["company_name"], "TestCo")
-            with open(tmp_stix.name, 'r') as f:
-                self.assertEqual(json.load(f)["type"], "bundle")
-
-    @patch("chimera_intel.core.mlint.check_crypto_wallet", new_callable=AsyncMock)
-    def test_cli_check_wallet_with_output(self, mock_check_wallet):
-        """Tests the 'check-wallet' command, including --output flag."""
-        mock_check_wallet.return_value = CryptoWalletScreenResult(
-            wallet_address="123_bad_address", risk_level="High",
-            risk_score=95, mixer_interaction=True
-        )
-
-        with tempfile.NamedTemporaryFile(mode='w', delete=True, suffix=".json") as tmp_out:
-            result = runner.invoke(
-                mlint_app,
-                ["check-wallet", "--address", "123_bad_address", "--output", tmp_out.name]
-            )
-            self.assertEqual(result.exit_code, 0, msg=result.output)
-            self.assertIn("Wallet Screening", result.stdout)
-            with open(tmp_out.name, 'r') as f:
-                self.assertEqual(json.load(f)["risk_score"], 95)
-
-    # --- [MLINT 2.0] New CLI Tests ---
-
-    @patch("chimera_intel.core.mlint.resolve_entities", new_callable=AsyncMock)
-    def test_cli_resolve(self, mock_resolve):
-        """[MLINT 2.0] Tests the new 'mlint resolve' command."""
-        # Arrange
-        mock_resolve.return_value = EntityResolutionResult(
-            total_entities_found=3,
-            links=[EntityLink(
-                source="Wallet:123", target="Entity:Mixer",
-                type="INTERACTED_WITH", description="Wallet has interacted with a known mixer."
-            )]
-        )
-        
-        # Act
-        result = runner.invoke(mlint_app, ["resolve", "--wallet", "123"])
-        
-        # Assert
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        mock_resolve.assert_called_with([], ["123"], [])
-        self.assertIn("Entity Resolution Report", result.stdout)
-        self.assertIn("Total Unique Entities Found: 3", result.stdout)
-        self.assertIn("Wallet:123 --(INTERACTED_WITH)--> Entity:Mixer", result.stdout)
-
-    @patch("chimera_intel.core.mlint.correlate_trade_payment", new_callable=AsyncMock)
-    def test_cli_correlate_trade(self, mock_correlate):
-        """[MLINT 2.0] Tests the new 'mlint correlate-trade' command."""
-        # Arrange
-        mock_correlate.return_value = TradeCorrelationResult(
-            is_correlated=False,
-            confidence="Low",
-            mismatches=["Amount mismatch: Payment=500, Invoice=5000"]
-        )
-        
-        # Act
-        result = runner.invoke(mlint_app, ["correlate-trade", "--payment-id", "P-1", "--trade-doc-id", "T-1"])
-        
-        # Assert
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        mock_correlate.assert_called_with("P-1", "T-1")
-        self.assertIn("Trade Correlation Report", result.stdout)
-        self.assertIn("Result: Not Correlated", result.stdout)
-        self.assertIn("Amount mismatch", result.stdout)
-
-    # --- [MLINT 2.0] Updated Graph & Stream CLI Tests ---
-
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.detect_graph_anomalies") # Patch the new real function
-    @patch("chimera_intel.core.mlint.get_neo4j_driver")
-    def test_cli_graph_run_gnn_anomaly(self, mock_get_driver, mock_detect_anomalies, mock_api_keys):
-        """[MLINT 2.0] Tests the 'run-gnn-anomaly' command, which is no longer a placeholder."""
-        # Arrange
-        mock_api_keys.neo4j_uri = "bolt://localhost:7687"
-        mock_api_keys.neo4j_user = "neo4j"
-        mock_api_keys.neo4j_password = "password"
-        
-        mock_get_driver.return_value = MagicMock()
-        mock_detect_anomalies.return_value = [
-            GnnAnomalyResult(entity_id="A-123", anomaly_score=0.98, reason=["High PageRank"])
-        ]
-
-        # Act
-        result = runner.invoke(mlint_app, ["graph", "run-gnn-anomaly"])
-        
-        # Assert
-        self.assertEqual(result.exit_code, 0, msg=result.output)
-        self.assertIn("Running graph feature-based anomaly detection", result.stdout)
-        self.assertIn("Graph Anomaly Report (Found 1)", result.stdout)
-        self.assertIn("A-123", result.stdout)
-        self.assertIn("High PageRank", result.stdout)
-        self.assertNotIn("This is a placeholder", result.stdout)
-
-    @patch("chimera_intel.core.mlint.API_KEYS")
-    @patch("chimera_intel.core.mlint.KafkaProducer") # Mock the new Producer
-    @patch("chimera_intel.core.mlint.KafkaConsumer")
-    @patch("chimera_intel.core.mlint.get_neo4j_driver")
-    @patch("chimera_intel.core.mlint.insert_transaction_to_neo4j")
-    def test_cli_stream_start_consumer(
-        self, mock_insert_neo4j, mock_get_driver, mock_kafka_consumer, 
-        mock_kafka_producer, mock_api_keys
+    @patch("chimera_intel.core.mlint._verify_message_signature", return_value=True)
+    @patch("chimera_intel.core.mlint.analyze_transaction_risk", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint.GraphAnalyzer.add_transactions_batch", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint._send_to_dlq", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint.AIOKafkaConsumer")
+    async def test_kafka_consumer_happy_path(
+        self, mock_consumer_class, mock_send_to_dlq, mock_add_batch, 
+        mock_analyze, mock_verify_sig, mock_kafka_message
     ):
-        """[MLINT 2.0] Tests the new 'stream start-consumer' pipeline."""
-        # Arrange
-        mock_api_keys.kafka_bootstrap_servers = "kafka:9092"
-        mock_api_keys.kafka_topic_transactions = "txns"
-        mock_api_keys.kafka_topic_scoring_jobs = "scoring_jobs" # New topic
-        mock_api_keys.kafka_consumer_group = "mlint-test"
-        mock_api_keys.neo4j_uri = "bolt://localhost:7687"
-        mock_api_keys.neo4j_user = "neo4j"
-        mock_api_keys.neo4j_password = "password"
+        """Tests the Kafka consumer's successful processing path."""
+        from chimera_intel.core.mlint import _run_kafka_consumer, METRIC_TRANSACTIONS_PROCESSED
+        
+        # Setup consumer mock
+        mock_consumer_instance = mock_consumer_class.return_value
+        mock_consumer_instance.__aiter__.return_value = [mock_kafka_message]
+        mock_consumer_instance.commit = AsyncMock()
+        
+        mock_graph = AsyncMock()
+        shutdown_event = asyncio.Event()
 
-        mock_get_driver.return_value = MagicMock()
+        # Run the consumer for one message
+        await _run_kafka_consumer(mock_graph, shutdown_event)
         
-        # Mock the KafkaConsumer to return one message and then stop
-        mock_message = MagicMock()
-        mock_message.value = {
-            "id": "tx-123", "sender_id": "A", "receiver_id": "B", 
-            "amount": 9500, "currency": "USD", "sender_jurisdiction": "USA", 
-            "receiver_jurisdiction": "PA", "date": "2023-01-01T12:00:00"
-        }
+        # 1. Assert signature was checked
+        mock_verify_sig.assert_called_once()
         
-        mock_consumer_instance = MagicMock()
-        mock_consumer_instance.__iter__.return_value = iter([mock_message, KeyboardInterrupt()])
-        mock_kafka_consumer.return_value = mock_consumer_instance
+        # 2. Assert analysis was called
+        mock_analyze.assert_called_once()
         
-        mock_producer_instance = MagicMock()
-        mock_kafka_producer.return_value = mock_producer_instance
+        # 3. Assert graph batching was called (on shutdown flush)
+        mock_add_batch.assert_called_once()
+        
+        # 4. Assert Kafka commit was called
+        mock_consumer_instance.commit.assert_called()
+        
+        # 5. Assert DLQ was *NOT* called
+        mock_send_to_dlq.assert_not_called()
 
-        # Act
-        result = runner.invoke(mlint_app, ["stream", "start-consumer"])
+    @patch("chimera_intel.core.mlint._verify_message_signature", return_value=True)
+    @patch("chimera_intel.core.mlint.analyze_transaction_risk", side_effect=Exception("Analysis Failed!"))
+    @patch("chimera_intel.core.mlint.GraphAnalyzer.add_transactions_batch", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint._send_to_dlq", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint.AIOKafkaConsumer")
+    async def test_kafka_consumer_analysis_failure_sends_to_dlq(
+        self, mock_consumer_class, mock_send_to_dlq, mock_add_batch, 
+        mock_analyze, mock_verify_sig, mock_kafka_message
+    ):
+        """Tests that a processing failure sends the message to the DLQ."""
+        from chimera_intel.core.mlint import _run_kafka_consumer
         
-        # Assert
-        self.assertEqual(result.exit_code, 0, msg=result.output)
+        mock_consumer_instance = mock_consumer_class.return_value
+        mock_consumer_instance.__aiter__.return_value = [mock_kafka_message]
+        mock_consumer_instance.commit = AsyncMock()
         
-        # 1. Check it subscribed to the right topic
-        mock_kafka_consumer.assert_called_with(
-            "txns", # topic_in
-            bootstrap_servers=["kafka:9092"],
-            auto_offset_reset='earliest',
-            group_id='mlint-test',
-            value_deserializer=unittest.mock.ANY
+        mock_graph = AsyncMock()
+        shutdown_event = asyncio.Event()
+
+        await _run_kafka_consumer(mock_graph, shutdown_event)
+        
+        # 1. Assert analysis was called (and failed)
+        mock_analyze.assert_called_once()
+        
+        # 2. Assert DLQ *WAS* called
+        mock_send_to_dlq.assert_called_once_with(
+            mock_kafka_message.value, settings.kafka_dlq_topic, "transaction"
         )
-        # 2. Check it processed the message
-        self.assertIn("Received Transaction tx-123", result.stdout)
-        self.assertIn("Sync Alerts:", result.stdout)
-        self.assertIn("Potential Structuring", result.stdout)
         
-        # 3. Check it inserted to Neo4j
-        mock_insert_neo4j.assert_called_once()
-        self.assertEqual(mock_insert_neo4j.call_args[0][1].id, "tx-123") # Check tx object
+        # 3. Assert Kafka commit was *STILL* called (to move past bad message)
+        mock_consumer_instance.commit.assert_called()
         
-        # 4. Check it produced a job to the new topic
-        self.assertIn("Published job tx-123 to 'scoring_jobs'", result.stdout)
-        mock_producer_instance.send.assert_called_with(
-            "scoring_jobs", # topic_out
-            value={"tx_id": "tx-123", "sender_id": "A", "receiver_id": "B"}
-        )
+        # 4. Assert graph batch was *NOT* called (as tx failed)
+        mock_add_batch.assert_not_called() # Flushed on shutdown, but buffer was empty
 
-if __name__ == "__main__":
-    unittest.main()
+    @patch("chimera_intel.core.mlint._verify_message_signature", return_value=False)
+    @patch("chimera_intel.core.mlint.analyze_transaction_risk", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint._send_to_dlq", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint.AIOKafkaConsumer")
+    async def test_kafka_consumer_security_failure_sends_to_dlq(
+        self, mock_consumer_class, mock_send_to_dlq, mock_analyze, 
+        mock_verify_sig, mock_kafka_message
+    ):
+        """Tests that a bad HMAC signature sends to DLQ."""
+        from chimera_intel.core.mlint import _run_kafka_consumer
+        
+        mock_consumer_instance = mock_consumer_class.return_value
+        mock_consumer_instance.__aiter__.return_value = [mock_kafka_message]
+        mock_consumer_instance.commit = AsyncMock()
+        
+        mock_graph = AsyncMock()
+        shutdown_event = asyncio.Event()
+
+        await _run_kafka_consumer(mock_graph, shutdown_event)
+        
+        # 1. Assert signature was checked
+        mock_verify_sig.assert_called_once()
+        
+        # 2. Assert analysis was *NOT* called
+        mock_analyze.assert_not_called()
+        
+        # 3. Assert DLQ *WAS* called
+        mock_send_to_dlq.assert_called_once()
+        
+        # 4. Assert Kafka commit was *STILL* called
+        mock_consumer_instance.commit.assert_called()
+
+
+
+# --- Mocks and Fixtures ---
+
+@pytest.fixture
+def mock_models():
+    """Mocks the IsolationForest and XGBoost models."""
+    mock_iso = MagicMock()
+    mock_xgb = MagicMock()
+    return mock_iso, mock_xgb
+
+@pytest.fixture
+def mock_redis_client():
+    """Mocks the redis client used in mlint_analysis."""
+    # We patch the client where it is *used*
+    with patch("chimera_intel.core.mlint_analysis.redis_client", new_callable=MagicMock) as mock_redis:
+        mock_redis.ping.return_value = True
+        mock_redis.lrange.return_value = [] # Default: empty history
+        mock_redis.pipeline.return_value = MagicMock()
+        yield mock_redis
+
+@pytest.fixture
+def mock_neo4j_driver():
+    """Mocks the neo4j driver used in mlint_graph."""
+    with patch("neo4j.AsyncGraphDatabase.driver") as mock_driver_class:
+        mock_driver_instance = mock_driver_class.return_value
+        mock_driver_instance.session.return_value = AsyncMock()
+        mock_driver_instance.session.return_value.__aenter__.return_value.run = AsyncMock()
+        mock_driver_instance.session.return_value.__aenter__.return_value.single = AsyncMock()
+        mock_driver_instance.closed.return_value = False
+        yield mock_driver_instance
+
+# --- `mlint_analysis.py` Tests (Task 2 & 5) ---
+
+class TestMLintAnalysis:
+
+    def test_swift_parser_mt103(self):
+        """Tests the SwiftParser for field extraction (Task 5)."""
+        from chimera_intel.core.mlint_analysis import swift_parser
+        raw_mt103 = (
+            "{1:F01BANKDEFFXXX2222123456}{2:O1031200050101BANKUSNYXXXX12345678900501011201N}"
+            "{3:{108:MT103}}{4:\n"
+            ":20:SENDERREF\n"
+            ":50K:/1234567890\n"
+            "ORDERING CUSTOMER NAME\n"
+            "ORDERING ADDRESS\n"
+            ":59:/9876543210\n"
+            "BENEFICIARY NAME\n"
+            "BENEFICIARY ADDRESS\n"
+            ":70:/RFB/PAYMENT FOR INVOICE 123\n"
+            "-}{5:{MAC:00000000}{CHK:1234567890AB}}"
+        )
+        parsed = swift_parser.parse_mt103(raw_mt103)
+        assert parsed["sender"] == "ORDERING ADDRESS" # Simple parser takes last line
+        assert parsed["beneficiary"] == "BENEFICIARY ADDRESS"
+        assert parsed["purpose"] == "/RFB/PAYMENT FOR INVOICE 123"
+
+    @patch("chimera_intel.core.mlint_ai.analyze_swift_text_ai", new_callable=AsyncMock)
+    async def test_analyze_swift_message_risk(self, mock_analyze_ai):
+        """Tests the SWIFT analysis pipeline (Task 5)."""
+        from chimera_intel.core.mlint_analysis import analyze_swift_message
+        
+        # 1. Test High-Risk Jurisdiction
+        msg_iran = SwiftMessage(
+            mt_type="MT103", sender_bic="BANKDEFFXXX", receiver_bic="BANKIRTHXXX", # IR = Iran
+            amount=5000, currency="EUR", raw_content=":70:payment"
+        )
+        result_iran = await analyze_swift_message(msg_iran)
+        assert result_iran.risk_level == RiskLevel.CRITICAL
+        assert "High-risk jurisdiction detected" in result_iran.red_flags
+
+        # 2. Test AI Risk
+        mock_analyze_ai.return_value = ["Sanctions Evasion Language"]
+        msg_ai = SwiftMessage(
+            mt_type="MT103", sender_bic="BANKDEFFXXX", receiver_bic="BANKUSNYXXX",
+            amount=5000, currency="USD", raw_content=":70:humanitarian aid"
+        )
+        result_ai = await analyze_swift_message(msg_ai)
+        assert result_ai.risk_level == RiskLevel.HIGH
+        assert "Sanctions Evasion Language" in result_ai.red_flags
+
+    def test_get_and_update_historical_data_redis(self, mock_redis_client):
+        """Tests the Redis get/update logic (Task 2)."""
+        # --- FIX: Import the constant used in the test ---
+        from chimera_intel.core.mlint_analysis import get_historical_data, update_historical_data, HISTORY_MAX_LEN
+        
+        # Test Get
+        tx_json = '{"tx_id": "tx-hist-1", "from_entity": "acct:hist", "to_entity": "acct:other", "amount": 100, "currency": "USD", "timestamp": "2025-11-01T12:00:00Z"}'
+        mock_redis_client.lrange.return_value = [tx_json]
+        history = get_historical_data("acct:hist")
+        
+        assert len(history) == 1
+        assert history[0].tx_id == "tx-hist-1"
+        # This assertion now works
+        mock_redis_client.lrange.assert_called_with("acct:hist", 0, HISTORY_MAX_LEN - 1)
+        
+        # Test Update
+        tx = Transaction(
+            tx_id="tx-hist-2", from_entity="acct:hist", to_entity="acct:new",
+            amount=200, currency="USD", timestamp=datetime.now()
+        )
+        update_historical_data(tx)
+        
+        mock_pipeline = mock_redis_client.pipeline.return_value
+        mock_pipeline.lpush.assert_called_with("acct:hist", tx.json())
+        # This assertion now works
+        mock_pipeline.ltrim.assert_called_with("acct:hist", 0, HISTORY_MAX_LEN - 1)
+        mock_pipeline.execute.assert_called_once()
+
+
+# --- `mlint_intel.py` Tests (Task 6) ---
+
+class TestMLintIntel:
+
+    @patch("chimera_intel.core.mlint_intel.NewsApiClient")
+    @patch("chimera_intel.core.mlint_clients.RefinitivSanctionsClient", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint_clients.OpenCorporatesClient", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint_clients.ChainalysisClient", new_callable=AsyncMock)
+    @patch("chimera_intel.core.mlint_clients.OpenSanctionsPepClient", new_callable=AsyncMock)
+    async def test_gather_entity_intelligence_failure_metrics(
+        self, mock_pep, mock_chain, mock_ubo, mock_sanctions, mock_news
+    ):
+        """Tests that a task failure is caught and metrics are incremented (Task 6)."""
+        
+        # Setup mocks
+        mock_sanctions.check_entity.side_effect = Exception("Sanctions API Down")
+        mock_pep.check_entity_pep.return_value = [{"name": "Mr. PEP"}]
+        mock_news_client = mock_news.return_value
+        mock_news_client.get_everything.return_value = {"status": "ok", "articles": []}
+        
+        # Mock for the metrics counter
+        mock_metrics_counter = MagicMock()
+        mock_metrics_label = MagicMock()
+        mock_metrics_counter.labels = MagicMock(return_value=mock_metrics_label)
+        
+        aggregator = mlint_intel.IntelligenceAggregator(
+            sanctions_client=mock_sanctions,
+            ubo_client=mock_ubo,
+            chain_client=mock_chain,
+            pep_client=mock_pep,
+            metrics_api_failures=mock_metrics_counter # Pass in the mock counter
+        )
+        
+        entity = Entity(name="Test Entity", entity_type=EntityType.PERSON)
+        
+        # Run the aggregator
+        results = await aggregator.gather_entity_intelligence(entity)
+        
+        # 1. Check that the error was caught and recorded
+        assert "error" in results["sanctions"]
+        assert "Sanctions API Down" in results["sanctions"]["error"]
+        
+        # 2. Check that other tasks *succeeded*
+        assert "error" not in results["pep_screening"]
+        assert results["pep_screening"][0]["name"] == "Mr. PEP"
+        
+        # 3. Check that the failure metric was called correctly
+        mock_metrics_counter.labels.assert_called_with(source="sanctions")
+        mock_metrics_label.inc.assert_called_once()
+
+
+# --- `mlint_ai.py` Tests (Real AI & Graph) ---
+
+class TestMLintAI:
+
+    @patch("chimera_intel.core.mlint_ai.pipeline")
+    def test_get_nlp_classifier_caching(self, mock_pipeline):
+        """Tests the model caching logic in the 'get' functions."""
+        mock_pipeline.return_value = "my-mocked-model"
+        
+        # Clear cache for test
+        mlint_ai._nlp_classifier = None
+        
+        # First call: loads model
+        model1 = mlint_ai.get_nlp_classifier()
+        assert model1 == "my-mocked-model"
+        mock_pipeline.assert_called_once()
+        
+        # Second call: uses cache
+        model2 = mlint_ai.get_nlp_classifier()
+        assert model2 == "my-mocked-model"
+        mock_pipeline.assert_called_once() # Still only called once
+
+    @patch("chimera_intel.core.mlint_ai.get_nlp_classifier")
+    async def test_classify_adverse_media_ai(self, mock_get_classifier):
+        """Tests the classification logic and confidence threshold."""
+        
+        # Mock the pipeline result
+        mock_pipeline_instance = MagicMock(return_value={
+            "labels": ["Fraud", "Money Laundering", "Sanctions"],
+            "scores": [0.9, 0.8, 0.1] # High, High, Low
+        })
+        mock_get_classifier.return_value = mock_pipeline_instance
+        
+        categories = await mlint_ai.classify_adverse_media_ai("test text")
+        
+        assert "Fraud" in categories
+        assert "Money Laundering" in categories
+        assert "Sanctions" not in categories # Below 0.7 threshold
+
+    @patch("chimera_intel.core.mlint_ai.GraphAnalyzer", new_callable=AsyncMock)
+    async def test_run_gnn_anomaly_detection(self, mock_graph_analyzer_class):
+        """Tests that the GNN function correctly calls the GraphAnalyzer."""
+        
+        # Mock the instance methods
+        mock_instance = mock_graph_analyzer_class.return_value
+        mock_instance.run_pagerank_anomaly = AsyncMock(return_value=[
+            GnnAnomalyResult(node_id="acct:123", node_type="Account", score=9.5, reason="High PageRank")
+        ])
+        mock_instance.close = AsyncMock()
+        
+        results = await mlint_ai.run_gnn_anomaly_detection()
+        
+        # 1. Assert the class was instantiated
+        mock_graph_analyzer_class.assert_called_once()
+        # 2. Assert PageRank was called
+        mock_instance.run_pagerank_anomaly.assert_called_once()
+        # 3. Assert the connection was closed
+        mock_instance.close.assert_called_once()
+        # 4. Assert results are passed through
+        assert len(results) == 1
+        assert results[0].node_id == "acct:123"
+
+
+# --- `mlint_graph.py` Tests (Task 3) ---
+
+class TestMLintGraph:
+
+    async def test_add_transactions_batch(self, mock_neo4j_driver):
+        """Tests the UNWIND batch query formation (Task 3)."""
+        graph = mlint_graph.GraphAnalyzer()
+        
+        txs = [
+            Transaction(tx_id="t1", from_entity="acct:A", to_entity="acct:B", amount=100, currency="USD", timestamp=datetime.now()),
+            Transaction(tx_id="t2", from_entity="acct:C", to_entity="acct:D", amount=200, currency="USD", timestamp=datetime.now())
+        ]
+        
+        await graph.add_transactions_batch(txs)
+        
+        # Get the mock session
+        mock_session = mock_neo4j_driver.session.return_value.__aenter__.return_value
+        
+        # 1. Assert 'run' was called
+        mock_session.run.assert_called_once()
+        
+        # 2. Check the query parameters
+        call_args = mock_session.run.call_args
+        query_text = call_args[0][0]
+        query_params = call_args[0][1]
+        
+        assert "UNWIND $txs_batch as tx" in query_text
+        assert "txs_batch" in query_params
+        assert len(query_params["txs_batch"]) == 2
+        assert query_params["txs_batch"][0]["tx_id"] == "t1"
+        assert query_params["txs_batch"][1]["tx_id"] == "t2"
+        assert query_params["txs_batch"][0]["from_type"] == "acct"
+        
+        await graph.close() # Test close
+
+    async def test_run_pagerank_anomaly(self, mock_neo4j_driver):
+        """Tests the GDS PageRank execution flow."""
+        graph = mlint_graph.GraphAnalyzer()
+        
+        # Mock the session and its results
+        mock_session = mock_neo4j_driver.session.return_value.__aenter__.return_value
+        
+        # Mock the result of the PageRank query
+        mock_pagerank_result = [
+            MagicMock(data={"entityId": "acct:A", "entityType": "Account", "score": 10.1}),
+            MagicMock(data={"entityId": "acct:B", "entityType": "Account", "score": 9.2})
+        ]
+        
+        # Set up the mock 'run' to return an async iterator
+        async def async_iter(results):
+            for res in results:
+                yield res
+                
+        mock_session.run.return_value = async_iter(mock_pagerank_result)
+
+        results = await graph.run_pagerank_anomaly()
+
+        # Check results
+        assert len(results) == 2
+        assert results[0].node_id == "acct:A"
+        assert results[0].score == 10.1
+        
+        # Check that all GDS queries were called
+        call_args_list = mock_session.run.call_args_list
+        assert len(call_args_list) == 4
+        assert "CALL gds.graph.drop('entity-transactions')" in call_args_list[0][0][0] # First call (cleanup)
+        assert "CALL gds.graph.project" in call_args_list[1][0][0] # Second call (project)
+        assert "CALL gds.pageRank.stream" in call_args_list[2][0][0] # Third call (run)
+        assert "CALL gds.graph.drop('entity-transactions')" in call_args_list[3][0][0] # Fourth call (cleanup)
+        
+        await graph.close()
