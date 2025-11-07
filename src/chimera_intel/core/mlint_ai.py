@@ -14,6 +14,7 @@ from xgboost import XGBClassifier
 from typing import List, Dict, Any, Optional
 import asyncio
 
+# Import schemas and the new functional GraphAnalyzer
 from .schemas import AdverseMediaHit, ExplainabilityResult, GnnAnomalyResult, Transaction
 from .mlint_graph import GraphAnalyzer 
 
@@ -88,8 +89,9 @@ async def summarize_adverse_media_ai(articles: List[AdverseMediaHit]) -> str:
 
     loop = asyncio.get_event_loop()
     try:
+        # Run the model in a separate thread to avoid blocking the async loop
         result = await loop.run_in_executor(
-            None,
+            None, # Use default thread pool
             lambda: summarizer(text_to_summarize, max_length=150, min_length=30, do_sample=False)
         )
         return result[0]['summary_text']
@@ -118,8 +120,9 @@ async def classify_adverse_media_ai(text: str) -> List[str]:
 
     loop = asyncio.get_event_loop()
     try:
+        # Run the model in a separate thread to avoid blocking the async loop
         result = await loop.run_in_executor(
-            None, 
+            None, # Use default thread pool
             lambda: classifier(text, candidate_labels=RISK_CATEGORIES, multi_label=True)
         )
     except Exception as e:

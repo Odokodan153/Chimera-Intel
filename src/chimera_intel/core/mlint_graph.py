@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Any
 from neo4j import AsyncGraphDatabase, AsyncDriver
 
+# These modules are assumed to be in the same directory
 from .mlint_config import settings
 from .schemas import Transaction, GnnAnomalyResult
 
@@ -18,6 +19,7 @@ class GraphAnalyzer:
     _driver: AsyncDriver = None
 
     def __init__(self):
+        # Initialize driver if it doesn't exist or is closed
         if not self._driver or self._driver.closed():
             try:
                 self._driver = AsyncGraphDatabase.driver(
@@ -25,6 +27,7 @@ class GraphAnalyzer:
                     auth=(settings.neo4j_user, settings.neo4j_password)
                 )
                 log.info(f"Neo4j driver initialized for {settings.neo4j_uri}")
+                GraphAnalyzer._driver = self._driver # Store as class variable
             except Exception as e:
                 log.critical(f"Failed to initialize Neo4j driver: {e}", exc_info=True)
                 raise
@@ -38,7 +41,6 @@ class GraphAnalyzer:
 
     async def add_transaction_to_graph(self, tx: Transaction):
         """ (DEPRECATED) Persists a single transaction. Use batch instead. """
-        # We leave this here for testing or single-use cases
         await self.add_transactions_batch([tx])
     
     # --- Task 3: New Batch Insert Function ---
@@ -72,9 +74,6 @@ class GraphAnalyzer:
             t.count = t.count + 1,
             t.amount = t.amount + tx.amount,
             t.last_seen = tx.timestamp,
-            // Appending to lists is expensive. A better model might be
-            // separate :TX nodes linked to the :TRANSACTED_WITH relationship.
-            // But for this refactor, we stick to the simpler model.
             t.tx_id_list = t.tx_id_list + tx.tx_id 
         """
         

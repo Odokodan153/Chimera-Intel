@@ -6,6 +6,7 @@ MLint Analysis
 import pandas as pd
 import numpy as np
 import logging
+import re # <-- Task 5: For SWIFT Parsing
 from typing import List, Dict, Any, Optional
 import redis # <-- Task 2: Import redis
 import json
@@ -94,12 +95,41 @@ def extract_transactional_features(
 # --- SWIFT Message Analysis (Task 5 Updated) ---
 
 SWIFT_RISK_JURISDICTIONS = {'IR', 'KP', 'SY'} # ISO 2
-SWIFT_KEYWORDS = ['loan', 'payment', 'consulting fee'] # Vague keywords
+
+# --- Task 5: New SwiftParser ---
+class SwiftParser:
+    """
+    A simple regex-based parser for MT103 fields.
+    This is a demonstration; a real parser would be more robust.
+    """
+    
+    FIELD_RE = re.compile(r":([0-9]{2}[A-Z]?):(.+?)(?=\n:[0-9]{2}[A-Z]?:|\n-})", re.DOTALL)
+
+    def parse_mt103(self, message_text: str) -> Dict[str, str]:
+        fields = {tag: value.strip() for tag, value in self.FIELD_RE.findall(message_text)}
+        
+        # Extract key fields
+        # Field 50K: Ordering Customer
+        sender = fields.get("50K", "Unknown Sender").split('\n')[-1]
+        # Field 59: Beneficiary Customer
+        beneficiary = fields.get("59", "Unknown Beneficiary").split('\n')[-1]
+        # Field 70: Remittance Information
+        purpose = fields.get("70", "No Purpose Stated")
+        
+        return {
+            "sender": sender,
+            "beneficiary": beneficiary,
+            "purpose": purpose
+        }
+
+swift_parser = SwiftParser()
+# --- End Task 5 ---
+
 
 async def analyze_swift_message(msg: SwiftMessage) -> SwiftAnalysisResult: # <-- Now async
     """
     Analyzes a parsed SWIFT message for AML red flags.
-    (Updated with AI/NLP text analysis)
+    (Updated with AI/NLP text analysis on parsed fields)
     """
     log.info(f"Analyzing SWIFT message: {msg.mt_type} from {msg.sender_bic}")
     red_flags = []
@@ -118,15 +148,18 @@ async def analyze_swift_message(msg: SwiftMessage) -> SwiftAnalysisResult: # <--
         red_flags.append("High-value transaction")
         score = max(score, 0.5)
 
-    # 3. Basic keyword check
-    msg_body = msg.raw_content.lower()
-    if any(kw in msg_body for kw in SWIFT_KEYWORDS) and "invoice" not in msg_body:
-        red_flags.append("Vague payment description (keyword)")
-        score = max(score, 0.3)
-        
-    # --- Task 5: New NLP Analysis ---
+    # --- Task 5: Parse fields and use NLP ---
     try:
-        ai_flags = await analyze_swift_text_ai(msg.raw_content)
+        parsed_fields = swift_parser.parse_mt103(msg.raw_content)
+        
+        # Create a text blob for AI analysis
+        ai_text = (
+            f"Sender: {parsed_fields['sender']}. "
+            f"Beneficiary: {parsed_fields['beneficiary']}. "
+            f"Purpose: {parsed_fields['purpose']}"
+        )
+
+        ai_flags = await analyze_swift_text_ai(ai_text)
         if ai_flags:
             red_flags.extend(ai_flags)
             score = max(score, 0.7) # AI flags carry significant weight
@@ -158,6 +191,7 @@ async def analyze_swift_message(msg: SwiftMessage) -> SwiftAnalysisResult: # <--
 def get_historical_data(entity_id: str) -> List[Transaction]:
     """Fetches historical data from Redis."""
     if not redis_client:
+        log.warning("Redis client not available. Returning no history.")
         return []
     try:
         tx_json_list = redis_client.lrange(entity_id, 0, HISTORY_MAX_LEN - 1)
@@ -169,6 +203,7 @@ def get_historical_data(entity_id: str) -> List[Transaction]:
 def update_historical_data(tx: Transaction):
     """Updates historical data in Redis (capped list)."""
     if not redis_client:
+        log.warning("Redis client not available. Skipping history update.")
         return
     try:
         pipe = redis_client.pipeline()
@@ -208,7 +243,7 @@ async def analyze_transaction_risk(
 
     # 2. Get Unsupervised Score (IsolationForest)
     if not iso_forest_model:
-        log.warning("No IsolationForest model loaded. Unsupervised score is 0.")
+        log.warning(f"No IsolationForest model for tx {tx.tx_id}. Unsupervised score is 0.")
         unsupervised_score = 0.0
     else:
         unsupervised_score = score_with_isolation_forest(iso_forest_model, features_df)[0]

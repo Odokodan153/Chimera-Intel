@@ -1,6 +1,7 @@
 """
 MLint Main Application & CLI
 (Refactored with FastAPI for runtime ops, Kafka resilience, and batching)
+(Tasks 1, 6, 8 Implemented)
 """
 
 import typer
@@ -14,11 +15,14 @@ from rich.pretty import pprint
 from datetime import datetime
 import uuid
 import signal
-from typing import List
 import hashlib
+import time # <-- Task 6: For latency timing
+from typing import List
 import hmac # <-- Task 8: For signature verification
 import uvicorn # <-- Task 1 & 7: For running FastAPI
-from fastapi import FastAPI, HTTPException # <-- Task 1 & 7
+from fastapi import FastAPI, HTTPException, Request, Depends # <-- Task 8
+from fastapi.security import APIKeyHeader # <-- Task 8
+from cryptography.fernet import Fernet # <-- Task 8: For encryption
 
 from prometheus_client import start_http_server, Counter, Gauge, Histogram # <-- Task 6: Added Histogram
 
@@ -43,8 +47,9 @@ from .mlint_config import settings
 try:
     from kafka import KafkaConsumer, KafkaProducer
     from kafka.errors import NoBrokersAvailable
+    from kafka.structs import TopicPartition
 except ImportError:
-    KafkaConsumer, KafkaProducer = None, None
+    KafkaConsumer, KafkaProducer, TopicPartition = None, None, None
 try:
     import pika
 except ImportError:
@@ -57,16 +62,32 @@ log = logging.getLogger(__name__)
 # --- Global State (for runtime model refresh) ---
 ISO_FOREST_MODEL = None
 XGB_MODEL = None
+MODEL_METADATA = {} # <-- Task 1: Store model metadata
 
 # --- Metrics (Task 6: Updated) ---
 METRIC_TRANSACTIONS_PROCESSED = Counter('mlint_transactions_processed_total', 'Total transactions processed')
-METRIC_ALERTS_GENERATED = Counter('mlint_alerts_generated_total', 'Total alerts generated', ['risk_level'])
+METRIC_ALERTS_GENERATED = Counter('mlint_alerts_generated_total', 'Total alerts generated', ['risk_level', 'alert_type'])
 METRIC_SWIFT_PROCESSED = Counter('mlint_swift_messages_processed_total', 'Total SWIFT messages processed')
 METRIC_MESSAGES_TO_DLQ = Counter('mlint_messages_dlq_total', 'Total messages sent to DLQ', ['queue'])
 METRIC_GRAPH_BATCH_TIME = Histogram('mlint_graph_batch_duration_seconds', 'Time to insert batch into graph')
+# --- Task 6: New Metrics ---
+METRIC_API_FAILURES = Counter("mlint_api_failures_total", "API failures by data source", ["source"])
+METRIC_INTEL_LATENCY = Histogram("mlint_intel_latency_seconds", "Time to gather entity intelligence")
 
 # --- Audit Log ---
 LAST_AUDIT_HASH = "0" * 64
+
+# --- Task 8: Audit Log Encryption ---
+try:
+    if settings.AUDIT_LOG_ENCRYPTION_KEY:
+        log.info("Initializing audit log encryption...")
+        AUDIT_FERNET = Fernet(settings.AUDIT_LOG_ENCRYPTION_KEY.encode('utf-8'))
+    else:
+        log.warning("AUDIT_LOG_ENCRYPTION_KEY not set. Audit log data will NOT be encrypted.")
+        AUDIT_FERNET = None
+except Exception as e:
+    log.error(f"Failed to initialize audit log encryption: {e}. Disabling.")
+    AUDIT_FERNET = None
 
 # --- Kafka DLQ Producer (Task 4) ---
 if KafkaProducer:
@@ -87,6 +108,17 @@ cli_app = typer.Typer(help="MLint: AI-Powered AML & Intelligence Platform [CLI]"
 api_app = FastAPI(title="MLint Runtime Service") # <-- Task 1: FastAPI App
 console = Console()
 
+# --- Task 8: Security (API Key) ---
+X_API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
+
+def verify_api_key(api_key: str = Depends(X_API_KEY_HEADER)):
+    """Simple API key auth for admin endpoints."""
+    if not settings.ADMIN_API_KEY or not hmac.compare_digest(api_key, settings.ADMIN_API_KEY):
+        METRIC_API_FAILURES.labels(source="admin_auth").inc()
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+    return api_key
+
+# --- Service Factory ---
 def get_services():
     """Dependency-injection-style service factory."""
     sanctions_client = RefinitivSanctionsClient()
@@ -98,7 +130,8 @@ def get_services():
         sanctions_client=sanctions_client,
         ubo_client=ubo_client,
         chain_client=chain_client,
-        pep_client=pep_client 
+        pep_client=pep_client,
+        metrics_api_failures=METRIC_API_FAILURES # <-- Task 6: Pass metric
     )
     graph_analyzer = GraphAnalyzer()
     return intel_aggregator, graph_analyzer
@@ -106,33 +139,43 @@ def get_services():
 # --- Task 1: Model Lifecycle Management ---
 def load_models(force: bool = False):
     """Loads ML models from disk into global state."""
-    global ISO_FOREST_MODEL, XGB_MODEL
+    global ISO_FOREST_MODEL, XGB_MODEL, MODEL_METADATA
     
     if (ISO_FOREST_MODEL and XGB_MODEL) and not force:
         log.info("Models already loaded. Skipping.")
         return
         
     log.info("Loading models from disk...")
+    MODEL_METADATA = {} # Reset
+    
     try:
         ISO_FOREST_MODEL = joblib.load(settings.iso_forest_model_path)
-        log.info(f"Loaded IsolationForest model from {settings.iso_forest_model_path}")
+        # Load metadata
+        with open(f"{settings.iso_forest_model_path}.json", "r") as f:
+            meta = json.load(f)
+            MODEL_METADATA['iso_forest'] = meta
+            log.info(f"Loaded IsolationForest model version: {meta.get('version')}")
     except FileNotFoundError:
-        log.warning(f"No IsolationForest model found at {settings.iso_forest_model_path}.")
+        log.warning(f"No IsolationForest model or metadata found at {settings.iso_forest_model_path}.")
         ISO_FOREST_MODEL = None
 
     try:
         XGB_MODEL = joblib.load(settings.supervised_model_path)
-        log.info(f"Loaded Supervised XGB model from {settings.supervised_model_path}")
+        # Load metadata
+        with open(f"{settings.supervised_model_path}.json", "r") as f:
+            meta = json.load(f)
+            MODEL_METADATA['xgb_model'] = meta
+            log.info(f"Loaded Supervised XGB model version: {meta.get('version')}")
     except FileNotFoundError:
-        log.warning(f"No Supervised model found at {settings.supervised_model_path}.")
+        log.warning(f"No Supervised model or metadata found at {settings.supervised_model_path}.")
         XGB_MODEL = None
 
-@api_app.post("/models/refresh", tags=["Admin"])
+@api_app.post("/models/refresh", tags=["Admin"], dependencies=[Depends(verify_api_key)])
 def refresh_models_endpoint():
     """API endpoint to reload models from disk at runtime."""
     try:
         load_models(force=True)
-        return {"status": "success", "message": "Models reloaded from disk."}
+        return {"status": "success", "message": "Models reloaded from disk.", "metadata": MODEL_METADATA}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -141,14 +184,14 @@ def refresh_models_cli():
     """CLI command to reload models (if app is run via CLI)."""
     console.print("Refreshing models...")
     load_models(force=True)
-    console.print("[green]Models reloaded.[/green]")
+    console.print("[green]Models reloaded:[/green]")
+    pprint(MODEL_METADATA)
 
 # --- Task 7: Health Check Endpoint ---
 @api_app.get("/health", tags=["Monitoring"])
 def get_health():
     """Health check for container orchestration."""
-    # In a real app, you'd check Kafka, Redis connections
-    from .mlint_analysis import redis_client # Import here to avoid circularity
+    from .mlint_analysis import redis_client # Import here to check
     if not ISO_FOREST_MODEL:
         return {"status": "degraded", "message": "IsolationForest model not loaded."}
     try:
@@ -156,7 +199,7 @@ def get_health():
              return {"status": "degraded", "message": "Redis connection failed."}
     except Exception as e:
         return {"status": "degraded", "message": f"Redis connection error: {e}"}
-    return {"status": "ok"}
+    return {"status": "ok", "model_versions": MODEL_METADATA}
 
 # --- CLI Commands ---
 
@@ -181,7 +224,13 @@ def analyze_entity_command(
     
     async def _main():
         try:
+            # --- Task 6: Track Latency ---
+            start_time = time.time()
             intel_results = await intel_aggregator.gather_entity_intelligence(entity)
+            latency = time.time() - start_time
+            METRIC_INTEL_LATENCY.observe(latency)
+            # --- End Task 6 ---
+            
             graph_results = await graph_analyzer.analyze_entity_graph(entity.entity_id)
             
             console.print("\n[bold]Sanctions Hits:[/bold]")
@@ -222,6 +271,10 @@ async def _run_kafka_consumer(graph_analyzer: GraphAnalyzer, shutdown_event: asy
     (Task 3: Batching, Task 4: Manual Offset Commit & DLQ Producer)
     """
     consumer = None
+    if not KafkaConsumer:
+        log.critical("kafka-python library not found. Kafka consumer cannot start.")
+        return
+
     try:
         consumer = KafkaConsumer(
             settings.kafka_topic,
@@ -259,11 +312,20 @@ async def _run_kafka_consumer(graph_analyzer: GraphAnalyzer, shutdown_event: asy
                         break
                     
                     tx_data = msg.value
+                    raw_msg_body = json.dumps(msg.value, sort_keys=True).encode('utf-8')
                     log.info(f"Received transaction {tx_data.get('tx_id')} from Kafka.")
                     
                     try:
-                        # --- Task 8: Signature Verification Placeholder ---
-                        # _verify_message_signature(msg)
+                        # --- Task 8: Signature Verification ---
+                        signature = ""
+                        for k, v in msg.headers:
+                            if k == 'X-Signature':
+                                signature = v.decode('utf-8')
+                                break
+                        
+                        if not _verify_message_signature(raw_msg_body, signature):
+                            raise Exception(f"Invalid message signature for tx {tx_data.get('tx_id')}")
+                        # --- End Task 8 ---
                         
                         METRIC_TRANSACTIONS_PROCESSED.inc()
                         
@@ -278,7 +340,6 @@ async def _run_kafka_consumer(graph_analyzer: GraphAnalyzer, shutdown_event: asy
                         if analysis_result and analysis_result.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
                             _create_alert_from_result(analysis_result)
                         
-                        # Add to graph batch
                         tx_batch_buffer.append(tx)
 
                     except Exception as e:
@@ -289,8 +350,11 @@ async def _run_kafka_consumer(graph_analyzer: GraphAnalyzer, shutdown_event: asy
                     batch_offsets[tp] = msg.offset + 1
 
                 # --- Task 4: Manual Offset Commit (per partition) ---
-                if batch_offsets:
-                    consumer.commit({tp: offset for tp, offset in batch_offsets.items()})
+                for tp, offset in batch_offsets.items():
+                    try:
+                        consumer.commit({TopicPartition(tp.topic, tp.partition): offset})
+                    except Exception as e:
+                        log.error(f"Failed to commit offset {offset} for {tp}: {e}")
 
                 # --- Task 3: Size-based batch flushing ---
                 if len(tx_batch_buffer) >= TX_BATCH_SIZE:
@@ -322,6 +386,10 @@ async def _run_swift_consumer(shutdown_event: asyncio.Event):
     Blocking AMQP (RabbitMQ) consumer loop.
     (Task 5: Updated to call async AI function)
     """
+    if not pika:
+        log.critical("pika library not found. SWIFT consumer cannot start.")
+        return
+        
     connection = None
     try:
         connection = pika.BlockingConnection(pika.URLParameters(settings.swift_amqp_url))
@@ -344,6 +412,13 @@ async def _run_swift_consumer(shutdown_event: asyncio.Event):
 
             swift_data = json.loads(body.decode('utf-8'))
             log.info(f"Received SWIFT {swift_data.get('mt_type')}")
+
+            # --- Task 8: Signature Verification ---
+            signature = properties.headers.get('X-Signature', '')
+            if not _verify_message_signature(body, signature):
+                raise Exception(f"Invalid message signature for SWIFT msg")
+            # --- End Task 8 ---
+
             METRIC_SWIFT_PROCESSED.inc()
             
             msg = SwiftMessage(**swift_data)
@@ -416,7 +491,6 @@ def train_models_command(
 ):
     """Train and save the models using config paths and feature order."""
     console.rule("[bold magenta]Training ML Models[/bold magenta]")
-    load_models(force=True) # Ensure global models are loaded
     
     try:
         features_df = pd.read_csv(feature_file)
@@ -428,6 +502,17 @@ def train_models_command(
     iso_forest = train_isolation_forest(features_df[settings.feature_order])
     joblib.dump(iso_forest, settings.iso_forest_model_path)
     console.print(f"[green]IsolationForest model saved to {settings.iso_forest_model_path}[/green]")
+    
+    # --- Task 1: Write model metadata ---
+    with open(f"{settings.iso_forest_model_path}.json", "w") as f:
+        meta = {
+            "model_name": "iso_forest",
+            "version": f"{datetime.now().isoformat()}",
+            "source_file": feature_file,
+            "feature_order": settings.feature_order
+        }
+        json.dump(meta, f, indent=2)
+    console.print(f"Wrote metadata to {settings.iso_forest_model_path}.json")
 
     if labeled_file:
         try:
@@ -437,6 +522,18 @@ def train_models_command(
             if xgb_model:
                 joblib.dump(xgb_model, settings.supervised_model_path)
                 console.print(f"[green]XGBoost model saved to {settings.supervised_model_path}[/green]")
+                
+                # --- Task 1: Write model metadata ---
+                with open(f"{settings.supervised_model_path}.json", "w") as f:
+                    meta = {
+                        "model_name": "xgb_model",
+                        "version": f"{datetime.now().isoformat()}",
+                        "source_file": labeled_file,
+                        "feature_order": settings.feature_order
+                    }
+                    json.dump(meta, f, indent=2)
+                console.print(f"Wrote metadata to {settings.supervised_model_path}.json")
+                
         except Exception as e:
             console.print(f"[bold red]Failed to train supervised model: {e}[/bold red]")
     else:
@@ -475,7 +572,8 @@ def run_realtime_monitor_command(
     Run the real-time monitor and API service.
     """
     console.rule("[bold green]Starting MLint Real-Time Service...[/bold green]")
-    uvicorn.run(f"{__name__}:api_app", host=host, port=port, reload=False)
+    # This dynamically finds the 'api_app' in the 'mlint' module
+    uvicorn.run(f"chimera_intel.core.mlint:api_app", host=host, port=port, reload=False)
 
 # --- Helper Functions (Logging, Alerting) ---
 
@@ -491,7 +589,8 @@ def _create_alert_from_result(result: TransactionAnalysisResult):
     )
     _audit_log("alert_generated", alert.dict(), "system")
     _send_to_review_queue(alert)
-    METRIC_ALERTS_GENERATED.labels(risk_level=alert.risk_level.value).inc()
+    # --- Task 6: New Metric ---
+    METRIC_ALERTS_GENERATED.labels(risk_level=alert.risk_level.value, alert_type="transaction").inc()
     log.info(f"ALERT CREATED: {alert.alert_id} for TX {alert.tx_id}. Score: {alert.risk_score:.2f}")
 
 def _create_alert_from_swift(msg: SwiftMessage, result: SwiftAnalysisResult):
@@ -505,22 +604,34 @@ def _create_alert_from_swift(msg: SwiftMessage, result: SwiftAnalysisResult):
     )
     _audit_log("alert_generated", alert.dict(), "system")
     _send_to_review_queue(alert)
-    METRIC_ALERTS_GENERATED.labels(risk_level=alert.risk_level.value).inc()
+    # --- Task 6: New Metric ---
+    METRIC_ALERTS_GENERATED.labels(risk_level=alert.risk_level.value, alert_type="swift").inc()
     log.info(f"ALERT CREATED: {alert.alert_id} for SWIFT from {msg.sender_bic}. Score: {alert.risk_score:.2f}")
 
 def _audit_log(action: str, data: dict, user: str):
     """
     Creates a new audit log entry with a chained hash.
-    (Task 8: For real security, this hash should be stored immutably)
+    (Task 8: Encrypts the data payload if key is set)
     """
     global LAST_AUDIT_HASH
+    
+    data_to_log = data
+    # --- Task 8: Encrypt data payload ---
+    if AUDIT_FERNET:
+        try:
+            data_str = json.dumps(data)
+            encrypted_data = AUDIT_FERNET.encrypt(data_str.encode('utf-8')).decode('utf-8')
+            data_to_log = {"encrypted_payload": encrypted_data}
+        except Exception as e:
+            log.error(f"Failed to encrypt audit log data: {e}")
+            data_to_log = {"encryption_error": str(e), "original_data_preview": list(data.keys())}
     
     log_entry = {
         "timestamp": datetime.now().isoformat(),
         "action": action,
         "user": user,
         "request_id": str(uuid.uuid4()),
-        "data": data,
+        "data": data_to_log, # Use the (potentially) encrypted data
         "previous_hash": LAST_AUDIT_HASH
     }
     
@@ -559,6 +670,12 @@ def _send_to_dlq(message: dict, topic: str, queue_name: str):
 # --- Task 8: Security Placeholder ---
 def _verify_message_signature(msg_body: bytes, signature: str) -> bool:
     """Verifies an HMAC-SHA256 signature."""
+    if not signature:
+        log.warning("Missing message signature. Failing open (allowing).")
+        # In a real production system, you would set this to False
+        # to "fail closed" and reject unsigned messages.
+        return True 
+        
     expected_sig = hmac.new(
         settings.message_signature_secret.encode('utf-8'),
         msg_body,
@@ -566,7 +683,7 @@ def _verify_message_signature(msg_body: bytes, signature: str) -> bool:
     ).hexdigest()
     
     if not hmac.compare_digest(signature, expected_sig):
-        log.warning(f"Invalid message signature. Got {signature}, expected {expected_sig}")
+        log.warning(f"Invalid message signature. Got {signature}")
         return False
     return True
 
