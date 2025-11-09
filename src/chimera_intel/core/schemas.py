@@ -1695,10 +1695,11 @@ class CompromisedCommitter(BaseModel):
 
 
 class OpsecReport(BaseModel):
-    """The main, top-level result model for an OPSEC analysis."""
-
     target: str
     compromised_committers: List[CompromisedCommitter] = []
+    opsec_score: float = 100.0  
+    risk_level: str = "Low"      
+    risk_factors: List[str] = [] 
     error: Optional[str] = None
 
 

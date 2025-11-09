@@ -1,13 +1,26 @@
 import typer
+import httpx
+import asyncio
+import logging
+from bs4 import BeautifulSoup
 from rich.console import Console
 from collections import Counter
 from Wappalyzer import Wappalyzer, WebPage
 from app_store_scraper import AppStore
-from google_play_scraper import search, app  # Added google-play-scraper
+from google_play_scraper import search, app
 from textblob import TextBlob
+from typing import List, Dict, Set
+from hashlib import sha256
+import re
+# Imports for new functionality
+from chimera_intel.core.http_client import get_async_http_client
+from chimera_intel.core.scheduler import add_job
+from chimera_intel.core.page_monitor import check_for_changes  # Re-use monitor logic
+from chimera_intel.core.utils import console
 
 app = typer.Typer(no_args_is_help=True, help="Product Intelligence (PRODINT) tools.")
-console = Console()
+# console = Console() # Already defined in original file
+logger = logging.getLogger(__name__)
 
 
 class ProdInt:
@@ -21,8 +34,6 @@ class ProdInt:
         Performs a digital teardown of a website to identify its technology stack using Wappalyzer.
         """
         try:
-            # Wappalyzer requires a live webpage to analyze
-
             webpage = WebPage.new_from_url(url)
             wappalyzer = Wappalyzer()
             tech_stack = wappalyzer.analyze_with_versions(webpage)
@@ -83,7 +94,6 @@ class ProdInt:
         Monitors the Google Play Store for apps released by a specific developer.
         """
         try:
-            # Search for apps matching the developer name
             search_results = search(
                 query=developer_name,
                 page=1,
@@ -104,7 +114,6 @@ class ProdInt:
             app_details_list = []
             for app_result in developer_apps:
                 app_id = app_result["appId"]
-                # Fetch detailed info for each app
                 details = app(app_id, lang="en", country=country)
                 app_details_list.append({
                     "app_id": app_id,
@@ -126,25 +135,125 @@ class ProdInt:
             return {"developer_name": developer_name, "error": str(e)}
 
     def find_feature_gaps(
-        self, our_features: list, competitor_features: list, requested_features: list
+        self, our_features: List[str], competitor_features: List[str], requested_features: List[str]
     ) -> dict:
         """
         Identifies feature gaps by comparing our product, a competitor's product, and user requests.
         This function remains as an internal analysis tool, as it relies on curated data.
         """
-        our_set = set(our_features)
-        competitor_set = set(competitor_features)
-        requested_set = set(requested_features)
+        # Case-insensitive and whitespace-stripped comparison
+        our_set = {f.lower().strip() for f in our_features}
+        competitor_set = {f.lower().strip() for f in competitor_features}
+        requested_set = {f.lower().strip() for f in requested_features}
 
         gaps_we_have = (competitor_set - our_set) & requested_set
         gaps_competitor_has = (our_set - competitor_set) & requested_set
         unaddressed_requests = requested_set - our_set - competitor_set
 
         return {
-            "our_advantages": list(gaps_competitor_has),
-            "competitor_advantages": list(gaps_we_have),
+            "our_advantages_vs_requested": list(gaps_competitor_has),
+            "competitor_advantages_vs_requested": list(gaps_we_have),
             "unaddressed_market_needs": list(unaddressed_requests),
+            "all_our_features": list(our_set),
+            "all_competitor_features": list(competitor_set),
         }
+
+    async def scrape_features_from_page(self, url: str) -> List[str]:
+        """
+        (Best-effort) Scrapes a list of features from a product or pricing page.
+        """
+        features: Set[str] = set()
+        try:
+            async with get_async_http_client() as client:
+                response = await client.get(url, follow_redirects=True, timeout=20.0)
+                response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Heuristics to find feature lists (common in pricing/feature pages)
+            # Look for lists inside sections with "feature" or "pricing" in the class/id
+            potential_sections = soup.find_all(
+                ["div", "section", "ul"], 
+                {"class": [re.compile(r"feature"), re.compile(r"pricing"), re.compile(r"plan")]}
+            )
+            
+            if not potential_sections:
+                potential_sections = soup.find_all("body") # Fallback to whole body
+
+            for section in potential_sections:
+                items = section.find_all("li")
+                if not items:
+                    # Try finding items by class if no <li> tags
+                    items = section.find_all(class_=re.compile(r"feature-item"))
+
+                for item in items:
+                    text = item.get_text(strip=True)
+                    # Filter out common non-feature items
+                    if text and len(text) > 2 and len(text) < 100 and not text.lower().startswith("sign up"):
+                        features.add(text)
+            
+            logger.info(f"Scraped {len(features)} potential features from {url}")
+            return list(features)
+        
+        except httpx.RequestError as e:
+            console.print(f"[bold red]Error scraping features from {url}: {e}[/bold red]")
+            return []
+        except Exception as e:
+            console.print(f"[bold red]An unexpected error occurred during feature scraping: {e}[/bold red]")
+            return []
+
+    async def scrape_ecommerce_catalog(self, url: str) -> List[Dict[str, str]]:
+        """
+        (Best-effort) Scrapes product listings from a generic e-commerce catalog page.
+        """
+        products: List[Dict[str, str]] = []
+        try:
+            async with get_async_http_client() as client:
+                response = await client.get(url, follow_redirects=True, timeout=20.0)
+                response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Heuristic: Find product "cards". This is highly site-specific.
+            # We look for common class names.
+            product_cards = soup.find_all("div", class_=[
+                re.compile(r"product-card"), 
+                re.compile(r"product-item"), 
+                re.compile(r"list-item"),
+                re.compile(r"product-tile")
+            ])
+            
+            if not product_cards:
+                # Fallback for semantic tags
+                product_cards = soup.find_all("li", class_=re.compile(r"product"))
+
+            for card in product_cards:
+                name = card.find(["h2", "h3", "h4", "a"], class_=re.compile(r"title|name|heading"))
+                price = card.find("span", class_=re.compile(r"price|amount"))
+                
+                if not name:
+                    # Fallback: try to find any link with an href
+                    name = card.find("a", href=True)
+                
+                if not price:
+                    # Fallback: try to find text with a $ or € symbol
+                    price = card.find(string=re.compile(r"[$€£]"))
+
+                product_name = name.get_text(strip=True) if name else "N/A"
+                product_price = price.get_text(strip=True) if price else "N/A"
+
+                if product_name != "N/A":
+                    products.append({"name": product_name, "price": product_price})
+            
+            logger.info(f"Scraped {len(products)} products from {url}")
+            return products
+
+        except httpx.RequestError as e:
+            console.print(f"[bold red]Error scraping catalog from {url}: {e}[/bold red]")
+            return []
+        except Exception as e:
+            console.print(f"[bold red]An unexpected error occurred during catalog scraping: {e}[/bold red]")
+            return []
 
 
 @app.command(name="teardown")
@@ -201,28 +310,123 @@ def monitor_dev(
             f"[bold green]App Store Monitor for Developer: {developer_name}[/bold green]"
         )
         console.print_json(data=data)
-        
+
+
+# --- NEW COMMANDS ---
+
+@app.command(name="scrape-catalog")
+def scrape_catalog(
+    url: str = typer.Argument(
+        ...,
+        help="The URL of the e-commerce or marketplace catalog page to scrape.",
+    )
+):
+    """
+    (Best-effort) Scrapes product listings from a catalog page.
+    """
+    prodint = ProdInt()
+    console.print(f"[bold cyan]Scraping product catalog from {url}...[/bold cyan]")
+    catalog_data = asyncio.run(prodint.scrape_ecommerce_catalog(url))
+    if catalog_data:
+        console.print(
+            f"[bold green]Successfully scraped {len(catalog_data)} products:[/bold green]"
+        )
+        console.print_json(data=catalog_data)
+    else:
+        console.print("[bold yellow]Could not scrape any products. The site may be protected or uses non-standard HTML.[/bold yellow]")
+
+
+@app.command(name="monitor-changelog")
+def monitor_changelog(
+    url: str = typer.Option(
+        ...,
+        "--url",
+        "-u",
+        help="The URL of the release notes, changelog, or pricing page to monitor.",
+    ),
+    schedule: str = typer.Option(
+        ...,
+        "--schedule",
+        "-s",
+        help="Cron-style schedule (e.g., '0 0 * * *' for daily at midnight).",
+    ),
+):
+    """
+    Monitors a product changelog or pricing page for any changes.
+    (This is a specialized use of the core 'page_monitor' module).
+    """
+    job_id = f"prodint_monitor_{sha256(url.encode()).hexdigest()[:10]}"
+
+    try:
+        add_job(
+            func=check_for_changes,  # Reuse the core function
+            trigger="cron",
+            cron_schedule=schedule,
+            job_id=job_id,
+            kwargs={"url": url, "job_id": job_id},
+        )
+        console.print(
+            "[bold green]✅ Successfully scheduled product page monitor.[/bold green]"
+        )
+        console.print(f"   - Job ID: {job_id}")
+        console.print(f"   - URL: {url}")
+        console.print(f"   - Schedule: {schedule}")
+        console.print(
+            "\nEnsure the Chimera daemon is running for the job to execute: [bold]chimera daemon start[/bold]"
+        )
+        logger.info(
+            f"Successfully scheduled PRODINT job {job_id} for {url} with schedule '{schedule}'"
+        )
+    except Exception as e:
+        console.print(f"[bold red]Error scheduling job:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
 
 @app.command(name="feature-gaps")
-def feature_gaps():
-    """Identifies feature gaps between our product, a competitor, and user requests."""
-    # This remains a user-driven command, as the data is internal/curated.
-
-    our_features = ["Dashboard", "User Login", "Reporting", "API Access"]
-    competitor_features = ["Dashboard", "User Login", "Reporting", "SSO Integration"]
-    requested_features = [
-        "SSO Integration",
-        "Team Collaboration",
-        "Reporting",
-        "Mobile App",
-    ]
-
+def feature_gaps(
+    our_url: str = typer.Option(
+        ...,
+        "--our-url",
+        help="URL to our product's feature or pricing page."
+    ),
+    competitor_url: str = typer.Option(
+        ...,
+        "--competitor-url",
+        help="URL to the competitor's feature or pricing page."
+    ),
+    requested_features: str = typer.Option(
+        ...,
+        "--requested",
+        help="A comma-separated list of user-requested features (e.g., 'SSO,API,Dark Mode')."
+    )
+):
+    """
+    Automatically scrapes two feature pages and compares them against a list of requested features.
+    """
     prodint = ProdInt()
+    console.print("[bold cyan]Scraping feature lists...[/bold cyan]")
+
+    async def scrape_all():
+        task_ours = prodint.scrape_features_from_page(our_url)
+        task_theirs = prodint.scrape_features_from_page(competitor_url)
+        results = await asyncio.gather(task_ours, task_theirs)
+        return results[0], results[1]
+
+    our_features_list, competitor_features_list = asyncio.run(scrape_all())
+    
+    if not our_features_list:
+        console.print(f"[bold yellow]Warning: Could not scrape any features from {our_url}.[/bold yellow]")
+    if not competitor_features_list:
+        console.print(f"[bold yellow]Warning: Could not scrape any features from {competitor_url}.[/bold yellow]")
+
+    requested_features_list = [f.strip() for f in requested_features.split(',')]
+
+    console.print("[bold cyan]Analyzing feature gaps...[/bold cyan]")
     gaps = prodint.find_feature_gaps(
-        our_features, competitor_features, requested_features
+        our_features_list, competitor_features_list, requested_features_list
     )
 
-    console.print("[bold green]Feature Gap Analysis:[/bold green]")
+    console.print("\n[bold green]Feature Gap Analysis Results:[/bold green]")
     console.print_json(data=gaps)
 
 

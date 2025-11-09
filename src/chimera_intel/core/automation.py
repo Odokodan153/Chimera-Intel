@@ -16,7 +16,7 @@ import json
 import shlex # NEW: Import for safe subprocess handling
 import re
 from collections import defaultdict
-from typing import List, Optional, Set, DefaultDict
+from typing import List, Optional, Set, DefaultDict, Dict, Any
 from datetime import datetime, timezone
 from .schemas import (
     CVEEnrichmentResult,
@@ -444,7 +444,10 @@ ALLOWED_WORKFLOW_CMDS = {
     "offensive",
     "automation",
     "cybint",
-    "red-team"
+    "red-team",
+    # --- NEW: Add command aliases from plugin registration ---
+    "auto", # alias for automation
+    "graph", # for graph db
 }
 
 def run_workflow(workflow_file: str) -> None:
@@ -636,9 +639,121 @@ def check_data_feed_quality() -> DataQualityReport:
         statuses=statuses
     )
 
+# --- NEW: PLAYBOOK DEFINITIONS ---
+
+PLAYBOOK_EXAMPLES: Dict[str, Dict[str, Any]] = {
+    "passive-asset-discovery": {
+        "name": "Passive Asset Discovery",
+        "description": "Daily playbook to discover new assets (subdomains, IPs) and risks (CVEs, public buckets).",
+        "target": "example.com",
+        "steps": [
+            {
+                "name": "Step 1: Find new subdomains from certificate logs",
+                "run": "recon footprint {target} --certs-only"
+            },
+            {
+                "name": "Step 2: Find new subdomains from passive DNS",
+                "run": "recon footprint {target} --passive-dns"
+            },
+            {
+                "name": "Step 3: Query Shodan/Censys for discovered IPs",
+                "run": "scan web {target} --services --from-db"
+            },
+            {
+                "name": "Step 4: Enrich IPs with WHOIS/ASN data",
+                "run": "cybint whois {target} --from-db"
+            },
+            {
+                "name": "Step 5: Check for public cloud buckets",
+                "run": "recon cloud {target}"
+            },
+            {
+                "name": "Step 6: (Trigger) Check for new high-risk CVEs on services",
+                "run": "auto pipeline-run-trigger '{\"event_type\": \"vulnerability_found\", \"target\": \"{target}\", \"min_cvss\": 7.0}'"
+            }
+        ]
+    },
+    "ioc-pivot": {
+        "name": "IOC Pivot",
+        "description": "Pivots on a single IOC (IP, domain, hash) to find related infrastructure.",
+        "target": "8.8.8.8",
+        "steps": [
+            {
+                "name": "Step 1: Query VT/OTX for historical sightings",
+                "run": "auto enrich-ioc {target}"
+            },
+            {
+                "name": "Step 2: Query passive DNS & cert logs for shared infrastructure",
+                "run": "recon footprint {target} --passive-dns --certs-only"
+            },
+            {
+                "name": "Step 3: Expand to ASN and list allocated IP ranges",
+                "run": "cybint whois {target} --asn"
+            },
+            {
+                "name": "Step 4: Search for related domains/IPs in graph database",
+                "run": "graph query {target} --neighbors 2"
+            },
+            {
+                "name": "Step 5: Run risk scoring",
+                "run": "auto prioritize-event '{\"target\": \"{target}\", \"event_type\": \"manual_pivot\"}'"
+            }
+        ]
+    }
+}
+
 # --- Typer CLI Application ---
 
 automation_app = typer.Typer()
+playbook_app = typer.Typer() # --- NEW: Playbook CLI Group ---
+
+
+@playbook_app.command("list")
+def run_playbook_list():
+    """
+    (NEW) Lists all available 'copy+paste' example playbooks.
+    """
+    console.print("[bold cyan]Available Example Playbooks:[/bold cyan]")
+    for name, data in PLAYBOOK_EXAMPLES.items():
+        console.print(f"- [bold]{name}[/bold]: {data['description']}")
+
+@playbook_app.command("show")
+def run_playbook_show(
+    name: str = typer.Argument(..., help="The name of the playbook to show.")
+):
+    """
+    (NEW) Shows the YAML content for an example playbook.
+    
+    You can pipe this output to a file:
+    
+    chimera auto playbook show passive-asset-discovery > discovery.yaml
+    
+    And then run it:
+    
+    chimera auto workflow discovery.yaml
+    """
+    playbook_data = PLAYBOOK_EXAMPLES.get(name)
+    if not playbook_data:
+        console.print(f"[bold red]Error:[/bold red] Playbook '{name}' not found.")
+        console.print("Run [bold]chimera auto playbook list[/bold] to see available playbooks.")
+        raise typer.Exit(code=1)
+        
+    console.print(f"[bold cyan]--- Example Playbook: {playbook_data['name']} ---[/bold cyan]")
+    console.print(f"# Description: {playbook_data['description']}")
+    console.print(f"# Save this content as a .yaml file and run it with 'chimera auto workflow <your-file.yaml>'")
+    
+    # We only output the runnable parts (target and steps)
+    runnable_config = {
+        "target": playbook_data['target'],
+        "steps": playbook_data['steps']
+    }
+    
+    # Print the YAML
+    print("\n" + yaml.dump(runnable_config, sort_keys=False, indent=2))
+
+
+automation_app.add_typer(playbook_app, name="playbook", help="Show example automation playbooks (workflows).") # --- NEW ---
+
 
 # (Existing commands: enrich-ioc, threat-model, ueba, enrich-cve, workflow)
 #

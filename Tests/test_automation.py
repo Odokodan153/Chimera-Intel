@@ -105,8 +105,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
                 "An error occurred with the Vulners API: API is down", result.error
             )
 
+    @patch("chimera_intel.core.automation._generate_dynamic_threat_model", return_value=None)
     @patch("chimera_intel.core.automation.get_aggregated_data_for_target")
-    def test_generate_threat_model_success_rule_1_vuln(self, mock_get_data):
+    def test_generate_threat_model_success_rule_1_vuln(self, mock_get_data, mock_dynamic_model):
         """Tests threat model generation with mock data (Rule 1)."""
         mock_get_data.return_value = {
             "modules": {
@@ -133,10 +134,12 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result.potential_paths), 1)
         self.assertIsInstance(result.potential_paths[0], AttackPath)
         self.assertIn("Exploit CVE-2023-1234", result.potential_paths[0].path[0])
+        mock_dynamic_model.assert_called_once() # Should always try dynamic first
 
     # --- Extended Test ---
+    @patch("chimera_intel.core.automation._generate_dynamic_threat_model", return_value=None)
     @patch("chimera_intel.core.automation.get_aggregated_data_for_target")
-    def test_generate_threat_model_rule_2_cloud(self, mock_get_data):
+    def test_generate_threat_model_rule_2_cloud(self, mock_get_data, mock_dynamic_model):
         """
         Tests threat model generation for Rule 2 (Cloud S3 bucket).
         """
@@ -152,8 +155,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         self.assertIn("S3 bucket: my-public-bucket", result.potential_paths[0].path[0])
 
     # --- Extended Test ---
+    @patch("chimera_intel.core.automation._generate_dynamic_threat_model", return_value=None)
     @patch("chimera_intel.core.automation.get_aggregated_data_for_target")
-    def test_generate_threat_model_rule_3_leaks(self, mock_get_data):
+    def test_generate_threat_model_rule_3_leaks(self, mock_get_data, mock_dynamic_model):
         """
         Tests threat model generation for Rule 3 (Credential Leaks).
         """
@@ -316,7 +320,8 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("An API error occurred: VT API is down", result.error)
 
     @patch("chimera_intel.core.automation.subprocess.run")
-    def test_run_workflow_success(self, mock_subprocess_run):
+    @patch("chimera_intel.core.automation.shlex.split")
+    def test_run_workflow_success(self, mock_shlex_split, mock_subprocess_run):
         """Tests workflow execution by mocking subprocess."""
         mock_yaml_content = (
             "target: example.com\n"
@@ -324,14 +329,21 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
             "  - run: scan footprint {target}\n"
             "  - run: scan web {target}\n"
         )
+        # Mock shlex.split to return valid command parts
+        mock_shlex_split.side_effect = [
+            ["chimera", "scan", "footprint", "example.com"],
+            ["chimera", "scan", "web", "example.com"],
+        ]
+        
         with patch("builtins.open", mock_open(read_data=mock_yaml_content)):
             run_workflow("workflow.yaml")
 
             self.assertEqual(mock_subprocess_run.call_count, 2)
             first_call_args = mock_subprocess_run.call_args_list[0].args[0]
             second_call_args = mock_subprocess_run.call_args_list[1].args[0]
-            self.assertIn("chimera scan footprint example.com", first_call_args)
-            self.assertIn("chimera scan web example.com", second_call_args)
+            
+            self.assertEqual(first_call_args, ["chimera", "scan", "footprint", "example.com"])
+            self.assertEqual(second_call_args, ["chimera", "scan", "web", "example.com"])
 
     @patch("chimera_intel.core.automation.subprocess.run")
     def test_run_workflow_step_failure(self, mock_subprocess_run):
@@ -344,8 +356,9 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
             "  - run: scan web {target}\n"  # This step should not be reached
         )
         with patch("builtins.open", mock_open(read_data=mock_yaml_content)):
-            run_workflow("workflow.yaml")
-            mock_subprocess_run.assert_called_once()  # Stops after first failure
+            with patch("chimera_intel.core.automation.shlex.split", return_value=["chimera", "scan", "footprint", "example.com"]):
+                run_workflow("workflow.yaml")
+                mock_subprocess_run.assert_called_once()  # Stops after first failure
 
     # --- Extended Test ---
     @patch("chimera_intel.core.automation.logger.error")
@@ -438,6 +451,30 @@ class TestAutomation(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result.exit_code, 0)
         mock_save.assert_called_with(mock_dump, "out.json")
+
+    # --- NEW: Tests for Playbook CLI ---
+
+    def test_cli_playbook_list(self):
+        """Tests the new 'playbook list' command."""
+        result = runner.invoke(automation_app, ["playbook", "list"])
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("passive-asset-discovery", result.stdout)
+        self.assertIn("ioc-pivot", result.stdout)
+
+    def test_cli_playbook_show_found(self):
+        """Tests the new 'playbook show' command for a valid playbook."""
+        result = runner.invoke(automation_app, ["playbook", "show", "ioc-pivot"])
+        self.assertEqual(result.exit_code, 0)
+        # Check for key parts of the YAML
+        self.assertIn("target: 8.8.8.8", result.stdout)
+        self.assertIn("run: auto enrich-ioc {target}", result.stdout)
+        self.assertIn("run: graph query {target} --neighbors 2", result.stdout)
+
+    def test_cli_playbook_show_not_found(self):
+        """Tests the new 'playbook show' command for a missing playbook."""
+        result = runner.invoke(automation_app, ["playbook", "show", "nonexistent-playbook"])
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error: Playbook 'nonexistent-playbook' not found.", result.stdout)
 
 
 if __name__ == "__main__":

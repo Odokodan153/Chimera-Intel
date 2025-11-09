@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-rt-osint"
+version = "0.1.0"
+description = "A real-time OSINT monitor plugin for clearnet and Tor archives."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # All dependencies (aiohttp[socks], beautifulsoup4, rich)
+    # are assumed to be installed as part of the main
+    # chimera-intel package, as defined in the root pyproject.toml.
+]
+
+[project.entry-points."chimera_intel.plugins"]
+rt-osint = "chimera_rt_osint.main:plugin"

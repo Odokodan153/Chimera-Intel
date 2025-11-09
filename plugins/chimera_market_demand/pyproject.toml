@@ -1,0 +1,54 @@
+# plugins/chimera_market_demand/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-market-demand"
+version = "0.1.0"
+description = "Chimera Intel plugin for market and demand intelligence (TAM/SAM/SOM, Trends)."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+keywords = ["plugin", "chimera-intel", "market", "demand", "tam", "trends"]
+requires-python = ">=3.10"
+
+# --- Dependencies ---
+# This plugin introduces a new dependency: pytrends
+dependencies = [
+    # 'chimera_intel @ file:./../../',  # Use this if installing from the monorepo root
+    "pytrends>=4.7.0",
+    "pandas", # pytrends dependency
+    "beautifulsoup4",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your-repo/Chimera-Intel"
+"Bug Tracker" = "https://github.com/your-repo/Chimera-Intel/issues"
+
+# --- Plugin Entry Point ---
+# This is what allows the core Chimera Intel app to find and load this plugin.
+[project.entry-points."chimera_intel.plugins"]
+market_demand = "chimera_market_demand.main:get_plugin"
+
+[tool.setuptools]
+# This tells setuptools to look for the package in the 'src' directory
+package-dir = {"" = "src"}
+packages = ["chimera_market_demand"]
+
+# Optional: If you want to include non-code files
+[tool.setuptools.package-data]
+"chimera_market_demand" = ["*.json"]
+
+[tool.setuptools_scm]
+# This tool can automatically version your package based on Git tags
+# For a simple plugin, you might not need it, but it's good practice.
+write_to = "src/chimera_market_demand/_version.py"

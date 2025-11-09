@@ -13,12 +13,13 @@ from reportlab.platypus import (  # type: ignore
 )
 from reportlab.lib.styles import getSampleStyleSheet  # type: ignore
 from reportlab.lib import colors  # type: ignore
+from reportlab.lib.pagesizes import letter  # type: ignore
 from reportlab.lib.units import inch  # type: ignore
 from typing import Dict, Any, List, Optional
 import logging
 from .utils import console
 import os
-
+from .database import get_aggregated_data_for_target
 from .config_loader import CONFIG
 from .graph_db import build_and_save_graph
 
@@ -141,6 +142,109 @@ def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
     except Exception as e:
         logger.error("An error occurred during PDF generation: %s", e, exc_info=True)
 
+def generate_threat_briefing(json_data: Dict[str, Any], output_path: str) -> None:
+    """
+    Generates a concise, one-page executive threat briefing
+    from an aggregated database result.
+    """
+    try:
+        doc = BaseDocTemplate(output_path, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story: List[Flowable] = []
+
+        # --- Title ---
+        story.append(Paragraph("Executive Threat Briefing", styles["h1"]))
+        
+        # Read target from the root of the aggregated data
+        target = json_data.get("target", "Unknown Target")
+        story.append(Paragraph(f"Target: {target}", styles["h2"]))
+        story.append(Spacer(1, 0.25 * inch))
+
+        # Get the nested modules dictionary
+        modules = json_data.get("modules", {})
+
+        # --- 1. Critical Findings (Top 5) ---
+        story.append(Paragraph("Critical Findings", styles["h3"]))
+        
+        critical_findings = []
+        
+        # Extract critical vulnerabilities
+        if (
+            "vulnerability_scanner" in modules
+            and "scanned_hosts" in modules["vulnerability_scanner"]
+        ):
+            for host in modules["vulnerability_scanner"]["scanned_hosts"]:
+                for port in host.get("open_ports", []):
+                    for cve in port.get("vulnerabilities", []):
+                        if cve.get("cvss_score", 0) >= 9.0:
+                            critical_findings.append(
+                                f"<b>Critical CVE:</b> {cve['id']} (Score: {cve['cvss_score']}) on {host['host']}:{port['port']}"
+                            )
+        
+        # Extract data breaches
+        if (
+            "defensive_breaches" in modules
+            and "hibp" in modules["defensive_breaches"]
+        ):
+            breaches = modules["defensive_breaches"]["hibp"].get("breaches")
+            if breaches:
+                critical_findings.append(
+                    f"<b>Data Breaches:</b> Target associated with {len(breaches)} known breaches."
+                )
+
+        if not critical_findings:
+            critical_findings.append("No critical findings identified in this dataset.")
+
+        for finding in critical_findings[:5]: # Limit to top 5
+            story.append(Paragraph(f"• {finding}", styles["BodyText"]))
+        story.append(Spacer(1, 0.2 * inch))
+
+        # --- 2. Attack Surface Summary ---
+        story.append(Paragraph("Attack Surface Summary", styles["h3"]))
+        as_summary = []
+        if "footprint" in modules:
+            subs = modules["footprint"].get("subdomains", {}).get("total_unique", 0)
+            ips = len(modules["footprint"].get("dns_records", {}).get("A", []))
+            as_summary.append(f"<b>{subs}</b> subdomains and <b>{ips}</b> unique IP addresses identified.")
+        
+        if "vulnerability_scanner" in modules:
+            ports = 0
+            for host in modules["vulnerability_scanner"].get("scanned_hosts", []):
+                ports += len(host.get("open_ports", []))
+            if ports > 0:
+                as_summary.append(f"<b>{ports}</b> open ports discovered across scanned hosts.")
+        
+        if not as_summary:
+            as_summary.append("Attack surface data not available.")
+            
+        for item in as_summary:
+            story.append(Paragraph(f"• {item}", styles["BodyText"]))
+        story.append(Spacer(1, 0.2 * inch))
+
+        # --- 3. Actionable Recommendations ---
+        story.append(Paragraph("Actionable Recommendations", styles["h3"]))
+        recos = []
+        if any("Critical CVE" in f for f in critical_findings):
+            recos.append("<b>Patching:</b> Immediately address all Critical (9.0+) CVEs identified.")
+        if any("Data Breaches" in f for f in critical_findings):
+            recos.append("<b>Credentials:</b> Force password rotation for all employees on associated domains.")
+        if not recos:
+            recos.append("<b>Monitoring:</b> Continue routine monitoring of the target's footprint.")
+            
+        for item in recos:
+            story.append(Paragraph(f"• {item}", styles["BodyText"]))
+
+        # --- Build ---
+        frame = Frame(
+            doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal"
+        )
+        template = PageTemplate(id="main_template", frames=[frame], onPage=footer)
+        doc.addPageTemplates([template])
+        doc.build(story)
+        logger.info("Successfully generated threat briefing at: %s", output_path)
+
+    except Exception as e:
+        logger.error("An error occurred during briefing generation: %s", e, exc_info=True)
 
 # --- Typer CLI Application ---
 
@@ -179,6 +283,54 @@ def create_pdf_report(
         output_path = output_file
     generate_pdf_report(data, output_path)
 
+@report_app.command("briefing")
+def create_briefing_report(
+    json_file: str = typer.Argument(..., help="Path to a JSON scan file identifying the target."),
+    output_file: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save the PDF briefing. Defaults to '<target>_briefing.pdf'.",
+    ),
+):
+    """
+    Creates a one-page executive threat briefing by aggregating all
+    historical database data for the target specified in the JSON file.
+    """
+    logger.info("Generating threat briefing for target in: %s", json_file)
+
+    try:
+        with open(json_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        logger.error("Input file for briefing not found at '%s'", json_file)
+        raise typer.Exit(code=1)
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in file '%s'", json_file)
+        raise typer.Exit(code=1)
+
+    # Use the JSON file to identify the target
+    target_name = data.get("domain") or data.get("company", "report")
+    if target_name == "report":
+        logger.error("Could not determine 'domain' or 'company' from JSON file.")
+        raise typer.Exit(code=1)
+
+    if not output_file:
+        output_path = f"{target_name.replace('.', '_')}_briefing.pdf"
+    else:
+        output_path = output_file
+        
+    # --- THIS IS THE "REAL DEF" ---
+    # Fetch all aggregated data for that target from the database
+    logger.info(f"Fetching all historical data for target: {target_name}")
+    aggregated_data = get_aggregated_data_for_target(target_name)
+    
+    if not aggregated_data or not aggregated_data.get("modules"):
+        logger.error(f"No aggregated data found in the database for target '{target_name}'. Cannot generate briefing.")
+        raise typer.Exit(code=1)
+    
+    # Use the complete aggregated data to generate the report
+    generate_threat_briefing(aggregated_data, output_path)
 
 def generate_graph_report(json_data: Dict[str, Any], output_path: str):
     """Generates an HTML graph report for a target."""
