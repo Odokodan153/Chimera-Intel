@@ -6,11 +6,9 @@ This provides a queue for F1 (Human Review) and complements action_governance.py
 import typer
 import json
 import logging
-from pydantic import BaseModel, Field
+from .schemas import ReviewRequest, ReviewStatus
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from enum import Enum
-import uuid
 from .utils import console
 
 logger = logging.getLogger(__name__)
@@ -18,22 +16,7 @@ logger = logging.getLogger(__name__)
 # Simple file-based "database" for the review queue
 REVIEW_QUEUE_PATH = "review_queue.json"
 
-class ReviewStatus(str, Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    DENIED = "denied"
 
-class ReviewRequest(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    status: ReviewStatus = ReviewStatus.PENDING
-    user: str
-    action_name: str
-    target: str
-    provenance: Dict[str, Any] = Field(default_factory=dict, description="e.g., project_id, consent_file_hash")
-    justification: Optional[str] = None
-    reviewer: Optional[str] = None
-    reviewed_at: Optional[datetime] = None
 
 class HumanReviewService:
     """Manages the queue of actions pending human review."""

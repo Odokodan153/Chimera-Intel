@@ -5580,3 +5580,40 @@ class SimulationResult(BaseModel):
     disclaimer: str = Field(
         default="LEGAL/ETHICAL DISCLAIMER: This output is based on a simulation and does not represent a deterministic prediction of future events. It is intended for analytical and planning purposes only."
     )
+class AlertLevel(str, Enum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    CRITICAL = "CRITICAL"
+
+class AlertStatus(str, Enum):
+    NEW = "new"
+    ACK = "acknowledged"
+
+class Alert(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    level: AlertLevel = AlertLevel.INFO
+    title: str
+    message: str
+    confidence: Optional[int] = Field(None, ge=0, le=100, description="Confidence score (0-100)")
+    provenance: Dict[str, Any] = Field(default_factory=dict, description="Origin of the alert (e.g., module, user_id)")
+    legal_flag: Optional[str] = Field(None, description="Legal metadata or risk level classification")
+    status: AlertStatus = AlertStatus.NEW
+
+class ReviewStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    DENIED = "denied"
+
+class ReviewRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    status: ReviewStatus = ReviewStatus.PENDING
+    user: str
+    action_name: str
+    target: str
+    provenance: Dict[str, Any] = Field(default_factory=dict, description="e.g., project_id, consent_file_hash")
+    justification: Optional[str] = None
+    reviewer: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+

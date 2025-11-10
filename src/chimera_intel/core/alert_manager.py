@@ -6,12 +6,11 @@ import typer
 import json
 import logging
 from enum import Enum
-from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import uuid
 from .utils import console
-from .schemas import ActionRiskLevel  # Assuming this holds legal/risk info
+from .schemas import Alert,AlertLevel,AlertStatus 
 from .config_loader import CONFIG
 import httpx
 
@@ -20,25 +19,7 @@ logger = logging.getLogger(__name__)
 # Simple file-based "database" for alerts
 ALERT_DB_PATH = "alerts.jsonl"
 
-class AlertLevel(str, Enum):
-    INFO = "INFO"
-    WARNING = "WARNING"
-    CRITICAL = "CRITICAL"
 
-class AlertStatus(str, Enum):
-    NEW = "new"
-    ACK = "acknowledged"
-
-class Alert(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    level: AlertLevel = AlertLevel.INFO
-    title: str
-    message: str
-    confidence: Optional[int] = Field(None, ge=0, le=100, description="Confidence score (0-100)")
-    provenance: Dict[str, Any] = Field(default_factory=dict, description="Origin of the alert (e.g., module, user_id)")
-    legal_flag: Optional[str] = Field(None, description="Legal metadata or risk level classification")
-    status: AlertStatus = AlertStatus.NEW
 
 class AlertManager:
     """Handles the creation and dispatching of alerts."""
