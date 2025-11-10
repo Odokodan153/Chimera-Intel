@@ -14,15 +14,12 @@ from sklearn.ensemble import RandomForestClassifier  # type: ignore
 from sklearn.metrics import accuracy_score  # type: ignore
 from datetime import datetime
 
-# Get a logger instance for this specific file
+# --- ARG INTEGRATION IMPORTS ---
+from chimera_intel.core.arg_service import arg_service_instance
+# --- END ARG INTEGRATION IMPORTS ---
 
 logger = logging.getLogger(__name__)
-
-# We still need the console for rich table output
-
 console = Console()
-
-# Define a library of expected events for "OSINT via Negative Space"
 
 EXPECTED_EVENTS_LIBRARY: List[ExpectedEvent] = [
     ExpectedEvent(
@@ -39,14 +36,6 @@ def check_for_missed_events(
 ) -> List[str]:
     """
     Checks if any expected recurring events have been missed by analyzing scan timestamps.
-
-    Args:
-        target (str): The primary target of the scan (e.g., a domain name).
-        historical_data (List[Dict[str, Any]]): A list of scan results, ordered from oldest to newest.
-        module (str): The name of the module being analyzed.
-
-    Returns:
-        List[str]: A list of strings describing any missed events.
     """
     missed_events: List[str] = []
     if not historical_data:
@@ -61,8 +50,6 @@ def check_for_missed_events(
                 timestamp = scan.get("timestamp")
                 if not timestamp:
                     continue
-                # Correctly traverse nested data to check for the field's existence
-
                 field_parts = event_def.field_to_check.split(".")
                 data = scan_data
                 field_found = True
@@ -83,21 +70,42 @@ def check_for_missed_events(
     return missed_events
 
 
+def get_arg_strategic_signals() -> List[Prediction]:
+    """
+    Queries the ARG for high-level strategic patterns.
+    """
+    predictions: List[Prediction] = []
+    
+    # Use the pre-built pattern from arg_service.py to find collusion signals
+    try:
+        shared_director_results = arg_service_instance.find_shared_directors()
+        if shared_director_results:
+            # Get the most significant signal
+            signal = shared_director_results[0] 
+            pred = Prediction(
+                signal="[bold red]ARG Signal: Potential Collusion[/bold red]",
+                details=f"Person '{signal['person_name']}' is a director of {signal['companies_directed']} companies, "
+                        f"including: {', '.join(signal['companies'])}. This indicates a potential shared controlling interest or market collusion."
+            )
+            predictions.append(pred)
+    except Exception as e:
+        logger.warning(f"Failed to run ARG pattern search for forecaster: {e}")
+        # Could append a "warning" prediction if needed
+    
+    # ---
+    # TODO: Add more ARG queries here, e.g., for:
+    # - Shared Infrastructure: (Company)-[:RESOLVES_TO]->(IPAddress)<-[:RESOLVES_TO]-(Company)
+    # - Technology Clustering: (Company)-[:USES_TECH]->(Technology)
+    # ---
+
+    return predictions
+
+
 def run_prediction_rules(
     historical_data: List[Dict[str, Any]], module: str
 ) -> ForecastResult:
     """
     Applies a set of simple, rule-based heuristics to historical data to find signals.
-
-    This function compares the last two scans to identify significant changes that could
-    be predictive of future events.
-
-    Args:
-        historical_data (List[Dict[str, Any]]): A list of scan results, ordered from oldest to newest.
-        module (str): The name of the module being analyzed.
-
-    Returns:
-        ForecastResult: A Pydantic model containing a list of predictions or notes.
     """
     predictions: List[Prediction] = []
 
@@ -217,8 +225,6 @@ def train_breach_prediction_model():
             scan_data = scan.get("scan_data", {})
             if not isinstance(scan_data, dict):
                 continue
-            # Safely extract vulnerability count
-
             num_vulns = 0
             vuln_data = scan_data.get("vulnerability_scanner", {})
             if isinstance(vuln_data, dict):
@@ -286,12 +292,6 @@ def train_breach_prediction_model():
 def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]:
     """
     Predicts the likelihood of a data breach based on the company's security posture.
-
-    Args:
-        scan_data (Dict[str, Any]): The latest scan data for the target.
-
-    Returns:
-        Optional[Prediction]: A prediction if the model is available and risk is high, otherwise None.
     """
     try:
         model = joblib.load("breach_model.pkl")
@@ -320,12 +320,6 @@ def predict_breach_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]
 def predict_acquisition_likelihood(scan_data: Dict[str, Any]) -> Optional[Prediction]:
     """
     Predicts the potential for a company to be an acquisition target.
-
-    Args:
-        scan_data (Dict[str, Any]): The latest scan data for the target.
-
-    Returns:
-        Optional[Prediction]: A prediction if the conditions are met, otherwise None.
     """
     financials = scan_data.get("business_intel", {}).get("financials", {})
     news = scan_data.get("business_intel", {}).get("news", {})
@@ -364,6 +358,15 @@ def run_forecast_analysis(
     history = get_all_scans_for_target(target_name, module)
     forecast_result = run_prediction_rules(history, module)
 
+    # --- ARG INTEGRATION ---
+    # Fetch strategic signals from the global ARG
+    try:
+        arg_predictions = get_arg_strategic_signals()
+        forecast_result.predictions.extend(arg_predictions)
+    except Exception as e:
+        logger.error(f"Could not fetch ARG strategic signals: {e}")
+    # --- END ARG INTEGRATION ---
+
     if forecast_result.predictions:
         console.print("\n[bold green]📈 Predictive Signals Detected[/bold green]")
         table = Table(show_header=True, header_style="bold magenta")
@@ -378,6 +381,8 @@ def run_forecast_analysis(
         )
         for event in forecast_result.missed_events:
             console.print(f"- {event}")
+            
+    # This check now correctly accounts for ARG-based predictions
     if not forecast_result.predictions and not forecast_result.missed_events:
         logger.info(
             "No predictive signals found for '%s', notes: %s",

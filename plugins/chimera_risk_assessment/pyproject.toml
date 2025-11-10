@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chimera_risk_assessment"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
 version = "0.1.0"
 dependencies = [
     "chimera-intel",

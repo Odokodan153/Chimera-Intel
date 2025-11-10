@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_sales_intel"
+version = "0.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "Sales and Intent Intelligence (SALINT) plugin"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "chimera_intel", # Assumes chimera_intel is installed as a base package
+]
+
+[project.entry-points."chimera_intel.plugins"]
+sales_intel = "chimera_sales_intel.main:register"
+
+[project.urls]
+"Homepage" = "https_github.com/your_repo/Chimera-Intel"
+"Bug Tracker" = "https_github.com/your_repo/Chimera-Intel/issues"

@@ -4,6 +4,9 @@ import json
 import yaml
 import time
 from unittest.mock import patch, MagicMock
+from cryptography.fernet import Fernet
+import unittest
+import base64
 from collections import namedtuple
 
 # Import the functions to be tested
@@ -196,3 +199,107 @@ def test_check_consent_for_action_no_time_window(valid_consent_dict):
     del valid_consent_dict["valid_from_epoch"]
     del valid_consent_dict["valid_to_epoch"]
     assert check_consent_for_action(valid_consent_dict, "example.com", "phishing") == True
+
+# Generate a valid Fernet key for testing
+TEST_KEY = Fernet.generate_key().decode()
+
+# Mock API_KEYS before importing the module
+mock_api_keys = MagicMock()
+mock_api_keys.pii_encryption_key = TEST_KEY
+
+# We patch the config loader *before* the module is imported
+with patch("chimera_intel.core.security_utils.API_KEYS", mock_api_keys):
+    from chimera_intel.core.security_utils import (
+        encrypt_pii, 
+        decrypt_pii, 
+        get_pii_encryption_key,
+        _get_fernet,
+    )
+    # We need to be able to reset the global singleton
+    from chimera_intel.core import security_utils as su
+
+class TestSecurityUtils(unittest.TestCase):
+
+    def setUp(self):
+        # Reset the singleton instance before each test
+        su._FERNET_INSTANCE = None
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_encrypt_decrypt_roundtrip(self, mock_keys):
+        """Tests that encrypting and decrypting data returns the original."""
+        mock_keys.pii_encryption_key = TEST_KEY
+        
+        original_text = "This is my secret PII: user@example.com"
+        
+        encrypted_data = encrypt_pii(original_text)
+        self.assertIsInstance(encrypted_data, bytes)
+        self.assertNotEqual(encrypted_data, original_text.encode())
+        
+        decrypted_text = decrypt_pii(encrypted_data)
+        self.assertEqual(decrypted_text, original_text)
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_get_key_success(self, mock_keys):
+        """Tests that the key is retrieved successfully."""
+        mock_keys.pii_encryption_key = TEST_KEY
+        key = get_pii_encryption_key()
+        self.assertEqual(key, TEST_KEY)
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_get_key_missing(self, mock_keys):
+        """Tests that a missing key raises a ValueError."""
+        mock_keys.pii_encryption_key = None
+        with self.assertRaises(ValueError) as e:
+            get_pii_encryption_key()
+        self.assertIn("not set in config", str(e.exception))
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_get_key_invalid_base64(self, mock_keys):
+        """Tests that an invalid base64 key raises a ValueError."""
+        mock_keys.pii_encryption_key = "not-a-real-base64-key!"
+        with self.assertRaises(ValueError) as e:
+            get_pii_encryption_key()
+        self.assertIn("not a valid URL-safe base64 key", str(e.exception))
+        
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_get_key_wrong_length(self, mock_keys):
+        """Tests that a key of the wrong byte length raises a ValueError."""
+        # This is a valid base64 key, but not 32 bytes
+        wrong_len_key = base64.urlsafe_b64encode(b"12345").decode()
+        mock_keys.pii_encryption_key = wrong_len_key
+        with self.assertRaises(ValueError) as e:
+            get_pii_encryption_key()
+        self.assertIn("must be a 32-byte key", str(e.exception))
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_encryption_fails_with_no_key(self, mock_keys):
+        """Tests that encrypt_pii fails if no key is configured."""
+        mock_keys.pii_encryption_key = None
+        with self.assertRaises(ValueError) as e:
+            encrypt_pii("some data")
+        # This error comes from _get_fernet() -> get_pii_encryption_key()
+        self.assertIn("not set in config", str(e.exception))
+
+    @patch("chimera_intel.core.security_utils.API_KEYS")
+    def test_decryption_fails_with_wrong_key(self, mock_keys):
+        """Tests that decryption fails if the key is wrong."""
+        # Encrypt with one key
+        mock_keys.pii_encryption_key = TEST_KEY
+        encrypted_data = encrypt_pii("some data")
+        
+        # Reset singleton and try to decrypt with a different key
+        su._FERNET_INSTANCE = None
+        
+        wrong_key = Fernet.generate_key().decode()
+        mock_keys.pii_encryption_key = wrong_key
+        
+        with self.assertRaises(ValueError) as e:
+            decrypt_pii(encrypted_data)
+        self.assertIn("Invalid token or key", str(e.exception))
+        
+    def test_decrypt_invalid_token(self):
+        """Tests decryption with data that is not valid Fernet data."""
+        with patch("chimera_intel.core.security_utils.API_KEYS.pii_encryption_key", TEST_KEY):
+            with self.assertRaises(ValueError) as e:
+                decrypt_pii(b"this is just plain bytes")
+            self.assertIn("Invalid token or key", str(e.exception))

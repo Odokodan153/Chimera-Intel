@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_seo"
+version = "0.1.0"
+description = "Chimera Intel plugin for SEO & Content Intelligence analysis."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # No extra dependencies needed beyond core
+]
+
+[project.entry-points."chimera_intel.plugins"]
+chimera_seo = "chimera_seo.main:SeoIntelPlugin"

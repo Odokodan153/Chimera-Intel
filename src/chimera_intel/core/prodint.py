@@ -9,17 +9,25 @@ from Wappalyzer import Wappalyzer, WebPage
 from app_store_scraper import AppStore
 from google_play_scraper import search, app
 from textblob import TextBlob
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Any
 from hashlib import sha256
 import re
+from datetime import datetime
 # Imports for new functionality
 from chimera_intel.core.http_client import get_async_http_client
 from chimera_intel.core.scheduler import add_job
 from chimera_intel.core.page_monitor import check_for_changes  # Re-use monitor logic
 from chimera_intel.core.utils import console
 
+# --- ARG INTEGRATION IMPORTS ---
+from chimera_intel.core.arg_service import (
+    arg_service_instance,
+    BaseEntity,
+    Relationship,
+)
+# --- END ARG INTEGRATION IMPORTS ---
+
 app = typer.Typer(no_args_is_help=True, help="Product Intelligence (PRODINT) tools.")
-# console = Console() # Already defined in original file
 logger = logging.getLogger(__name__)
 
 
@@ -158,6 +166,41 @@ class ProdInt:
             "all_competitor_features": list(competitor_set),
         }
 
+    async def _ingest_features_to_arg(self, url: str, features: List[str]):
+        """Helper function to ingest scraped features into the ARG."""
+        try:
+            entities = []
+            relationships = []
+            
+            page_entity = BaseEntity(
+                id_value=url,
+                id_type="url",
+                label="WebPage",
+                properties={"type": "FeaturePage", "last_scraped": datetime.now().isoformat()}
+            )
+            entities.append(page_entity)
+
+            for feature_text in features:
+                feature_entity = BaseEntity(
+                    id_value=feature_text.lower(),
+                    id_type="name",
+                    label="Feature",
+                    properties={"name": feature_text}
+                )
+                entities.append(feature_entity)
+                
+                rel = Relationship(
+                    source=page_entity,
+                    target=feature_entity,
+                    label="HAS_FEATURE"
+                )
+                relationships.append(rel)
+            
+            arg_service_instance.ingest_entities_and_relationships(entities, relationships)
+            logger.info(f"Successfully ingested {len(features)} features from {url} into ARG.")
+        except Exception as e:
+            logger.error(f"Failed to ingest features from {url} into ARG: {e}")
+
     async def scrape_features_from_page(self, url: str) -> List[str]:
         """
         (Best-effort) Scrapes a list of features from a product or pricing page.
@@ -170,30 +213,33 @@ class ProdInt:
             
             soup = BeautifulSoup(response.text, "html.parser")
             
-            # Heuristics to find feature lists (common in pricing/feature pages)
-            # Look for lists inside sections with "feature" or "pricing" in the class/id
             potential_sections = soup.find_all(
                 ["div", "section", "ul"], 
                 {"class": [re.compile(r"feature"), re.compile(r"pricing"), re.compile(r"plan")]}
             )
             
             if not potential_sections:
-                potential_sections = soup.find_all("body") # Fallback to whole body
+                potential_sections = soup.find_all("body")
 
             for section in potential_sections:
                 items = section.find_all("li")
                 if not items:
-                    # Try finding items by class if no <li> tags
                     items = section.find_all(class_=re.compile(r"feature-item"))
 
                 for item in items:
                     text = item.get_text(strip=True)
-                    # Filter out common non-feature items
                     if text and len(text) > 2 and len(text) < 100 and not text.lower().startswith("sign up"):
                         features.add(text)
             
-            logger.info(f"Scraped {len(features)} potential features from {url}")
-            return list(features)
+            feature_list = list(features)
+            logger.info(f"Scraped {len(feature_list)} potential features from {url}")
+
+            # --- ARG INGESTION ---
+            if feature_list:
+                await self._ingest_features_to_arg(url, feature_list)
+            # --- END ARG INGESTION ---
+            
+            return feature_list
         
         except httpx.RequestError as e:
             console.print(f"[bold red]Error scraping features from {url}: {e}[/bold red]")
@@ -201,6 +247,45 @@ class ProdInt:
         except Exception as e:
             console.print(f"[bold red]An unexpected error occurred during feature scraping: {e}[/bold red]")
             return []
+
+    async def _ingest_catalog_to_arg(self, url: str, products: List[Dict[str, str]]):
+        """Helper function to ingest scraped catalog into the ARG."""
+        try:
+            entities: List[BaseEntity] = []
+            relationships: List[Relationship] = []
+
+            catalog_entity = BaseEntity(
+                id_value=url,
+                id_type="url",
+                label="WebPage",
+                properties={"type": "ProductCatalog", "last_scraped": datetime.now().isoformat()}
+            )
+            entities.append(catalog_entity)
+
+            for product in products:
+                product_name = product['name']
+                # Create a unique ID for the product based on its name and the catalog URL
+                product_unique_id = f"{product_name}@{url}" 
+                
+                product_entity = BaseEntity(
+                    id_value=product_unique_id,
+                    id_type="product_id",
+                    label="Product",
+                    properties={"name": product_name, "price_str": product.get("price", "N/A")}
+                )
+                entities.append(product_entity)
+
+                rel = Relationship(
+                    source=catalog_entity,
+                    target=product_entity,
+                    label="LISTS_PRODUCT"
+                )
+                relationships.append(rel)
+
+            arg_service_instance.ingest_entities_and_relationships(entities, relationships)
+            logger.info(f"Successfully ingested {len(products)} products from {url} into ARG.")
+        except Exception as e:
+            logger.error(f"Failed to ingest catalog from {url} into ARG: {e}")
 
     async def scrape_ecommerce_catalog(self, url: str) -> List[Dict[str, str]]:
         """
@@ -214,8 +299,6 @@ class ProdInt:
 
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Heuristic: Find product "cards". This is highly site-specific.
-            # We look for common class names.
             product_cards = soup.find_all("div", class_=[
                 re.compile(r"product-card"), 
                 re.compile(r"product-item"), 
@@ -224,7 +307,6 @@ class ProdInt:
             ])
             
             if not product_cards:
-                # Fallback for semantic tags
                 product_cards = soup.find_all("li", class_=re.compile(r"product"))
 
             for card in product_cards:
@@ -232,11 +314,9 @@ class ProdInt:
                 price = card.find("span", class_=re.compile(r"price|amount"))
                 
                 if not name:
-                    # Fallback: try to find any link with an href
                     name = card.find("a", href=True)
                 
                 if not price:
-                    # Fallback: try to find text with a $ or € symbol
                     price = card.find(string=re.compile(r"[$€£]"))
 
                 product_name = name.get_text(strip=True) if name else "N/A"
@@ -246,6 +326,12 @@ class ProdInt:
                     products.append({"name": product_name, "price": product_price})
             
             logger.info(f"Scraped {len(products)} products from {url}")
+
+            # --- ARG INGESTION ---
+            if products:
+                await self._ingest_catalog_to_arg(url, products)
+            # --- END ARG INGESTION ---
+
             return products
 
         except httpx.RequestError as e:

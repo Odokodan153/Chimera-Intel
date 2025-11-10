@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_review"
+version = "0.1.0"
+description = "Chimera Intel plugin for human review of sensitive actions."
+readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# Add dependencies used in the module
+dependencies = [
+    "chimera-intel",  # Assuming the main package is named this
+    "typer",
+    "pydantic",
+]
+
+[project.urls]
+Homepage = "https://github.com/user/Chimera-Intel"
+Issues = "https://github.com/user/Chimera-Intel/issues"
+
+# This defines the entry point for the plugin manager
+[project.entry-points."chimera_intel.plugins"]
+review = "chimera_review.main:get_plugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,19 +1,13 @@
 # src/chimera_intel/core/brand_protection_pipeline.py
 
 import asyncio
-import uuid
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
-
-# --- Imports from existing core modules (schemas.py) ---
+from typing import List, Dict, Any
 from chimera_intel.core.schemas import (
     IngestedImageRecord,
     ManipulationDetectionResult,
     BrandThreat,  
     TriageTask,   
 )
-
-# --- Imports from existing core modules (based on file list) ---
 from chimera_intel.core.social_media_monitor import SocialMediaMonitor
 from chimera_intel.core.dark_web_monitor import DarkWebMonitor
 from chimera_intel.core.page_monitor import PageMonitor

@@ -448,6 +448,8 @@ ALLOWED_WORKFLOW_CMDS = {
     # --- NEW: Add command aliases from plugin registration ---
     "auto", # alias for automation
     "graph", # for graph db
+    "multi-domain", # <-- ADDED
+    "response",     # <-- ADDED
 }
 
 def run_workflow(workflow_file: str) -> None:
@@ -699,7 +701,47 @@ PLAYBOOK_EXAMPLES: Dict[str, Dict[str, Any]] = {
                 "run": "auto prioritize-event '{\"target\": \"{target}\", \"event_type\": \"manual_pivot\"}'"
             }
         ]
+    },
+    
+    # --- NEW PLAYBOOK (Requirement Met) ---
+    "multi-domain-correlation": {
+        "name": "Multi-Domain Correlation (SIGINT+HUMINT+FININT)",
+        "description": "Correlates signals from different domains to detect complex threats. Requires human review.",
+        "target": "Port of Hamburg", # This is the 'project' name
+        "steps": [
+            {
+                "name": "Step 1: Run correlation for Port of Hamburg",
+                "run": (
+                    "multi-domain correlate --project '{target}' "
+                    "--sigint-module 'marint_ais_live' "
+                    "--humint-keyword 'strike' "
+                    "--finint-entity 'Hamburg Port Authority' "
+                    "--max-age-hours 48"
+                )
+            },
+            {
+                "name": "Step 2: (Human-in-the-Loop) Request analyst approval for escalation",
+                "run": (
+                    "auto prioritize-event '{"
+                    "\"event_type\": \"multi_domain_correlation_request\","
+                    "\"target\": \"{target}\","
+                    "\"details\": {"
+                    "  \"summary\": \"SIG+HUM+FIN correlation at {target}. Requesting escalation.\","
+                    "  \"human_approval_required\": true"
+                    "}}'"
+                )
+            },
+            {
+                "name": "Step 3: (If Approved by Human) Initiate legal playbook",
+                "run": "response legal-notify --reason 'Potential force majeure event at {target} based on correlated threat alert.'"
+            },
+            {
+                "name": "Step 4: (If Approved by Human) Initiate PR playbook",
+                "run": "response pr-draft-statement --topic 'Potential supply chain disruption at {target}'"
+            }
+        ]
     }
+    # --- END NEW PLAYBOOK ---
 }
 
 # --- Typer CLI Application ---

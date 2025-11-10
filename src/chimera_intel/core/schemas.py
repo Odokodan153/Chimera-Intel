@@ -18,7 +18,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, date, timezone
 import pandas as pd
 import numpy as np
-from pydantic import BaseModel, Field, validator, EmailStr
+from pydantic import BaseModel, Field, validator, EmailStr, Tuple
+from typing import Literal
 import uuid
 from enum import Enum
 # --- General Purpose Models ---
@@ -455,7 +456,41 @@ class AnomalyDetectionResult(BaseModel):
 
 # --- Signal Analyzer Models ---
 
+class CellTowerInfo(BaseModel):
+    """
+    Model for cell tower information from the OpenCelliD API.
+    """
+    status: str = Field(..., description="API response status, e.g., 'ok' or 'error'.")
+    mcc: Optional[int] = Field(None, description="Mobile Country Code.")
+    mnc: Optional[int] = Field(None, description="Mobile Network Code.")
+    lac: Optional[int] = Field(None, description="Location Area Code.")
+    cellid: Optional[int] = Field(None, description="Cell ID.")
+    lat: Optional[float] = Field(None, description="Latitude of the cell tower.")
+    lon: Optional[float] = Field(None, description="Longitude of the cell tower.")
+    range: Optional[int] = Field(None, description="Estimated range of the tower in meters.")
+    radio: Optional[str] = Field(None, description="Radio type, e.g., 'GSM', 'LTE', 'NR'.")
+    updated: Optional[int] = Field(None, description="Timestamp of the last update.")
+    error: Optional[str] = Field(None, description="Error message if status is 'error'.")
 
+    class Config:
+        # Allow extra fields from the API response without failing validation
+        extra = "ignore"
+class RFSpectrumAnomaly(BaseModel):
+    """Model for a single anomalous RF spectrum event."""
+    timestamp: float
+    frequency_mhz: float
+    power_dbm: float
+    details: str
+
+class RFSpectrumReport(BaseModel):
+    """The main, top-level result model for an RF spectrum monitoring scan."""
+    target_host: str
+    port: int
+    duration_seconds: int
+    anomaly_threshold_dbm: float
+    total_anomalies_found: int
+    anomalies: List[RFSpectrumAnomaly] = Field(default_factory=list)
+    error: Optional[str] = None
 class JobPostingsResult(BaseModel):
     """Model for the result of a job postings scrape."""
 
@@ -2038,6 +2073,20 @@ class HumintScenario(BaseModel):
 
     scenario_type: str
     target: str
+
+class HumintNetworkLink(BaseModel):
+    """
+    (NEW) Pydantic model for returning a single human network link.
+    """
+    id: int
+    entity_a: str
+    relationship: str
+    entity_b: str
+    source_report_id: Optional[int] = None
+    created_on: datetime
+
+    class Config:
+        orm_mode = True # Allow loading from database ORM objects
 
 
 class HumintSource(Base):  # type: ignore
@@ -5297,3 +5346,237 @@ class GnnAnomalyResult(BaseModel):
     node_type: str
     score: float
     reason: str
+
+# --- SEO Intelligence Schemas ---
+class SeoKeywordPosition(BaseModel):
+    """Represents a single ranking URL for a keyword."""
+    rank: int
+    url: str
+    domain: str
+
+class SeoKeywordAnalysis(BaseModel):
+    """Analysis of a single keyword's competitive landscape."""
+    keyword: str
+    top_10_ranks: List[SeoKeywordPosition] = Field(default_factory=list)
+    target_positions: List[SeoKeywordPosition] = Field(default_factory=list)
+    competitor_positions: Dict[str, List[SeoKeywordPosition]] = Field(
+        default_factory=dict
+    )
+    gap_summary: str = Field(
+        "No summary generated.",
+        description="AI-generated summary of the keyword gap."
+    )
+
+class SeoBacklinkReport(BaseModel):
+    """Summary of backlink analysis."""
+    query_used: str
+    total_mentions_found: int
+    top_mentioning_urls: List[str]
+    top_mentioning_domains: List[str]
+
+class SeoContentVelocity(BaseModel):
+    """Analysis of content publishing cadence."""
+    total_articles: int
+    articles_per_month: Dict[str, int] = Field(default_factory=dict)
+    average_per_month: float
+
+class SeoIntelResult(BaseModel):
+    """Combined results from the SEO & Content analysis."""
+    target_domain: str
+    competitors: List[str]
+    keyword_analysis: List[SeoKeywordAnalysis] = Field(default_factory=list)
+    backlink_report: Optional[SeoBacklinkReport] = None
+    traffic_authority: Dict[str, Any] = Field(
+        description="Data from Similarweb, proxy for authority."
+    )
+    topic_coverage: Optional[TopicClusteringResult] = None
+    content_velocity: Optional[SeoContentVelocity] = None
+
+#--- VOC Intelligence Schemas ---
+class VoCInsight(BaseModel):
+    """A single extracted insight from a piece of customer feedback."""
+    category: str = Field(
+        ...,
+        description="Type of insight (e.g., 'Complaint', 'Feature Request', 'Praise')."
+    )
+    topic: str = Field(
+        ...,
+        description="The specific subject of the feedback (e.g., 'UI Lag', 'Login Process', 'Customer Support')."
+    )
+    sentiment: str = Field(
+        "Neutral",
+        description="The sentiment of this specific insight (Positive, Negative, Neutral)."
+    )
+    quote: str = Field(
+        ...,
+        description="The specific text snippet from the review that supports this insight."
+    )
+
+
+class VoCAnalysisResult(BaseModel):
+    """Combined results from the VoC analysis."""
+    target: str
+    total_reviews_analyzed: int
+    sentiment_analysis: SentimentTimeSeriesResult
+    top_themes: TopicClusteringResult
+    extracted_insights: List[VoCInsight]
+
+
+class ScrapedArticle(BaseModel):
+    """
+    (NEW) Defines the structure for a scraped news article.
+    """
+    url: str
+    title: str
+    text_content: str
+    authors: List[str] = Field(default_factory=list)
+    publish_date: Optional[datetime] = None
+    top_image_url: Optional[str] = None
+
+class MultiDomainCorrelationAlert(BaseModel):
+    """
+    A high-priority alert generated from the confluence of signals
+    from multiple intelligence domains (e.g., SIGINT, HUMINT, FININT).
+    """
+    alert_id: str = Field(default_factory=lambda: f"MDCA-{uuid.uuid4()}")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    project: str = Field(..., description="The project or target this alert relates to.")
+    priority: str = Field(default="Critical", description="Priority level, almost always High or Critical.")
+    summary: str = Field(..., description="A human-readable summary of the correlated threat.")
+
+    # --- Provenance & Confidence (Requirement Met) ---
+    confidence: float = Field(..., ge=0.0, le=1.0, description="The calculated confidence in this correlation.")
+    justification: str = Field(..., description="The reasoning for the correlation.")
+    
+    # Links to the source data for analyst review
+    correlated_sigint_events: List[Dict[str, Any]] = Field(default_factory=list, description="List of source SIGINT event data.")
+    correlated_humint_reports: List[Dict[str, Any]] = Field(default_factory=list, description="List of source HUMINT report data.")
+    correlated_finint_signals: List[Dict[str, Any]] = Field(default_factory=list, description="List of source FININT signal data.")
+
+    # --- Human-in-the-Loop (Requirement Met) ---
+    status: str = Field(default="Pending Analyst Review", description="The review status for human-in-the-loop workflows.")
+    analyst_notes: Optional[str] = Field(None, description="Notes from the reviewing analyst.")
+
+    class Config:
+        orm_mode = True
+
+class MentalModelVector(BaseModel):
+    vector_type: str = Field(..., description="e.g., 'Core Value', 'Decision-Making Bias'")
+    description: str = Field(..., description="The specific value or bias, e.g., 'Prioritizes rapid innovation'")
+    evidence_snippet: Optional[str] = Field(None, description="A quote or summary from source material as evidence.")
+
+class CognitiveMapResult(BaseModel):
+    person_name: str
+    cognitive_model_summary: Optional[str] = Field(None, description="AI-generated summary of their decision-making framework.")
+    key_vectors: List[MentalModelVector] = Field(default_factory=list)
+    predictive_assessment: Optional[str] = Field(None, description="AI-generated prediction of behavior under stress.")
+    error: Optional[str] = None
+
+class ResolvedEntity(BaseModel):
+    """A normalized entity."""
+    raw_name: str = Field(..., description="The original name found in the text.")
+    normalized_name: str = Field(..., description="The canonical, normalized name.")
+    entity_type: str = Field(..., description="Type of entity (e.g., 'company', 'person', 'email').")
+    aliases: List[str] = Field(default_factory=list, description="Other known aliases.")
+
+class ExtractedRelationship(BaseModel):
+    """A relationship extracted from text."""
+    source_entity: str = Field(..., description="The normalized name of the source entity.")
+    target_entity: str = Field(..., description="The normalized name of the target entity.")
+    relationship_type: str = Field(..., description="Description of the relationship (e.g., 'subsidiary_of', 'colleague_of', 'family_of').")
+    context: str = Field(..., description="The sentence or phrase from which the relationship was extracted.")
+
+class ResolutionResult(BaseModel):
+    """The result of the entity resolution and extraction process."""
+    entities: List[ResolvedEntity]
+    relationships: List[ExtractedRelationship]
+    error: Optional[str] = None
+
+class RiskComponent(BaseModel):
+    """A single component of the overall risk score."""
+    domain: Literal["Financial", "Legal_Regulatory", "Operational", "Reputation", "Human_Capital"]
+    score: float = Field(..., ge=0.0, le=10.0, description="Risk score for this domain (0=low, 10=high).")
+    justification: str = Field(..., description="Reasoning for this score.")
+    source_modules: List[str] = Field(default_factory=list, description="The modules that contributed to this score.")
+
+class HolisticRiskResult(BaseModel):
+    """The final holistic risk profile for a target."""
+    target: str
+    overall_risk_score: float = Field(..., ge=0.0, le=10.0, description="Weighted average risk score.")
+    risk_level: Literal["Low", "Medium", "High", "Critical"]
+    risk_components: List[RiskComponent]
+    error: Optional[str] = None
+
+class TAMAnalysis(BaseModel):
+    tam: str = Field(..., description="Estimated Total Addressable Market")
+    sam: str = Field(..., description="Estimated Serviceable Addressable Market")
+    som: str = Field(..., description="Estimated Serviceable Obtainable Market")
+    methodology: str = Field(
+        ..., description="Methodology and data sources used for the estimation"
+    )
+    key_data_points: List[str] = Field(
+        default_factory=list, description="Key data points found in sources"
+    )
+    error: Optional[str] = None
+
+class TrendDataPoint(BaseModel):
+    date: str
+    value: int
+
+class TrendAnalysis(BaseModel):
+    keyword: str
+    interest_over_time: List[TrendDataPoint] = Field(default_factory=list)
+    emerging_topics_cluster: Optional[TopicClusteringResult] = None
+    ai_summary: Optional[str] = None
+
+class MarketDemandResult(BaseModel):
+    target_industry: str
+    target_keywords: List[str]
+    tam_analysis: Optional[TAMAnalysis] = None
+    trend_analysis: Optional[List[TrendAnalysis]] = None
+    category_clusters: Optional[TopicClusteringResult] = None
+    error: Optional[str] = None
+
+class ScenarioInput(BaseModel):
+    """
+    Defines the input parameters for a wargaming scenario.
+    """
+    scenario_type: str = Field(..., description="Type of scenario to run (e.g., 'supply_chain_disruption').")
+    target_supplier: str = Field(..., description="The name of the supplier being targeted or affected.")
+    disruption_level: float = Field(
+        default=0.5, 
+        description="Severity of the disruption (0.0 to 1.0).",
+        ge=0.0,
+        le=1.0
+    )
+    duration_days: int = Field(default=30, description="Estimated duration of the disruption in days.", gt=0)
+    simulations: int = Field(default=1000, description="Number of Monte Carlo simulations to run.", gt=0)
+    distribution_type: Literal["normal", "lognormal", "triangular"] = Field(
+        default="normal", 
+        description="The probability distribution to use for simulations."
+    )
+
+class ImpactMetrics(BaseModel):
+    """
+    Quantified impacts calculated from the simulation.
+    """
+    financial_loss_estimate_mean: float
+    financial_loss_estimate_std: float
+    financial_loss_estimate_min: float
+    financial_loss_estimate_max: float
+    operational_downtime_days_mean: float
+    operational_downtime_days_std: float
+    operational_downtime_days_min: float
+    operational_downtime_days_max: float
+    confidence_interval_loss: Tuple[float, float]
+    
+class SimulationResult(BaseModel):
+    """
+    Contains the results of a completed scenario simulation.
+    """
+    scenario_input: ScenarioInput
+    impact_metrics: ImpactMetrics
+    scenario_tree_summary: Dict[str, Any] = Field(default_factory=dict)
+    disclaimer: str = Field(
+        default="LEGAL/ETHICAL DISCLAIMER: This output is based on a simulation and does not represent a deterministic prediction of future events. It is intended for analytical and planning purposes only."
+    )

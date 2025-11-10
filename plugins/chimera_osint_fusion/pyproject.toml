@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-osint-fusion"
+version = "6.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A Chimera Intel plugin for fusing scraped OSINT data (profiles, jobs) into the network map."
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: Typer",
+    "Operating System :: OS Independent",
+]
+
+# --- DEPENDENCIES ---
+# This plugin depends on the core chimera-intel package.
+# All other dependencies (typer, etc.) are handled by the core package.
+dependencies = [
+    "chimera-intel == 6.0.0"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+# This tells the core application's plugin_manager how to load this plugin
+osint_fusion = "chimera_osint_fusion.main:OsintFusionPlugin"

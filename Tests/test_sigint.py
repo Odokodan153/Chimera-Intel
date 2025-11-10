@@ -1,15 +1,17 @@
 import pytest
 import socket
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
-
+from unittest.mock import patch, MagicMock, PropertyMock, AsyncMock
+import httpx
 from chimera_intel.core.sigint import (
     sigint_app,
     SignalIntercept,
     decode_adsb_from_capture,
     decode_ais_from_capture,
     run_sigint_analysis,
+    monitor_rf_spectrum,
 )
+from chimera_intel.core.schemas import (RFSpectrumAnomaly, RFSpectrumReport)
 import pyModeS as pms  # Added import for manual ICAO check
 
 runner = CliRunner()
@@ -445,3 +447,293 @@ def test_decode_ais_file_not_found(mock_console_print):
     mock_console_print.assert_any_call(
         "[bold red]Error: File not found at 'non_existent_ais.txt'[/bold red]"
     )
+@patch("chimera_intel.core.sigint.socket.socket")
+def test_monitor_rf_spectrum_success(mock_socket_class, capsys):
+    """Tests a successful RF spectrum monitoring run with an anomaly."""
+    
+    mock_socket = MagicMock()
+    mock_socket.recv.side_effect = [
+        b"1678886400.0,88100000,88300000,-45.0\n",  # Below threshold
+        b"1678886401.0,92500000,92700000,-25.5\n",  # Anomaly
+        socket.timeout,
+    ]
+    mock_socket_class.return_value.__enter__.return_value = mock_socket
+
+    threshold = -30.0
+
+    with patch(
+        "time.time",
+        side_effect=[
+            1000.0,  # start_time
+            1000.1,  # loop 1 check (processes msg 1)
+            1000.3,  # loop 2 check (processes msg 2)
+            1000.5,  # loop 3 check (hits socket.timeout)
+            1070.0,  # loop 4 check (exits)
+        ],
+    ):
+        results = monitor_rf_spectrum("host", 1234, 60, threshold)
+
+    assert results.total_anomalies_found == 1
+    assert results.anomalies[0].power_dbm == -25.5
+    assert results.anomalies[0].frequency_mhz == 92.6  # (92500000 + 92700000) / 2 / 1M
+    assert results.error is None
+    mock_socket.connect.assert_called_with(("host", 1234))
+
+
+@patch("chimera_intel.core.sigint.socket.socket")
+def test_monitor_rf_spectrum_connection_error(mock_socket_class, capsys):
+    """Tests an RF spectrum monitor connection error."""
+    mock_socket_class.return_value.__enter__.side_effect = socket.error(
+        "Connection failed"
+    )
+
+    results = monitor_rf_spectrum("host", 1234, 10, -30.0)
+
+    assert results.total_anomalies_found == 0
+    assert results.error == "Connection failed"
+    captured = capsys.readouterr()
+    assert "Error connecting to stream at host:1234: Connection failed" in captured.out
+
+
+@patch("chimera_intel.core.sigint.socket.socket")
+def test_monitor_rf_spectrum_malformed_line(mock_socket_class, capsys):
+    """Tests that the spectrum monitor handles malformed stream data."""
+    
+    mock_socket = MagicMock()
+    mock_socket.recv.side_effect = [
+        b"1678886400.0,88100000,88300000,-45.0\n",  # Good
+        b"not,a,valid,line\n",                     # Malformed
+        b"1678886401.0,92500000,92700000,-25.5\n",  # Anomaly
+        socket.timeout,
+    ]
+    mock_socket_class.return_value.__enter__.return_value = mock_socket
+
+    with patch(
+        "time.time",
+        side_effect=[
+            1000.0,  # start_time
+            1000.1,  # loop 1
+            1000.3,  # loop 2
+            1000.5,  # loop 3
+            1000.7,  # loop 4
+            1070.0,  # loop 5 (exits)
+        ],
+    ):
+        results = monitor_rf_spectrum("host", 1234, 60, -30.0)
+
+    # Should find the one valid anomaly
+    assert results.total_anomalies_found == 1
+    assert results.anomalies[0].power_dbm == -25.5
+    
+    # Should log the error
+    captured = capsys.readouterr()
+    assert "Error parsing spectrum data line: 'not,a,valid,line'" in captured.out
+
+
+# ... (existing CLI tests for cell-info) ...
+
+@patch("chimera_intel.core.sigint.save_scan_to_db")
+@patch("chimera_intel.core.sigint.monitor_rf_spectrum")
+def test_cli_monitor_spectrum_success(mock_monitor_spectrum, mock_save_db, capsys):
+    """Tests the 'monitor-spectrum' CLI command success."""
+    mock_anomaly = RFSpectrumAnomaly(
+        timestamp=1678886401.0,
+        frequency_mhz=92.6,
+        power_dbm=-25.5,
+        details="Signal exceeded threshold"
+    )
+    mock_report = RFSpectrumReport(
+        target_host="127.0.0.1",
+        port=1234,
+        duration_seconds=10,
+        anomaly_threshold_dbm=-30.0,
+        total_anomalies_found=1,
+        anomalies=[mock_anomaly]
+    )
+    mock_monitor_spectrum.return_value = mock_report
+
+    result = runner.invoke(
+        sigint_app,
+        ["monitor-spectrum", "--duration", "10", "--threshold", "-30.0"],
+    )
+
+    assert result.exit_code == 0
+    assert '"total_anomalies_found": 1' in result.stdout
+    assert '"frequency_mhz": 92.6' in result.stdout
+    mock_monitor_spectrum.assert_called_with("127.0.0.1", 1234, 10, -30.0)
+    mock_save_db.assert_called_once()
+# Mark all tests in this module as asyncio
+pytestmark = pytest.mark.asyncio
+
+
+@pytest.fixture
+def mock_api_keys():
+    """Mocks the API_KEYS config object."""
+    with patch(
+        "chimera_intel.core.sigint.API_KEYS", new_callable=PropertyMock
+    ) as mock_keys:
+        mock_keys.opencellid_api_key = "test_key_123"
+        yield mock_keys
+
+
+@pytest.fixture
+def mock_httpx_client():
+    """Mocks the httpx.AsyncClient."""
+    with patch("httpx.AsyncClient", autospec=True) as mock_client_class:
+        mock_client = mock_client_class.return_value.__aenter__.return_value
+        mock_client.get = AsyncMock()
+        yield mock_client
+
+
+async def test_get_cell_tower_info_success(mock_httpx_client):
+    """Tests a successful cell tower lookup."""
+    from chimera_intel.core.sigint import get_cell_tower_info
+    from chimera_intel.core.schemas import CellTowerInfo
+
+    # Mock a successful API response
+    mock_response = httpx.Response(
+        200,
+        json={
+            "status": "ok",
+            "lat": 48.243,
+            "lon": 16.372,
+            "mcc": 232,
+            "mnc": 1,
+            "lac": 10101,
+            "cellid": 12345,
+            "range": 1000,
+            "radio": "GSM",
+            "updated": 1678886400,
+        },
+    )
+    mock_httpx_client.get.return_value = mock_response
+
+    result = await get_cell_tower_info(
+        mcc=232, mnc=1, lac=10101, cid=12345, api_key="test_key"
+    )
+
+    # Validate schema (Pydantic model_validate is used in the function)
+    validated = CellTowerInfo.model_validate(mock_response.json()).model_dump()
+    assert result == validated
+    assert "error" not in result
+    assert result["lat"] == 48.243
+
+
+async def test_get_cell_tower_info_api_error(mock_httpx_client):
+    """Tests an API-level error (e.g., cell not found)."""
+    from chimera_intel.core.sigint import get_cell_tower_info
+
+    # Mock an API error response
+    mock_response = httpx.Response(
+        200, json={"status": "error", "error": "No data"}
+    )
+    mock_httpx_client.get.return_value = mock_response
+
+    result = await get_cell_tower_info(
+        mcc=999, mnc=1, lac=1, cid=1, api_key="test_key"
+    )
+
+    assert "error" in result
+    assert result["error"] == "No data"
+
+
+async def test_get_cell_tower_info_http_error(mock_httpx_client):
+    """Tests an HTTP 500 server error."""
+    from chimera_intel.core.sigint import get_cell_tower_info
+
+    # Mock an HTTP error
+    mock_httpx_client.get.side_effect = httpx.HTTPStatusError(
+        "Server Error", request=MagicMock(), response=httpx.Response(500)
+    )
+
+    result = await get_cell_tower_info(
+        mcc=232, mnc=1, lac=1, cid=1, api_key="test_key"
+    )
+
+    assert "error" in result
+    assert "HTTP error" in result["error"]
+
+
+# --- New CLI Tests for Cellular SIGINT ---
+
+
+@patch("chimera_intel.core.sigint.save_scan_to_db")
+@patch("chimera_intel.core.sigint.asyncio.run")
+def test_cli_cell_info_success(
+    mock_asyncio_run, mock_save_db, mock_api_keys, capsys
+):
+    """Tests the 'cell-info' CLI command success."""
+    mock_success_data = {
+        "status": "ok",
+        "lat": 48.243,
+        "lon": 16.372,
+        "mcc": 232,
+        "mnc": 1,
+        "lac": 10101,
+        "cellid": 12345,
+        "range": 1000,
+        "radio": "GSM",
+        "updated": 1678886400,
+    }
+    mock_asyncio_run.return_value = mock_success_data
+
+    result = runner.invoke(
+        sigint_app,
+        ["cell-info", "--mcc", "232", "--mnc", "1", "--lac", "10101", "--cid", "12345"],
+    )
+
+    assert result.exit_code == 0
+    assert '"lat": 48.243' in result.stdout
+    assert "Cell tower lookup complete." in result.stdout
+    mock_save_db.assert_called_once_with(
+        target="cell:232-1-10101-12345",
+        module="sigint_cell_info",
+        data=mock_success_data,
+    )
+
+
+@patch("chimera_intel.core.sigint.asyncio.run")
+def test_cli_cell_info_no_key(mock_asyncio_run, capsys):
+    """Tests the 'cell-info' CLI command when no API key is set."""
+    # Mock the API_KEYS object to have no key
+    with patch(
+        "chimera_intel.core.sigint.API_KEYS", new_callable=PropertyMock
+    ) as mock_keys:
+        mock_keys.opencellid_api_key = None
+
+        result = runner.invoke(
+            sigint_app,
+            [
+                "cell-info",
+                "--mcc",
+                "232",
+                "--mnc",
+                "1",
+                "--lac",
+                "10101",
+                "--cid",
+                "12345",
+            ],
+        )
+
+    assert result.exit_code == 1
+    assert "Error: OPENCELLID_API_KEY not found" in result.stdout
+    mock_asyncio_run.assert_not_called()
+
+
+@patch("chimera_intel.core.sigint.save_scan_to_db")
+@patch("chimera_intel.core.sigint.asyncio.run")
+def test_cli_cell_info_api_fail(
+    mock_asyncio_run, mock_save_db, mock_api_keys, capsys
+):
+    """Tests the 'cell-info' CLI command when the API returns an error."""
+    mock_asyncio_run.return_value = {"error": "No data"}
+
+    result = runner.invoke(
+        sigint_app,
+        ["cell-info", "--mcc", "999", "--mnc", "1", "--lac", "1", "--cid", "1"],
+    )
+
+    assert result.exit_code == 1
+    assert "Failed to retrieve cell tower data: No data" in result.stdout
+    mock_save_db.assert_not_called()

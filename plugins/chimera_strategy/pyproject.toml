@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "chimera-strategy"
+version = "0.1.0"
+description = "Strategic Analytics & KPI Reporting plugin for Chimera Intel."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+readme = "README.md"
+packages = [{include = "chimera_strategy", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# This dependency links to the main chimera-intel project,
+# assuming the plugin is inside the /plugins directory.
+chimera-intel = {path = "../..", develop = true}
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This entry point registers the plugin with the main chimera CLI
+# It makes "chimera strategy" command available.
+strategy = "chimera_strategy.main:StrategicAnalyticsPlugin"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

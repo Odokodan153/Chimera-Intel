@@ -9,13 +9,9 @@ and discovering product/feature categories.
 import typer
 import asyncio
 import logging
-import json
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List, Dict
 from pytrends.request import TrendReq  # type: ignore
 from bs4 import BeautifulSoup
-import time
-
 from chimera_intel.core.utils import save_or_print_results, console
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.config_loader import API_KEYS
@@ -24,44 +20,10 @@ from chimera_intel.core.ai_core import generate_swot_from_data, SWOTAnalysisResu
 from chimera_intel.core.google_search import search as google_search
 from chimera_intel.core.topic_clusterer import run_topic_clustering
 from chimera_intel.core.business_intel import get_news_gnews
-from chimera_intel.core.schemas import TopicClusteringResult, GNewsArticle, GNewsResult
-from .project_manager import resolve_target
+from chimera_intel.core.schemas import GNewsResult, TrendDataPoint, TAMAnalysis, TrendAnalysis, TopicClusteringResult
 
 logger = logging.getLogger(__name__)
 
-# --- Pydantic Schemas for Market Demand ---
-
-class TAMAnalysis(BaseModel):
-    tam: str = Field(..., description="Estimated Total Addressable Market")
-    sam: str = Field(..., description="Estimated Serviceable Addressable Market")
-    som: str = Field(..., description="Estimated Serviceable Obtainable Market")
-    methodology: str = Field(
-        ..., description="Methodology and data sources used for the estimation"
-    )
-    key_data_points: List[str] = Field(
-        default_factory=list, description="Key data points found in sources"
-    )
-    error: Optional[str] = None
-
-class TrendDataPoint(BaseModel):
-    date: str
-    value: int
-
-class TrendAnalysis(BaseModel):
-    keyword: str
-    interest_over_time: List[TrendDataPoint] = Field(default_factory=list)
-    emerging_topics_cluster: Optional[TopicClusteringResult] = None
-    ai_summary: Optional[str] = None
-
-class MarketDemandResult(BaseModel):
-    target_industry: str
-    target_keywords: List[str]
-    tam_analysis: Optional[TAMAnalysis] = None
-    trend_analysis: Optional[List[TrendAnalysis]] = None
-    category_clusters: Optional[TopicClusteringResult] = None
-    error: Optional[str] = None
-
-# --- Helper Functions ---
 
 async def _scrape_urls(urls: List[str]) -> str:
     """Scrapes text content from a list of URLs."""

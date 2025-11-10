@@ -9,32 +9,14 @@ import typer
 import logging
 import json
 from typing import Optional, List
-from pydantic import BaseModel, Field
-
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-# --- (REAL) Core Module Imports ---
 from .narrative_analyzer import track_narrative_gnews  # <-- REAL FUNCTION
 from .config_loader import API_KEYS
 from .gemini_client import GeminiClient
-# --- End (REAL) Imports ---
-
+from .schemas import CognitiveMapResult, MentalModelVector
 logger = logging.getLogger(__name__)
 
-# --- Pydantic Schemas ---
-# NOTE: These are defined here for encapsulation, as they are specific to this module.
-
-class MentalModelVector(BaseModel):
-    vector_type: str = Field(..., description="e.g., 'Core Value', 'Decision-Making Bias'")
-    description: str = Field(..., description="The specific value or bias, e.g., 'Prioritizes rapid innovation'")
-    evidence_snippet: Optional[str] = Field(None, description="A quote or summary from source material as evidence.")
-
-class CognitiveMapResult(BaseModel):
-    person_name: str
-    cognitive_model_summary: Optional[str] = Field(None, description="AI-generated summary of their decision-making framework.")
-    key_vectors: List[MentalModelVector] = Field(default_factory=list)
-    predictive_assessment: Optional[str] = Field(None, description="AI-generated prediction of behavior under stress.")
-    error: Optional[str] = None
 
 
 # --- Module Internals ---

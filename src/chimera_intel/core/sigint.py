@@ -4,7 +4,9 @@ import socket
 import csv
 from typing import Dict, Any, Optional, List
 import json
-
+import logging
+import asyncio
+from chimera_intel.core.schemas import CellTowerInfo, RFSpectrumAnomaly, RFSpectrumReport
 # ADS-B and Mode-S decoding
 
 import pyModeS as pms
@@ -434,12 +436,203 @@ def decode_amateur_radio_logs(file_path: str) -> Dict[str, Any]:
     console.print("[bold green]Amateur radio log decoding complete.[/bold green]")
     return logs
 
+logger = logging.getLogger(__name__)
+
+# OpenCelliD API endpoint
+OPENCELLID_API_URL = "https://opencellid.org/cell/get"
+
+
+async def get_cell_tower_info(
+    mcc: int, mnc: int, lac: int, cid: int, api_key: str
+) -> Dict[str, Any]:
+    """
+    Fetches cell tower location data from the OpenCelliD API.
+
+    Args:
+        mcc (int): Mobile Country Code (e.g., 234 for UK).
+        mnc (int): Mobile Network Code (e.g., 15 for Vodafone UK).
+        lac (int): Location Area Code.
+        cid (int): Cell ID.
+        api_key (str): OpenCelliD API Key.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing the cell tower information or an error.
+    """
+    params = {
+        "key": api_key,
+        "mcc": mcc,
+        "mnc": mnc,
+        "lac": lac,
+        "cellid": cid,
+        "format": "json",
+    }
+    query_id = f"MCC:{mcc}, MNC:{mnc}, LAC:{lac}, CID:{cid}"
+    console.print(f"Querying OpenCelliD for: {query_id}...")
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(OPENCELLID_API_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get("status") == "error":
+                error_msg = data.get("error", "Unknown API error")
+                logger.warning(f"OpenCelliD API error for {query_id}: {error_msg}")
+                return {"error": error_msg}
+
+            # Validate and return the successful response
+            # We can use our Pydantic schema for validation if one exists,
+            # but for now, we'll return the raw valid dict.
+            # Example validation:
+            validated_data = CellTowerInfo.model_validate(data).model_dump()
+            return validated_data
+
+    except httpx.HTTPStatusError as e:
+        error_msg = f"HTTP error occurred: {e}"
+        logger.error(error_msg)
+        return {"error": error_msg}
+    except asyncio.TimeoutError:
+        error_msg = "OpenCelliD lookup timed out."
+        logger.error(error_msg)
+        return {"error": error_msg}
+    except Exception as e:
+        error_msg = f"An unexpected error occurred during cell tower lookup: {e}"
+        logger.error(error_msg)
+        return {"error": error_msg}
+
+def monitor_rf_spectrum(
+    host: str,
+    port: int,
+    duration_seconds: int,
+    anomaly_threshold_dbm: float,
+) -> RFSpectrumReport:
+    """
+    Monitors a live RF spectrum stream (e.g., from rtl_power)
+    and detects signals exceeding a power threshold.
+
+    Assumes stream format: 'timestamp,freq_start_hz,freq_end_hz,power_dbm'
+    Example rtl_power command to generate such a stream (requires netcat):
+    rtl_power -f 88M:108M:10k -g 30 -i 1 -P 1 | nc -l -p 1234
+    """
+    console.print(
+        f"[bold cyan]Starting live RF spectrum analysis for {duration_seconds} seconds from {host}:{port}...[/bold cyan]"
+    )
+    console.print(
+        f"  [bold]Anomaly Threshold:[/] {anomaly_threshold_dbm} dBm"
+    )
+
+    anomalies: List[RFSpectrumAnomaly] = []
+    start_time = time.time()
+    
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            s.settimeout(1.0)  # Don't block forever
+            
+            buffer = ""
+            while time.time() - start_time < duration_seconds:
+                try:
+                    data = s.recv(1024).decode("utf-8", errors="ignore")
+                    buffer += data
+                    
+                    # Process line by line
+                    while '\n' in buffer:
+                        line, buffer = buffer.split('\n', 1)
+                        line = line.strip()
+                        if not line:
+                            continue
+                            
+                        try:
+                            # Expected format: 1678886400.0,88100000,88300000,-15.4
+                            parts = line.split(',')
+                            if len(parts) < 4:
+                                continue
+                                
+                            ts = float(parts[0])
+                            freq_start_hz = int(parts[1])
+                            freq_end_hz = int(parts[2])
+                            power = float(parts[3])
+                            
+                            # --- Spectrum Anomaly Detection ---
+                            if power > anomaly_threshold_dbm:
+                                freq_mhz = (freq_start_hz + (freq_end_hz - freq_start_hz) / 2) / 1_000_000
+                                anomaly = RFSpectrumAnomaly(
+                                    timestamp=ts,
+                                    frequency_mhz=freq_mhz,
+                                    power_dbm=power,
+                                    details=f"Signal at {freq_mhz:.3f} MHz exceeded threshold of {anomaly_threshold_dbm} dBm"
+                                )
+                                anomalies.append(anomaly)
+                                
+                        except (ValueError, IndexError) as e:
+                            # Gracefully handle malformed lines
+                            console.print(f"[bold red]Error parsing spectrum data line: '{line}' - {e}[/bold red]")
+                            
+                except socket.timeout:
+                    continue  # No data, continue loop
+                except Exception as e:
+                    console.print(f"[bold red]Error processing stream data: {e}[/bold red]")
+
+    except (socket.error, ConnectionRefusedError) as e:
+        console.print(f"[bold red]Error connecting to stream at {host}:{port}: {e}[/bold red]")
+        return RFSpectrumReport(
+            target_host=host,
+            port=port,
+            duration_seconds=duration_seconds,
+            anomaly_threshold_dbm=anomaly_threshold_dbm,
+            total_anomalies_found=0,
+            error=str(e)
+        )
+    
+    console.print("[bold green]Live RF spectrum analysis complete.[/bold green]")
+    return RFSpectrumReport(
+        target_host=host,
+        port=port,
+        duration_seconds=duration_seconds,
+        anomaly_threshold_dbm=anomaly_threshold_dbm,
+        total_anomalies_found=len(anomalies),
+        anomalies=anomalies
+    )
 
 # --- Typer CLI Application ---
 
 
 sigint_app = typer.Typer()
 
+@sigint_app.command("monitor-spectrum")
+def cli_monitor_spectrum(
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Host of the RF spectrum TCP stream (e.g., from rtl_power)."
+    ),
+    port: int = typer.Option(
+        1234, "--port", help="Port of the RF spectrum stream."
+    ),
+    duration: int = typer.Option(
+        60, "--duration", "-d", help="Duration of the scan in seconds."
+    ),
+    threshold: float = typer.Option(
+        -30.0, "--threshold", "-t", help="Power threshold (in dBm) to trigger an anomaly."
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save the results to a JSON file."
+    ),
+):
+    """
+    Monitors a live RF spectrum stream for signals exceeding a power threshold.
+    Assumes stream format: 'timestamp,freq_start_hz,freq_end_hz,power_dbm'
+    """
+    results_model = monitor_rf_spectrum(host, port, duration, threshold)
+    results_dict = results_model.model_dump(exclude_none=True)
+
+    if output_file:
+        save_or_print_results(results_dict, output_file)
+    else:
+        typer.echo(json.dumps(results_dict, indent=2))
+    
+    if results_model.anomalies:
+        save_scan_to_db(
+            target=f"{host}:{port}", module="sigint_spectrum_monitor", data=results_dict
+        )
 
 @sigint_app.command("live")
 def run_live_scan(

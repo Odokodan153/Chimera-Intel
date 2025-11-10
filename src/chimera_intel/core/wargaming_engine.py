@@ -1,70 +1,20 @@
 import numpy as np
 import logging
-from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Literal, Tuple
-
-# --- CLI Imports ---
-# These are new in this file
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from typing_extensions import Annotated
-# ---------------------
+from chimera_intel.core.schemas import (
+    ScenarioInput,
+    SimulationResult,
+    ImpactMetrics
+)
 
-# Configure logger
 logger = logging.getLogger(__name__)
 
-#
-# --- Pydantic Models (Unchanged) ---
-#
-class ScenarioInput(BaseModel):
-    """
-    Defines the input parameters for a wargaming scenario.
-    """
-    scenario_type: str = Field(..., description="Type of scenario to run (e.g., 'supply_chain_disruption').")
-    target_supplier: str = Field(..., description="The name of the supplier being targeted or affected.")
-    disruption_level: float = Field(
-        default=0.5, 
-        description="Severity of the disruption (0.0 to 1.0).",
-        ge=0.0,
-        le=1.0
-    )
-    duration_days: int = Field(default=30, description="Estimated duration of the disruption in days.", gt=0)
-    simulations: int = Field(default=1000, description="Number of Monte Carlo simulations to run.", gt=0)
-    distribution_type: Literal["normal", "lognormal", "triangular"] = Field(
-        default="normal", 
-        description="The probability distribution to use for simulations."
-    )
 
-class ImpactMetrics(BaseModel):
-    """
-    Quantified impacts calculated from the simulation.
-    """
-    financial_loss_estimate_mean: float
-    financial_loss_estimate_std: float
-    financial_loss_estimate_min: float
-    financial_loss_estimate_max: float
-    operational_downtime_days_mean: float
-    operational_downtime_days_std: float
-    operational_downtime_days_min: float
-    operational_downtime_days_max: float
-    confidence_interval_loss: Tuple[float, float]
-    
-class SimulationResult(BaseModel):
-    """
-    Contains the results of a completed scenario simulation.
-    """
-    scenario_input: ScenarioInput
-    impact_metrics: ImpactMetrics
-    scenario_tree_summary: Dict[str, Any] = Field(default_factory=dict)
-    disclaimer: str = Field(
-        default="LEGAL/ETHICAL DISCLAIMER: This output is based on a simulation and does not represent a deterministic prediction of future events. It is intended for analytical and planning purposes only."
-    )
-
-#
-# --- Core Engine Class (Unchanged) ---
-#
 class WargamingEngine:
     """
     A multi-domain simulator for running 'what-if' scenarios.

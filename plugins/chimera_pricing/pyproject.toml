@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-priceint"
+version = "0.1.0"
+description = "Chimera Intel plugin for pricing and promotion intelligence."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# Dependencies like httpx, beautifulsoup4, etc., are assumed to be
+# part of the core chimera_intel package.
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://github.com/your-repo/Chimera-Intel"
+"Bug Tracker" = "https://github.com/your-repo/Chimera-Intel/issues"
+
+# This entry point is crucial for the plugin manager
+[project.entry-points."chimera_intel.plugins"]
+priceint = "chimera_pricing.main:PricingIntelPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["chimera_pricing*"]

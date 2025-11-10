@@ -21,11 +21,9 @@ import hashlib
 import base64
 import httpx
 from datetime import datetime
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple
 from PIL import Image
 from rich.console import Console
-from pydantic import BaseModel, Field
-
 # Hashing
 import imagehash
 # Reverse Image Search

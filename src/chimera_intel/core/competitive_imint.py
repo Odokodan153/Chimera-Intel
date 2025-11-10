@@ -12,12 +12,9 @@ other core modules:
 import typer
 import logging
 import pathlib
-from typing import Optional, List
+from typing import Optional
 from PIL import Image
 from rich.console import Console
-from pydantic import BaseModel, Field
-
-# --- Reuse existing core modules ---
 from .imint import analyze_image_content
 from .advanced_media_analysis import (
     DeepfakeMultimodal,
@@ -48,12 +45,6 @@ compint_app = typer.Typer(
     name="compint",
     help="Competitive Image Intelligence (Products, Ads, Brand Safety)",
 )
-
-# --- Schemas for New Results ---
-
-
-
-
 
 # --- Pre-defined prompts for use cases (Objective 1) ---
 

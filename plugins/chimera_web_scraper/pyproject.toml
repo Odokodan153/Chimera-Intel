@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-web-scraper"
+version = "6.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "A Chimera Intel plugin for active web scraping (articles, dynamic pages)."
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: Typer",
+    "Operating System :: OS Independent",
+]
+
+# --- DEPENDENCIES ---
+dependencies = [
+    "chimera-intel == 6.0.0"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+web_scraper = "chimera_web_scraper.main:WebScraperPlugin"
