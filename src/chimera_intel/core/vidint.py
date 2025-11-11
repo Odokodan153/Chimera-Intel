@@ -1,8 +1,8 @@
 """
 Module for Video Intelligence (VIDINT).
 
-Provides tools to analyze video files, extract metadata, and save frames
-for further analysis.
+Provides tools to analyze video files, extract metadata, save frames,
+and perform content analysis (object detection).
 """
 
 import typer
@@ -10,6 +10,18 @@ import os
 from rich.console import Console
 import cv2
 import numpy as np
+from typing import Dict, Set
+
+# +++ NEW IMPORT (POINT 2) +++
+# Import object detection from the IMINT module
+try:
+    from .imint import perform_object_detection
+    IMINT_AVAILABLE = True
+except ImportError:
+    IMINT_AVAILABLE = False
+    # This allows the module to run, but content analysis will fail.
+    def perform_object_detection(image_path: str) -> dict:
+        raise ImportError("IMINT module or its dependencies are not available.")
 
 console = Console()
 
@@ -67,7 +79,59 @@ def run_motion_detection(file_path: str, threshold: int = 30):
         console.print("[green]No significant motion detected.[/green]")
 
 
-# --- FIX: Renamed function to 'analyze' and removed explicit name from decorator ---
+# +++ NEW FUNCTION (POINT 2) +++
+def analyze_video_content(
+    file_path: str, temp_dir: str, sample_rate_sec: int = 5
+) -> Dict[str, int]:
+    """
+    Performs object detection on video frames by sampling the video.
+    """
+    if not IMINT_AVAILABLE:
+        console.print("[bold red]Error:[/bold red] IMINT module 'perform_object_detection' is not available.")
+        return {}
+
+    console.print(f"Analyzing video content (sampling 1 frame every {sample_rate_sec}s)...")
+    vid = cv2.VideoCapture(file_path)
+    if not vid.isOpened():
+        console.print("[bold red]Error:[/bold red] Could not open video file for content analysis.")
+        return {}
+
+    fps = vid.get(cv2.CAP_PROP_FPS)
+    frame_interval = int(fps * sample_rate_sec)
+    frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    if frame_interval == 0:
+        frame_interval = int(fps) # Default to 1s if calculation fails
+    if frame_interval == 0:
+        frame_interval = 1 # Failsafe
+
+    aggregated_objects: Dict[str, int] = {}
+    temp_frame_file = os.path.join(temp_dir, "temp_vidint_frame.jpg")
+
+    try:
+        for frame_num in range(0, frame_count, frame_interval):
+            vid.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            success, image = vid.read()
+            if success:
+                # Save the frame as a temporary image
+                cv2.imwrite(temp_frame_file, image)
+                
+                # Run object detection on the saved frame
+                try:
+                    detected_objects = perform_object_detection(temp_frame_file)
+                    for obj, count in detected_objects.items():
+                        aggregated_objects[obj] = aggregated_objects.get(obj, 0) + count
+                except Exception as e:
+                    console.print(f"[yellow]Warning: Frame analysis failed: {e}[/yellow]")
+        
+        # Clean up the temp frame
+        if os.path.exists(temp_frame_file):
+            os.remove(temp_frame_file)
+
+    finally:
+        vid.release()
+
+    return aggregated_objects
 
 
 @vidint_app.command(help="Analyze a video file and extract metadata or frames.")
@@ -87,10 +151,21 @@ def analyze(
         "--detect-motion",
         help="Detect motion in the video.",
     ),
+    # +++ NEW CLI OPTION (POINT 2) +++
+    analyze_content: bool = typer.Option(
+        False,
+        "--analyze-content",
+        help="Perform object detection on video frames.",
+    ),
+    content_sample_rate: int = typer.Option(
+        5,
+        "--sample-rate",
+        help="Seconds between frames for content analysis."
+    )
 ):
     """
-    Analyzes a video file to extract key metadata and optionally saves
-    frames for further analysis.
+    Analyzes a video file to extract key metadata, save frames,
+    detect motion, or analyze content for objects.
     """
     console.print(f"Analyzing video file: {file_path}")
     if not os.path.exists(file_path):
@@ -98,13 +173,18 @@ def analyze(
             f"[bold red]Error:[/bold red] Video file not found at '{file_path}'"
         )
         raise typer.Exit(code=1)
+    
+    # Ensure output_dir exists for all operations that need it
+    if extract_frames or analyze_content:
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
     vid = None
     try:
         vid = cv2.VideoCapture(file_path)
         if not vid.isOpened():
             console.print("[bold red]Error:[/bold red] Could not open video file.")
             raise typer.Exit(code=1)
-        # Extract metadata
 
         frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = vid.get(cv2.CAP_PROP_FPS)
@@ -119,15 +199,10 @@ def analyze(
         console.print(f"- Total Frames: {frame_count}")
         console.print("--------------------------")
 
-        # Extract frames if requested
-
         if extract_frames:
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
             frame_interval = int(fps * extract_frames)
+            if frame_interval == 0: frame_interval = 1 # Failsafe
             saved_count = 0
-            # Reset video to the beginning for frame extraction
-
             vid.set(cv2.CAP_PROP_POS_FRAMES, 0)
             for i in range(0, frame_count, frame_interval):
                 vid.set(cv2.CAP_PROP_POS_FRAMES, i)
@@ -141,12 +216,27 @@ def analyze(
             console.print(
                 f"\nSuccessfully extracted {saved_count} frames to '{output_dir}'."
             )
-        if detect_motion:
-            # For motion detection, we need a fresh video capture object
-            # or to reset the current one.
 
-            vid.release()  # Release before calling motion detection
+        # --- MODIFIED: Release vid before calling other functions ---
+        if vid and vid.isOpened():
+            vid.release()
+            vid = None # Set to None so finally: doesn't try to release again
+
+        if detect_motion:
             run_motion_detection(file_path)
+        
+        # +++ NEW CONTENT ANALYSIS (POINT 2) +++
+        if analyze_content:
+            objects_found = analyze_video_content(file_path, output_dir, content_sample_rate)
+            console.print("\n--- [bold green]Video Content Analysis[/bold green] ---")
+            if objects_found:
+                console.print("Aggregated objects detected in video:")
+                for obj, count in objects_found.items():
+                    console.print(f"- {obj}: {count} instance(s)")
+            else:
+                console.print("No objects detected.")
+            console.print("-------------------------------")
+
     except Exception as e:
         console.print(
             f"[bold red]An error occurred during video analysis:[/bold red] {e}"
@@ -155,3 +245,6 @@ def analyze(
     finally:
         if vid and vid.isOpened():
             vid.release()
+
+if __name__ == "__main__":
+    vidint_app()

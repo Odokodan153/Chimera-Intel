@@ -1,4 +1,4 @@
-# Chimera-Intel/src/chimera_intel/core/forensic_vault.py
+# src/chimera_intel/core/forensic_vault.py
 """
 Module for Advanced Image Forensics, Attribution, and Secure Vaulting.
 
@@ -8,9 +8,8 @@ Provides tools for:
 3.  Forensic Vaulting (Signing & Timestamping) for chain of custody.
 4.  Exporting verified derivatives of master files.
 
-NOTE ON DEPENDENCIES:
-This module requires new libraries:
-pip install imagehash google-cloud-vision rfc3161 cryptography pillow
+MODIFIED: Extracted _load_private_key and _load_public_key to be
+reusable by other services (e.g., trusted_media).
 """
 
 import typer
@@ -33,6 +32,10 @@ from google.cloud import vision
 import rfc3161
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric.types import (
+    RSAPrivateKey,
+    RSAPublicKey,
+)
 from cryptography.hazmat.primitives.serialization import (
     load_pem_private_key,
     load_pem_public_key,
@@ -48,9 +51,14 @@ from .schemas import (
     ReverseImageMatch,
     ReverseImageSearchResult,
     VaultReceipt,
-    VaultExportResult,)
+    VaultExportResult,
+    # Import new schemas for provenance
+    ProvenanceManifest,
+    SignedProvenanceEnvelope,
+    VerificationResult,
+)
 from .utils import save_or_print_results
-from .config_loader import API_KEYS
+from .config_loader import API_KEYS, CONFIG
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -160,6 +168,36 @@ def cli_reverse_search(
 
 # --- 3. Forensic Vault (Signing & Timestamping) ---
 
+# --- NEW: Extracted Reusable Functions ---
+
+def _load_private_key(key_path: pathlib.Path) -> RSAPrivateKey:
+    """Loads a PEM private key for signing."""
+    with open(key_path, "rb") as key_file:
+        return load_pem_private_key(key_file.read(), password=None)
+
+def _load_public_key(key_path: pathlib.Path) -> RSAPublicKey:
+    """Loads a PEM public key for verification."""
+    with open(key_path, "rb") as key_file:
+        return load_pem_public_key(key_file.read())
+
+def _get_timestamp_token(
+    data_bytes: bytes, tsa_url: str
+) -> Tuple[Optional[bytes], Optional[datetime]]:
+    """Requests an RFC3161 timestamp token for the given data."""
+    try:
+        timestamper = rfc3161.Timestamper(tsa_url, http_client=httpx.Client())
+        ts_response = timestamper.timestamp(
+            data=data_bytes, hash_algorithm="sha256"
+        )
+        timestamp = rfc3161.get_timestamp(ts_response)
+        return ts_response, timestamp
+    except Exception as e:
+        logger.error(f"Failed to get timestamp from {tsa_url}: {e}")
+        console.print(f"[bold red]Timestamping failed:[/bold red] {e}", style="stderr")
+        return None, None
+# --- End of Extracted Functions ---
+
+
 def _generate_metadata_hash(file_path: pathlib.Path, creation_time: datetime) -> Tuple[str, str, bytes]:
     """Helper to create and hash file metadata."""
     file_bytes = file_path.read_bytes()
@@ -178,23 +216,6 @@ def _generate_metadata_hash(file_path: pathlib.Path, creation_time: datetime) ->
     return file_hash, metadata_hash, metadata_bytes
 
 
-def _get_timestamp_token(
-    data_bytes: bytes, tsa_url: str
-) -> Tuple[Optional[bytes], Optional[datetime]]:
-    """Requests an RFC3161 timestamp token for the given data."""
-    try:
-        timestamper = rfc3161.Timestamper(tsa_url, http_client=httpx.Client())
-        ts_response = timestamper.timestamp(
-            data=data_bytes, hash_algorithm="sha256"
-        )
-        timestamp = rfc3161.get_timestamp(ts_response)
-        return ts_response, timestamp
-    except Exception as e:
-        logger.error(f"Failed to get timestamp from {tsa_url}: {e}")
-        console.print(f"[bold red]Timestamping failed:[/bold red] {e}", style="stderr")
-        return None, None
-
-
 def create_vault_receipt(
     file_path: pathlib.Path,
     key_path: pathlib.Path,
@@ -205,8 +226,8 @@ def create_vault_receipt(
     This is refactored from cli_create_receipt to be reusable.
     """
     # 1. Load Private Key
-    with open(key_path, "rb") as key_file:
-        private_key = load_pem_private_key(key_file.read(), password=None)
+    # MODIFIED: Use extracted function
+    private_key = _load_private_key(key_path)
 
     # 2. Get Timestamp (optional)
     # We get the timestamp *first* to use as the official "created_at" time
@@ -218,9 +239,6 @@ def create_vault_receipt(
 
     if tsa_url:
         console.print(f"  - Requesting timestamp from {tsa_url}...")
-        # We timestamp a preliminary hash of the file path and time
-        # This is a bit of a chicken-and-egg problem.
-        # Let's timestamp the *metadata* after it's created.
         pass # We'll do this after step 3
     
     # 3. Create and hash metadata
@@ -276,7 +294,8 @@ def cli_create_receipt(
         help="Path to the private key (.pem) for signing.",
     ),
     tsa_url: Optional[str] = typer.Option(
-        "http://timestamp.digicert.com",
+        # MODIFIED: Load default from central config
+        CONFIG.get("tsa_url", "http://timestamp.digicert.com"),
         "--tsa-url",
         help="URL of the RFC3161 Timestamping Authority (TSA).",
     ),
@@ -291,7 +310,9 @@ def cli_create_receipt(
     """
     console.print(f"Creating receipt for: {file_path}")
     try:
-        receipt = create_vault_receipt(file_path, key_path, tsa_url)
+        # Use the default TSA URL from config if not provided
+        tsa_url_to_use = tsa_url or CONFIG.get("tsa_url")
+        receipt = create_vault_receipt(file_path, key_path, tsa_url_to_use)
         save_or_print_results(receipt.model_dump(exclude_none=True), output_file)
     except Exception as e:
         console.print(f"[bold red]Error creating receipt:[/bold red] {e}")
@@ -331,8 +352,8 @@ def cli_verify_receipt(
                 receipt_data["timestamp"] = datetime.fromisoformat(receipt_data["timestamp"])
             receipt = VaultReceipt(**receipt_data)
         
-        with open(key_path, "rb") as f:
-            public_key = load_pem_public_key(f.read())
+        # MODIFIED: Use extracted function
+        public_key = _load_public_key(key_path)
 
         # 2. Find and check original file
         if not file_path:
@@ -407,7 +428,7 @@ def cli_verify_receipt(
         raise typer.Exit(code=1)
 
 
-# --- 4. Export & Delivery (NEW FUNCTION) ---
+# --- 4. Export & Delivery ---
 
 @vault_app.command("export-derivative", help="Export a flattened, receipted derivative (JPG/PNG).")
 def cli_export_derivative(
@@ -434,7 +455,8 @@ def cli_export_derivative(
         help="Path for the exported file. [default: <original_name>.<format>]"
     ),
     tsa_url: Optional[str] = typer.Option(
-        "http://timestamp.digicert.com",
+        # MODIFIED: Load default from central config
+        CONFIG.get("tsa_url", "http://timestamp.digicert.com"),
         "--tsa-url",
         help="URL of the RFC3161 Timestamping Authority (TSA).",
     ),
@@ -479,7 +501,10 @@ def cli_export_derivative(
 
         # 4. Create a new receipt for the exported file
         console.print(f"Creating receipt for new derivative: {output_path.name}")
-        exported_receipt = create_vault_receipt(output_path, key_path, tsa_url)
+        
+        # MODIFIED: Use the default TSA URL from config if not provided
+        tsa_url_to_use = tsa_url or CONFIG.get("tsa_url")
+        exported_receipt = create_vault_receipt(output_path, key_path, tsa_url_to_use)
 
         # 5. Create final result object
         export_result = VaultExportResult(

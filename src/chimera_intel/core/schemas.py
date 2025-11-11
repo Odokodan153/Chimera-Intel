@@ -13,6 +13,7 @@ from sqlalchemy import (
     LargeBinary,
     Enum as SQLAlchemyEnum,
 )
+from dataclasses import dataclass, field
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, date, timezone
@@ -5066,6 +5067,39 @@ class VaultExportResult(BaseModel):
     export_format: str
     exported_receipt: VaultReceipt
 
+class ProvenanceManifest(BaseModel):
+    """
+    The JSON-LD compatible manifest to be signed and embedded.
+    This serves as the core provenance data.
+    """
+    asset_hash: str = Field(..., description="SHA-256 hash of the original, *unmodified* asset.")
+    timestamp: str = Field(..., description="The ISO 8601 timestamp of creation/signing.")
+    issuer: str = Field(..., description="The identifier of the signing entity (e.g., 'Chimera-Intel Platform').")
+    consent_artifact_id: Optional[str] = Field(None, description="The receipt_id of the linked ConsentRecord (from media_governance).")
+    
+    # JSON-LD context for interoperability
+    jsonld_context: str = Field("https://schema.org", alias="@context")
+    jsonld_type: str = Field("CreativeWork", alias="@type")
+    author: str = Field("Chimera-Intel", alias="author")
+
+class SignedProvenanceEnvelope(BaseModel):
+    """
+    The final payload that is embedded into the media file.
+    It wraps the manifest and its cryptographic proof.
+    """
+    manifest: ProvenanceManifest
+    signature: str = Field(..., description="Base64-encoded signature of the canonicalized manifest JSON.")
+    tsa_token_b64: Optional[str] = Field(None, description="Base64-encoded RFC3161 timestamp token for the manifest.")
+
+class VerificationResult(BaseResult):
+    """
+    The result of a verification check.
+    This is the public-facing response.
+    """
+    is_valid: bool = Field(default=False, description="True if all cryptographic checks passed.")
+    verified_manifest: Optional[ProvenanceManifest] = Field(None, description="The verified manifest, if validation was successful.")
+    verification_log: List[str] = Field(default_factory=list, description="A step-by-step log of verification checks.")
+
 class ServiceBanner(BaseModel):
     name: str = "unknown"
     banner: str
@@ -5617,3 +5651,97 @@ class ReviewRequest(BaseModel):
     reviewer: Optional[str] = None
     reviewed_at: Optional[datetime] = None
 
+class DeepWebHit(BaseModel):
+    title: str = Field(..., description="The title of the search result.")
+    link: str = Field(..., description="The URL of the search result.")
+    snippet: str = Field(..., description="A snippet of text from the result.")
+    source: str = Field(..., description="The display link (e.g., scholar.google.com).")
+
+class DeepWebResult(BaseModel):
+    query: str = Field(..., description="The query used for the search.")
+    cse_id: str = Field(..., description="The Custom Search Engine ID used.")
+    total_results: int = Field(0, description="Total results found.")
+    hits: List[DeepWebHit] = Field([], description="The list of results.")
+    error: Optional[str] = Field(None, description="Error message if any.")
+
+@dataclass
+class FinancialDocument:
+    doc_id: str
+    source: str
+    date: datetime
+    content: str
+
+@dataclass
+class ShippingRecord:
+    record_id: str
+    company_name: str
+    item_description: str
+    quantity: int
+    value: float
+    port_of_origin: str
+    destination_port: str
+    date: datetime
+
+@dataclass
+class Invoice:
+    invoice_id: str
+    issuer_name: str
+    receiver_name: str
+    item_description: str
+    amount: float
+    date: datetime
+
+@dataclass
+class FundingEvent:
+    event_id: str
+    platform: str
+    project_id: str
+    backer_id: str
+    backer_name: str
+    amount: float
+    date: datetime
+
+@dataclass
+class Transaction:
+    tx_id: str
+    from_account: str
+    to_account: str
+    amount: float
+    date: datetime
+    currency: str
+
+# --- Result Models ---
+# (Result models are unchanged)
+
+@dataclass
+class NlpSignal:
+    doc_id: str
+    sentiment: str
+    key_topics: List[str]
+    risk_factors: List[str]
+    entities: Dict[str, List[str]]
+
+@dataclass
+class TradeMatch:
+    match_type: str
+    shipping_id: str
+    invoice_id: str
+    details: str
+    value_discrepancy: Optional[float] = None
+
+@dataclass
+class FundingAnomaly:
+    project_id: str
+    backer_id: str
+    anomaly_type: str
+    description: str
+    timestamp: datetime
+
+@dataclass
+class PaymentFlowCorrelation:
+    flow_id: str
+    start_entity: str
+    end_entity: str
+    intermediaries: List[str]
+    total_amount: float
+    path: List[str]

@@ -1,181 +1,250 @@
+# Tests/test_ethical_guardrails.py
+
 import pytest
-from unittest.mock import patch, mock_open
-import json
-
-# Ensure the 'src' directory is in the Python path or adjust the import
-from src.chimera_intel.core.ethical_guardrails import EthicalFramework
-
-# A mock rules file matching the structure expected by EthicalFramework
-MOCK_RULES = {
-    "test_rule_1": {
-        "description": "A test rule.",
-        "keywords": ["test_keyword_1", "test_keyword_2"],
-        "severity": "High",
-    },
-    "test_rule_2": {
-        "description": "Another test rule.",
-        "keywords": ["test_keyword_3"],
-        "severity": "Medium",
-    },
-}
-
-
-@pytest.fixture
-def mock_open_file():
-    """Fixture to mock open() reading the MOCK_RULES."""
-    m = mock_open(read_data=json.dumps(MOCK_RULES))
-    with patch("builtins.open", m) as mock_file:
-        yield mock_file
-
-
-@pytest.fixture
-def mock_json_load():
-    """Fixture to mock json.load."""
-    with patch("json.load") as mock_load:
-        mock_load.return_value = MOCK_RULES
-        yield mock_load
-
-
-# --- Tests for __init__ ---
-
-
-def test_load_rules_success(mock_open_file, mock_json_load):
-    """Test successful loading of rules from a file."""
-    filepath = "dummy/path/rules.json"
-    guardrails = EthicalFramework(rules_filepath=filepath)
-
-    # Check that open was called with the correct path
-    mock_open_file.assert_called_once_with(filepath, "r")
-    # Check that json.load was called
-    mock_json_load.assert_called_once()
-    # Check that the rules are loaded correctly
-    assert guardrails.rules == MOCK_RULES
-
-
-def test_load_rules_file_not_found():
-    """Test fallback to default rules when the file is not found."""
-    filepath = "non_existent_file.json"
-    m = mock_open()
-    m.side_effect = FileNotFoundError("File not found")
-
-    # We also need to patch logging to check the error
-    with patch("logging.error") as mock_log:
-        with patch("builtins.open", m):
-            guardrails = EthicalFramework(rules_filepath=filepath)
-
-            # Check if error was logged
-            mock_log.assert_called_once()
-            # Check that it fell back to default rules
-            assert "pressure_tactics" in guardrails.rules
-            assert "misrepresentation" in guardrails.rules
-
-
-def test_load_rules_invalid_json():
-    """Test fallback to default rules when the file contains invalid JSON."""
-    filepath = "invalid.json"
-    m = mock_open(read_data="{invalid_json:}")
-
-    with patch("logging.error") as mock_log:
-        with patch("builtins.open", m):
-            # Mock json.load to raise JSONDecodeError
-            with patch("json.load", side_effect=json.JSONDecodeError("msg", "doc", 0)):
-                guardrails = EthicalFramework(rules_filepath=filepath)
-
-                # Check if error was logged
-                mock_log.assert_called_once()
-                # Check that it fell back to default rules
-                assert "pressure_tactics" in guardrails.rules
-
-
-def test_load_default_rules():
-    """Test that default rules are loaded when no filepath is provided."""
-    guardrails = EthicalFramework()
-    assert "pressure_tactics" in guardrails.rules
-    assert "emotional_manipulation" in guardrails.rules
-    assert len(guardrails.rules) == 4  # Based on the provided file
-
-
-# --- Tests for check_message ---
-
-
-@pytest.fixture
-def default_guardrails():
-    """Fixture to provide an EthicalFramework instance with default rules."""
-    return EthicalFramework()
-
-
-@pytest.mark.parametrize(
-    "message, expected_violation, triggered_by",
-    [
-        # Test pressure_tactics
-        ("This is your last chance to accept!", "pressure_tactics", "last chance"),
-        ("You must act now or the deal is gone.", "pressure_tactics", "act now"),
-        # Test misrepresentation
-        ("Believe me, this is the best you'll get.", "misrepresentation", "believe me"),
-        # Test emotional_manipulation
-        (
-            "You really don't want to let us down, do you?",
-            "emotional_manipulation",
-            "let us down",
-        ),
-        (
-            "Don't be difficult, just sign.",
-            "emotional_manipulation",
-            "don't be difficult",
-        ),
-        # Test information_hiding
-        (
-            "That's not important right now.",
-            "information_hiding",
-            "that's not important",
-        ),
-        # Test a benign message
-        ("What is the capital of France?", None, None),
-        # Test case sensitivity (should be case-insensitive)
-        ("This is your LAST CHANCE.", "pressure_tactics", "last chance"),
-    ],
+from unittest.mock import patch, MagicMock
+from chimera_intel.core.ethical_guardrails import (
+    EthicalGuardrails,
+    DisallowedUseCaseError,
+    AllowedUseCase,
+    GenerationType,
+    RiskLevel,
+    SubjectProfile,
+    SubjectSensitivity,
+    save_subject_profile,
+    get_subject_profile_from_db,
+    policy_app  # Import the app to test CLI commands
 )
-def test_check_message_various_cases(
-    default_guardrails, message, expected_violation, triggered_by
-):
-    """Test the check_message method with various default rules."""
-    violations = default_guardrails.check_message(message)
+from typer.testing import CliRunner
 
-    if expected_violation:
-        assert len(violations) > 0
-        assert violations[0]["violation"] == expected_violation
-        assert violations[0]["triggered_by"] == triggered_by
-    else:
-        assert len(violations) == 0
+# --- Test Fixtures ---
 
+@pytest.fixture
+def guardrails() -> EthicalGuardrails:
+    """Provides a fresh instance of the EthicalGuardrails."""
+    return EthicalGuardrails()
 
-def test_check_message_multiple_violations(default_guardrails):
-    """Test a message that triggers multiple violations."""
-    message = (
-        "This is your last chance, and to be honest, you'll let us down if you refuse."
+@pytest.fixture
+def runner() -> CliRunner:
+    """Provides a Typer CLI runner."""
+    return CliRunner()
+
+# --- Mock Data ---
+profile_minor = SubjectProfile(
+    subject_id="m-1a2b3c",
+    display_name="Johnny Minor",
+    sensitivity=SubjectSensitivity.MINOR
+)
+profile_victim = SubjectProfile(
+    subject_id="v-9a8b7c",
+    display_name="Jane Doe (Victim)",
+    sensitivity=SubjectSensitivity.VULNERABLE_PERSON
+)
+profile_sanctioned = SubjectProfile(
+    subject_id="s-7g8h9i",
+    display_name="Sanctioned Entity X",
+    sensitivity=SubjectSensitivity.SANCTIONED_PERSON
+)
+profile_official = SubjectProfile(
+    subject_id="po-4d5e6f",
+    display_name="Senator Adams",
+    sensitivity=SubjectSensitivity.PUBLIC_OFFICIAL
+)
+profile_adult = SubjectProfile(
+    subject_id="a-1b2c3d",
+    display_name="Consenting CEO",
+    sensitivity=SubjectSensitivity.GENERAL_ADULT
+)
+
+# --- Test Database Functions ---
+
+@patch("chimera_intel.core.ethical_guardrails.save_scan_to_db")
+def test_save_subject_profile(mock_save_scan):
+    """Test that saving a profile calls the DB service correctly."""
+    save_subject_profile(profile_adult)
+    
+    mock_save_scan.assert_called_once_with(
+        target="consenting ceo", # Should be lowercased
+        module="subject_profile",
+        data=profile_adult.model_dump(),
+        scan_id=profile_adult.subject_id
     )
-    violations = default_guardrails.check_message(message)
 
-    assert len(violations) >= 3  # >= in case keywords overlap
-    violation_types = {v["violation"] for v in violations}
-    assert "pressure_tactics" in violation_types
-    assert "misrepresentation" in violation_types
-    assert "emotional_manipulation" in violation_types
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_get_subject_profile_from_db_found(mock_get_scans):
+    """Test retrieving a profile that exists."""
+    mock_get_scans.return_value = [profile_minor.model_dump()]
+    
+    profile = get_subject_profile_from_db("Johnny Minor")
+    
+    assert profile == profile_minor
+    mock_get_scans.assert_called_once_with(
+        target="johnny minor",
+        module="subject_profile"
+    )
 
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_get_subject_profile_from_db_not_found(mock_get_scans):
+    """Test retrieving a profile that does not exist."""
+    mock_get_scans.return_value = []
+    
+    profile = get_subject_profile_from_db("Unknown Person")
+    
+    assert profile is None
+    mock_get_scans.assert_called_once_with(
+        target="unknown person",
+        module="subject_profile"
+    )
 
-def test_check_message_custom_rules(mock_open_file, mock_json_load):
-    """Test check_message with custom rules loaded from a file."""
-    filepath = "dummy/path/rules.json"
-    guardrails = EthicalFramework(rules_filepath=filepath)
+# --- Test Policy Logic (Blocked Cases) ---
 
-    # Test a message that triggers a custom rule
-    message = "This contains test_keyword_1."
-    violations = guardrails.check_message(message)
-    assert len(violations) == 1
-    assert violations[0]["violation"] == "test_rule_1"
-    assert violations[0]["triggered_by"] == "test_keyword_1"
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_blocked_minor(mock_get_scans, guardrails):
+    mock_get_scans.return_value = [profile_minor.model_dump()]
+    with pytest.raises(DisallowedUseCaseError, match="minors is strictly prohibited"):
+        guardrails.check_synthetic_media_policy(
+            use_case=AllowedUseCase.MARKETING,
+            generation_type=GenerationType.VOICE_CLONE,
+            subject_name="Johnny Minor"
+        )
 
-    # Test a benign message
-    message = "This is a benign message."
-    violations = guardrails.check_message(message)
-    assert len(violations) == 0
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_blocked_victim(mock_get_scans, guardrails):
+    mock_get_scans.return_value = [profile_victim.model_dump()]
+    with pytest.raises(DisallowedUseCaseError, match="victims of crimes is strictly prohibited"):
+        guardrails.check_synthetic_media_policy(
+            use_case=AllowedUseCase.FILM_ADVERTISING,
+            generation_type=GenerationType.FACE_REENACTMENT,
+            subject_name="Jane Doe (Victim)"
+        )
+
+# --- Test Policy Logic (Allowed Cases) ---
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_allowed_unknown_adult_marketing(mock_get_scans, guardrails):
+    """An unknown name defaults to GENERAL_ADULT and is allowed."""
+    mock_get_scans.return_value = [] # Not found in DB
+    
+    assert guardrails.check_synthetic_media_policy(
+        use_case=AllowedUseCase.MARKETING,
+        generation_type=GenerationType.FACE_REENACTMENT,
+        subject_name="Some New Person"
+    )
+    mock_get_scans.assert_called_once_with(target="some new person", module="subject_profile")
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_allowed_stock_person_no_name(mock_get_scans, guardrails):
+    """Fully synthetic generation without a name is allowed."""
+    assert guardrails.check_synthetic_media_policy(
+        use_case=AllowedUseCase.SYNTHETIC_SPOKESPERSON,
+        generation_type=GenerationType.FULLY_SYNTHETIC_FACE,
+        subject_name=None
+    )
+    # get_scans_by_target should not be called if name is None
+    mock_get_scans.assert_not_called()
+
+# --- Test Risk Level Logic ---
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_risk_level_low(mock_get_scans, guardrails):
+    mock_get_scans.return_value = [] # Not found, defaults to stock
+    risk = guardrails.determine_risk_level(
+        use_case=AllowedUseCase.SYNTHETIC_SPOKESPERSON,
+        subject_name="Stock Person"
+    )
+    assert risk == RiskLevel.LOW
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_risk_level_medium(mock_get_scans, guardrails):
+    mock_get_scans.return_value = [profile_adult.model_dump()]
+    risk = guardrails.determine_risk_level(
+        use_case=AllowedUseCase.MARKETING,
+        subject_name="Consenting CEO"
+    )
+    assert risk == RiskLevel.MEDIUM
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_risk_level_high_official(mock_get_scans, guardrails):
+    mock_get_scans.return_value = [profile_official.model_dump()]
+    risk = guardrails.determine_risk_level(
+        use_case=AllowedUseCase.FILM_ADVERTISING,
+        subject_name="Senator Adams"
+    )
+    assert risk == RiskLevel.HIGH
+
+# --- Test CLI Commands ---
+
+@patch("chimera_intel.core.ethical_guardrails.save_subject_profile")
+def test_cli_add_subject(mock_save_profile, runner):
+    """Test the 'add-subject' CLI command."""
+    result = runner.invoke(
+        policy_app,
+        [
+            "add-subject",
+            "--name", "Senator Adams",
+            "--sensitivity", "public_official_sensitive_role",
+            "--notes", "Test note"
+        ]
+    )
+    assert result.exit_code == 0
+    assert "Successfully saved subject profile" in result.stdout
+    assert "Senator Adams" in result.stdout
+    assert "public_official_sensitive_role" in result.stdout
+    
+    # Check that the DB function was called with the correct data
+    mock_save_profile.assert_called_once()
+    saved_profile = mock_save_profile.call_args[0][0]
+    assert isinstance(saved_profile, SubjectProfile)
+    assert saved_profile.display_name == "Senator Adams"
+    assert saved_profile.sensitivity == SubjectSensitivity.PUBLIC_OFFICIAL
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_cli_check_policy_passed(mock_get_scans, runner):
+    """Test the 'check' CLI command for a passing case."""
+    mock_get_scans.return_value = [profile_adult.model_dump()] # "Consenting CEO"
+    
+    result = runner.invoke(
+        policy_app,
+        [
+            "check",
+            "--use-case", "marketing_assets_with_consent",
+            "--gen-type", "voice_clone",
+            "--subject-name", "Consenting CEO"
+        ]
+    )
+    assert result.exit_code == 0
+    assert "Policy Check PASSED" in result.stdout
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_cli_check_policy_failed(mock_get_scans, runner):
+    """Test the 'check' CLI command for a failing case."""
+    mock_get_scans.return_value = [profile_minor.model_dump()] # "Johnny Minor"
+    
+    result = runner.invoke(
+        policy_app,
+        [
+            "check",
+            "--use-case", "marketing_assets_with_consent",
+            "--gen-type", "voice_clone",
+            "--subject-name", "Johnny Minor"
+        ]
+    )
+    assert result.exit_code == 0 # CLI commands exit gracefully
+    assert "Policy Check FAILED" in result.stdout
+    assert "minors is strictly prohibited" in result.stdout
+
+@patch("chimera_intel.core.ethical_guardrails.get_scans_by_target")
+def test_cli_get_risk_high(mock_get_scans, runner):
+    """Test the 'get-risk' CLI command for a high-risk case."""
+    mock_get_scans.return_value = [profile_official.model_dump()] # "Senator Adams"
+    
+    result = runner.invoke(
+        policy_app,
+        [
+            "get-risk",
+            "--use-case", "film_advertising_with_rights",
+            "--subject-name", "Senator Adams"
+        ]
+    )
+    assert result.exit_code == 0
+    assert "Determined Risk Level: HIGH" in result.stdout
+    assert "Dual approval + senior review" in result.stdout

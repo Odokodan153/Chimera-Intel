@@ -2,7 +2,7 @@
 Module for Image & Visual Intelligence (IMINT/VISINT).
 
 Provides tools to extract metadata from images, analyze visual content,
-and perform object detection on satellite imagery.
+perform object detection on satellite imagery, and detect changes between images.
 """
 
 import typer
@@ -21,7 +21,16 @@ try:
 except ImportError:
     pytesseract = None
 
-# Imports for Satellite Analysis
+# Imports for Satellite Analysis & Change Detection
+try:
+    import cv2
+    import numpy as np
+except ImportError:
+    print(
+        "ERROR: Missing 'opencv-python-headless'. Please run: pip install opencv-python-headless"
+    )
+    cv2 = None
+    np = None
 
 
 from typing_extensions import Annotated
@@ -69,7 +78,7 @@ def analyze_content(
         ...,
         "--feature",
         "-f",
-        help="Analysis feature: ocr, objects, logo, location, body-language.",
+        help="Analysis feature: ocr, objects, logo, location, body-language, event.",
     ),
 ):
     """
@@ -90,12 +99,14 @@ def analyze_content(
         "logo": "Identify the brand or logo in this image. If none, say 'No logo found'.",
         "location": "Based on visual cues and landmarks, what is the likely geographic location of this photo?",
         "body-language": "Analyze the body language of the person or people in this image. Describe their posture, gestures, facial expressions, and likely emotional state. Infer the social dynamics if multiple people are present.",
+        # +++ NEW FEATURE (POINT 3) +++
+        "event": "Analyze the image for significant events. Identify any signs of protests, accidents, unusual gatherings, or emergency situations. Describe the event and the key visual indicators.",
     }
 
     prompt = prompts.get(feature.lower())
     if not prompt:
         console.print(
-            f"[bold red]Error:[/bold red] Invalid feature '{feature}'. Valid options are: ocr, objects, logo, location, body-language."
+            f"[bold red]Error:[/bold red] Invalid feature '{feature}'. Valid options are: ocr, objects, logo, location, body-language, event."
         )
         raise typer.Exit(code=1)
     try:
@@ -111,6 +122,7 @@ def analyze_content(
 
 
 # --- [NEW] Local OCR (Pytesseract) ---
+
 
 def perform_local_ocr(image_path: pathlib.Path) -> str:
     """
@@ -166,8 +178,6 @@ def cli_local_ocr(
 # --- Satellite Imagery Analysis ---
 
 # Load a pre-trained model for object detection
-
-
 detection_model = models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
 detection_model.eval()
 
@@ -396,6 +406,101 @@ def run_image_metadata_analysis(
     results_dict = results_model.model_dump(exclude_none=True)
     save_or_print_results(results_dict, output_file)
     save_scan_to_db(target=file_path, module="imint_metadata", data=results_dict)
+
+def compare_image_changes(
+    image_before_path: str, image_after_path: str, output_path: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Compares two images and highlights the differences.
+    Useful for satellite change detection.
+    """
+    if cv2 is None or np is None:
+        raise ImportError("OpenCV is required for change detection.")
+
+    try:
+        image_before = cv2.imread(image_before_path)
+        image_after = cv2.imread(image_after_path)
+
+        if image_before is None or image_after is None:
+            raise FileNotFoundError("Could not read one or both images.")
+
+        # Resize images to be the same size for comparison
+        h, w, _ = image_before.shape
+        image_after = cv2.resize(image_after, (w, h))
+
+        # Convert to grayscale
+        gray_before = cv2.cvtColor(image_before, cv2.COLOR_BGR2GRAY)
+        gray_after = cv2.cvtColor(image_after, cv2.COLOR_BGR2GRAY)
+
+        # Compute the absolute difference
+        (score, diff) = cv2.absdiff(gray_before, gray_after)
+        diff_score = np.sum(diff) / (h * w)  # Average difference per pixel
+
+        # Threshold the diff
+        _, thresh = cv2.threshold(diff, 30, 255, cv2.THRESH_BINARY)
+
+        # Find contours
+        contours, _ = cv2.findContours(
+            thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
+
+        change_areas = len(contours)
+        status = "No significant change"
+        if diff_score > 1.0 and change_areas > 5:
+            status = "Significant change detected"
+        elif diff_score > 0.5 and change_areas > 0:
+            status = "Minor change detected"
+
+        if output_path:
+            # Draw rectangles around changes on the 'after' image
+            for c in contours:
+                if cv2.contourArea(c) > 100:  # Filter small noise
+                    (x, y, w, h) = cv2.boundingRect(c)
+                    cv2.rectangle(image_after, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            cv2.imwrite(output_path, image_after)
+
+        return {
+            "status": status,
+            "difference_score": round(diff_score, 4),
+            "change_areas_found": change_areas,
+            "output_image": output_path,
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@imint_app.command(
+    "change-detect",
+    help="Compare two images to detect changes (e.g., satellite photos).",
+)
+def cli_change_detect(
+    image_before: str = typer.Argument(..., help="Path to the 'before' image."),
+    image_after: str = typer.Argument(..., help="Path to the 'after' image."),
+    output_image: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Path to save a new image highlighting the changes.",
+    ),
+):
+    """
+    Analyzes two images to find and optionally highlight differences.
+    """
+    console.print(
+        f"Comparing [bold cyan]{image_before}[/] (Before) with [bold cyan]{image_after}[/] (After)"
+    )
+    try:
+        results = compare_image_changes(image_before, image_after, output_image)
+        console.print(f"Status: {results['status']}")
+        console.print(f"Difference Score: {results['difference_score']}")
+        console.print(f"Change Areas Found: {results['change_areas_found']}")
+        if results.get("output_image"):
+            console.print(
+                f"[green]Change analysis image saved to: {results['output_image']}[/green]"
+            )
+    except Exception as e:
+        console.print(f"[bold red]An error occurred during change detection:[/bold red] {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

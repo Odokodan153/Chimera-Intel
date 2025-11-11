@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-synthetic-governance"
+version = "0.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "Plugin for ethical governance of synthetic media (watermarking, detection, abuse logging)."
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # Dependencies required by the core module being wrapped
+    "pillow",
+    "numpy"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+# This line tells the plugin manager how to load the plugin
+chimera_synthetic_governance = "chimera_synthetic_governance.main:initialize"

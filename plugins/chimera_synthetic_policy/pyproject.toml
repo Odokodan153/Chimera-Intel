@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_synthetic_policy"
+version = "0.1.0"
+description = "A Chimera-Intel plugin for pre-generation synthetic media policies."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    # Dependencies are handled by the main app,
+    # but pydantic is a key one.
+    "pydantic>=2.0"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+chimera_synthetic_policy = "chimera_synthetic_policy.main:initialize"
+
+[tool.setuptools.packages.find]
+where = ["src"]

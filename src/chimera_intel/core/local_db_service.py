@@ -1,14 +1,18 @@
+# src/chimera_intel/core/local_db_service.py
+
 """
 Local, self-contained SQLite database service.
 
 Implements the same function interface as the main 'database.py' 
 but uses a local SQLite file (./local_evidence_vault.db), 
 requiring no external services.
+
+(Updated to include get_scans_by_target)
 """
 import sqlite3
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -38,6 +42,11 @@ def _init_db():
                 timestamp TEXT NOT NULL,
                 data TEXT
             );
+            """)
+            # --- ADDED: Index for efficient querying by target/module ---
+            cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_target_module
+            ON scan_results (target, module);
             """)
             conn.commit()
             logger.info(f"Local SQLite DB initialized at {DB_FILE}")
@@ -106,6 +115,7 @@ def get_scan_from_db(
             row = cursor.fetchone()
             if row:
                 return {
+                    "scan_id": scan_id, # Re-add scan_id for context
                     "target": row[0],
                     "module": row[1],
                     "data": json.loads(row[2]) # Re-load the JSON string into a dict
@@ -115,3 +125,31 @@ def get_scan_from_db(
         finally:
             conn.close()
     return None
+
+# --- NEW FUNCTION ---
+def get_scans_by_target(
+    target: str,
+    module: str
+) -> List[Dict[str, Any]]:
+    """
+    Retrieves all scan results for a specific target and module.
+    Used by EthicalGuardrails to find subject profiles.
+    """
+    conn = _create_connection()
+    results = []
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, data FROM scan_results WHERE target = ? AND module = ?",
+                (target, module)
+            )
+            rows = cursor.fetchall()
+            for row in rows:
+                results.append(json.loads(row[1])) # Return just the data blob
+        except sqlite3.Error as e:
+            logger.error(f"Failed to retrieve scans for target {target} from local SQLite: {e}")
+        finally:
+            conn.close()
+    return results
+# --- END NEW FUNCTION ---

@@ -1,0 +1,40 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financial-analysis-system"
+version = "1.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A system for financial crime and risk analysis."
+readme = "README.md"
+requires-python = ">=3.9"
+
+# --- Core Dependencies ---
+# These are the dependencies required for the financial_market_signals module
+dependencies = [
+    # For NLP
+    "spacy>=3.0.0",
+    "spacytextblob>=4.0.0",
+    
+    # For Graph Analysis
+    "networkx>=3.0",
+    
+    # For Statistical Analysis
+    "numpy>=1.21.0",
+    
+    # For Fuzzy String Matching
+    "thefuzz[speedup]>=0.19.0"
+]
+
+[project.optional-dependencies]
+# Dependencies for testing
+test = [
+    "unittest",
+    "pytest" 
+]
+
+[tool.setuptools.packages.find]
+where = ["src"] # Tells setuptools to find packages in the 'src' directory

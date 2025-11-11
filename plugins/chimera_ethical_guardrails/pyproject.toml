@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "chimera-policy-engine"
+version = "0.1.0"
+description = "Plugin for checking ethical guardrail policies (Req 9)."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+packages = [
+    { include = "chimera_policy_engine", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# This plugin's functionality is now in the core library,
+# so it just needs to depend on the core library itself.
+chimera-intel = {path = "../../", develop = true} 
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This entry point registers the plugin with the main application's plugin manager
+policy_engine = "chimera_policy_engine.main:plugin"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

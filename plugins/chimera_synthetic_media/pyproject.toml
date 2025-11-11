@@ -1,0 +1,36 @@
+# plugins/chimera_synthetic_media/pyproject.toml
+
+[tool.poetry]
+name = "chimera-synthetic-media"
+version = "0.2.0"
+description = "A plugin for consent-gated synthetic media generation (deepfakes)."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Core framework dependency
+chimera-intel-core = {path = "../../src", develop = true}
+
+# Core plugin stack
+fastapi = "*"
+pydantic = "*"
+click = "*"
+
+# ML & Generation Dependencies
+torch = "*"
+diffusers = "*"
+transformers = "*"           # Dependency for diffusers/whisper
+accelerate = "*"             # Dependency for diffusers
+numpy = "*"
+opencv-python-headless = "*" # For cv2
+TTS = "*"                    # Coqui TTS for voice cloning
+openai-whisper = "*"         # For voice consent verification
+scikit-image = "*"           # For skimage (FOMM preprocessing)
+python-jose = {extras = ["cryptography"], version = "*"} # For JWT signing
+tenacity = "*"               # For ML retry logic
+Pillow = "*"                 # For PIL (Image processing, watermarking)
+
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# Registers this plugin with the core system
+"synthetic_media" = "chimera_synthetic_media.main:plugin"

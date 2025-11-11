@@ -1,0 +1,19 @@
+# Save as: Chimera-Intel/plugins/chimera_grey_lit/pyproject.toml
+
+[tool.poetry]
+name = "chimera-grey-lit"
+version = "0.1.0"
+description = "A plugin for finding grey literature (reports, white papers) using Chimera Intel."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../../..", develop = true} # Assumes plugin is in the main project
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+"chimera_grey_lit" = "chimera_grey_lit.main:load_plugin"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

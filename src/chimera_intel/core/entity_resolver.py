@@ -26,14 +26,16 @@ def _resolve_entities_ai(text_blob: str, target_name: str) -> ResolutionResult:
     if not api_key:
         return ResolutionResult(entities=[], relationships=[], error="Google API key not found.")
 
+    # --- ENHANCED PROMPT ---
     prompt = f"""
     You are an intelligence analyst tasked with entity resolution and relationship extraction.
     Analyze the following text blob related to the primary target "{target_name}".
 
     Your goal is to:
-    1. Identify all people and companies.
+    1. Identify all people, companies, and organizations.
     2. Normalize their names (e.g., "Google, Inc." -> "Google").
-    3. Extract explicit relationships between them (e.g., "subsidiary_of", "colleague_of", "family_of", "works_at").
+    3. Detect and resolve aliases, common misspellings, or pseudonyms to their normalized name.
+    4. Extract explicit relationships between them (e.g., "subsidiary_of", "colleague_of", "family_of", "works_at", "alias_of").
 
     Text Blob:
     \"\"\"
@@ -44,19 +46,25 @@ def _resolve_entities_ai(text_blob: str, target_name: str) -> ResolutionResult:
     - "entities": A list of objects, where each object has "raw_name", "normalized_name", and "entity_type" ("person" or "company").
     - "relationships": A list of objects, where each object has "source_entity" (normalized), "target_entity" (normalized), "relationship_type", and "context" (the quote supporting the finding).
 
-    Example:
-    {{
-      "entities": [
-        {{"raw_name": "Google, Inc.", "normalized_name": "Google", "entity_type": "company"}},
-        {{"raw_name": "Sundar Pichai", "normalized_name": "Sundar Pichai", "entity_type": "person"}}
-      ],
-      "relationships": [
-        {{"source_entity": "Sundar Pichai", "target_entity": "Google", "relationship_type": "works_at", "context": "Sundar Pichai, CEO of Google, Inc."}}
-      ]
-    }}
+    Example for aliases:
+    If the text says "John Smith, known as 'Big Red'...", you should return:
+    "entities": [
+      {{"raw_name": "John Smith", "normalized_name": "John Smith", "entity_type": "person"}},
+      {{"raw_name": "Big Red", "normalized_name": "John Smith", "entity_type": "person"}}
+    ],
+    "relationships": [
+      {{"source_entity": "Big Red", "target_entity": "John Smith", "relationship_type": "alias_of", "context": "known as 'Big Red'"}}
+    ]
+    
+    Example for misspellings:
+    If the text says "Gogle announced..." and context implies Google, you should return:
+     "entities": [
+      {{"raw_name": "Gogle", "normalized_name": "Google", "entity_type": "company"}}
+    ]
 
     Return ONLY the valid JSON object.
     """
+    # --- END ENHANCED PROMPT ---
 
     try:
         # Re-use the ai_core function
