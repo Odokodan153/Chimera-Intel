@@ -20,99 +20,183 @@ classifiers = [
 ]
 
 # --- CORE DEPENDENCIES ---
-# Essential packages for the application to run.
+# Essential packages for the application's core CLI and configuration.
 dependencies = [
     "typer[standard]>=0.19.2,<0.20.0",
     "pydantic[email]>=2.11.9,<3.0.0",
     "pydantic-settings>=2.10.1,<3.0.0",
     "pyyaml>=6.0.3,<7.0.0",
-    "requests>=2.31.0",
-    "httpx[socks]>=0.28.1,<0.29.0",
-    "websockets>=15.0.1,<16.0.0",
-    "aiohttp>=3.12.15,<4.0.0",
-    "networkx>=3.2,<4.0",
-    "docker>=7.0.0,<8.0.0",
-    "statsmodels>=0.14.0,<0.15.0",
-    "biopython>=1.81,<2.0.0",
+    "rich>=13.0.0,<14.0.0",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# --- FEATURE DEPENDENCIES ---
+# Dependencies are grouped by logical functionality.
+
+# Web application server
+webapp = [
     "fastapi>=0.103.1,<0.104.0",
     "uvicorn[standard]>=0.23.2,<0.24.0",
-    "rich>=13.0.0,<14.0.0",
-    "stix2>=3.0.1,<4.0.0",
+]
+
+# Database connectors and migration tools
+db = [
     "psycopg2-binary>=2.9.9,<3.0.0",
-    "passlib[bcrypt]>=1.7.4,<2.0.0",
-    "argon2-cffi>=21.3.0,<22.0.0",
-    "joblib>=1.4.2,<2.0.0",
+    "alembic",
+    "SQLAlchemy",
+    "neo4j>=5.14.0,<6.0.0",
+]
+
+# Graph analysis and visualization
+graph = [
+    "networkx>=3.2,<4.0",
+    "python-louvain",
+    "pyvis",
+]
+
+# AI, machine learning, and NLP
+ai = [
+    "statsmodels>=0.14.0,<0.15.0",
+    "google-generativeai>=0.2.2,<0.3.0",
+    "tensorflow==2.14.1",
     "numpy>=1.26.4,<2.0.0",
     "scikit-learn>=1.5.0,<2.0.0",
-    "feedparser>=6.0.10,<7.0.0",
-    "python-whois>=0.8.0,<0.9.0",
-    "GitPython>=3.1.43,<4.0.0",
-    "jsondiff==2.0.0",
-    "google-generativeai>=0.2.2,<0.3.0",
-    "mitreattack-python>=2.1.0,<3.0.0",
-    "kaggle>=1.5.12,<2.0.0",
-    "google-api-python-client>=2.52.0,<3.0.0",
-    "google-play-scraper>=1.2.4,<2.0.0",
-    "tensorflow==2.14.1",
-    "neo4j>=5.14.0,<6.0.0",
-    "python-jose[cryptography]>=3.3.0,<4.0.0",
-    "python-app-store-scraper>=1.1.1",
     "textblob>=0.17.1,<0.18.0",
-    "reportlab",
-    "yfinance",
-    "sec-api",
-    "python-nmap",
-    "apscheduler",
-    "httpx-socks",
-    "wbdata",
-    "folium",
-    "googlemaps",
-    "SpeechRecognition",
-    "python-Wappalyzer",
-    "pyModeS>=2.0.0",
-    "python-louvain",
-    "alembic",
-    "hvac",
-    "dnspython>=2.6.1,<3.0.0",
-    "hibpwned",
-    "shodan",
-    "python-dotenv",
-    "googlesearch-python",
-    "sherlock-project>=0.14.3,<0.15.0",
-    "pyais>=2.0.0",
-    "wbgapi",
-    "pubchempy>=1.0.4",
-    # Added for media_forensics.py & forensic_vault.py
-    "Pillow",
-    "google-cloud-vision",
-    "rfc3161",
-    "cryptography",
-    "c2pa-python",
-    "newspaper3k",
-    
-    # Added for data_pipeline.py
-    "playwright",
-    "beautifulsoup4",
-    "boto3",
-    "elasticsearch-py",
-    "celery[redis]",
-    
-    # Added for advanced media analysis
     "opencv-python",
     "dlib",
     "face_recognition",
     "pytesseract",
     "h5py",
-    
-    # Added for Vector Search (CLIP/FAISS)
     "torch",
     "torchvision",
     "faiss-cpu",
     "sentence-transformers",
+    "SpeechRecognition",
+    "scikit-image",
+    "librosa",
+    "spacy",
 ]
 
-[project.optional-dependencies]
-# --- LIGHTWEIGHT TESTING DEPENDENCIES ---
+# Web scraping, APIs, and network requests
+web = [
+    "requests>=2.31.0",
+    "httpx[socks]>=0.28.1,<0.29.0",
+    "websockets>=15.0.1,<16.0.0",
+    "aiohttp>=3.12.15,<4.0.0",
+    "feedparser>=6.0.10,<7.0.0",
+    "python-whois>=0.8.0,<0.9.0",
+    "GitPython>=3.1.43,<4.0.0",
+    "google-api-python-client>=2.52.0,<3.0.0",
+    "google-play-scraper>=1.2.4,<2.0.0",
+    "python-app-store-scraper>=1.1.1",
+    "yfinance",
+    "sec-api",
+    "httpx-socks",
+    "googlemaps",
+    "python-Wappalyzer",
+    "googlesearch-python",
+    "newspaper3k",
+    "playwright",
+    "beautifulsoup4",
+    "geopy",
+    "pypatent",
+    "scholarly",
+    "overpy",
+]
+
+# Social media analysis
+social = [
+    "sherlock-project>=0.14.3,<0.15.0",
+    "tweepy",
+]
+
+# Security, CTI, and network analysis
+security = [
+    "docker>=7.0.0,<8.0.0",
+    "stix2>=3.0.1,<4.0.0",
+    "passlib[bcrypt]>=1.7.4,<2.0.0",
+    "argon2-cffi>=21.3.0,<22.0.0",
+    "mitreattack-python>=2.1.0,<3.0.0",
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "python-nmap",
+    "hvac",
+    "dnspython>=2.6.1,<3.0.0",
+    "hibpwned",
+    "shodan",
+    "scapy",
+]
+
+# Media forensics and analysis
+forensics = [
+    "biopython>=1.81,<2.0.0",
+    "Pillow",
+    "google-cloud-vision",
+    "rfc3161",
+    "cryptography",
+    "c2pa-python",
+    "imagehash",
+]
+
+# Data processing, pipelines, and search
+data = [
+    "joblib>=1.4.2,<2.0.0",
+    "kaggle>=1.5.12,<2.0.0",
+    "wbdata",
+    "wbgapi",
+    "boto3",
+    "elasticsearch-py",
+    "celery[redis]",
+]
+
+# Specialized INT disciplines (SIGINT, GEOINT, etc.)
+intel = [
+    "pyModeS>=2.0.0",
+    "pyais>=2.0.0",
+    "pubchempy>=1.0.4",
+    "sgp4",
+    "skyfield",
+]
+
+# Reporting and visualization
+reporting = [
+    "reportlab",
+    "folium",
+    "pdfplumber",
+    "python-docx",
+]
+
+# Miscellaneous utilities
+misc = [
+    "jsondiff==2.0.0",
+    "apscheduler",
+]
+
+# --- AGGREGATE DEPENDENCIES ---
+
+# Installs all optional feature dependencies
+all = [
+    "chimera-intel[webapp]",
+    "chimera-intel[db]",
+    "chimera-intel[graph]",
+    "chimera-intel[ai]",
+    "chimera-intel[web]",
+    "chimera-intel[social]",
+    "chimera-intel[security]",
+    "chimera-intel[forensics]",
+    "chimera-intel[data]",
+    "chimera-intel[intel]",
+    "chimera-intel[reporting]",
+    "chimera-intel[misc]",
+]
+
+# --- DOCUMENTATION DEPENDENCIES ---
+docs = [
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
+# --- TESTING DEPENDENCIES ---
 # Packages for core testing, linting, and type analysis.
 test = [
     "pytest",
@@ -142,32 +226,9 @@ test = [
     "types-redis",
 ]
 
-# --- HEAVYWEIGHT TESTING DEPENDENCIES ---
-# Large packages for ML, data processing, and browser automation.
+# Installs all dependencies for heavyweight testing.
 test-heavy = [
-    "pyvis",
-    "tweepy",
-    # "torch", # Moved to core
-    # "torchvision", # Moved to core
-    "scikit-image",
-    "geopy",
-    "SQLAlchemy",
-    "scapy",
-    "librosa",
-    "pypatent",
-    "scholarly",
-    "pdfplumber",
-    "python-docx",
-    "overpy",
-    "sgp4",
-    "skyfield",
-    "imagehash",
-    "spacy",
-]
-
-docs = [
-    "sphinx",
-    "sphinx_rtd_theme",
+    "chimera-intel[all]",
 ]
 
 [project.scripts]

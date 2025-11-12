@@ -19,7 +19,14 @@ from chimera_intel.core.console import console
 import logging
 import yaml
 from typing import Tuple, Optional, Any, Dict, List
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from pydantic import BaseModel
 
+# Import user management and config
+from chimera_intel.core.user_manager import UserManager
+from chimera_intel.core.config_loader import ConfigLoader
 # --- Audit Logging ---
 
 # Load audit log path from environment, default to a local file
@@ -217,3 +224,55 @@ def decrypt_pii(data: bytes) -> str:
     except Exception as e:
         console.print(f"[bold red]Decryption Failed:[/bold red] {e}")
         raise ValueError(f"Decryption failed: {e}")
+    
+
+
+# Load config to get JWT secret
+config = ConfigLoader().load_config()
+SECRET_KEY = config.get('jwt_secret_key', 'DEFAULT_SECRET_KEY_REPLACE_ME')
+ALGORITHM = "HS256"
+OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+user_manager = UserManager()
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+async def get_current_user(token: str = Depends(OAUTH2_SCHEME)):
+    """
+    Dependency that validates a JWT token and returns the user.
+    (This is based on your webapp/routers/auth.py)
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    
+    user = user_manager.get_user(username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_tenant_id(user: dict = Depends(get_current_user)) -> str:
+    """
+    NEW: Real Multi-Tenant Dependency (Phase 3)
+    
+    Gets the currently authenticated user and returns their tenant_id.
+    This function is used to secure API endpoints.
+    """
+    tenant_id = user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not associated with a valid tenant."
+        )
+    return tenant_id

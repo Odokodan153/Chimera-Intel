@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_the_eye"
+version = "1.0.0"
+description = "The Eye: Central OSINT orchestrator plugin for Chimera-Intel."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.9"
+dependencies = [
+    # The plugin itself doesn't need dependencies,
+    # as it reuses the core app's modules.
+]
+
+[project.entry-points."chimera_intel.plugins"]
+the_eye = "chimera_the_eye.main:register"
