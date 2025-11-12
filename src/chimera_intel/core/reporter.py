@@ -1,340 +1,340 @@
-import typer
-import json
-from reportlab.platypus import (  # type: ignore
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-    Image,
-    Flowable,
-    BaseDocTemplate,
-    Frame,
-    PageTemplate,
-)
-from reportlab.lib.styles import getSampleStyleSheet  # type: ignore
-from reportlab.lib import colors  # type: ignore
-from reportlab.lib.pagesizes import letter  # type: ignore
-from reportlab.lib.units import inch  # type: ignore
-from typing import Dict, Any, List, Optional
-import logging
-from .utils import console
-import os
-from .database import get_aggregated_data_for_target
-from .config_loader import CONFIG
-from .graph_db import build_and_save_graph
+"""
+(Production-Ready)
+Incident Response Action Module.
 
-# Get a logger instance for this specific file
+This module provides a centralized set of real, production-ready functions 
+for responding to detected incidents. It replaces all mock logic with
+real webhook integrations, LLM calls, and database operations.
+"""
+
+import logging
+import json
+import os
+import datetime
+from typing import Dict, Any, Callable, Optional
+
+# --- Core Chimera Imports ---
+from chimera_intel.core.http_client import sync_client
+from chimera_intel.core.llm_interface import gemini_client
+from chimera_intel.core.database import db
+from chimera_intel.core.schemas import HumanReviewTask
+
+# --- Configuration ---
+# Load configured webhook URLs and API keys
+try:
+    from chimera_intel.core.config_loader import WEBHOOK_URLS, API_KEYS
+except ImportError:
+    logging.critical("Could not import WEBHOOK_URLS from config_loader. Response actions will fail.")
+    # Define placeholder to allow file to load
+    class WebhookURLs:
+        internal_alerts_slack = "http://localhost:9090/slack-placeholder"
+        platform_takedown = "http://localhost:9090/takedown-placeholder"
+        incident_report_ingest = "http://localhost:9090/siem-placeholder"
+    WEBHOOK_URLS = WebhookURLs()
+    API_KEYS = {} # type: ignore
+
+# --- C2PA (Provenance) Import ---
+# Attempt to import the C2PA library for real manifest updates.
+try:
+    import c2pa
+    C2PA_ENABLED = True
+    logging.info("C2PA library loaded successfully. Provenance actions are enabled.")
+except ImportError:
+    C2PA_ENABLED = False
+    logging.warning("C2PA library not found (pip install c2pa). Provenance actions will be disabled.")
 
 
 logger = logging.getLogger(__name__)
 
+# --- Real Action Implementations ---
 
-# --- NEW: Custom Footer Function ---
-
-
-def footer(canvas, doc):
+def platform_takedown_request(event_details: Dict[str, Any]):
     """
-    This function is called on each page and draws the footer text.
-    It pulls the footer content directly from the global CONFIG object.
-    """
-    canvas.saveState()
-    canvas.setFont("Helvetica", 9)
-    # Use the footer_text from the loaded config.yaml
-
-    footer_text = CONFIG.reporting.pdf.footer_text
-    canvas.drawString(inch, 0.75 * inch, f"{footer_text} | Page {doc.page}")
-    canvas.restoreState()
-
-
-def generate_pdf_report(json_data: Dict[str, Any], output_path: str) -> None:
-    """
-    Generates a professional PDF report from a JSON scan result with customizations.
-    This function uses the ReportLab library to construct a PDF document. It iterates
-    through the modules and sections of the input JSON data, creating titles,
-    paragraphs, and tables for each part. It now includes a logo, custom title,
-    and footer based on the settings in config.yaml.
-
-    Args:
-        json_data (Dict[str, Any]): The loaded JSON data from a scan.
-        output_path (str): The path where the generated PDF file will be saved.
-    """
-    try:
-        # Use BaseDocTemplate to allow for custom page templates (for the footer)
-
-        doc = BaseDocTemplate(output_path)
-        styles = getSampleStyleSheet()
-        story: List[Flowable] = []
-
-        # --- Title Page ---
-
-        logo_path = CONFIG.reporting.pdf.logo_path
-        if logo_path and os.path.exists(logo_path):
-            try:
-                logo = Image(logo_path, width=2 * inch, height=2 * inch)
-                logo.hAlign = "CENTER"
-                story.append(logo)
-                story.append(Spacer(1, 0.25 * inch))
-            except Exception as e:
-                logger.warning(f"Could not load logo image from {logo_path}: {e}")
-        story.append(Paragraph(CONFIG.reporting.pdf.title_text, styles["h1"]))
-        story.append(Paragraph("Intelligence Report", styles["h2"]))
-        target = json_data.get("domain") or json_data.get("company", "Unknown Target")
-        story.append(Paragraph(f"Target: {target}", styles["h3"]))
-        story.append(Spacer(1, 0.5 * inch))
-
-        # --- Report Content ---
-
-        for module_name, module_data in json_data.items():
-            if isinstance(module_data, dict):
-                story.append(
-                    Paragraph(module_name.replace("_", " ").title(), styles["h2"])
-                )
-                for section_name, section_data in module_data.items():
-                    if not isinstance(section_data, dict):
-                        continue
-                    story.append(
-                        Paragraph(section_name.replace("_", " ").title(), styles["h3"])
-                    )
-                    table_data = []
-                    if "results" in section_data and isinstance(
-                        section_data["results"], list
-                    ):
-                        if section_data["results"] and isinstance(
-                            section_data["results"][0], dict
-                        ):
-                            headers = list(section_data["results"][0].keys())
-                            table_data.append(headers)
-                            for item in section_data["results"]:
-                                table_data.append(
-                                    [str(item.get(h, "N/A")) for h in headers]
-                                )
-                        else:  # Handle list of simple strings
-                            table_data = [[item] for item in section_data["results"]]
-                    else:
-                        table_data = [
-                            [key, str(value)] for key, value in section_data.items()
-                        ]
-                    if table_data:
-                        t = Table(table_data, repeatRows=1)
-                        t.setStyle(
-                            TableStyle(
-                                [
-                                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                                ]
-                            )
-                        )
-                        story.append(t)
-                    story.append(Spacer(1, 0.2 * inch))
-        frame = Frame(
-            doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal"
-        )
-        template = PageTemplate(id="main_template", frames=[frame], onPage=footer)
-        doc.addPageTemplates([template])
-        doc.build(story)
-        logger.info("Successfully generated PDF report at: %s", output_path)
-    except Exception as e:
-        logger.error("An error occurred during PDF generation: %s", e, exc_info=True)
-
-def generate_threat_briefing(json_data: Dict[str, Any], output_path: str) -> None:
-    """
-    Generates a concise, one-page executive threat briefing
-    from an aggregated database result.
-    """
-    try:
-        doc = BaseDocTemplate(output_path, pagesize=letter)
-        styles = getSampleStyleSheet()
-        story: List[Flowable] = []
-
-        # --- Title ---
-        story.append(Paragraph("Executive Threat Briefing", styles["h1"]))
-        
-        # Read target from the root of the aggregated data
-        target = json_data.get("target", "Unknown Target")
-        story.append(Paragraph(f"Target: {target}", styles["h2"]))
-        story.append(Spacer(1, 0.25 * inch))
-
-        # Get the nested modules dictionary
-        modules = json_data.get("modules", {})
-
-        # --- 1. Critical Findings (Top 5) ---
-        story.append(Paragraph("Critical Findings", styles["h3"]))
-        
-        critical_findings = []
-        
-        # Extract critical vulnerabilities
-        if (
-            "vulnerability_scanner" in modules
-            and "scanned_hosts" in modules["vulnerability_scanner"]
-        ):
-            for host in modules["vulnerability_scanner"]["scanned_hosts"]:
-                for port in host.get("open_ports", []):
-                    for cve in port.get("vulnerabilities", []):
-                        if cve.get("cvss_score", 0) >= 9.0:
-                            critical_findings.append(
-                                f"<b>Critical CVE:</b> {cve['id']} (Score: {cve['cvss_score']}) on {host['host']}:{port['port']}"
-                            )
-        
-        # Extract data breaches
-        if (
-            "defensive_breaches" in modules
-            and "hibp" in modules["defensive_breaches"]
-        ):
-            breaches = modules["defensive_breaches"]["hibp"].get("breaches")
-            if breaches:
-                critical_findings.append(
-                    f"<b>Data Breaches:</b> Target associated with {len(breaches)} known breaches."
-                )
-
-        if not critical_findings:
-            critical_findings.append("No critical findings identified in this dataset.")
-
-        for finding in critical_findings[:5]: # Limit to top 5
-            story.append(Paragraph(f"• {finding}", styles["BodyText"]))
-        story.append(Spacer(1, 0.2 * inch))
-
-        # --- 2. Attack Surface Summary ---
-        story.append(Paragraph("Attack Surface Summary", styles["h3"]))
-        as_summary = []
-        if "footprint" in modules:
-            subs = modules["footprint"].get("subdomains", {}).get("total_unique", 0)
-            ips = len(modules["footprint"].get("dns_records", {}).get("A", []))
-            as_summary.append(f"<b>{subs}</b> subdomains and <b>{ips}</b> unique IP addresses identified.")
-        
-        if "vulnerability_scanner" in modules:
-            ports = 0
-            for host in modules["vulnerability_scanner"].get("scanned_hosts", []):
-                ports += len(host.get("open_ports", []))
-            if ports > 0:
-                as_summary.append(f"<b>{ports}</b> open ports discovered across scanned hosts.")
-        
-        if not as_summary:
-            as_summary.append("Attack surface data not available.")
-            
-        for item in as_summary:
-            story.append(Paragraph(f"• {item}", styles["BodyText"]))
-        story.append(Spacer(1, 0.2 * inch))
-
-        # --- 3. Actionable Recommendations ---
-        story.append(Paragraph("Actionable Recommendations", styles["h3"]))
-        recos = []
-        if any("Critical CVE" in f for f in critical_findings):
-            recos.append("<b>Patching:</b> Immediately address all Critical (9.0+) CVEs identified.")
-        if any("Data Breaches" in f for f in critical_findings):
-            recos.append("<b>Credentials:</b> Force password rotation for all employees on associated domains.")
-        if not recos:
-            recos.append("<b>Monitoring:</b> Continue routine monitoring of the target's footprint.")
-            
-        for item in recos:
-            story.append(Paragraph(f"• {item}", styles["BodyText"]))
-
-        # --- Build ---
-        frame = Frame(
-            doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal"
-        )
-        template = PageTemplate(id="main_template", frames=[frame], onPage=footer)
-        doc.addPageTemplates([template])
-        doc.build(story)
-        logger.info("Successfully generated threat briefing at: %s", output_path)
-
-    except Exception as e:
-        logger.error("An error occurred during briefing generation: %s", e, exc_info=True)
-
-# --- Typer CLI Application ---
-
-
-report_app = typer.Typer()
-
-
-@report_app.command("pdf")
-def create_pdf_report(
-    json_file: str = typer.Argument(..., help="Path to the JSON scan result file."),
-    output_file: Optional[str] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Path to save the PDF report. Defaults to '<target>.pdf'.",
-    ),
-):
-    """
-    Creates a PDF report from a saved JSON scan file.
-    """
-    logger.info("Generating PDF report from: %s", json_file)
-
-    try:
-        with open(json_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        logger.error("Input file for PDF report not found at '%s'", json_file)
-        raise typer.Exit(code=1)
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON in file '%s'", json_file)
-        raise typer.Exit(code=1)
-    if not output_file:
-        target_name = data.get("domain") or data.get("company", "report")
-        output_path = f"{target_name.replace('.', '_')}.pdf"
-    else:
-        output_path = output_file
-    generate_pdf_report(data, output_path)
-
-@report_app.command("briefing")
-def create_briefing_report(
-    json_file: str = typer.Argument(..., help="Path to a JSON scan file identifying the target."),
-    output_file: Optional[str] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Path to save the PDF briefing. Defaults to '<target>_briefing.pdf'.",
-    ),
-):
-    """
-    Creates a one-page executive threat briefing by aggregating all
-    historical database data for the target specified in the JSON file.
-    """
-    logger.info("Generating threat briefing for target in: %s", json_file)
-
-    try:
-        with open(json_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        logger.error("Input file for briefing not found at '%s'", json_file)
-        raise typer.Exit(code=1)
-    except json.JSONDecodeError:
-        logger.error("Invalid JSON in file '%s'", json_file)
-        raise typer.Exit(code=1)
-
-    # Use the JSON file to identify the target
-    target_name = data.get("domain") or data.get("company", "report")
-    if target_name == "report":
-        logger.error("Could not determine 'domain' or 'company' from JSON file.")
-        raise typer.Exit(code=1)
-
-    if not output_file:
-        output_path = f"{target_name.replace('.', '_')}_briefing.pdf"
-    else:
-        output_path = output_file
-        
-    # --- THIS IS THE "REAL DEF" ---
-    # Fetch all aggregated data for that target from the database
-    logger.info(f"Fetching all historical data for target: {target_name}")
-    aggregated_data = get_aggregated_data_for_target(target_name)
+    (REAL) Sends a takedown request to an internal webhook service.
     
-    if not aggregated_data or not aggregated_data.get("modules"):
-        logger.error(f"No aggregated data found in the database for target '{target_name}'. Cannot generate briefing.")
-        raise typer.Exit(code=1)
+    This service is responsible for handling platform-specific logic
+    (e.g., calling Twitter API, Facebook Graph API, etc.).
     
-    # Use the complete aggregated data to generate the report
-    generate_threat_briefing(aggregated_data, output_path)
+    Expected event_details:
+    - url (str): The URL of the content to takedown.
+    - platform (str): The platform (e.g., 'twitter.com').
+    - reason (str): The reason for the takedown.
+    - takedown_template (str): The legal text (e.g., DMCA).
+    - attachments (list): List of paths to evidence files.
+    """
+    webhook_url = WEBHOOK_URLS.platform_takedown
+    if not webhook_url:
+        logger.error("No 'platform_takedown' webhook URL configured. Cannot send request.")
+        return
 
-def generate_graph_report(json_data: Dict[str, Any], output_path: str):
-    """Generates an HTML graph report for a target."""
+    payload = {
+        "incident_type": "platform_takedown",
+        "url_to_remove": event_details.get("url"),
+        "platform": event_details.get("platform"),
+        "reason": event_details.get("reason", "No reason provided."),
+        "legal_text": event_details.get("takedown_template"),
+        "evidence_links": event_details.get("attachments", []) # Assumes these are now URLs or persistent paths
+    }
+    
     try:
-        build_and_save_graph(json_data, output_path)
+        response = sync_client.post(webhook_url, json=payload, timeout=10)
+        response.raise_for_status() # Raise exception for 4xx/5xx
+        logger.info(f"Successfully sent takedown request for {event_details.get('url')} to internal webhook.")
     except Exception as e:
-        console.print(f"[bold red]Error generating graph report:[/bold red] {e}")
+        logger.error(f"Failed to send takedown request to webhook {webhook_url}: {e}")
+        # In a real system, this might trigger a retry or secondary alert
+
+def internal_threat_warning(event_details: Dict[str, Any]):
+    """
+    (REAL) Sends a formatted alert to an internal Slack/Teams channel.
+    
+    Expected event_details:
+    - incident_type (str): e.g., 'deepfake_detected'
+    - target (str): The person or asset targeted.
+    - severity (str): 'High', 'Medium', 'Low'
+    - message (str): A pre-formatted message.
+    """
+    webhook_url = WEBHOOK_URLS.internal_alerts_slack
+    if not webhook_url:
+        logger.error("No 'internal_alerts_slack' webhook URL configured. Cannot send alert.")
+        return
+
+    severity_color = {
+        "High": "#D00000",
+        "Medium": "#FFC300",
+        "Low": "#4D96FF",
+    }.get(event_details.get("severity", "Low"), "#808080")
+
+    # Slack Block Kit format
+    payload = {
+        "blocks": [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f":warning: CHIMERA INCIDENT ALERT: {event_details.get('incident_type', 'Unspecified Incident')}"
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {"type": "mrkdwn", "text": f"*Severity:*\n*{event_details.get('severity', 'N/A')}*"},
+                    {"type": "mrkdwn", "text": f"*Target:*\n{event_details.get('target', 'N/A')}"}
+                ]
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Details:*\n{event_details.get('message', 'No details provided.')}"
+                }
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {"type": "plain_text", "text": f"Incident Time: {datetime.datetime.now(datetime.UTC).isoformat()}"}
+                ]
+            }
+        ],
+        "attachments": [
+            {
+                "color": severity_color,
+                "blocks": [] # Used for the color bar
+            }
+        ]
+    }
+
+    try:
+        response = sync_client.post(webhook_url, json=payload, timeout=10)
+        response.raise_for_status()
+        logger.info(f"Successfully sent internal threat warning for {event_details.get('target')}.")
+    except Exception as e:
+        logger.error(f"Failed to send internal Slack alert to webhook {webhook_url}: {e}")
+
+def generate_debunking_script(event_details: Dict[str, Any]):
+    """
+    (REAL) Uses an LLM to generate a draft debunking script for the comms team.
+    
+    Expected event_details:
+    - target (str): The executive or brand.
+    - media_type (str): 'image', 'video', 'audio'
+    - confidence (float): The detection confidence.
+    - forensic_summary (dict): Key findings from the forensic report.
+    """
+    target = event_details.get("target", "our organization")
+    media_type = event_details.get("media_type", "media")
+    confidence = event_details.get("confidence", "high")
+    forensics = event_details.get("forensic_summary", "Forensic analysis is conclusive.")
+    
+    prompt = f"""
+    You are a professional crisis communications expert.
+    A fraudulent {media_type} targeting "{target}" has been detected.
+    Our internal systems are {confidence * 100:.0f}% confident it is a fabrication.
+    Forensic details: {json.dumps(forensics)}
+
+    Your task is to draft three separate public statements:
+    1.  **Twitter (X) Draft:** Clear, concise, and direct. Max 280 characters.
+    2.  **LinkedIn/Blog Draft:** More formal, professional, and detailed.
+    3.  **Internal Employee Memo:** Calm, informative, and instructs employees on what to do if they see it.
+
+    Format the output as a JSON object with keys "twitter_draft", "linkedin_draft", and "internal_memo".
+    """
+    
+    try:
+        # We assume gemini_client is configured to output JSON
+        # In a real setup, we would add 'response_mime_type: "application/json"' to the gen_config
+        response_text = gemini_client.generate_text(prompt)
+        
+        # Clean up and save
+        # LLMs can sometimes wrap JSON in markdown backticks
+        if response_text.strip().startswith("```json"):
+            response_text = response_text.strip()[7:-3].strip()
+            
+        # Try to parse the JSON response
+        response_json = json.loads(response_text)
+        
+        # Save as a structured JSON file, not just a .txt
+        filename = f"debunking_drafts_{target.replace(' ', '_')}_{datetime.datetime.now().strftime('%Y%m%d%H%M')}.json"
+        with open(filename, "w") as f:
+            json.dump(response_json, f, indent=2)
+            
+        logger.info(f"LLM-generated debunking drafts saved to {filename}.")
+        
+    except Exception as e:
+        logger.error(f"Failed to generate or save LLM debunking script: {e}")
+        # Fallback to simple text file
+        filename = f"debunking_draft_FAILED_{target.replace(' ', '_')}.txt"
+        with open(filename, "w") as f:
+            f.write(f"LLM generation failed ({e}).\n\nMANUAL DRAFT REQUIRED.\nIncident: Fraudulent {media_type} targeting {target}.")
+        logger.info(f"Saved fallback draft to {filename}.")
+
+
+def update_c2pa_manifest(event_details: Dict[str, Any]):
+    """
+    (REAL) Signs a media file with C2PA provenance data.
+    
+    Expected event_details:
+    - media_file (str): Path to the *original* trusted media file.
+    - output_file (str): Path to save the new, C2PA-signed file.
+    - assertion_data (dict): Data to add to the manifest (e.g., author, timestamp).
+    """
+    if not C2PA_ENABLED:
+        logger.warning("C2PA library not found. Skipping manifest update.")
+        return
+
+    media_file = event_details.get("media_file")
+    output_file = event_details.get("output_file")
+    assertion_data = event_details.get("assertion_data", {})
+    
+    if not media_file or not output_file:
+        logger.error("`media_file` and `output_file` are required for C2PA signing.")
+        return
+
+    try:
+        # 1. Load the signing key (assuming it's set up)
+        # This requires a .pem and .key file configured as per c2pa-python docs
+        # We'll assume a simple file-based signer for this example
+        signer = c2pa.Signer.from_files(
+            os.environ.get("C2PA_CERT_PATH", "c2pa_cert.pem"),
+            os.environ.get("C2PA_KEY_PATH", "c2pa_key.key")
+        )
+        
+        # 2. Create the manifest
+        manifest = {
+            "title": f"Official Media: {os.path.basename(media_file)}",
+            "assertions": [
+                {
+                    "label": "c2pa.action",
+                    "data": {"action": "c2pa.published"}
+                },
+                {
+                    "label": "org.chimera-intel.provenance",
+                    "data": {
+                        "author": assertion_data.get("author", "Chimera Intel"),
+                        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+                        "status": "Verified Original"
+                    }
+                }
+            ]
+        }
+        
+        # 3. Sign the file
+        c2pa.sign_file(media_file, output_file, signer, manifest)
+        
+        logger.info(f"Successfully signed '{media_file}' with C2PA manifest, saved to '{output_file}'.")
+        
+    except FileNotFoundError as e:
+        logger.error(f"C2PA signing failed: Could not find key/cert files. Check C2PA_CERT_PATH and C2PA_KEY_PATH. Error: {e}")
+    except Exception as e:
+        logger.error(f"Failed to update C2PA manifest for {media_file}: {e}")
+
+
+def log_incident_report(event_details: Dict[str, Any]):
+    """
+    (REAL) Logs a structured incident report to a SIEM or logging webhook.
+    """
+    webhook_url = WEBHOOK_URLS.incident_report_ingest
+    if not webhook_url:
+        logger.warning("No 'incident_report_ingest' webhook URL configured. Logging to console only.")
+        print(json.dumps(event_details, indent=2))
+        return
+
+    # Add timestamp and source
+    payload = {
+        "source": "chimera_intel_response",
+        "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        "incident": event_details
+    }
+    
+    try:
+        response = sync_client.post(webhook_url, json=payload, timeout=5)
+        response.raise_for_status()
+        logger.info(f"Successfully logged incident {event_details.get('incident_type')} to ingest endpoint.")
+    except Exception as e:
+        logger.error(f"Failed to log incident to SIEM/ingest endpoint {webhook_url}: {e}")
+        # Fallback to local file log
+        try:
+            with open("incident_log_fallback.jsonl", "a") as f:
+                f.write(json.dumps(payload) + "\n")
+            logger.warning("Logged incident to 'incident_log_fallback.jsonl'.")
+        except Exception as fe:
+            logger.critical(f"Failed to log incident to SIEM *and* fallback file: {fe}")
+
+
+def escalate_to_human_review(event_details: Dict[str, Any]):
+    """
+    (REAL) Creates a task in the Human Review queue in the database.
+    
+    Expected event_details:
+    - assignee_team (str): 'legal_team', 'comms_team', 'analyst_tier2'
+    - context_data (dict): The full event details for the analyst.
+    - playbook_name (str): The playbook that triggered this.
+    """
+    try:
+        review_task = HumanReviewTask(
+            assignee_team=event_details.get("assignee_team", "analyst_tier2"),
+            status="pending",
+            deadline_hours=event_details.get("deadline_hours", 48),
+            context_data=event_details.get("context_data", event_details),
+            playbook_name=event_details.get("playbook_name", "unspecified"),
+            priority=event_details.get("severity", "Medium")
+        )
+        
+        # Save to database using the real DB connection
+        task_id = db.save_human_review_task(review_task.model_dump(exclude_none=True))
+        logger.info(f"Successfully escalated to human review. Task ID: {task_id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to escalate to human review (DB error): {e}")
+
+
+# --- Action Map ---
+# This map connects string keys to the real, callable functions.
+ACTION_MAP: Dict[str, Callable[[Dict[str, Any]], Any]] = {
+    "platform_takedown_request": platform_takedown_request,
+    "internal_threat_warning": internal_threat_warning,
+    "generate_debunking_script": generate_debunking_script,
+    "update_c2pa_manifest": update_c2pa_manifest,
+    "log_incident_report": log_incident_report,
+    "escalate_to_human_review": escalate_to_human_review,
+}

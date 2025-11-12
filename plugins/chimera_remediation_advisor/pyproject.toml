@@ -1,0 +1,14 @@
+# plugins/chimera_remediation_advisor/pyproject.toml
+
+[tool.poetry]
+name = "chimera-remediation-advisor"
+version = "0.1.0"
+description = "A Chimera Intel plugin for providing remediation plans."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../../"} # Assumes plugin is in a directory parallel to src
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+remediation_advisor = "chimera_remediation_advisor.main:plugin"

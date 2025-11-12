@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_creative_workflow"
+version = "0.1.0"
+description = "A plugin for managing PSD master templates and exporting signed derivatives."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    # This plugin relies on dependencies from the core project
+    # (e.g., "psd-tools", "pillow", "cryptography", "rfc3161-client")
+    # which are assumed to be installed in the main environment.
+]
+
+[project.entry-points."chimera_intel.plugins"]
+creative_workflow = "chimera_creative_workflow.main:register"

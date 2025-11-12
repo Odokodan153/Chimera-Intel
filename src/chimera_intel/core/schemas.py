@@ -594,7 +594,45 @@ class SocialOSINTResult(BaseModel):
     found_profiles: List[SocialProfile]
     error: Optional[str] = None
 
+class TikTokPost(BaseModel):
+    """
+    Pydantic model for a single TikTok post.
+    """
+    id: str = Field(..., description="The unique identifier for the post.")
+    description: str = Field(..., description="The caption or description of the post.")
+    video_url: str = Field(..., description="The direct URL to the video content.")
+    like_count: int = Field(0, description="Number of likes on the post.", alias="diggCount")
+    comment_count: int = Field(0, description="Number of comments on the post.", alias="commentCount")
+    share_count: int = Field(0, description="Number of shares of the post.", alias="shareCount")
+    play_count: int = Field(0, description="Number of plays of the post.", alias="playCount")
+    
+    class Config:
+        extra = "ignore"  # Ignore extra fields from the API/JSON
 
+class TikTokProfile(BaseModel):
+    """
+    Pydantic model for a TikTok user profile.
+    """
+    username: str = Field(..., description="The unique username of the user.", alias="uniqueId")
+    nickname: str = Field(..., description="The display name of the user.", alias="nickname")
+    bio: str = Field(..., description="The user's profile biography.", alias="signature")
+    follower_count: int = Field(0, description="Number of followers.", alias="followerCount")
+    following_count: int = Field(0, description="Number of users this profile is following.", alias="followingCount")
+    heart_count: int = Field(0, description="Total number of hearts (likes) received across all posts.", alias="heartCount")
+    video_count: int = Field(0, description="Total number of videos posted by the user.", alias="videoCount")
+    is_verified: bool = Field(False, description="Indicates if the user is verified by TikTok.", alias="verified")
+    
+    class Config:
+        extra = "ignore" # Ignore extra fields from the API/JSON
+
+class TikTokIntelResult(BaseModel):
+    """
+    The main, top-level result model for a TikTok intelligence scan.
+    """
+    query: str = Field(..., description="The username or hashtag that was queried.")
+    profile: Optional[TikTokProfile] = None
+    posts: List[TikTokPost] = Field(default_factory=list)
+    error: Optional[str] = None
 # --- Dark Web OSINT Models ---
 
 

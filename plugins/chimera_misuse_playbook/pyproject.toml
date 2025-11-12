@@ -1,0 +1,22 @@
+# plugins/chimera_misuse_playbook/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-image-misuse-playbook"
+version = "1.0.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A plugin to trigger the image misuse and DMCA takedown playbook."
+requires-python = ">=3.10"
+dependencies = [
+    # This plugin's code is part of the core package,
+    # but if it had its own dependencies, they would be listed here.
+    # e.g., "celery>=5.0", "playwright>=1.0"
+    # For this structure, we assume the core 'chimera_intel' package
+    # already provides these dependencies.
+]
+
+[project.entry-points."chimera_intel.plugins"]
+chimera_misuse_playbook = "chimera_misuse_playbook.main:register"
