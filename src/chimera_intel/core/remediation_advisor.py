@@ -15,8 +15,6 @@ import re
 import asyncio
 from typing import Optional, Dict, Any, List
 import typer
-from pydantic import BaseModel, Field
-
 # --- Internal Chimera Intel Imports ---
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
@@ -24,7 +22,10 @@ from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.schemas import LegalTemplateResult
 from chimera_intel.core.gemini_client import get_gemini_client # NEW: Added AI client
-
+from .schemas import (
+    RemediationPlanResult,
+    RemediationStep,
+)
 # We can't import this directly without circular dependencies,
 # so we'll call it as a separate module.
 # For this implementation, we will import the specific function we need.
@@ -36,36 +37,6 @@ try:
 except ImportError:
     CAN_USE_LEGAL_TEMPLATES = False
     pass 
-
-# --- Pydantic Schemas for Remediation ---
-
-class RemediationStep(BaseModel):
-    """A single, actionable step in a remediation plan."""
-    priority: int = Field(..., description="The order of execution (1 = first).")
-    description: str = Field(..., description="What to do.")
-    category: str = Field(
-        ...,
-        description="Type of action (e.g., 'Patch', 'Block', 'Monitor', 'Legal')."
-    )
-    reference: Optional[str] = Field(None, description="A URL or note for context.")
-
-class RemediationPlanResult(BaseModel):
-    """The complete remediation plan for a given threat."""
-    threat_type: str = Field(..., description="The class of threat (e.g., 'CVE').")
-    threat_identifier: str = Field(
-        ...,
-        description="The unique ID of the threat (e.g., 'CVE-2021-44228')."
-    )
-    summary: str = Field(
-        ...,
-        description="A high-level summary of the threat."
-    )
-    steps: List[RemediationStep] = Field(
-        default_factory=list,
-        description="A list of steps to mitigate the threat."
-    )
-    error: Optional[str] = Field(None, description="Error message if plan fails.")
-
 
 # --- Remediation Functions ---
 

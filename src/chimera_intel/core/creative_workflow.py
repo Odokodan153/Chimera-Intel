@@ -24,11 +24,14 @@ import logging
 import hashlib
 import base64
 import io
-import uuid # Added for generating unique asset IDs
+import uuid 
+from .schemas import (
+    CreativeAssetManifest,
+    SignedCreativeEnvelope,
+    ExportResult
+)
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
-from pydantic import BaseModel, Field
-
+from typing import Optional, Dict, Any, List
 # --- Core Dependencies ---
 try:
     from PIL import Image
@@ -75,43 +78,6 @@ creative_app = typer.Typer(
     name="creative-workflow",
     help="Manage master templates and export signed derivatives.",
 )
-
-# --- Schemas (as requested) ---
-
-class CreativeAssetManifest(BaseModel):
-    """
-    The core JSON manifest describing a derivative asset, based on
-    the CI template standard (Req 8).
-    """
-    file_name: str = Field(..., description="The filename of the derivative asset.")
-    sha256: str = Field(..., description="SHA-256 hash of the derivative asset's bytes.")
-    editor_id: str = Field(..., description="The ID of the operator who exported the asset.")
-    timestamp: str = Field(..., description="ISO 8601 timestamp of the export.")
-    origin_assets: List[str] = Field(default_factory=list, description="List of vault IDs for source/origin assets (e.g., master PSD).")
-    model_info: List[str] = Field(default_factory=list, description="List of models used (e.g., 'photoshop:v24.0', 'stable-diffusion:v1.5').")
-    consent_ids: List[str] = Field(default_factory=list, description="List of consent_artifact_id's linked to this asset.")
-    watermark_id: Optional[str] = Field(None, description="Identifier for any embedded watermarks (e.g., LSB JWT).")
-    c2pa_token: Optional[str] = Field(None, description="A C2PA manifest token, if generated.")
-
-class SignedCreativeEnvelope(BaseModel):
-    """
-    The final signed artifact that is stored in the vault.
-    It wraps the manifest and its cryptographic proofs.
-    (Reuses pattern from provenance_service.py)
-    """
-    manifest: CreativeAssetManifest
-    signature: str = Field(..., description="Base64-encoded signature of the canonicalized manifest JSON.")
-    tsa_token_b64: Optional[str] = Field(None, description="Base64-encoded RFC3161 timestamp token for the manifest.")
-
-class ExportResult(BaseResult):
-    """The result of a successful export operation."""
-    derivative_asset_id: str
-    manifest_asset_id: str
-    derivative_logical_path: str
-    manifest_logical_path: str
-    signed_envelope: SignedCreativeEnvelope
-
-# --- Core Service Functions ---
 
 def _check_dependencies():
     """Check for all required libraries."""

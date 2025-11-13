@@ -14,8 +14,6 @@ import io
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
-
 # Re-using PIL from forensic_vault.py's dependencies
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -31,24 +29,11 @@ except ImportError:
     np = None
 
 # Re-using DB and utility concepts from media_governance.py
-from .schemas import BaseSchema
+from .schemas import SyntheticAbuseRecord
 from .local_db_service import save_scan_to_db, get_scan_from_db
 from .utils import console
 
 logger = logging.getLogger(__name__)
-
-# --- Schemas ---
-
-class SyntheticAbuseRecord(BaseSchema):
-    """
-    Record for logging a takedown or abuse report against a generated asset.
-    """
-    report_id: str = Field(default_factory=lambda: f"abuse_{uuid.uuid4()}")
-    generated_asset_id: str = Field(..., description="The unique ID of the synthetic asset.")
-    reporter: str = Field(..., description="Identifier for the person/entity filing the report (e.g., user_email).")
-    reason: str = Field(..., description="Detailed reason for the abuse report.")
-    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    status: str = Field(default="PENDING_REVIEW", description="Takedown request status.")
 
 # --- Watermarking (Req 7.1) ---
 

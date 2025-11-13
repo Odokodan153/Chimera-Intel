@@ -12,9 +12,8 @@ import os
 import shutil
 import re
 from typing import Optional, List, Dict, Any 
-from pydantic import Field # <-- ADDED
 # --- MODIFIED: Added DeviceIntelResult ---
-from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata, BaseAnalysisResult
+from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata, DeviceIntelResult
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 
@@ -49,14 +48,6 @@ except ImportError:
 # ---
 
 logger = logging.getLogger(__name__)
-
-
-# --- ADDED: Pydantic Schema for Device Intel ---
-class DeviceIntelResult(BaseAnalysisResult):
-    """Results from scanning a connected mobile device."""
-    device_properties: Dict[str, str] = Field(default_factory=dict)
-    installed_packages: List[str] = Field(default_factory=list)
-    hidden_packages: List[str] = Field(default_factory=list)
 
 
 def analyze_apk_static(file_path: str) -> StaticAppAnalysisResult:

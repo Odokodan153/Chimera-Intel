@@ -1,0 +1,17 @@
+# plugins/chimera_mdm/pyproject.toml
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_mdm"
+version = "0.1.0"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+description = "A Chimera Intel plugin for Master Data Management and entity deduplication."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    # This plugin's code will be part of the main 'chimera_intel' package,
+    # but if it were external, it would list 'chimera_intel' here.
+]

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_adversary_simulator"
+version = "0.1.0"
+description = "A Chimera Intel plugin for automated adversary simulation via MITRE CALDERA."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    # Assumes 'chimera_intel' is the core package
+    # 'httpx' is a dependency of the core http_client, but if not,
+    # 'httpx[http2]' would be listed here.
+]

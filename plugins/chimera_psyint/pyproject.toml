@@ -1,0 +1,24 @@
+# plugins/chimera_psyint/pyproject.toml
+
+[tool.poetry]
+name = "chimera-psyint"
+version = "0.1.0"
+description = "Active Psychological Intelligence (PSYINT) and Influence Operations Orchestrator."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+packages = [{ include = "chimera_psyint", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+chimera-intel = {path = "../..", develop=true}
+typer = {extras = ["rich"], version = "^0.9.0"}
+pydantic = "^2.0.0"
+# Add any other core dependencies this plugin relies on,
+# e.g., 'google-generativeai' if not already in main package.
+
+[tool.poetry.plugins."chimera_intel.plugin"]
+# This line registers the plugin with the main application
+psyint = "chimera_psyint.main:register"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

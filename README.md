@@ -55,174 +55,203 @@ Its command-line interface ensures scriptable workflows, automation of repetitiv
 ## ✨ Key Features
 
 Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to access a wide range of features.
-| Command Group             | Feature Command(s)                   | Description                                                                                                                                                                                                                               |
-| ------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Action Governance**     | audit, execute                       | Controls and logs automated actions to meet compliance rules.                                                                                                                                                                             |
-| **Active CI**             | monitor, detect                      | Active counter-intelligence operations.                                                                                                                                                                                                   |
-| **Active Recon**          | scan-host, scan-range                | Active network reconnaissance.                                                                                                                                                                                                            |
-| **Advanced Analytics**    | cluster, correlate                   | Deep data mining, clustering, and correlation.                                                                                                                                                                                            |
-| **Advanced Media**        | deepfake-check, authenticate         | Advanced media provenance and analysis.                                                                                                                                                                                                   |
-| **AI**                    | run                                  | Autonomous Intelligence Agent Framework.                                                                                                                                                                                                  |
-| **AI News**               | latest                               | Fetches the latest AI and tech news.                                                                                                                                                                                                      |
-| **Alerts**                | list, subscribe                      | Manages real-time alerts from various feeds.                                                                                                                                                                                              |
-| **Analyst Ops**           | eccheck, report                      | Audits the operator's operational security footprint.                                                                                                                                                                                     |
-| **Analysis**              | core-swot, temporal, signal          | AI-assisted SWOT, temporal analysis, and strategic signal detection.                                                                                                                                                                      |
-| **AppInt**                | static, dynamic                      | Mobile application intelligence and analysis.                                                                                                                                                                                             |
-| **ARG**                   | run                                  | Argumentation and Reasoning Graph construction.                                                                                                                                                                                           |
-| **ARG Fuse**              | fuse                                 | Fuses multiple ARG sources into a cohesive knowledge base.                                                                                                                                                                                |
-| **Audit**                 | log, query                           | Centralized system and intelligence audit log.                                                                                                                                                                                            |
-| **Autonomous**            | start-agent, mission                 | Runs complex, multi-stage autonomous missions.                                                                                                                                                                                            |
-| **Avint**                 | track-flight, monitor-airspace       | Aviation Intelligence.                                                                                                                                                                                                                    |
-| **Behavioral**            | profile, analyze                     | Behavioral profiling and analysis.                                                                                                                                                                                                        |
-| **Bioint**                | analyze-face, compare-voices         | Biometric Intelligence (Facial and voice recognition).                                                                                                                                                                                    |
-| **Biomintr**              | run                                  | Biometric Measurement and Signature Intelligence.                                                                                                                                                                                         |
-| **Blockchain**            | run                                  | General blockchain OSINT and analysis.                                                                                                                                                                                                    |
-| **Blockchain Tracer**     | trace-path, cluster-wallets          | Advanced tracing of transactions across blockchains.                                                                                                                                                                                      |
-| **Brand Protection**      | monitor, takedown                    | Tracks and acts on brand infringement and scams.                                                                                                                                                                                          |
-| **Briefing**              | generate                             | Generates a full, multi-page AI-powered executive intelligence briefing.                                                                                                                                                                  |
-| **Business**              | financials, patents                  | Retrieves public financial data, news, and patents.                                                                                                                                                                                       |
-| **C-Pint**                | run                                  | Communications Intelligence (COMINT) module.                                                                                                                                                                                              |
-| **Channel**               | monitor                              | Monitors various communication channels (Slack, forums).                                                                                                                                                                                  |
-| **Chemint**               | search-compound, analyze-formula     | Chemical Intelligence.                                                                                                                                                                                                                    |
-| **Chimera Intel (Root)**  | version                              | Shows the current software version.                                                                                                                                                                                                       |
-| **Chimera Project**       | init, use, status                    | Initializes a project, sets the active context, and checks status.                                                                                                                                                                        |
-| **Chimera Project**       | share                                | Shares a project with another user.                                                                                                                                                                                                       |
-| **Chimera Project**       | judicial-hold                        | Places project data under legal hold and archives all current evidence.                                                                                                                                                                   |
-| **Chimera Project**       | report, signal                       | Generates a comprehensive dossier and analyzes strategic signals.                                                                                                                                                                         |
-| **Chimera Project**       | export-stix, import-stix             | Exports/Imports all intelligence to/from a STIX 2.1 bundle.                                                                                                                                                                               |
-| **Cloud**                 | scan, monitor                        | Scans for misconfigured cloud assets (S3 buckets, etc.).                                                                                                                                                                                  |
-| **Code Intel**            | analyze, leak-check                  | Gathers and analyzes intelligence from code repositories.                                                                                                                                                                                 |
-| **Compint**               | run                                  | Competitive Intelligence analysis.                                                                                                                                                                                                        |
-| **Connect**               | virustotal, shodan                   | Integrates with third-party threat intelligence platforms.                                                                                                                                                                                |
-| **Corporate Intel**       | run                                  | General corporate intelligence analysis.                                                                                                                                                                                                  |
-| **Corporate Records**     | search-filings                       | Searches and analyzes legal/corporate filings.                                                                                                                                                                                            |
-| **Covert Agent**          | deploy, report                       | Simulates and manages covert intelligence gathering agents.                                                                                                                                                                               |
-| **Covert Financial**      | analyze-flow, trace-fiat             | Tracks and analyzes illicit financial flows (Money Laundering).                                                                                                                                                                           |
-| **Covert Ops**            | execute                              | Orchestrates cover and deception operations.                                                                                                                                                                                              |
-| **Creative Workflow**     | run                                  | Tools for generating creative intelligence artifacts.                                                                                                                                                                                     |
-| **Credibility**           | assess-source, verify-claim          | Assesses the credibility of sources and claims.                                                                                                                                                                                           |
-| **Crypto**                | track-wallet, get-transactions       | Cryptocurrency analysis and monitoring.                                                                                                                                                                                                   |
-| **Cultural**              | add, populate, list                  | Tools for managing and listing Cultural Intelligence profiles.                                                                                                                                                                            |
-| **Cultural Sentiment**    | run                                  | Analyzes geopolitical and cultural sentiment.                                                                                                                                                                                             |
-| **Cybint**                | scan-host, scan-url                  | Cybersecurity Intelligence (Port scanning, web analysis).                                                                                                                                                                                 |
-| **CyTech Intel**          | run                                  | Cyber Technology Intelligence.                                                                                                                                                                                                            |
-| **Darkweb**               | search-tor, monitor-forums           | Searches the dark web and monitors forums via Tor.                                                                                                                                                                                        |
-| **Deception**             | detect, uncover-mimicry              | Uncovers hidden corporate networks and mimicry.                                                                                                                                                                                           |
-| **Deception Playbook**    | generate-plan                        | Creates tailored deception strategies.                                                                                                                                                                                                    |
-| **Deception Suite**       | deploy-lures                         | Manages deployment of defensive deception assets.                                                                                                                                                                                         |
-| **Deep OSINT**            | run                                  | Module for deep, automated open-source intelligence gathering.                                                                                                                                                                            |
-| **Deep Research**         | run                                  | Orchestrates deep research projects.                                                                                                                                                                                                      |
-| **Deep Web**              | analyze                              | Analyzes unindexed deep web content.                                                                                                                                                                                                      |
-| **Defensive**             | checks, scan-iac                     | Audits security posture for breaches and checks Infrastructure-as-Code.                                                                                                                                                                   |
-| **Disinformation**        | analyze, track-narrative             | Tracks and analyzes disinformation campaigns.                                                                                                                                                                                             |
-| **Dissemination**         | report-pdf, publish                  | Intelligence reporting and dissemination tools.                                                                                                                                                                                           |
-| **EcoInt**                | market-analysis, economic-indicators | Ecological Intelligence (Environmental risk/trend analysis).                                                                                                                                                                              |
-| **Econint**               | market-analysis, economic-indicators | Economic Intelligence (Market and indicator analysis).                                                                                                                                                                                    |
-| **Ecosystem**             | run                                  | Maps and analyzes organizational ecosystems and networks.                                                                                                                                                                                 |
-| **Elecint**               | analyze-device, track-signal         | Electronic Intelligence.                                                                                                                                                                                                                  |
-| **Emulation Lab**         | run                                  | Emulates target environments for safe analysis.                                                                                                                                                                                           |
-| **Ensembler**             | run                                  | Combines multiple models/detectors for higher confidence results.                                                                                                                                                                         |
-| **Entity Resolver**       | resolve, deduplicate                 | Links ambiguous entities across different data sources.                                                                                                                                                                                   |
-| **Financial Signals**     | track-movements                      | Detects strategic financial market signals.                                                                                                                                                                                               |
-| **Finintrun**             | run                                  | Financial Intelligence Module.                                                                                                                                                                                                            |
-| **Footprint**             | run                                  | Gathers initial network and domain footprint.                                                                                                                                                                                             |
-| **Forensic Vault**        | store, retrieve                      | Secure storage and management of forensic evidence.                                                                                                                                                                                       |
-| **Forensics**             | static-analysis, parse-mft           | Technical and digital forensics tools.                                                                                                                                                                                                    |
-| **Fusion**                | data-fusion                          | Fuses multi-source, multi-modal intelligence data.                                                                                                                                                                                        |
-| **Geogeocode**            | geocode, reverse-geocode             | General geolocation and mapping tools.                                                                                                                                                                                                    |
-| **Geointrun**             | run                                  | Geospatial Intelligence (Geopolitical risk analysis).                                                                                                                                                                                     |
-| **Global Monitor**        | run                                  | Continuous global threat monitoring and alerting.                                                                                                                                                                                         |
-| **Governance**            | check-policy, update-policy          | Manages internal policy compliance for intelligence gathering.                                                                                                                                                                            |
-| **GRC**                   | run                                  | Governance, Risk, and Compliance toolset.                                                                                                                                                                                                 |
-| **Hacker News**           | top                                  | Fetches the top stories from Hacker News.                                                                                                                                                                                                 |
-| **Historicals**           | snapshot, compare                    | Analyzes and compares historical snapshots of websites.                                                                                                                                                                                   |
-| **Honeypot Detect**       | check                                | Detects and flags potential honeypots.                                                                                                                                                                                                    |
-| **Humint**                | search-profiles, monitor-person      | Human Intelligence (Social network searches, person monitoring).                                                                                                                                                                          |
-| **Image Forensics**       | run                                  | Image forensics pipeline for manipulation detection.                                                                                                                                                                                      |
-| **Imint**                 | analyze-image                        | Imagery Intelligence (EXIF extraction, image analysis).                                                                                                                                                                                   |
-| **Imint Ingestion**       | ingest-sat, process-uav              | Ingestion pipeline for satellite and UAV imagery.                                                                                                                                                                                         |
-| **Industry**              | run                                  | AI-generated analysis of a specific industry.                                                                                                                                                                                             |
-| **Infrastructure**        | run                                  | Infrastructure Intelligence Module.                                                                                                                                                                                                       |
-| **Internal**              | run                                  | Access and analyze internal data sources.                                                                                                                                                                                                 |
-| **Internal Analytics**    | dashboard, query                     | Internal analytics and performance reporting.                                                                                                                                                                                             |
-| **Leadership Profiler**   | run                                  | Profiles leadership and executive sentiment/behavior.                                                                                                                                                                                     |
-| **Legint**                | search-dockets, monitor-legislation  | Legal Intelligence (Docket search, legislative tracking).                                                                                                                                                                                 |
-| **Logistics**             | run                                  | Logistics Intelligence Module.                                                                                                                                                                                                            |
-| **Marint**                | track-vessel, monitor-area           | Maritime Intelligence (Vessel tracking via AIS, area monitoring).                                                                                                                                                                         |
-| **Market Demand**         | analyze-trend, forecast-demand       | Analyzes market demand trends.                                                                                                                                                                                                            |
-| **Masintrun**             | run                                  | Measurement and Signature Intelligence (MASINT) Module.                                                                                                                                                                                   |
-| **Media**                 | reverse-search, transcribe           | Performs reverse image search and audio transcription.                                                                                                                                                                                    |
-| **Media Forensics Tools** | extract-metadata, hash-file          | General media forensics utilities.                                                                                                                                                                                                        |
-| **Media Hardening**       | watermark, encrypt                   | Tools to harden media (images/videos) against tampering.                                                                                                                                                                                  |
-| **Metacognition**         | run                                  | Self-analysis and reasoning about the AI's own findings.                                                                                                                                                                                  |
-| **Misuse Playbook**       | run                                  | Executes predefined playbooks to detect misuse of platform findings.                                                                                                                                                                      |
-| **Moving Target**         | track, predict                       | Tracks and predicts the movement of mobile targets.                                                                                                                                                                                       |
-| **Multi Domain**          | run                                  | Fuses intelligence across multiple security and business domains.                                                                                                                                                                         |
-| **Network Scanner**       | scan-host, port-scan                 | Network reconnaissance and port scanning utility.                                                                                                                                                                                         |
-| **NLP Insights**          | sentiment, topic-model               | Deep Natural Language Processing insights.                                                                                                                                                                                                |
-| **Offensive**             | run                                  | Offensive reconnaissance and exploitation tools.                                                                                                                                                                                          |
-| **Open Data**             | query-dataset, download              | Accesses and queries open-source data repositories.                                                                                                                                                                                       |
-| **Operational Defense**   | run                                  | Operational defense strategies and tools.                                                                                                                                                                                                 |
-| **Opsec**                 | audit-policy, profile-leak           | Operations security analysis.                                                                                                                                                                                                             |
-| **OSINT Fusion**          | run                                  | Module specialized in fusing multiple OSINT streams.                                                                                                                                                                                      |
-| **OT Intel**              | scan-network, analyze-plc            | Operational Technology Intelligence (SCADA, PLC analysis).                                                                                                                                                                                |
-| **Persona Profiler**      | run                                  | Creates detailed, actionable human and corporate persona profiles.                                                                                                                                                                        |
-| **Personnel**             | search-email, check-leak             | Finds and validates public employee emails and checks for leaks.                                                                                                                                                                          |
-| **Physical**              | run                                  | Physical Intelligence (PHYSINT) Module.                                                                                                                                                                                                   |
-| **Pipeline**              | build, test                          | Tools to construct and manage intelligence pipelines.                                                                                                                                                                                     |
-| **Plausible Deniability** | run                                  | Tools for obscuring attribution and maintaining operational security.                                                                                                                                                                     |
-| **Podcast**               | search, transcribe-feed              | Podcast OSINT and transcription tools.                                                                                                                                                                                                    |
-| **Pricing**               | analyze-market                       | Analyzes market pricing strategies and intelligence.                                                                                                                                                                                      |
-| **Prodint**               | analyze-product, compare-products    | Product Intelligence (Product analysis and comparison).                                                                                                                                                                                   |
-| **Profiles**              | username-check                       | Identifies social media profiles via usernames.                                                                                                                                                                                           |
-| **Provenance**            | verify-source, chain-of-custody      | Tools to verify data origin and chain of custody.                                                                                                                                                                                         |
-| **Purple Team**           | run                                  | Combines offensive (Red) and defensive (Blue) testing.                                                                                                                                                                                    |
-| **Qint**                  | create-survey, analyze-responses     | Quantitative Intelligence (Survey/response analysis).                                                                                                                                                                                     |
-| **Recon**                 | run                                  | General reconnaissance module (often alias for deeper scans).                                                                                                                                                                             |
-| **Red Team**              | run                                  | Adversarial Simulation and Strategy Validation Engine.                                                                                                                                                                                    |
-| **Remediation Advisor**   | advise-vuln, generate-fix            | Provides automated advice for vulnerability remediation.                                                                                                                                                                                  |
-| **Reporter**              | generate-report                      | General intelligence report generation tool.                                                                                                                                                                                              |
-| **Response**              | mitigate, counter-op                 | Automated incident response and counter-offensive operations.                                                                                                                                                                             |
-| **Review**                | human-in-loop                        | Flags findings for human review and validation.                                                                                                                                                                                           |
-| **Risk Analyzer**         | run                                  | Holistic risk analysis tool.                                                                                                                                                                                                              |
-| **Risk Assessment**       | run                                  | General risk assessment calculation tool.                                                                                                                                                                                                 |
-| **RT OSINT**              | stream-data, process-realtime        | Real-Time Open-Source Intelligence processing.                                                                                                                                                                                            |
-| **Sales Intel**           | target-lead, analyze-persona         | Generates sales intelligence and lead suggestions.                                                                                                                                                                                        |
-| **Sandbox**               | detonate-malware, analyze-file       | Malware analysis and file detonation sandbox.                                                                                                                                                                                             |
-| **SCAINT**                | scan-deps, check-sbom                | Software Supply Chain Security (SCAINT).                                                                                                                                                                                                  |
-| **Scan (General)**        | run                                  | General scanning module (often an alias for footprint).                                                                                                                                                                                   |
-| **SEO**                   | analyze-keyword, competitor-seo      | Search Engine Optimization analysis.                                                                                                                                                                                                      |
-| **Sigint**                | scan-wifi, analyze-traffic           | Signals Intelligence (Wi-Fi and network traffic analysis).                                                                                                                                                                                |
-| **Social**                | analyze-post, sentiment-score        | Social media content analysis.                                                                                                                                                                                                            |
-| **Social History**        | run                                  | Monitors and retrieves historical social media activity.                                                                                                                                                                                  |
-| **Social Media Monitor**  | stream, alert                        | Real-time social media monitoring for threats and sentiment.                                                                                                                                                                              |
-| **Source Triage**         | evaluate, rank                       | Triages and ranks the reliability of intelligence sources.                                                                                                                                                                                |
-| **Spaceint**              | track-satellite, monitor-launch      | Space Intelligence (Satellite tracking and launch monitoring).                                                                                                                                                                            |
-| **Strategy**              | generate-profile                     | Generates a high-level AI-powered strategic profile.                                                                                                                                                                                      |
-| **Supply Chain**          | analyze-tier, assess-vendor          | Supply chain risk assessment.                                                                                                                                                                                                             |
-| **Synthetic Governance**  | audit-policy                         | Audits synthetic media generation against policy rules.                                                                                                                                                                                   |
-| **Synthetic Media**       | generate, detect, audit              | Creates new media (images, audio, video) using advanced generative models; identifies and analyzes synthetically generated content for deepfakes; verifies media provenance, watermarks, and cryptographic records in the Forensic Vault. |
-| **Synthetic Policy**      | check-use                            | Enforces policies for the ethical use of synthetic media.                                                                                                                                                                                 |
-| **Sysint**                | run                                  | Systemic Intelligence (SYSINT) and Cascade Analyzer.                                                                                                                                                                                      |
-| **Technical Forensics**   | run                                  | Technical and digital forensics.                                                                                                                                                                                                          |
-| **Temporal**              | run                                  | Analyzes historical web snapshots to track identity shifts.                                                                                                                                                                               |
-| **The Eye**               | run                                  | A foundational intelligence gathering service (often URL/domain monitoring).                                                                                                                                                              |
-| **Threat Actor**          | profile, map-ttp                     | Builds threat actor profiles and maps their TTPs.                                                                                                                                                                                         |
-| **TPR**                   | run                                  | Third-Party Risk Management scans.                                                                                                                                                                                                        |
-| **Trusted Media**         | verify                               | Verifies the authenticity and trustworthiness of media.                                                                                                                                                                                   |
-| **TTP**                   | map-cve                              | Maps CVEs to MITRE ATT&CK TTPs.                                                                                                                                                                                                           |
-| **User**                  | login, logout, register, status      | User management and authentication.                                                                                                                                                                                                       |
-| **Vector Search**         | query-embed, index-data              | High-speed vector search across indexed intelligence data.                                                                                                                                                                                |
-| **Vehicleosint**          | plate, track-vin                     | Vehicle OSINT (License plate/VIN tracking).                                                                                                                                                                                               |
-| **Vidint**                | run                                  | Video Intelligence Module.                                                                                                                                                                                                                |
-| **VOC**                   | run                                  | Voice of the Customer (VOC) Intelligence.                                                                                                                                                                                                 |
-| **Wargaming**             | start-war, simulate-scenario         | Simulates complex adversarial scenarios.                                                                                                                                                                                                  |
-| **Weathint**              | get-forecast, analyze-climate        | Weather Intelligence (Forecast/climate data analysis).                                                                                                                                                                                    |
-| **Web Scraper**           | scrape-url, crawl                    | Advanced web scraping and data extraction.                                                                                                                                                                                                |
-| **Web Visualizer**        | run                                  | Visual tool for displaying web data relationships.                                                                                                                                                                                        |
-| **WSA**                   | run                                  | Weak Signal Analyzer (Amplifies low-confidence findings).                                                                                                                                                                                 |
-| **Zero Day**              | monitor                              | Tracks and monitors new zero-day threats.                                                                                                                                                                                                 |
+| Command Group | Feature Command(s) | Description |
+| --------------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
+| **Adversary-Sim** | run-test, list-abilities, get-report | Adversary Simulation engine (MITRE CALDERA integration): run a test simulation against a target PAW with specified TTPs, list available CALDERA abilities, and fetch an aggregated operation report. |
+| **Acint**     | add, identify, monitor | Adds a new acoustic signature to the library, identifies an audio file's signature against the library, and monitors audio for anomalies compared to a baseline soundscape. |
+| **Active brand protection** | register-domains, deploy-decoy, sinkhole | Finds and registers common typos of your primary domain via Cloudflare, deploys decoy honeypot documents to S3, and redirects malicious domains to a sinkhole IP. |
+| **Active recon** | run | Runs the consent-gated active reconnaissance playbook from the CLI. |
+| **Ai** | sentiment, swot, anomaly | Runs core AI functions for sentiment analysis, SWOT generation, and anomaly detection. |
+| **Aia** | execute-objective | Takes a high-level objective and autonomously manages the full intelligence cycle. |
+| **Ainews** | latest | Fetches the latest AI-related news articles from public feeds. |
+| **Alerts** | list | Manages and lists all dispatched system alerts. |
+| **Alternative-hypothesis** | run | Generates competing hypotheses to challenge primary intelligence findings and mitigate bias. |
+| **Analytics** | simulate, track, risk-score, plot-sentiment, influence-mapping, quick-metrics, show | Advanced AI analytics, scenario simulation, risk scoring, and negotiation KPI dashboards. |
+| **Appint** | static, deep-metadata, device-intel | Mobile Application Intelligence for static APK analysis, deep metadata extraction, and device scanning. |
+| **Arg** | query, ingest_example, find-pattern, find-clusters, temporal-query | Manages the Adversary Research Grid (ARG) global correlation graph. |
+| **Arg-fuser** | sync-humint | Fuses data from the HUMINT module into the central Chimera Intelligence Graph. |
+| **Attack-path** | simulate | Simulates potential attack paths from an entry point to a target asset. |
+| **Attribution** | score-actor | Calculates a quantifiable confidence score for a threat actor attribution. |
+| **Audit** | log, verify | Manages and verifies the integrity of the immutable, chained-hash audit log. |
+| **Automation** | enrich-ioc, threat-model, ueba, enrich-cve, workflow, prioritize-event, pipeline-list, deception-response-workflow, virustotal, check-feeds, pipeline-run-trigger | High-level automation, data enrichment, threat modeling, and workflow orchestration. |
+| **Automation playbook** | list, show | Lists and shows the content of example automation playbooks (workflows). |
+| **Autonomous** | optimize-models, analyze-ab-test, detect-drift, backtest, simulate | Manages self-improvement, model optimization, and predictive simulation capabilities. |
+| **Avint** | track, drone-monitor | Aviation Intelligence for tracking live flights and monitoring drone activity. |
+| **Behavioral** | psych-profile | Analyzes public communications to build psychographic and behavioral profiles. |
+| **Bias-audit** | run | Audits a JSON analysis report for potential cognitive bias and collection gaps. |
+| **Bioint** | monitor-sequences | Biological Intelligence for monitoring public genetic databases. |
+| **Biomint** | analyze-face, compare-voices | Biometric Intelligence for face detection and voice print comparison. |
+| **Blockchain** | analyze, contract, token-flow | Blockchain & cryptocurrency OSINT for wallets, smart contracts, and token flows. |
+| **Blockchain-tracer** | trace | Traces cryptocurrency transactions and builds a flow-of-funds graph. |
+| **Briefing** | generate | Generates a full, multi-page AI-powered intelligence briefing for the active project. |
+| **Business** | run | Gathers business intelligence: financials, news, patents, and filings. |
+| **Channel-intel** | analyze-mix, find-partners, scrape-ads | Channel & acquisition intelligence tools. |
+| **Chemint** | monitor-patents-research, track-precursors, analyze-sds, monitor-chemical-news, lookup | Chemical & materials intelligence tools. |
+| **Climate**  | report             | Generates a strategic report on climate-driven geopolitical and supply chain risks for a specific country and resource. |
+| **Cft** | track-laundering, track-trade, scan-markets | Covert financial tracking toolkit. |
+| **Cloud-osint** | run | Searches for exposed cloud storage assets (S3, Azure, GCP). |
+| **Code-intel** | analyze-repo | Analyzes a public Git repository for committer and activity intelligence. |
+| **Cognitive-mapping** | run | Builds a cognitive map from public communications of a key individual. |
+| **Cognitive-warfare** | deploy-shield, run_scenario | Analyzes narratives, identifies psychological exploits, and runs HUMINT scenarios. |
+| **Competitive-analyzer** | run | Generates an AI-powered competitive analysis between two targets. |
+| **Comint**    | process-pcap       | Analyzes a PCAP file for communications intelligence (text, audio) and correlates entities to the graph. |
 
+| **Compint** | analyze, attribution, brand-audit, counter-disinfo, secure-evidence | Competitive image intelligence for products, ads, and brand safety. |
+| **Complexity-analyzer** | run | Maps system interdependencies and predicts cascading failure points. |
+| **Corporate-intel** | leadership-profiler, hr-intel, supplychain, ip-deep, regulatory, sec-filings | Gathers deep corporate intelligence (HR, supply chain, IP, SEC filings). |
+| **Corporate-records** | registry, sanctions, pep | Searches company registries, sanctions lists, and PEP lists. |
+| **Counter-intel** | infra-check, insider-score, media-track, domain-watch, honey-deploy, legal-template | Defensive counter-intelligence including insider threats and media tracking. |
+| **Covert** | run | Manages AI-driven autonomous investigation agents. |
+| **Covert-ops** | find-hidden-content, check-takeover | Covert digital ops: API enumeration and subdomain takeover checks. |
+| **Cpint** | analyze | Integrated Cyber-Physical Systems intelligence and cascade analysis. |
+| **Creative-workflow** | export-psd | Manages master templates and exports signed derivatives. |
+| **Credibility** | assess | Assesses the credibility of a web source. |
+| **Crypto** | forecast | Provides cryptocurrency market intelligence and forecasting. |
+| **Cultint** | analyze | Performs cultural intelligence analysis. |
+| **Cultural** | add, populate, list | Tools for managing cultural intelligence profiles. |
+| **Cultural-sentiment** | run | Analyzes sentiment of text within a specific cultural context. |
+| **Cybint** | attack-surface | Runs comprehensive attack surface analysis and generates AI risk assessment. |
+| **CYDEC (Deception)** | emulate-ai-shell, generate-honey-graph, deploy-decoy-document | Emulates an AI-powered honeypot shell, generates & injects honey-graphs of fake personas into the ARG, and creates AI-generated decoy documents with tracking beacons. |
+| **Cytech-intel** | emerging-tech, malware-sandbox, vuln-hunter | Cyber & technology intelligence for emerging tech and malware. |
+| **Daemon** | start, stop, status | Starts, stops, and checks the status of the Chimera Intel background daemon. |
+| **Dark-web** | search | Searches for a query on the dark web via a selected search engine. |
+| **Deception** | deploy-honeypot | Active defense through deception and honeypot operations. |
+| **Deception-detector** | run | Detects corporate mimicry and hidden networks via asset correlation. |
+| **Deep-research** | run | Fuses all-source OSINT into a strategic AI-powered intelligence report. |
+| **Deep-web** | search | Searches academic portals, journals, and databases using Google CSE. |
+| **Defensive** | breaches, leaks, typosquat, surface, pastebin, ssllabs, mobsf, certs, scan-iac, scan-secrets, source-poisoning-detect, adversary-opsec-score | Defensive counter-intelligence and security scanning module. |
+| **Diff** | run | Compares the last two scans of a target to detect changes. |
+| **Disinfo** | synthetic-narrative-map, audit | Disinformation and synthetic narrative analysis. |
+| **Disseminate** | generate | The automated dissemination & briefing suite. |
+| **Ecoint** | epa-violations, ghg-emissions, trade-flow-monitor | Ecological & sustainability intelligence tools. |
+| **Economics** | macro, micro | Provides macro and micro economic intelligence. |
+| **Ecosystem** | run | Analyzes a company's full business ecosystem (partners, competitors, distributors). |                                                          
+| **Education intelligence**    | monitor-publications, track-patents, analyze-curriculum | Monitors specified universities, labs, or academics for new publications, tracks patent filings and tech transfer announcements from key institutions, and analyzes curriculum changes at target institutions to spot emerging technical skills. |
+| **Elecint** | campaign-finance, sentiment-drift, trace-source | Electoral and political intelligence tools. |
+| **Emulation-lab** | provision, destroy | Threat actor emulation lab for running sandboxed campaigns. |
+| **Entity-resolver** | resolve-text | Normalizes entities and extracts relationships from text. |
+| **Ethint** | audit, privacy-impact-report, source-trust-model | Ethical governance and compliance engine. |
+| **Event-modeling** | run | Reconstructs a sequence of events from raw data. |
+| **Finint** | track-insiders, search-trademarks, track-crowdfunding, visualize-flow, detect-patterns, simulate-scenario | Financial intelligence tools for pattern detection and simulation. |
+| **Footprint** | run | Gathers digital footprint info (subdomains, IPs, WHOIS, etc.) for a domain. |
+| **Forcast** | run, train-breach-model | Analyzes historical data to forecast potential events and trains breach models. |
+| **Forensics** | (main), artifact-scan, deepfake-scan, provenance-check, map-narrative, detect-poisoning, face-recognize | Deepfake and media forensics plus disinformation analysis. |
+| **Fusion** | run | Multi-modal data fusion (4D analysis) engine. |
+| **Geoint** | run, wifi-locate, monitor-events, track-aerial, track-imagery | Geopolitical intelligence analysis and monitoring. |
+| **Geo-osint** | run | Retrieves geolocation information for one or more IP addresses. |
+| **Geo-strategist** | run | Synthesizes data to create a geographic intelligence report. |
+| **Global-monitor** | add | Continuous monitoring for keywords (sanctions, VIPs, etc.). |
+| **Gov** | log-consent, request-approval, approve, reject | Manages media governance, approvals, and consent logs. |
+| **Goverance** | check, list | Tools for managing action governance, risk policies, and pre-flight checks. |
+| **Graph** | query, find-path | Interact with the Chimera Intelligence Graph (Neo4j). |
+| **Graph-analyzer** | build, narrate | Builds an entity graph from JSON and generates an AI narrative. |
+| **Grapher** | create | Creates an interactive knowledge graph from a saved JSON scan file. |
+| **Grc** | timestamp, hold, store, retrieve | Manages Data Custodian (GRC) and the encrypted evidence vault. |
+| **Grey-lit** | search | Searches grey literature (reports, white papers, etc.). |
+| **Historical-analyzer** | run | Analyzes historical changes to a website using Wayback Machine. |
+| **Honeypot-detector** | scan-text, scan-meta | Detects honeypots and collection infrastructure. |
+| **Humint** | add-source, add-report, analyze, simulate-social, register-source, get-source, submit-report, map-link, validate-report, find-links, submit-audio-report | Manages human intelligence sources, reports, and simulations. |
+| **Imint** | analyze-content, ocr, analyze-satellite, metadata, change-detect | Imagery & visual intelligence analysis. |
+| **Ingest** | url, search | Image ingestion pipeline for fetching, processing, and enriching images. |
+| **Infrastructure-dependency** | analyze | Public infrastructure & utilities intelligence (power, water, comms). |
+| **Insider** | analyze-vpn-logs | Insider threat and counterintelligence analysis (VPN logs). |
+| **Internal** | analyze-log, static-analysis, parse-mft, extract-artifacts | Internal analysis, incident response, and forensics tools. |
+| **Inta** | correlate-proxies, score-leads | Internal analytics simulation tools for lead scoring. |
+| **Influence** | track | Influence and information operations tracking. |
+| **Leadership-profiler** | run | Deep-dive OSINT/HUMINT on key executives. |
+| **Lead-suggester** | run | Analyzes the active project and suggests next investigative steps. |
+| **Legint** | docket-search, arbitration-search, sanctions-screener, lobbying-search, compliance-check | Legal intelligence tools for compliance and litigation. |
+| **Malware-sandbox** | analyze | Retrieves a malware sandbox analysis report for a file hash. |
+| **Marint** | track-vessel | Maritime & shipping intelligence for live AIS vessel tracking. |
+| **Market-demand** | tam, trends, categories | Market & demand intelligence (TAM/SAM/SOM, trends, clustering). |
+| **Masint** | rf-pcap, acoustic, thermal | Measurement and signature intelligence tools. |
+| **MDM Engine** | run , schedule --cron <cron_str> , candidates <node_type> | Master Data Management engine for continuous entity resolution; manually run a full cycle, schedule periodic runs, or list potential duplicate candidates. |
+| **Media** | reverse-search, transcribe | Media analysis tools for reverse image search and audio transcription. |
+| **Media-tools** | exif, ela, ffmpeg-metadata, ffmpeg-frames, find-faces, ssim | CLI for advanced media forensics tools. |
+| **Medical** | trials, outbreaks, supply-chain | Monitors ClinicalTrials.gov for company R&D pipelines, fetches the latest disease outbreak alerts from WHO, CDC, or ECDC, and tracks medical device recalls via openFDA. |
+| **Metacognition** | run-self-analysis | The metacognition and self-improving AI core. |
+| **Money Laundering** | refresh-models, analyze-entity, train-models, run-backtest, run-realtime-monitor | AI-powered AML & intelligence platform CLI. |
+| **Movint** | track | Moving target intelligence; fuses AVINT, MARINT, and social OSINT. |
+| **Multimodal-reasoning** | run | Processes and reasons across different data types simultaneously. |
+| **Multi-domain** | correlate | Multi-domain correlation and fusion tools (SIGINT+HUMINT+FININT). |
+| **Narrative** | track, map | Tracks evolution and spread of narratives across news and social media. |
+| **Negotiation** | add-counterparty, add-market-indicator, train-rl, simulate-llm | Tools for AI-assisted negotiation and training. |
+| **Network-scanner** | run | Performs a non-intrusive network scan for open ports and service banners. |
+| **Offensive** | api-discover, enum-content, cloud-takeover, wifi-attack-surface, (callback) | Advanced offensive and reconnaissance operations. |
+| **OPDEC** | create-profiles, list-profiles, test-scrape | Operational Deception & Plausible Deniability Engine: generates honey-profiles, lists stored profiles, and runs proxied scrapes with chaff and honey-profile headers. |
+| **Open-data** | world-bank | Query open-source financial and economic datasets (e.g., World Bank). |
+| **Opsec** | run, footprint | Correlates scan data to find OPSEC weaknesses and generate risk reports. |
+| **Opsec-admin** | rotate-key, check-session | Manages analyst OPSEC including API key rotation and session checks. |
+| **Osint-fusion** | fuse-profiles, fuse-jobs | Fuses scraped OSINT data into the HUMINT network. |
+| **Ot-intel** | recon, iot-scan | Operational technology & ICS/SCADA intelligence (Shodan). |
+| **Page-monitor** | add | Continuous web page monitoring for change detection. |
+| **Personnel-osint** | emails, enrich | Gathers public employee emails and enriches with profiles. |
+| **Pestel-analyzer** | run | Generates a PESTEL analysis from aggregated data for a target. |
+| **Physical-osint** | locations, map-facility | Gathers and analyzes physical infrastructure information. |
+| **Psyint** | plan, execute | (LOW-RISK) Plans an active PSYINT campaign, generating narrative variants, audience lists, and synthetic assets; (HIGH-RISK) Executes a planned PSYINT campaign (simulation), subject to full `action_governance` and `human_review` checks. |
+| **Pipeline** | ingest | Data ingestion, storage, and indexing pipeline. |
+| **Playbook** | run-deception | Run automated IR playbooks for specific threats. |
+| **Podcast** | run | Podcast Intelligence Module. |
+| **Polint** | track-portal | Scans a legislative portal for keywords and runs AI impact analysis. |
+| **Policy** | add-subject, check, get-risk | Check ethical guardrails and policies for media generation. |
+| **Priceint** | add-monitor, detect-promos, check-elasticity | Pricing & promotion intelligence tools. |
+| **Privacy-impact-reporter** | run | Generates a privacy impact report by scanning documents for PII. |
+| **Profile-analyzer** | twitter | Analyzes a Twitter user's profile and recent tweets. |
+| **Project** | init, use, status, share, judicial-hold | Manages intelligence projects (create, load, set active, share, legal hold). |
+| **Project-report** | run | Generates an automated, comprehensive project report (PDF dossier). |
+| **Provenance** | generate-keys, embed, verify | Embed and verify signed, timestamped provenance in media. |
+| **Purple-team** | run-exercise, hunt-ttp, emulate-actor | Run advanced multi-stage Red/Blue/CTI exercises. |
+| **Qint** | research, trl-analysis, pqc-status | Quantum intelligence tools (arXiv, TRL analysis, NIST PQC monitoring). |
+| **Radint** | analyze-sar | Performs algorithmic change detection on 'before' and 'after' geospatial images (e.g., .tif) within a defined AOI. |
+| **Recon** | credentials, assets, threat-infra, passive-dns-query | Reconnaissance module for credentials, assets, and passive DNS. |
+| **Red-team** | generate, phishing-simulation, simulate-ttp | Generates red team insights, phishing simulations, and TTP emulation. |
+| **Remediation-advisor** | cve, domain, infra, ai-plan | Provides actionable remediation plans for threats. |
+| **Response** | add-rule, simulate-event, malware-sandbox | Manages automated incident response rules and actions. |
+| **Review** | list, approve, deny | Manages the human review queue for sensitive actions. |
+| **Radio Frequency** | BLE, Wi-Fi live, SDR | Scans for nearby Bluetooth devices, performs live Wi-Fi scans for APs and clients, and actively detects RF signals using an SDR. |
+| **Risk-analyzer** | run | Generates holistic risk scores by aggregating known intel. |
+| **Risk-assessment** | assess-indicator | Assesses risk for an indicator using threat intel and vulnerabilities. |
+| **Rt-osint** | monitor | Real-time OSINT monitoring (clearnet feeds, .onion archives) via Tor. |
+| **Salint** | find-intent-signals, mine-win-loss | Sales & intent intelligence tools (intent signals, win/loss mining). |
+| **Scaint** | analyze-repo | Software supply chain security analysis (SCAINT). |
+| **Sentiment-time-series** | run | Tracks sentiment over time and flags significant shifts. |
+| **Seo-intel** | run | Analyzes SEO and content strategy against competitors. |
+| **Sigint** | monitor-spectrum, live, decode-adsb, decode-ais, decode-ham, fingerprint, model-traffic | Signal intelligence for ADS-B, AIS, HAM radio, and network traffic. |
+| **Signal-analyzer** | run | Analyzes a target's public footprint for unintentional strategic signals. |
+| **Simulator** | start | Train negotiation skills against AI personas. |
+| **Social-analyzer** | run | Finds and analyzes content from a target's RSS feed for strategic topics. |
+| **Social-history** | monitor | Tracks historical changes to public social media profiles. |
+| **Social-osint** | run, tiktok-profile, tiktok-hashtag | Social media OSINT tools (Sherlock, TikTok scraping). |
+| **Source-triage** | run | Run OSINT triage checks (WHOIS, dynamic scrape) on a source URL. |
+| **Source-trust-model** | run | Provides a risk-weighted confidence score for an information source. |
+| **Strategic-analytics** | kpi-report | Strategic intelligence & KPI reporting integrating other modules. |
+| **Strategic-forecaster** | run | AI-powered strategic forecaster & early warning system. |
+| **Strategy** | run | Generates an AI-powered strategic profile of a competitor. |
+| **Supply-chain-risk** | analyze | Analyzes software dependencies and hardware providers for vulnerabilities. |
+| **Sysint** | analyze | Systemic intelligence & cascade analyzer. |
+| **Tech-forensics** | lighting, perspective, aberration, eyes, lipsync, all | Run advanced technical forensic analyses (lighting, perspective, lip sync). |
+| **Temporal-analyzer** | snapshots | Fetches historical web snapshots to analyze a company's shifting identity. |
+| **Threat-actor-intel** | profile | Gathers and synthesizes an intelligence profile for a known threat actor. |
+| **Threat-hunter** | run | Hunts for a threat actor's known IOCs in local logs. |
+| **Topic-clusterer** | run | Analyzes documents to find and name emerging topic clusters. |
+| **Tpr** | run | Runs a comprehensive third-party risk management scan against a target domain. |
+| **Traffic** | analyze | Advanced network traffic analysis from PCAP files. |
+| **Ttp** | map-cve | Maps CVE vulnerabilities to MITRE ATT&CK techniques. |
+| **User** | add, login, logout, status | Manages user accounts and authentication. |
+| **Vault** | hash-image, reverse-search, create-receipt, verify-receipt, export-derivative, generate-key | Advanced forensics: image hashing, reverse search, and forensic vault. |
+| **Vector-search** | embed, build-index, search | Image similarity search using CLIP embeddings and FAISS. |
+| **Vehicle-osint** | search | Looks up a Vehicle Identification Number (VIN) for OSINT. |
+| **Vidint** | analyze | Video intelligence operations (frame extraction, motion/object detection). |
+| **Voc-intel** | run | Analyzes customer reviews for sentiment, topics, and insights. |
+| **Wargaming** | run-supply-chain | Massive scenario & wargaming engine to run 'what-if' scenarios. |
+| **Weak-signal-analyzer** | run | Amplifies weak signals from various scans using evidence theory. |
+| **Weathint** | get | Performs weather intelligence tasks. |
+| **Web-analyzer** | run | Analyzes web-specific data (tech stack, traffic, screenshots) for a domain. |
+| **Web-scraper** | parse-article, scrape-dynamic | Active tools for scraping and parsing web data. |
+| **Visual-diff** | run | Visually compares web page screenshots from the diff module. |
+| **Wifi-analyzer** | analyze | Wireless network analysis from PCAP files. |
+| **Voice-match** | adversary-voice-match | Checks audio against a library of known fraudulent or adversary voices. |
+| **Zeroday** | monitor | Monitors security feeds for emerging exploits and zero-days. |
 
 
 
@@ -346,7 +375,7 @@ graph TD
         O --> P[Final Report/Analysis];
     end
 
-## 🚀 Deployment
+## Deployment
 
 ### Secret Management
 

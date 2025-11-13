@@ -32,12 +32,11 @@ import uuid
 import boto3
 import cv2
 import easyocr
-import asyncio
 import torch
 from io import BytesIO
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple, List
-from pydantic import HttpUrl, BaseModel
+from pydantic import HttpUrl
 from PIL import Image, ExifTags
 from botocore.exceptions import NoCredentialsError, ClientError
 from playwright.async_api import async_playwright

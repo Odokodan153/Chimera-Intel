@@ -9,54 +9,21 @@ local_db_service as its persistent datastore.
 It also now defines its own Typer app for CLI policy checks.
 """
 
-import enum
+from .schemas import (
+    SubjectProfile,
+    SubjectSensitivity,
+    AllowedUseCase,
+    GenerationType,
+    RiskLevel,
+    DisallowedUseCaseError
+)
 import logging
-import typer  # <-- ADDED
-import uuid   # <-- ADDED
-from rich.console import Console  # <-- ADDED
+import typer  
+import uuid   
+from rich.console import Console  
 from typing import Optional
-from pydantic import BaseModel, Field
-
 # --- Database Imports ---
 from .local_db_service import get_scans_by_target, save_scan_to_db
-
-# --- Enums (as defined before) ---
-
-class AllowedUseCase(str, enum.Enum):
-    MARKETING = "marketing_assets_with_consent"
-    SYNTHETIC_SPOKESPERSON = "synthetic_spokesperson_stock"
-    FILM_ADVERTISING = "film_advertising_with_rights"
-    ANONYMIZATION = "anonymization_for_privacy"
-    ML_AUGMENTATION = "ml_data_augmentation"
-
-class GenerationType(str, enum.Enum):
-    FULLY_SYNTHETIC_FACE = "fully_synthetic_face"
-    FACE_REENACTMENT = "face_reenactment"
-    VOICE_CLONE = "voice_clone"
-
-class DisallowedUseCaseError(ValueError):
-    """Custom exception for failed policy checks."""
-    pass
-
-class RiskLevel(str, enum.Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-
-class SubjectSensitivity(str, enum.Enum):
-    GENERAL_ADULT = "general_consenting_adult"
-    STOCK_PERSON = "stock_synthetic_person"
-    PUBLIC_OFFICIAL = "public_official_sensitive_role"
-    MINOR = "minor"
-    VULNERABLE_PERSON = "known_victim_of_crime"
-    SANCTIONED_PERSON = "sanctioned_person"
-
-class SubjectProfile(BaseModel):
-    """A profile for a subject to check against policies."""
-    subject_id: str = Field(..., description="Unique ID for the subject, e.g., 'sub-1a2b3c'")
-    display_name: str = Field(..., description="The name of the subject used for lookups.")
-    sensitivity: SubjectSensitivity = SubjectSensitivity.GENERAL_ADULT
-    notes: Optional[str] = None
 
 # --- Constants ---
 SUBJECT_PROFILE_MODULE_NAME = "subject_profile"

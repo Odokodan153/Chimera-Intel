@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_project"
+version = "0.1.0"
+description = "A cyber-intelligence and active defense toolkit."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" } # Example license
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+# Core dependencies for the entire project
+# This list now includes dependencies from ALL modules created so far.
+dependencies = [
+    "typer[all]>=0.9.0",
+    "requests>=2.31.0",
+    
+    # Dependencies for active_brand_protection
+    "boto3>=1.34.0",
+    "python-cloudflare>=2.19.0",
+    "dnstwist>=20240327",
+    
+    # Dependencies for medint
+    "feedparser>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your_username/my_project"
+Issues = "https://github.com/your_username/my_project/issues"
+
+# This entry point creates the main runnable CLI command for the *entire* project
+[project.scripts]
+my-project-cli = "my_project.main:app" # Assumes you have a main.py with a Typer app
+
+# Entry points for the plugin system
+[project.entry-points."my_project.plugins"]
+# Registers all modules as loadable plugins
+active_brand_protection = "my_project.plugins.active_brand_protection_plugin:ActiveBrandProtectionPlugin"
+medint = "my_project.plugins.medint_plugin:MedintPlugin"
+
+[project.entry-points."my_project.cli"]
+# Registers all module Typer apps as CLI subcommands
+abp = "active_brand_protection:app"
+medint = "medint:app"
+
+
+[tool.setuptools]
+# Automatically find all packages in the project
+packages = { find = {} }

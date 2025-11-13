@@ -21,8 +21,8 @@ import json
 import hashlib
 import pathlib
 import base64
-from typing import List, Optional
 from pydantic import BaseModel
+from typing import List, Optional
 from .utils import save_or_print_results
 from .schemas import (
     TrustedMediaManifest,

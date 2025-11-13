@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_rfint"
+version = "0.1.0"
+description = "Active Radio Frequency Intelligence (RFINT) plugin for Chimera-Intel."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = { text = "Proprietary" }
+requires-python = ">=3.9"
+dependencies = [
+    # Core system
+    "chimera_intel", 
+    
+    # Hardware and protocol libraries
+    "bleak",         # For Bluetooth LE
+    "scapy",         # For live Wi-Fi sniffing
+    "pyrtlsdr",      # For RTL-SDR hardware
+    "numpy",         # For SDR signal processing
+]
+
+[project.entry-points."chimera_intel.plugins.cli"]
+rfint = "chimera_rfint.main:register"
+
+[tool.setuptools.packages.find]
+where = ["src"]

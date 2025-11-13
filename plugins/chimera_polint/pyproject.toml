@@ -1,0 +1,24 @@
+# Chimera-Intel/plugins/chimera_polint/pyproject.toml
+
+[tool.poetry]
+name = "chimera_polint"
+version = "0.1.0"
+description = "A Chimera Intel plugin for Policy & Regulatory Intelligence (POLINT)."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+readme = "README.md"
+packages = [{include = "chimera_polint", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+chimera_intel = {path = "../../", develop = true} # Depends on the main app
+typer = {version = "^0.9.0", extras = ["rich"]}
+beautifulsoup4 = "^4.12.3"
+httpx = "^0.27.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This is the entry point that registers the 'polint' CLI command group
+polint = "chimera_polint.main:app"

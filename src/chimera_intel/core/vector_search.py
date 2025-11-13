@@ -18,10 +18,8 @@ import numpy as np
 from PIL import Image
 from typing import Optional, List, Dict
 from rich.console import Console
-from rich.progress import track
 from rich.table import Table
-from pydantic import BaseModel  # <-- [FIX 1] Added this import
-
+from .schemas import EmbeddingResult, SearchResult, SearchMatch
 # Imports for FAISS and CLIP
 try:
     import faiss
@@ -45,25 +43,6 @@ vector_app = typer.Typer(
 # Global model cache
 MODEL_CACHE = {}
 MODEL_NAME = "clip-ViT-B-32"
-
-# --- Pydantic Schemas ---
-
-class EmbeddingResult(BaseAnalysisResult):
-    """Result model for a single image embedding."""
-    file_path: str
-    embedding: List[float]
-
-class SearchMatch(BaseModel):
-    """A single search match from the vector index."""
-    match_path: str
-    distance: float
-
-class SearchResult(BaseAnalysisResult):
-    """Result model for a vector search."""
-    query_path: str
-    matches: List[SearchMatch]
-
-# --- Core Logic ---
 
 def _check_imports():
     """Checks if FAISS and SentenceTransformers are installed."""

@@ -17,10 +17,9 @@ import typer
 from typing import Optional, Dict, Any, List, Set
 import psycopg2
 import random
-from pydantic import BaseModel, Field
 from datetime import datetime
 from pathlib import Path 
-
+from .schemas import FieldReportIntake
 # --- (NEW) NLP Entity Extraction Imports ---
 try:
     from textblob import TextBlob
@@ -372,16 +371,6 @@ def register_source(
     except Exception as e:
         console.print(f"[bold red]Operation Failed:[/bold red] Could not register source: {e}")
 
-class FieldReportIntake(BaseModel):
-    """
-Pydantic model for structured report intake.
-(Implements: HUMINT Intake Form MVP)
-"""
-    report_type: str = Field(..., example="Interview")
-    content: str
-    entities_mentioned: List[str] = Field(default_factory=list)
-    tags: List[str] = Field(default_factory=list)
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 def submit_field_report(source_name: str, intake: FieldReportIntake) -> Optional[int]:
     """

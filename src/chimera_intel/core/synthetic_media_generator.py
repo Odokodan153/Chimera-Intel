@@ -15,7 +15,15 @@ from datetime import datetime, timezone
 # --- FIX: Import TYPE_CHECKING ---
 from typing import Optional, Dict, Any, TYPE_CHECKING
 # --- END FIX ---
-from pydantic import Field
+from .schemas import (
+    ConsentArtifact,
+    ProvenanceMetadata,
+    GeneratedAsset,
+    GenerationType,
+    SyntheticMediaRequest,
+    RequestStatus,
+    AllowedUseCase
+)
 from jose import jwt, JWSAlgorithm
 from jose.exceptions import JOSEError
 from tenacity import retry, wait_exponential, stop_after_attempt, RetryError
@@ -102,78 +110,6 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ---
 TTS_MAX_LENGTH = 500 # Max characters for voice clone request
-
-# --- Enums and Schemas ---
-
-class GenerationType(str, enum.Enum):
-    """Specifies the type of synthetic media to generate."""
-    FULLY_SYNTHETIC_FACE = "fully_synthetic_face"
-    FACE_REENACTMENT = "face_reenactment"
-    VOICE_CLONE = "voice_clone"
-
-class AllowedUseCase(str, enum.Enum):
-    """Enumerates the allowed use cases for generation."""
-    MARKETING = "marketing_assets_with_consent"
-    SYNTHETIC_SPOKESPERSON = "synthetic_spokesperson_stock"
-    FILM_ADVERTISING = "film_advertising_with_rights"
-    ANONYMIZATION = "anonymization_for_privacy"
-    ML_AUGMENTATION = "ml_data_augmentation"
-
-class RequestStatus(str, enum.Enum):
-    """Tracks the status of a generation request."""
-    PENDING_APPROVAL = "pending_approval"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    GENERATING = "generating"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-class ConsentArtifact(BaseChimeraModel):
-    """Represents a verified consent document."""
-    consent_id: str = Field(default_factory=lambda: f"consent-{uuid.uuid4()}")
-    subject_name: str
-    document_vault_id: str 
-    identity_verified: bool = False
-    voice_consent_phrase: Optional[str] = Field(None, description="A specific phrase to be spoken in consent audio for verification.")
-    source_audio_vault_id: Optional[str] = Field(None, description="Vault ID of the audio used for consent verification and cloning.")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class SyntheticMediaRequest(BaseChimeraModel):
-    """A request to generate synthetic media, pending approval."""
-    request_id: str = Field(default_factory=lambda: f"synreq-{uuid.uuid4()}")
-    operator_id: str
-    use_case: AllowedUseCase
-    generation_type: GenerationType
-    consent_id: str 
-    generation_prompt: Optional[str] = None 
-    target_text: Optional[str] = None       
-    source_media_vault_id: Optional[str] = None 
-    driving_media_vault_id: Optional[str] = None
-    status: RequestStatus = RequestStatus.PENDING_APPROVAL
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    approver_id: Optional[str] = None
-    approved_at: Optional[datetime] = None
-
-class ProvenanceMetadata(BaseChimeraModel):
-    """Signed metadata to be embedded in the generated asset."""
-    iss: str = "Chimera-Intel-Platform"
-    iat: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    request_id: str
-    asset_id: str
-    model_version: str
-    generation_type: GenerationType
-    generation_params: Dict[str, Any]
-    consent_id: str
-    operator_id: str
-    usage_license: str
-
-class GeneratedAsset(BaseChimeraModel):
-    """Represents the final, generated asset."""
-    asset_id: str = Field(default_factory=lambda: f"synasset-{uuid.uuid4()}")
-    request_id: str
-    vault_file_path: str 
-    provenance_jwt: str 
-    detection_fingerprint: str 
 
 # --- Security Abstraction ---
 

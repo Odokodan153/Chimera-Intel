@@ -1,0 +1,22 @@
+# File: Chimera-Intel/plugins/chimera_eduint/pyproject.toml
+
+[tool.poetry]
+name = "chimera_eduint"
+version = "0.1.0"
+description = "A plugin for Educational & Research Intelligence (EDUINT) to track innovation sources."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Assumes the core package is installed or in the path
+chimera_intel = {path = "../..", develop = true} 
+typer = {extras = ["all"], version = "^0.9.0"}
+rich = "^13.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.0"
+
+[tool.poetry.plugins."chimera_intel.plugins"]
+# This entry point registers the plugin with the core system
+eduint = "chimera_eduint.main:EduintPlugin"

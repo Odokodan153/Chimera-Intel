@@ -25,9 +25,13 @@ import hashlib
 import base64
 import httpx
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
-from pydantic import BaseModel, Field
-
+from typing import Optional, Tuple
+from .schemas import (
+    BaseModel,
+    ProvenanceManifest,
+    SignedProvenanceEnvelope,
+    VerificationResult,
+)
 # --- Core Dependencies ---
 try:
     from PIL import Image
@@ -72,42 +76,6 @@ provenance_app = typer.Typer(
     name="provenance",
     help="Embed and verify signed, timestamped provenance in media.",
 )
-
-# --- Schemas ---
-
-class ProvenanceManifest(BaseModel):
-    """
-    The JSON-LD compatible manifest to be signed and embedded.
-    This serves as the core provenance data.
-    """
-    asset_hash: str = Field(..., description="SHA-256 hash of the original, *unmodified* asset.")
-    timestamp: str = Field(..., description="The ISO 8601 timestamp of creation/signing.")
-    issuer: str = Field(..., description="The identifier of the signing entity (e.g., 'Chimera-Intel Platform').")
-    consent_artifact_id: Optional[str] = Field(None, description="The receipt_id of the linked ConsentRecord (from media_governance).")
-    
-    # JSON-LD context for interoperability
-    jsonld_context: str = Field("https://schema.org", alias="@context")
-    jsonld_type: str = Field("CreativeWork", alias="@type")
-    author: str = Field("Chimera-Intel", alias="author")
-
-class SignedProvenanceEnvelope(BaseModel):
-    """
-    The final payload that is embedded into the media file.
-    It wraps the manifest and its cryptographic proof.
-    """
-    manifest: ProvenanceManifest
-    signature: str = Field(..., description="Base64-encoded signature of the canonicalized manifest JSON.")
-    tsa_token_b64: Optional[str] = Field(None, description="Base64-encoded RFC3161 timestamp token for the manifest.")
-
-class VerificationResult(BaseResult):
-    """
-    The result of a verification check.
-    This is the public-facing response.
-    """
-    is_valid: bool = Field(default=False, description="True if all cryptographic checks passed.")
-    verified_manifest: Optional[ProvenanceManifest] = Field(None, description="The verified manifest, if validation was successful.")
-    verification_log: List[str] = Field(default_factory=list, description="A step-by-step log of verification checks.")
-
 
 # --- Cryptographic Helpers (Reused from forensic_vault.py) ---
 

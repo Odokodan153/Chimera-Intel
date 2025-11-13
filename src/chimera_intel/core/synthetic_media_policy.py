@@ -7,10 +7,9 @@ risk thresholds, and approval workflows.
 """
 
 import logging
-from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from typing import Optional
 
-from .schemas import BaseSchema # Re-using BaseSchema
+from .schemas import GenerationRequest, PolicyCheckResult
 
 logger = logging.getLogger(__name__)
 
@@ -56,34 +55,6 @@ APPROVAL_THRESHOLDS = {
 # Retention policy constant
 RETENTION_POLICY_YEARS = 7
 RETENTION_POLICY_TEXT = f"Consent documents, generation requests, and forensic logs must be stored securely for a minimum of {RETENTION_POLICY_YEARS} years (or as per superseding legal requirements)."
-
-
-# --- Schemas ---
-
-class GenerationRequest(BaseModel):
-    """
-    A request to generate a new synthetic media asset.
-    This object is checked against the policy.
-    """
-    subject_name: str = Field(..., description="Name of the person/subject, or 'stock_face'.")
-    subject_category: str = Field(..., description="Category of the subject (e.g., 'minor', 'consenting_adult_corporate').")
-    use_case: str = Field(..., description="Intended use case (e.g., 'internal_marketing', 'public_facing_marketing').")
-    requesting_operator: str = Field(..., description="The user ID of the operator making the request.")
-    consent_proof_id: Optional[str] = Field(None, description="Reference ID for the stored consent document, if applicable.")
-
-
-class PolicyCheckResult(BaseSchema):
-    """
-    The result of a policy check on a GenerationRequest.
-    """
-    is_allowed: bool = Field(..., description="Whether this generation is allowed or blocked.")
-    is_blocked: bool = Field(..., description="Opposite of is_allowed, for clarity.")
-    reason: str = Field(..., description="The reason for the decision (e.g., 'BLOCKED: Subject is a minor').")
-    risk_level: str = Field("none", description="The assessed risk level (low, medium, high).")
-    approval_required: str = Field("none", description="The approval workflow required (e.g., 'single_operator', 'dual_approval').")
-    retention_policy_applies: bool = Field(False, description="Indicates that the standard retention policy applies.")
-    request_details: GenerationRequest
-
 
 # --- Policy Logic ---
 

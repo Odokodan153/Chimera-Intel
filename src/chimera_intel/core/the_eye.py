@@ -10,8 +10,6 @@ import logging
 import redis  # For real cache health check
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Set
-from pydantic import BaseModel, Field
-
 # --- Core Chimera Imports ---
 from chimera_intel.core.config_loader import ConfigLoader
 from chimera_intel.core.logger_config import setup_logging
@@ -45,7 +43,12 @@ from chimera_intel.core.alternative_hypothesis_generator import AlternativeHypot
 from chimera_intel.core.strategic_forecaster import StrategicForecaster
 from chimera_intel.core.metacognition import Metacognition
 from chimera_intel.core.grapher_3d import Grapher3D
-
+from chimera_intel.core.schemas import (
+    BaseModel,
+    DiscoveryRecord,
+    SystemHealthReport,
+    FullAnalysisReport,
+)
 # --- Phase 3 & 4 Imports ---
 from chimera_intel.core.enterprise_audit import EnterpriseAuditor
 from chimera_intel.core.alert_manager import AlertManager
@@ -69,51 +72,6 @@ THE_EYE_BANNER = r"""
     🧿 THE EYE - OSINT Corporate Intelligence Platform
     "If The Eye cannot find it — it does not exist on the Internet."
 """
-
-# --- Data Schemas ---
-
-class DiscoveryLink(BaseModel):
-    target_id: str
-    relation: str
-    evidence: str
-
-class DiscoveryRecord(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    identifier: str
-    source: str
-    type: str
-    value: Any
-    confidence: float = Field(default=0.9, ge=0.0, le=1.0)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    links: List[DiscoveryLink] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    tags: Set[str] = Field(default_factory=set)
-
-class SystemHealthReport(BaseModel):
-    banner_displayed: bool = False
-    api_connections_alive: bool = False
-    api_quota_status: str = "unknown"
-    osint_modules_loaded: int = 0
-    database_connection: str = "disconnected"
-    cache_connection: str = "disconnected"
-    config_schema_version: str = "mismatch"
-    threads_running: int = 0
-    pii_detected: List[str] = Field(default_factory=list)
-    legal_compliance: str = "not_passed"
-    errors_in_last_run: List[str] = Field(default_factory=list)
-    healthy: bool = False
-    remediation_steps: List[str] = Field(default_factory=list)
-
-class FullAnalysisReport(BaseModel):
-    metrics: Dict[str, Any] = Field(default_factory=dict)
-    graph_analytics: Dict[str, Any] = Field(default_factory=dict)
-    narrative_analysis: Dict[str, Any] = Field(default_factory=dict)
-    predictive_analysis: Dict[str, Any] = Field(default_factory=dict)
-    exposure_score: float = 0.0
-    pii_found: List[str] = Field(default_factory=list)
-    ai_summary: str = ""
-    run_statistics: Dict[str, Any] = Field(default_factory=dict)
-
 
 class TheEye:
     """

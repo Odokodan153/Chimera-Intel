@@ -1,0 +1,24 @@
+# plugins/chimera_cydec/pyproject.toml
+[tool.poetry]
+name = "chimera_cydec"
+version = "0.1.0"
+description = "Chimera Intel plugin for AI-Powered Cyber Deception (CYDEC) operations."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = "Proprietary"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Assumes chimera_intel is installed in the parent environment
+chimera_intel = {path = "../../", develop = true} 
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.0"
+mypy = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.entry-points."chimera_intel.plugins"]
+# This line registers the plugin with the main app
+cydec = "chimera_cydec.main:CydecPlugin"

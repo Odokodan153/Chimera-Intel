@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_opdec"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+version = "0.1.0"
+description = "A Chimera Intel plugin for Operational Deception (OPDEC) and plausible deniability."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []

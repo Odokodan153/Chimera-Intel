@@ -9,11 +9,10 @@ import typer
 import logging
 import sys
 from typing import Optional, Tuple, Dict, Any
-from pydantic import BaseModel
-from chimera_intel.core.schemas import BaseChimeraResult
 from chimera_intel.core.utils import console
 from chimera_intel.core.database import get_db_connection
 from chimera_intel.core.project_manager import resolve_target
+from chimera_intel.core.schemas import VisualDiffResult
 
 # This module requires the 'pillow' library
 try:
@@ -27,15 +26,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-
-class VisualDiffResult(BaseChimeraResult):
-    target: str
-    module: str
-    previous_scan_image: str
-    latest_scan_image: str
-    diff_output_path: str
-    pixels_changed: int = 0
 
 
 def get_last_two_scans_with_screenshots(

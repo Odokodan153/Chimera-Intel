@@ -13,13 +13,14 @@ from sqlalchemy import (
     LargeBinary,
     Enum as SQLAlchemyEnum,
 )
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime, date, timezone
 import pandas as pd
 import numpy as np
-from pydantic import BaseModel, Field, validator, EmailStr, Tuple
+import enum
+from pydantic import BaseModel, Field, validator, EmailStr, Tuple, Set
 from typing import Literal
 import uuid
 from enum import Enum
@@ -5783,3 +5784,440 @@ class PaymentFlowCorrelation:
     intermediaries: List[str]
     total_amount: float
     path: List[str]
+
+class ClimaintReport(BaseModel):
+    """
+    Model for the result of a strategic CLIMAINT analysis.
+    Combines geopolitical, climate, and supply chain data.
+    """
+    target_country: str = Field(..., description="The country analyzed.")
+    target_resource: str = Field(..., description="The resource analyzed (e.g., 'Lithium', 'Cobalt').")
+    strategic_summary: str = Field(..., description="The AI-generated strategic analysis.")
+    political_stability_data: Optional[Dict[str, Any]] = Field(None, description="Data from World Bank Political Stability index.")
+    climate_risk_data: Optional[Dict[str, Any]] = Field(None, description="Data from World Bank Climate Risk index (e.g., land < 5m).")
+    trade_flow_summary: Optional[Dict[str, Any]] = Field(None, description="Data summary from UN Comtrade for the resource.")
+    error: Optional[str] = None
+
+class ExecutedStep(BaseModel):
+    """A single step (link) from a CALDERA operation."""
+    ability_id: str
+    ability_name: str
+    ttp: Optional[str] = None
+    command: str
+    status: str # e.g., "success", "failure", "timeout"
+    output: str
+    timestamp: str
+
+class AdversarySimulationResult(BaseModel):
+    """The final, aggregated report from a CALDERA operation."""
+    operation_id: str
+    operation_name: str
+    target_paw: str
+    status: str # "completed", "failed", "running"
+    executed_steps: List[ExecutedStep] = []
+    error_message: Optional[str] = None
+
+class HoneyProfile(Base):
+    """
+    Database model for a fake "honey-profile" used for scraping.
+    """
+    __tablename__ = "opdec_honey_profiles"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    user_agent = Column(String, nullable=False)
+    bio = Column(Text, nullable=True)
+
+class DeviceIntelResult(BaseModel):
+    """Results from scanning a connected mobile device."""
+    device_properties: Dict[str, str] = Field(default_factory=dict)
+    installed_packages: List[str] = Field(default_factory=list)
+    hidden_packages: List[str] = Field(default_factory=list)
+
+class CreativeAssetManifest(BaseModel):
+    """
+    The core JSON manifest describing a derivative asset, based on
+    the CI template standard (Req 8).
+    """
+    file_name: str = Field(..., description="The filename of the derivative asset.")
+    sha256: str = Field(..., description="SHA-256 hash of the derivative asset's bytes.")
+    editor_id: str = Field(..., description="The ID of the operator who exported the asset.")
+    timestamp: str = Field(..., description="ISO 8601 timestamp of the export.")
+    origin_assets: List[str] = Field(default_factory=list, description="List of vault IDs for source/origin assets (e.g., master PSD).")
+    model_info: List[str] = Field(default_factory=list, description="List of models used (e.g., 'photoshop:v24.0', 'stable-diffusion:v1.5').")
+    consent_ids: List[str] = Field(default_factory=list, description="List of consent_artifact_id's linked to this asset.")
+    watermark_id: Optional[str] = Field(None, description="Identifier for any embedded watermarks (e.g., LSB JWT).")
+    c2pa_token: Optional[str] = Field(None, description="A C2PA manifest token, if generated.")
+
+class SignedCreativeEnvelope(BaseModel):
+    """
+    The final signed artifact that is stored in the vault.
+    It wraps the manifest and its cryptographic proofs.
+    (Reuses pattern from provenance_service.py)
+    """
+    manifest: CreativeAssetManifest
+    signature: str = Field(..., description="Base64-encoded signature of the canonicalized manifest JSON.")
+    tsa_token_b64: Optional[str] = Field(None, description="Base64-encoded RFC3161 timestamp token for the manifest.")
+
+class ExportResult(BaseResult):
+    """The result of a successful export operation."""
+    derivative_asset_id: str
+    manifest_asset_id: str
+    derivative_logical_path: str
+    manifest_logical_path: str
+    signed_envelope: SignedCreativeEnvelope
+
+class ProvenanceManifest(BaseModel):
+    """
+    The JSON-LD compatible manifest to be signed and embedded.
+    This serves as the core provenance data.
+    """
+    asset_hash: str = Field(..., description="SHA-256 hash of the original, *unmodified* asset.")
+    timestamp: str = Field(..., description="The ISO 8601 timestamp of creation/signing.")
+    issuer: str = Field(..., description="The identifier of the signing entity (e.g., 'Chimera-Intel Platform').")
+    consent_artifact_id: Optional[str] = Field(None, description="The receipt_id of the linked ConsentRecord (from media_governance).")
+    
+    # JSON-LD context for interoperability
+    jsonld_context: str = Field("https://schema.org", alias="@context")
+    jsonld_type: str = Field("CreativeWork", alias="@type")
+    author: str = Field("Chimera-Intel", alias="author")
+
+class SignedProvenanceEnvelope(BaseModel):
+    """
+    The final payload that is embedded into the media file.
+    It wraps the manifest and its cryptographic proof.
+    """
+    manifest: ProvenanceManifest
+    signature: str = Field(..., description="Base64-encoded signature of the canonicalized manifest JSON.")
+    tsa_token_b64: Optional[str] = Field(None, description="Base64-encoded RFC3161 timestamp token for the manifest.")
+
+class VerificationResult(BaseResult):
+    """
+    The result of a verification check.
+    This is the public-facing response.
+    """
+    is_valid: bool = Field(default=False, description="True if all cryptographic checks passed.")
+    verified_manifest: Optional[ProvenanceManifest] = Field(None, description="The verified manifest, if validation was successful.")
+    verification_log: List[str] = Field(default_factory=list, description="A step-by-step log of verification checks.")
+
+class FieldReportIntake(BaseModel):
+    """
+Pydantic model for structured report intake.
+(Implements: HUMINT Intake Form MVP)
+"""
+    report_type: str = Field(..., example="Interview")
+    content: str
+    entities_mentioned: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+class AllowedUseCase(str, enum.Enum):
+    MARKETING = "marketing_assets_with_consent"
+    SYNTHETIC_SPOKESPERSON = "synthetic_spokesperson_stock"
+    FILM_ADVERTISING = "film_advertising_with_rights"
+    ANONYMIZATION = "anonymization_for_privacy"
+    ML_AUGMENTATION = "ml_data_augmentation"
+
+class GenerationType(str, enum.Enum):
+    FULLY_SYNTHETIC_FACE = "fully_synthetic_face"
+    FACE_REENACTMENT = "face_reenactment"
+    VOICE_CLONE = "voice_clone"
+
+class DisallowedUseCaseError(ValueError):
+    """Custom exception for failed policy checks."""
+    pass
+
+class RiskLevel(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+class SubjectSensitivity(str, enum.Enum):
+    GENERAL_ADULT = "general_consenting_adult"
+    STOCK_PERSON = "stock_synthetic_person"
+    PUBLIC_OFFICIAL = "public_official_sensitive_role"
+    MINOR = "minor"
+    VULNERABLE_PERSON = "known_victim_of_crime"
+    SANCTIONED_PERSON = "sanctioned_person"
+
+class SubjectProfile(BaseModel):
+    """A profile for a subject to check against policies."""
+    subject_id: str = Field(..., description="Unique ID for the subject, e.g., 'sub-1a2b3c'")
+    display_name: str = Field(..., description="The name of the subject used for lookups.")
+    sensitivity: SubjectSensitivity = SubjectSensitivity.GENERAL_ADULT
+    notes: Optional[str] = None
+
+
+class GenerationType(str, enum.Enum):
+    """Specifies the type of synthetic media to generate."""
+    FULLY_SYNTHETIC_FACE = "fully_synthetic_face"
+    FACE_REENACTMENT = "face_reenactment"
+    VOICE_CLONE = "voice_clone"
+
+class AllowedUseCase(str, enum.Enum):
+    """Enumerates the allowed use cases for generation."""
+    MARKETING = "marketing_assets_with_consent"
+    SYNTHETIC_SPOKESPERSON = "synthetic_spokesperson_stock"
+    FILM_ADVERTISING = "film_advertising_with_rights"
+    ANONYMIZATION = "anonymization_for_privacy"
+    ML_AUGMENTATION = "ml_data_augmentation"
+
+class RequestStatus(str, enum.Enum):
+    """Tracks the status of a generation request."""
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    GENERATING = "generating"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class ConsentArtifact(BaseModel):
+    """Represents a verified consent document."""
+    consent_id: str = Field(default_factory=lambda: f"consent-{uuid.uuid4()}")
+    subject_name: str
+    document_vault_id: str 
+    identity_verified: bool = False
+    voice_consent_phrase: Optional[str] = Field(None, description="A specific phrase to be spoken in consent audio for verification.")
+    source_audio_vault_id: Optional[str] = Field(None, description="Vault ID of the audio used for consent verification and cloning.")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SyntheticMediaRequest(BaseModel):
+    """A request to generate synthetic media, pending approval."""
+    request_id: str = Field(default_factory=lambda: f"synreq-{uuid.uuid4()}")
+    operator_id: str
+    use_case: AllowedUseCase
+    generation_type: GenerationType
+    consent_id: str 
+    generation_prompt: Optional[str] = None 
+    target_text: Optional[str] = None       
+    source_media_vault_id: Optional[str] = None 
+    driving_media_vault_id: Optional[str] = None
+    status: RequestStatus = RequestStatus.PENDING_APPROVAL
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    approver_id: Optional[str] = None
+    approved_at: Optional[datetime] = None
+
+class ProvenanceMetadata(BaseModel):
+    """Signed metadata to be embedded in the generated asset."""
+    iss: str = "Chimera-Intel-Platform"
+    iat: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    request_id: str
+    asset_id: str
+    model_version: str
+    generation_type: GenerationType
+    generation_params: Dict[str, Any]
+    consent_id: str
+    operator_id: str
+    usage_license: str
+
+class GeneratedAsset(BaseModel):
+    """Represents the final, generated asset."""
+    asset_id: str = Field(default_factory=lambda: f"synasset-{uuid.uuid4()}")
+    request_id: str
+    vault_file_path: str 
+    provenance_jwt: str 
+    detection_fingerprint: str 
+
+class VisualDiffResult(BaseModel):
+    target: str
+    module: str
+    previous_scan_image: str
+    latest_scan_image: str
+    diff_output_path: str
+    pixels_changed: int = 0
+
+class PsyintCampaignConfig(BaseModel):
+    """Configuration input for planning a PSYINT campaign."""
+
+    narrative_goal: str = Field(..., description="The ultimate objective of the narrative.")
+    base_narrative: str = Field(
+        ..., description="The core message to be tested and deployed."
+    )
+    target_audience_desc: str = Field(
+        ..., description="A description of the target audience for social_osint."
+    )
+    target_platforms: List[str] = Field(
+        ..., description="List of platforms for simulated deployment (e.g., 'twitter', 'forums')."
+    )
+
+
+class PsyintCampaignPlan(BaseModel):
+    """The generated plan, including A/B test variants and assets."""
+
+    config: PsyintCampaignConfig
+    narrative_variants: Dict[str, str] = Field(
+        ..., description="A/B test variations of the base narrative."
+    )
+    identified_audiences: List[str] = Field(
+        ..., description="Target audience segments identified by social_osint."
+    )
+    synthetic_assets: List[str] = Field(
+        ..., description="List of generated synthetic media assets (e.g., image URLs)."
+    )
+
+
+class CampaignExecutionResult(BaseModel):
+    """Result of the campaign execution (simulation)."""
+
+    status: str
+    message: str
+    monitoring_report: Optional[Dict[str, Any]] = None
+    review_request_id: Optional[str] = None
+
+class BLEDevice(BaseModel):
+    """Model for a discovered Bluetooth Low Energy (BLE) device."""
+    address: str = Field(..., description="The MAC address of the device.")
+    name: Optional[str] = Field(None, description="The advertised local name.")
+    rssi: int = Field(..., description="Received Signal Strength Indicator (RSSI).")
+    services: List[str] = Field(default_factory=list, description="List of advertised service UUIDs.")
+    manufacturer_data: Dict[str, str] = Field(default_factory=dict, description="Manufacturer-specific data (hex).")
+
+class WiFiDevice(BaseModel):
+    """Model for a discovered Wi-Fi device (AP or Client)."""
+    type: str = Field(..., description="Device type (AP or Client).")
+    bssid: str = Field(..., description="The BSSID (MAC address) of the device.")
+    ssid: Optional[str] = Field(None, description="The broadcasted SSID (for APs).")
+    rssi: Optional[int] = Field(None, description="Received Signal Strength (if available).")
+    security: Optional[str] = Field(None, description="Security protocol (for APs).")
+    probed_ssids: List[str] = Field(default_factory=list, description="SSIDs a client is probing for.")
+    
+class ProximityReport(BaseModel):
+    """Combined report of all proximty devices."""
+    ble_devices: List[BLEDevice]
+    wifi_devices: List[WiFiDevice]
+    ble_device_count: int
+    wifi_device_count: int
+
+class RFSignal(BaseModel):
+    """Model for a detected RF signal exceeding a threshold."""
+    frequency_mhz: float = Field(..., description="Center frequency of the signal.")
+    power_dbm: float = Field(..., description="Estimated power in dBm.")
+    details: str = Field(..., description="Details about the signal.")
+
+class RFScanReport(BaseModel):
+    """Report from an active SDR scan."""
+    scan_range_mhz: str = Field(..., description="The frequency range that was scanned.")
+    sample_rate_mhz: float
+    threshold_dbm: float
+    signals_found: int
+    signals: List[RFSignal]
+    error: Optional[str] = None
+
+class RemediationStep(BaseModel):
+    """A single, actionable step in a remediation plan."""
+    priority: int = Field(..., description="The order of execution (1 = first).")
+    description: str = Field(..., description="What to do.")
+    category: str = Field(
+        ...,
+        description="Type of action (e.g., 'Patch', 'Block', 'Monitor', 'Legal')."
+    )
+    reference: Optional[str] = Field(None, description="A URL or note for context.")
+
+class RemediationPlanResult(BaseModel):
+    """The complete remediation plan for a given threat."""
+    threat_type: str = Field(..., description="The class of threat (e.g., 'CVE').")
+    threat_identifier: str = Field(
+        ...,
+        description="The unique ID of the threat (e.g., 'CVE-2021-44228')."
+    )
+    summary: str = Field(
+        ...,
+        description="A high-level summary of the threat."
+    )
+    steps: List[RemediationStep] = Field(
+        default_factory=list,
+        description="A list of steps to mitigate the threat."
+    )
+    error: Optional[str] = Field(None, description="Error message if plan fails.")
+
+class SyntheticAbuseRecord(BaseModel):
+    """
+    Record for logging a takedown or abuse report against a generated asset.
+    """
+    report_id: str = Field(default_factory=lambda: f"abuse_{uuid.uuid4()}")
+    generated_asset_id: str = Field(..., description="The unique ID of the synthetic asset.")
+    reporter: str = Field(..., description="Identifier for the person/entity filing the report (e.g., user_email).")
+    reason: str = Field(..., description="Detailed reason for the abuse report.")
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    status: str = Field(default="PENDING_REVIEW", description="Takedown request status.")
+
+class GenerationRequest(BaseModel):
+    """
+    A request to generate a new synthetic media asset.
+    This object is checked against the policy.
+    """
+    subject_name: str = Field(..., description="Name of the person/subject, or 'stock_face'.")
+    subject_category: str = Field(..., description="Category of the subject (e.g., 'minor', 'consenting_adult_corporate').")
+    use_case: str = Field(..., description="Intended use case (e.g., 'internal_marketing', 'public_facing_marketing').")
+    requesting_operator: str = Field(..., description="The user ID of the operator making the request.")
+    consent_proof_id: Optional[str] = Field(None, description="Reference ID for the stored consent document, if applicable.")
+
+
+class PolicyCheckResult(BaseModel):
+    """
+    The result of a policy check on a GenerationRequest.
+    """
+    is_allowed: bool = Field(..., description="Whether this generation is allowed or blocked.")
+    is_blocked: bool = Field(..., description="Opposite of is_allowed, for clarity.")
+    reason: str = Field(..., description="The reason for the decision (e.g., 'BLOCKED: Subject is a minor').")
+    risk_level: str = Field("none", description="The assessed risk level (low, medium, high).")
+    approval_required: str = Field("none", description="The approval workflow required (e.g., 'single_operator', 'dual_approval').")
+    retention_policy_applies: bool = Field(False, description="Indicates that the standard retention policy applies.")
+    request_details: GenerationRequest
+
+class DiscoveryLink(BaseModel):
+    target_id: str
+    relation: str
+    evidence: str
+
+class DiscoveryRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    identifier: str
+    source: str
+    type: str
+    value: Any
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    links: List[DiscoveryLink] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    tags: Set[str] = Field(default_factory=set)
+
+class SystemHealthReport(BaseModel):
+    banner_displayed: bool = False
+    api_connections_alive: bool = False
+    api_quota_status: str = "unknown"
+    osint_modules_loaded: int = 0
+    database_connection: str = "disconnected"
+    cache_connection: str = "disconnected"
+    config_schema_version: str = "mismatch"
+    threads_running: int = 0
+    pii_detected: List[str] = Field(default_factory=list)
+    legal_compliance: str = "not_passed"
+    errors_in_last_run: List[str] = Field(default_factory=list)
+    healthy: bool = False
+    remediation_steps: List[str] = Field(default_factory=list)
+
+class FullAnalysisReport(BaseModel):
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+    graph_analytics: Dict[str, Any] = Field(default_factory=dict)
+    narrative_analysis: Dict[str, Any] = Field(default_factory=dict)
+    predictive_analysis: Dict[str, Any] = Field(default_factory=dict)
+    exposure_score: float = 0.0
+    pii_found: List[str] = Field(default_factory=list)
+    ai_summary: str = ""
+    run_statistics: Dict[str, Any] = Field(default_factory=dict)
+
+class EmbeddingResult(BaseModel):
+    """Result model for a single image embedding."""
+    file_path: str
+    embedding: List[float]
+
+class SearchMatch(BaseModel):
+    """A single search match from the vector index."""
+    match_path: str
+    distance: float
+
+class SearchResult(BaseModel):
+    """Result model for a vector search."""
+    query_path: str
+    matches: List[SearchMatch]
+
