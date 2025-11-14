@@ -11,10 +11,11 @@ import logging
 from datetime import datetime, timezone 
 from typing import Optional, List
 import json
-from .schemas import ProjectConfig, JudicialHoldResult 
+from .schemas import ProjectConfig, JudicialHoldResult, KeyLocation, PageMonitorConfig
 from .utils import console
 from .database import get_db_connection
 from .user_manager import get_active_user, get_user_from_db
+from .physical_osint import geocode_address 
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,24 @@ def list_projects() -> List[str]:
         logger.error(f"Failed to list projects from database: {e}")
     return projects
 
+def update_project_config(project_name: str, config: ProjectConfig) -> bool:
+    """Updates a project's configuration in the database."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE projects SET config = %s WHERE name = %s",
+            (config.model_dump_json(), project_name),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        logger.info(f"Successfully updated config for project '{project_name}'")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update project config for '{project_name}': {e}")
+        return False
+
 
 def get_project_config_by_name(project_name: str) -> Optional[ProjectConfig]:
     """Loads a specific project's configuration from the database."""
@@ -76,6 +95,8 @@ def create_project(
     domain: str,
     company_name: Optional[str],
     ticker: Optional[str],
+    competitors: Optional[List[str]],
+    locations: Optional[List[str]],
 ) -> bool:
     """Creates a new project in the database and assigns the creator as admin."""
     active_user = get_active_user()
@@ -84,12 +105,42 @@ def create_project(
             "[bold red]Error:[/bold red] You must be logged in to create a project."
         )
         return False
+        
+    # --- NEW: Parse and geocode locations ---
+    key_locations_list = []
+    if locations:
+        for loc_str in locations:
+            if ":" not in loc_str:
+                logger.warning(f"Invalid location format: '{loc_str}'. Skipping.")
+                continue
+            name, address = loc_str.split(":", 1)
+            coords = geocode_address(address)
+            if coords:
+                key_locations_list.append(
+                    KeyLocation(
+                        name=name.strip(), 
+                        address=address.strip(), 
+                        latitude=coords.get("latitude"),
+                        longitude=coords.get("longitude")
+                    )
+                )
+                logger.info(f"Geocoded location '{name}': {coords}")
+            else:
+                key_locations_list.append(
+                    KeyLocation(name=name.strip(), address=address.strip())
+                )
+                logger.warning(f"Could not geocode address for '{name}'.")
+    # ----------------------------------------
+
     project_data = ProjectConfig(
         project_name=project_name,
         created_at=datetime.now().isoformat(),
         domain=domain,
         company_name=company_name,
         ticker=ticker,
+        competitors=competitors or [],
+        key_locations=key_locations_list,
+        pages_to_monitor=[]
     )
 
     try:
@@ -341,9 +392,20 @@ def init_project_command(
     ticker: Optional[str] = typer.Option(
         None, "--ticker", help="The stock ticker of the target."
     ),
+    competitors: Optional[List[str]] = typer.Option(
+        None, 
+        "--competitor", "-c", 
+        help="A competitor company name. Can be used multiple times."
+    ),
+    locations: Optional[List[str]] = typer.Option(
+        None,
+        "--location",
+        "-l",
+        help="A key physical location. Format: 'Name:Address' (e.g., 'HQ:123 Main St, USA'). Can be used multiple times."
+    )
 ):
     """Initializes a new intelligence project."""
-    if create_project(project_name, domain, company_name, ticker):
+    if create_project(project_name, domain, company_name, ticker, competitors, locations):
         console.print(
             f"[bold green]Project '{project_name}' created successfully.[/bold green]"
         )
@@ -378,6 +440,24 @@ def status_command():
             console.print(f"  - Company Name: {active_project.company_name}")
         if active_project.ticker:
             console.print(f"  - Ticker: {active_project.ticker}")
+        
+        if active_project.competitors:
+            console.print("  - Competitors:")
+            for comp in active_project.competitors:
+                console.print(f"    - {comp}")
+        
+        if active_project.key_locations:
+            console.print("  - Key Locations:")
+            for loc in active_project.key_locations:
+                coords = f"({loc.latitude}, {loc.longitude})" if loc.latitude else "(Not Geocoded)"
+                console.print(f"    - {loc.name}: {loc.address} {coords}")
+        
+        if active_project.pages_to_monitor:
+            console.print("  - Monitored Pages (Watch Tower):")
+            for page in active_project.pages_to_monitor:
+                kw_str = f"(Keywords: {', '.join(page.keywords)})" if page.keywords else "(No Keywords)"
+                console.print(f"    - {page.url} {kw_str}")
+
     else:
         console.print("No active project. Use 'chimera project use <name>' to set one.")
 
@@ -402,7 +482,7 @@ def share_project_command(
         raise typer.Exit(code=1)
 
 
-@project_app.command("judicial-hold") # <-- ADDED
+@project_app.command("judicial-hold")
 def judicial_hold_command(
     project_name: str = typer.Argument(..., help="The name of the project to place on hold."),
     reason: str = typer.Option(
@@ -423,4 +503,60 @@ def judicial_hold_command(
         console.print(f"  - Snapshot: {result.snapshot_details}")
     else:
         console.print(f"[bold red]Error:[/bold red] Could not set judicial hold: {result.error}")
+        raise typer.Exit(code=1)
+
+@project_app.command("add-watch")
+def add_page_to_monitor(
+    url: str = typer.Option(
+        ...,
+        "--url",
+        "-u",
+        help="The full URL of the page to monitor (e.g., a competitor's 'Careers' or 'Product' page)."
+    ),
+    keywords: Optional[List[str]] = typer.Option(
+        None,
+        "--keyword",
+        "-k",
+        help="A specific keyword to alert on (e.g., 'Snowflake', 'GCP'). Can be used multiple times."
+    ),
+    project_name: Optional[str] = typer.Option(
+        None,
+        "--project",
+        "-p",
+        help="The project to add this watch to. Uses active project if not set."
+    )
+):
+    """
+    Adds a new web page to the 'OSINT Watch Tower' for monitoring.
+    
+    The Watch Tower daemon will periodically scan this page for any new
+    text that contains your specified keywords.
+    """
+    try:
+        active_project = get_active_project()
+        target_project_name = project_name or (active_project.project_name if active_project else None)
+
+        if not target_project_name:
+            console.print("[bold red]Error:[/bold red] No project specified and no active project set.")
+            raise typer.Exit(code=1)
+            
+        config = get_project_config_by_name(target_project_name)
+        if not config:
+            console.print(f"[bold red]Error:[/bold red] Project '{target_project_name}' not found.")
+            raise typer.Exit(code=1)
+
+        # Create and add the new monitor config
+        new_watch = PageMonitorConfig(url=url, keywords=keywords or [])
+        config.pages_to_monitor.append(new_watch)
+        
+        if update_project_config(target_project_name, config):
+            console.print(f"[bold green]Success![/bold green] Added watch for '{url}' to project '{target_project_name}'.")
+            if keywords:
+                console.print(f"  - Monitoring for keywords: {', '.join(keywords)}")
+        else:
+            console.print(f"[bold red]Error:[/bold red] Failed to save updated project configuration.")
+            raise typer.Exit(code=1)
+
+    except Exception as e:
+        console.print(f"An unexpected error occurred: {e}", err=True)
         raise typer.Exit(code=1)

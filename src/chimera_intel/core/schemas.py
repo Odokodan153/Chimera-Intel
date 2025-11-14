@@ -1597,6 +1597,12 @@ class CompetitiveAnalysisResult(BaseModel):
     analysis_text: str
     error: Optional[str] = None
 
+class KeyLocation(BaseModel):
+    """Represents a key physical location for monitoring."""
+    name: str = Field(..., description="A unique name for the location (e.g., 'R&D Lab', 'Factory').")
+    address: str = Field(..., description="The full physical address.")
+    latitude: Optional[float] = Field(None, description="Geocoded latitude.")
+    longitude: Optional[float] = Field(None, description="Geocoded longitude.")
 
 # --- Project Management & Daemon Models ---
 
@@ -1625,6 +1631,30 @@ class DaemonConfig(BaseModel):
         )
     ]
 
+class PageMonitorConfig(BaseModel):
+    """Defines a single page to be monitored by the Watch Tower."""
+    watch_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), 
+        description="A unique ID for this watch target."
+    )
+    url: str = Field(..., description="The exact URL to monitor.")
+    keywords: List[str] = Field(
+        default_factory=list, 
+        description="Keywords to alert on if they appear in new text."
+    )
+    monitor_for_new_links: bool = Field(
+        default=False, 
+        description="If true, alerts on any new external links found."
+    )
+
+class TextDiffResult(BaseModel):
+    """Model for the result of a page text comparison."""
+    watch_id: str
+    url: str
+    status: str = "unchanged" # "changed", "new", "error"
+    new_keyword_findings: List[str] = Field(default_factory=list)
+    new_links_found: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
 
 class ProjectConfig(BaseModel):
     """Model for validating a project's configuration file (project.yaml)."""
@@ -1638,6 +1668,21 @@ class ProjectConfig(BaseModel):
     ticker: Optional[str] = None
     key_personnel: List[str] = []
     known_ips: List[str] = []
+
+    competitors: List[str] = Field(
+        default_factory=list, 
+        description="A list of known competitor company names."
+    )
+
+    key_locations: List[KeyLocation] = Field(
+        default_factory=list,
+        description="A list of key physical locations to monitor."
+    )
+
+    pages_to_monitor: List["PageMonitorConfig"] = Field(
+        default_factory=list,
+        description="A list of web pages to monitor for text/keyword changes."
+    )
 
     # Daemon Configuration
     daemon_config: DaemonConfig = DaemonConfig()
@@ -6221,3 +6266,115 @@ class SearchResult(BaseModel):
     query_path: str
     matches: List[SearchMatch]
 
+class ConfigCCI(BaseModel):
+    """Configuration for the Counter-Counter-Intelligence (CCI) module."""
+    proxy_api_url: Optional[str] = Field(
+        None, 
+        description="URL for the rotating proxy management service (e.g., ScraperAPI, BrightData)."
+    )
+    proxy_api_key_name: str = Field(
+        "SCRAPERAPI_API_KEY",
+        description="The alias/name of the API key in ApiKeys (e.g., 'SCRAPERAPI_API_KEY')."
+    )
+    chaff_domain_source: str = Field(
+        "https://majestic.com/static/majestic_million.csv",
+        description="URL to a list of plausible domains for generating 'chaff' traffic."
+    )
+    self_monitor_assets: List[str] = Field(
+        default_factory=list,
+        description="List of platform IPs, project codenames, and analyst aliases to monitor for."
+    )
+    user_agent_pool: List[str] = Field(
+        default_factory=lambda: [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        ],
+        description="A pool of user-agents to rotate through for masking."
+    )
+
+class ModulesConfig(BaseModel):
+    footprint: FootprintModuleConfig = Field(default_factory=FootprintModuleConfig)
+    web_analyzer: WebAnalyzerModuleConfig = Field(
+        default_factory=WebAnalyzerModuleConfig
+    )
+    dark_web: DarkWebModuleConfig = Field(default_factory=DarkWebModuleConfig)
+    marint: MarintModuleConfig = Field(default_factory=MarintModuleConfig)
+    negotiation: NegotiationModuleConfig = Field(
+        default_factory=NegotiationModuleConfig
+    )
+    cci: ConfigCCI = Field(default_factory=ConfigCCI)
+
+class _GitHubRepo(BaseModel):
+    """Internal model for a nested GitHub repository object."""
+    full_name: str
+    html_url: str
+    private: bool
+    
+    class Config:
+        extra = "ignore"
+
+class GitHubLeakItem(BaseModel):
+    """Model for a single code leak item found on GitHub."""
+    html_url: str = Field(..., description="The direct URL to the file in the repository.")
+    repository: _GitHubRepo = Field(..., description="The repository this leak was found in.")
+
+    class Config:
+        extra = "ignore"
+
+class GitHubLeaksResult(BaseModel):
+    """Model for the result of a GitHub code leak search."""
+    total_count: Optional[int] = None
+    items: Optional[List[GitHubLeakItem]] = None
+    error: Optional[str] = None
+
+
+class GitLabLeakItem(BaseModel):
+    """Model for a single code leak item found on GitLab."""
+    web_url: str = Field(..., description="The direct URL to the file in the repository.")
+    project_path: str = Field(..., description="The path of the project, e.g., 'group/subgroup/project'.")
+    
+    class Config:
+        extra = "ignore"
+
+class GitLabLeaksResult(BaseModel):
+    """Model for the result of a GitLab code leak search."""
+    total_count: int = 0
+    items: List[GitLabLeakItem] = []
+    error: Optional[str] = None
+
+class DiscoveredPartner(BaseModel):
+    """Model for a single discovered business partner."""
+    partner_name: str = Field(..., description="The name of the partner company.")
+    source_type: str = Field(..., description="How the partner was discovered (e.g., 'Partner Page', 'News Article').")
+    source_url: str = Field(..., description="The URL of the page or article where the partner was found.")
+    confidence: str = Field("Medium", description="Confidence in the finding (High, Medium, Low).")
+
+class EcosystemResult(BaseModel):
+    """The main, top-level result model for an ecosystem intelligence scan."""
+    competitor_name: str
+    new_partners_found: List[DiscoveredPartner] = []
+    total_partners_in_graph: int = 0
+    error: Optional[str] = None
+
+class KeyOpinionLeader(BaseModel):
+    """Model for a single, ranked Key Opinion Leader."""
+    rank: int
+    name: str
+    description: str = Field(
+        ..., 
+        description="A brief summary of why this person is influential."
+    )
+
+class KOLAnalysisResult(BaseModel):
+    """The main, top-level result model for a KOL analysis scan."""
+    industry_query: str
+    total_kols_found: int = 0
+    kols: List[KeyOpinionLeader] = Field(default_factory=list)
+    source_urls_analyzed: List[str] = Field(
+        default_factory=list,
+        description="List of article URLs used for the analysis."
+    )
+    error: Optional[str] = None

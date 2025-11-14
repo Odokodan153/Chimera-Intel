@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_narrative_tracker"
+version = "0.1.0"
+description = "A Chimera Intel plugin for tracking competitor content and narrative themes."
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = { text = "Proprietary" }
+requires-python = ">=3.10"
+dependencies = [
+    # Add any specific new dependencies here, e.g.
+    # "beautifulsoup4"
+    # "scikit-learn"
+]
+
+[project.entry-points."chimera.plugins"]
+# This line registers the plugin with the main application
+chimera_narrative_tracker = "chimera_narrative_tracker.main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

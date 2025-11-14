@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_kol_analyzer"
+version = "0.1.0"
+description = "A plugin for identifying Key Opinion Leaders (KOLs)."
+readme = "README.md"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    # Assumes 'chimera_intel' is installed in the environment
+]
+
+[project.entry-points."chimera_intel.plugins"]
+kol_analyzer = "chimera_kol_analyzer.main:create_plugin"

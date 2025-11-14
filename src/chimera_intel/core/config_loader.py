@@ -97,6 +97,8 @@ class ApiKeys(BaseSettings):
     cicd_webhook_url: Optional[str] = Field(None, alias="CICD_WEBHOOK_URL")
     cicd_auth_token: Optional[str] = Field(None, alias="CICD_AUTH_TOKEN")
 
+    scraperapi_api_key: Optional[str] = Field(None, alias="SCRAPERAPI_API_KEY")
+
     # Notification Keys
 
     slack_webhook_url: Optional[str] = Field(None, alias="SLACK_WEBHOOK_URL")

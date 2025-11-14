@@ -27,11 +27,18 @@ from .schemas import (
     LobbyingActivity
 )
 from .utils import save_or_print_results
-from .database import save_scan_to_db, get_scan_from_db, update_scan_in_db
+from .database import ( # <-- MODIFIED
+    save_scan_to_db, 
+    get_scan_from_db, 
+    update_scan_in_db,
+    get_db_connection
+)
 from .config_loader import API_KEYS
 from .http_client import sync_client
-from .project_manager import resolve_target
+from .project_manager import resolve_target, list_projects, get_project_config_by_name # <-- ADDED
 from .google_search import search_google 
+from .alert_manager import alert_manager_instance, AlertLevel # <-- ADDED
+from .scheduler import add_job # <-- ADDED
 
 logger = logging.getLogger(__name__)
 
@@ -445,6 +452,166 @@ def get_ubo_data(company_name: str) -> UboResult:
         )
 
 
+# --- NEW: Legal Activity Monitoring ---
+
+def _analyze_docket_role(case_name: str, entity_name: str) -> Optional[str]:
+    """
+    Analyzes a court case name to determine the role of the entity (Plaintiff or Defendant).
+    """
+    entity_name_lower = entity_name.lower()
+    case_name_lower = case_name.lower()
+
+    # Regex to find "v." or "versus" with entity as defendant
+    # Needs word boundaries to avoid matching "EvilCorp" in "EvilCorpTest"
+    if re.search(rf"(v\.|versus)\s+\b{re.escape(entity_name_lower)}\b", case_name_lower):
+        return "Defendant"
+    
+    # Regex to find entity as plaintiff
+    if re.search(rf"\b{re.escape(entity_name_lower)}\b\s+(v\.|versus)", case_name_lower):
+        return "Plaintiff"
+    
+    # Fallback if name is just in the case
+    if entity_name_lower in case_name_lower:
+        return "Party (Role Unclear)"
+    
+    return None
+
+def monitor_legal_activity(project_name: str):
+    """
+    Daemon-callable function to monitor legal activity for a single project's
+    competitors and key personnel.
+    """
+    logger.info(f"Running legal activity monitor for project: {project_name}")
+    
+    config = get_project_config_by_name(project_name)
+    if not config:
+        logger.error(f"Could not load project config for '{project_name}'. Skipping.")
+        return
+
+    # 1. Build dictionary of targets to monitor
+    targets_to_monitor: Dict[str, str] = {} # { "entity_name": "entity_type" }
+    for comp in config.competitors:
+        targets_to_monitor[comp] = "Competitor"
+    for person in config.key_personnel:
+        targets_to_monitor[person] = "Key Personnel"
+
+    if not targets_to_monitor:
+        logger.info(f"No competitors or key personnel to monitor for '{project_name}'.")
+        return
+
+    # 2. Get docket numbers from the last successful run
+    seen_dockets = set()
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            # Find the most recent 'legint_monitor' scan for this project
+            cursor.execute(
+                """
+                SELECT result FROM scan_results
+                WHERE project_name = %s AND module = %s
+                ORDER BY timestamp DESC
+                LIMIT 1
+                """,
+                (project_name, "legint_monitor")
+            )
+            record = cursor.fetchone()
+            if record:
+                last_run_data = json.loads(record[0])
+                seen_dockets = set(last_run_data.get("all_found_dockets", []))
+                logger.info(f"Loaded {len(seen_dockets)} seen dockets from last run.")
+                
+    except Exception as e:
+        logger.error(f"Failed to get last scan results from DB for '{project_name}': {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    # 3. Loop through targets, search for dockets, and dispatch alerts
+    new_dockets_found = []
+    all_dockets_this_run = []
+    
+    for entity_name, entity_type in targets_to_monitor.items():
+        logger.debug(f"Searching dockets for {entity_type}: {entity_name}")
+        docket_result = search_court_dockets(entity_name)
+        
+        if docket_result.error or not docket_result.records:
+            continue
+            
+        for record in docket_result.records:
+            all_dockets_this_run.append(record.docket_number)
+            
+            # This is the core logic: check if it's new
+            if record.docket_number not in seen_dockets:
+                role = _analyze_docket_role(record.case_name, entity_name)
+                if not role:
+                    continue # Ignore if the name match is ambiguous
+
+                logger.warning(
+                    f"New legal docket found for {entity_type} '{entity_name}': {record.case_name}"
+                )
+                
+                # Dispatch an alert
+                alert_title = f"New Legal Activity: {entity_type}"
+                alert_message = (
+                    f"New lawsuit found for {entity_type} '{entity_name}'.\n"
+                    f"Role: {role}\n"
+                    f"Case: {record.case_name}\n"
+                    f"Court: {record.court}\n"
+                    f"URL: {record.docket_url}"
+                )
+                alert_manager_instance.dispatch_alert(
+                    title=alert_title,
+                    message=alert_message,
+                    level=AlertLevel.WARNING,
+                    provenance={"module": "legint_monitor", "project": project_name, "target": entity_name}
+                )
+                new_dockets_found.append(record.model_dump(by_alias=True))
+
+    # 4. Save this run's results to the database for next time
+    if new_dockets_found:
+        logger.info(f"Found {len(new_dockets_found)} total new dockets for '{project_name}'.")
+        report = {
+            "new_findings": new_dockets_found,
+            "all_found_dockets": list(set(all_dockets_this_run)) # Deduplicate
+        }
+        save_scan_to_db(
+            target=project_name, 
+            module="legint_monitor", 
+            data=report
+        )
+    else:
+        logger.info(f"No new legal activity found for project: {project_name}")
+
+
+def run_all_project_legal_monitors():
+    """
+    Wrapper function for the scheduler.
+    Iterates through all projects and runs the legal monitor for each.
+    """
+    logger.info("DAEMON: Starting scheduled run for legal activity monitor...")
+    try:
+        project_names = list_projects()
+        if not project_names:
+            logger.info("DAEMON: No projects found to monitor.")
+            return
+
+        logger.info(f"DAEMON: Found {len(project_names)} projects to monitor.")
+        for project_name in project_names:
+            try:
+                monitor_legal_activity(project_name)
+            except Exception as e:
+                logger.error(
+                    f"DAEMON: Unhandled error while monitoring project '{project_name}': {e}",
+                    exc_info=True
+                )
+        logger.info("DAEMON: Finished scheduled run for legal activity monitor.")
+    except Exception as e:
+        logger.error(
+            f"DAEMON: Critical error during job startup (e.g., DB connection): {e}",
+            exc_info=True
+        )
+
 # --- Typer CLI Application ---
 
 legint_app = typer.Typer(help="Legal Intelligence (LEGINT) tools for compliance, sanctions, and litigation.")
@@ -678,4 +845,37 @@ def run_compliance_check(
 
     except Exception as e:
         typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+
+# --- NEW CLI COMMAND FOR SCHEDULING ---
+@legint_app.command("monitor-schedule-add")
+def schedule_legal_monitor(
+    schedule: str = typer.Option(
+        "0 9 * * 1-5", # 9 AM on Weekdays
+        "--schedule",
+        "-s",
+        help="Cron schedule (e.g., '0 9 * * 1-5' for 9 AM on weekdays)."
+    ),
+):
+    """(New) Schedules the legal monitor to run periodically.
+    
+    This job will iterate through all projects, find their defined
+    competitors and key personnel, and alert on new court dockets.
+    """
+    try:
+        job_id = "global_legal_monitor"
+        add_job(
+            func=run_all_project_legal_monitors,
+            trigger="cron",
+            cron_schedule=schedule,
+            job_id=job_id,
+            kwargs={},
+        )
+        typer.echo(
+            f"[bold green]Successfully scheduled legal monitor job '{job_id}' "
+            f"with schedule: '{schedule}'[/bold green]"
+        )
+        typer.echo("The daemon will now run this check automatically.")
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred while scheduling: {e}", err=True)
         raise typer.Exit(code=1)

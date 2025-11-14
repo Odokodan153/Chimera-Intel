@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from httpx import Response, RequestError
 import re
+import json # <-- ADDED
 
 from chimera_intel.core.legint import (
     search_court_dockets,
@@ -10,16 +11,20 @@ from chimera_intel.core.legint import (
     check_export_controls,
     search_lobbying_data,
     legint_app,
-    screen_for_sanctions, # Added imports for patched functions
-    get_ubo_data
+    screen_for_sanctions, 
+    get_ubo_data,
+    monitor_legal_activity, # <-- ADDED
+    _analyze_docket_role # <-- ADDED
 )
 from chimera_intel.core.schemas import (
     DocketSearchResult,
     ArbitrationSearchResult,
     ExportControlResult,
     LobbyingSearchResult,
-    SanctionsScreeningResult, # Added imports for schemas
-    UboResult
+    SanctionsScreeningResult, 
+    UboResult,
+    ProjectConfig, # <-- ADDED
+    CourtRecord # <-- ADDED
 )
 
 runner = CliRunner()
@@ -302,6 +307,174 @@ class TestLegint(unittest.TestCase):
         mock_export_check.assert_called_with("TestCorp")
         mock_get_ubo.assert_called_with("TestCorp")
         mock_save_db.assert_called()
+
+
+# --- NEW TEST CLASS FOR MONITORING ---
+
+class TestLegintMonitoring(unittest.TestCase):
+    """Test cases for the new legal activity monitoring."""
+
+    def test_analyze_docket_role(self):
+        """Tests the helper function for parsing plaintiff/defendant roles."""
+        # Defendant
+        self.assertEqual(
+            _analyze_docket_role("USA v. EvilCorp", "EvilCorp"), 
+            "Defendant"
+        )
+        self.assertEqual(
+            _analyze_docket_role("Some, Inc. versus evilcorp LLC", "EvilCorp"), 
+            "Defendant"
+        )
+        # Plaintiff
+        self.assertEqual(
+            _analyze_docket_role("EvilCorp v. GoodGuys", "EvilCorp"), 
+            "Plaintiff"
+        )
+        self.assertEqual(
+            _analyze_docket_role("evilcorp versus The World", "EvilCorp"), 
+            "Plaintiff"
+        )
+        # Party (Unclear)
+        self.assertEqual(
+            _analyze_docket_role("The Matter of EvilCorp", "EvilCorp"), 
+            "Party (Role Unclear)"
+        )
+        # No Match
+        self.assertIsNone(_analyze_docket_role("USA v. AnotherBadGuy", "EvilCorp"))
+
+    @patch("chimera_intel.core.legint.get_project_config_by_name")
+    @patch("chimera_intel.core.legint.get_db_connection")
+    @patch("chimera_intel.core.legint.search_court_dockets")
+    @patch("chimera_intel.core.legint.alert_manager_instance.dispatch_alert")
+    @patch("chimera_intel.core.legint.save_scan_to_db")
+    def test_monitor_legal_activity_new_dockets(
+        self, mock_save_db, mock_dispatch_alert, mock_search_dockets, mock_get_conn, mock_get_config
+    ):
+        """Tests that new dockets for competitors and personnel trigger alerts."""
+        # Arrange
+        project_name = "TestProject"
+        mock_get_config.return_value = ProjectConfig(
+            project_name=project_name, 
+            created_at="...",
+            competitors=["EvilCorp"],
+            key_personnel=["John Doe"]
+        )
+        
+        # Mock database connection to return no previous scans
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = None # No previous run
+        mock_conn.cursor.return_value = __enter__=MagicMock(return_value=mock_cursor)
+        mock_get_conn.return_value = mock_conn
+
+        # Mock CourtRecord results
+        docket_comp = CourtRecord(
+            caseName="GoodGuys v. EvilCorp", 
+            dateFiled="2023-01-01", 
+            court="Test Court", 
+            absolute_url="/docket/123/", 
+            docketNumber="123-ABC"
+        )
+        docket_person = CourtRecord(
+            caseName="State versus John Doe", 
+            dateFiled="2023-01-02", 
+            court="Test Court 2", 
+            absolute_url="/docket/456/", 
+            docketNumber="456-DEF"
+        )
+
+        # Mock the return values for search_court_dockets
+        mock_search_dockets.side_effect = [
+            # First call for "EvilCorp"
+            DocketSearchResult(query="EvilCorp", total_found=1, records=[docket_comp]),
+            # Second call for "John Doe"
+            DocketSearchResult(query="John Doe", total_found=1, records=[docket_person])
+        ]
+        
+        # Act
+        monitor_legal_activity(project_name)
+
+        # Assert
+        # 1. Check that alerts were dispatched
+        self.assertEqual(mock_dispatch_alert.call_count, 2)
+        
+        # Check competitor alert
+        mock_dispatch_alert.assert_any_call(
+            title="New Legal Activity: Competitor",
+            message=unittest.mock.ANY, # Check message content
+            level="WARNING",
+            provenance={'module': 'legint_monitor', 'project': 'TestProject', 'target': 'EvilCorp'}
+        )
+        alert_msg_comp = mock_dispatch_alert.call_args_list[0][1]['message']
+        self.assertIn("Role: Defendant", alert_msg_comp)
+        self.assertIn("GoodGuys v. EvilCorp", alert_msg_comp)
+
+        # Check personnel alert
+        mock_dispatch_alert.assert_any_call(
+            title="New Legal Activity: Key Personnel",
+            message=unittest.mock.ANY, # Check message content
+            level="WARNING",
+            provenance={'module': 'legint_monitor', 'project': 'TestProject', 'target': 'John Doe'}
+        )
+        alert_msg_person = mock_dispatch_alert.call_args_list[1][1]['message']
+        self.assertIn("Role: Defendant", alert_msg_person)
+        self.assertIn("State versus John Doe", alert_msg_person)
+
+        # 2. Check that the new run was saved to the DB
+        mock_save_db.assert_called_once()
+        saved_data = mock_save_db.call_args[1]['data']
+        self.assertEqual(len(saved_data['new_findings']), 2)
+        self.assertIn("123-ABC", saved_data['all_found_dockets'])
+        self.assertIn("456-DEF", saved_data['all_found_dockets'])
+
+    @patch("chimera_intel.core.legint.get_project_config_by_name")
+    @patch("chimera_intel.core.legint.get_db_connection")
+    @patch("chimera_intel.core.legint.search_court_dockets")
+    @patch("chimera_intel.core.legint.alert_manager_instance.dispatch_alert")
+    @patch("chimera_intel.core.legint.save_scan_to_db")
+    def test_monitor_legal_activity_no_new_dockets(
+        self, mock_save_db, mock_dispatch_alert, mock_search_dockets, mock_get_conn, mock_get_config
+    ):
+        """Tests that previously seen dockets do not trigger alerts."""
+        # Arrange
+        project_name = "TestProject"
+        mock_get_config.return_value = ProjectConfig(
+            project_name=project_name, 
+            created_at="...",
+            competitors=["EvilCorp"],
+            key_personnel=[] # Simplify to one target
+        )
+        
+        # Mock database connection to return a *previous* scan
+        seen_docket_id = "123-ABC"
+        last_run_data = json.dumps({"all_found_dockets": [seen_docket_id]})
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (last_run_data,) # Return previous run
+        mock_conn.cursor.return_value = __enter__=MagicMock(return_value=mock_cursor)
+        mock_get_conn.return_value = mock_conn
+
+        # Mock CourtRecord result (the same one that was seen)
+        docket_comp = CourtRecord(
+            caseName="GoodGuys v. EvilCorp", 
+            dateFiled="2023-01-01", 
+            court="Test Court", 
+            absolute_url="/docket/123/", 
+            docketNumber=seen_docket_id
+        )
+        mock_search_dockets.return_value = DocketSearchResult(
+            query="EvilCorp", total_found=1, records=[docket_comp]
+        )
+        
+        # Act
+        monitor_legal_activity(project_name)
+
+        # Assert
+        # 1. No alerts should be dispatched
+        mock_dispatch_alert.assert_not_called()
+        
+        # 2. No new data should be saved
+        mock_save_db.assert_not_called()
 
 
 if __name__ == "__main__":

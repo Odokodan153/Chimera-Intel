@@ -90,19 +90,21 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Climate**  | report             | Generates a strategic report on climate-driven geopolitical and supply chain risks for a specific country and resource. |
 | **Cft** | track-laundering, track-trade, scan-markets | Covert financial tracking toolkit. |
 | **Cloud-osint** | run | Searches for exposed cloud storage assets (S3, Azure, GCP). |
-| **Code-intel** | analyze-repo | Analyzes a public Git repository for committer and activity intelligence. |
+| **Code Intel** | github-search, gitlab-search, analyze-repo, analyze-repo-leaks | Searches and analyzes code repositories on GitHub and GitLab, including detecting leaks and evaluating committer and activity intelligence. |
 | **Cognitive-mapping** | run | Builds a cognitive map from public communications of a key individual. |
 | **Cognitive-warfare** | deploy-shield, run_scenario | Analyzes narratives, identifies psychological exploits, and runs HUMINT scenarios. |
 | **Competitive-analyzer** | run | Generates an AI-powered competitive analysis between two targets. |
 | **Comint**    | process-pcap       | Analyzes a PCAP file for communications intelligence (text, audio) and correlates entities to the graph. |
 
 | **Compint** | analyze, attribution, brand-audit, counter-disinfo, secure-evidence | Competitive image intelligence for products, ads, and brand safety. |
+| **Competitor Monitoring** | monitor-schedule-add, run-once | Schedules recurring or one-time monitoring of competitors for data leaks across GitHub, pastebins, and dark web sources. |
 | **Complexity-analyzer** | run | Maps system interdependencies and predicts cascading failure points. |
 | **Corporate-intel** | leadership-profiler, hr-intel, supplychain, ip-deep, regulatory, sec-filings | Gathers deep corporate intelligence (HR, supply chain, IP, SEC filings). |
 | **Corporate-records** | registry, sanctions, pep | Searches company registries, sanctions lists, and PEP lists. |
 | **Counter-intel** | infra-check, insider-score, media-track, domain-watch, honey-deploy, legal-template | Defensive counter-intelligence including insider threats and media tracking. |
 | **Covert** | run | Manages AI-driven autonomous investigation agents. |
 | **Covert-ops** | find-hidden-content, check-takeover | Covert digital ops: API enumeration and subdomain takeover checks. |
+| **CCI** | generate-chaff, self-monitor | Generates masking chaff traffic around real operations and performs self‑monitoring for mentions of internal assets and aliases. |
 | **Cpint** | analyze | Integrated Cyber-Physical Systems intelligence and cascade analysis. |
 | **Creative-workflow** | export-psd | Manages master templates and exports signed derivatives. |
 | **Credibility** | assess | Assesses the credibility of a web source. |
@@ -115,6 +117,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Cytech-intel** | emerging-tech, malware-sandbox, vuln-hunter | Cyber & technology intelligence for emerging tech and malware. |
 | **Daemon** | start, stop, status | Starts, stops, and checks the status of the Chimera Intel background daemon. |
 | **Dark-web** | search | Searches for a query on the dark web via a selected search engine. |
+| **Dashboard** | export | Exports the aggregated JSON data used to build the BI dashboard for a specified target. |
 | **Deception** | deploy-honeypot | Active defense through deception and honeypot operations. |
 | **Deception-detector** | run | Detects corporate mimicry and hidden networks via asset correlation. |
 | **Deep-research** | run | Fuses all-source OSINT into a strategic AI-powered intelligence report. |
@@ -158,9 +161,11 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Internal** | analyze-log, static-analysis, parse-mft, extract-artifacts | Internal analysis, incident response, and forensics tools. |
 | **Inta** | correlate-proxies, score-leads | Internal analytics simulation tools for lead scoring. |
 | **Influence** | track | Influence and information operations tracking. |
+| **Key-Personnel** | track | Tracks a defined list of key personnel (loaded from a JSON file) for strategic movements and updates. |
+| **Kol** | `run [INDUSTRY]` | Identifies and ranks Key Opinion Leaders (KOLs) for a specific industry. |
 | **Leadership-profiler** | run | Deep-dive OSINT/HUMINT on key executives. |
 | **Lead-suggester** | run | Analyzes the active project and suggests next investigative steps. |
-| **Legint** | docket-search, arbitration-search, sanctions-screener, lobbying-search, compliance-check | Legal intelligence tools for compliance and litigation. |
+| **Legint** | docket-search, arbitration-search, sanctions-screener, lobbying-search, compliance-check, monitor-schedule-add | Legal intelligence tools for compliance and litigation; Schedules a recurring daemon job to monitor legal activity for project competitors and key personnel. |
 | **Malware-sandbox** | analyze | Retrieves a malware sandbox analysis report for a file hash. |
 | **Marint** | track-vessel | Maritime & shipping intelligence for live AIS vessel tracking. |
 | **Market-demand** | tam, trends, categories | Market & demand intelligence (TAM/SAM/SOM, trends, clustering). |
@@ -175,6 +180,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Multimodal-reasoning** | run | Processes and reasons across different data types simultaneously. |
 | **Multi-domain** | correlate | Multi-domain correlation and fusion tools (SIGINT+HUMINT+FININT). |
 | **Narrative** | track, map | Tracks evolution and spread of narratives across news and social media. |
+| **Narrative tracker** | analyze-themes | Analyzes competitor content themes across blogs, news, and other public sources. |
 | **Negotiation** | add-counterparty, add-market-indicator, train-rl, simulate-llm | Tools for AI-assisted negotiation and training. |
 | **Network-scanner** | run | Performs a non-intrusive network scan for open ports and service banners. |
 | **Offensive** | api-discover, enum-content, cloud-takeover, wifi-attack-surface, (callback) | Advanced offensive and reconnaissance operations. |
@@ -187,6 +193,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Page-monitor** | add | Continuous web page monitoring for change detection. |
 | **Personnel-osint** | emails, enrich | Gathers public employee emails and enriches with profiles. |
 | **Pestel-analyzer** | run | Generates a PESTEL analysis from aggregated data for a target. |
+| **Phys-Mon** | monitor-schedule-add, run-once | Schedules a recurring job to analyze analyst-provided imagery for physical changes at key locations; can also run the monitor once for a specific project and location. |
 | **Physical-osint** | locations, map-facility | Gathers and analyzes physical infrastructure information. |
 | **Psyint** | plan, execute | (LOW-RISK) Plans an active PSYINT campaign, generating narrative variants, audience lists, and synthetic assets; (HIGH-RISK) Executes a planned PSYINT campaign (simulation), subject to full `action_governance` and `human_review` checks. |
 | **Pipeline** | ingest | Data ingestion, storage, and indexing pipeline. |
@@ -197,7 +204,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Priceint** | add-monitor, detect-promos, check-elasticity | Pricing & promotion intelligence tools. |
 | **Privacy-impact-reporter** | run | Generates a privacy impact report by scanning documents for PII. |
 | **Profile-analyzer** | twitter | Analyzes a Twitter user's profile and recent tweets. |
-| **Project** | init, use, status, share, judicial-hold | Manages intelligence projects (create, load, set active, share, legal hold). |
+| **Project** | init, use, status, share, judicial-hold, add-watch | Manages intelligence projects (create, load, set active, share, legal hold).;Adds a new URL to the OSINT Watch Tower for text/keyword monitoring. |
 | **Project-report** | run | Generates an automated, comprehensive project report (PDF dossier). |
 | **Provenance** | generate-keys, embed, verify | Embed and verify signed, timestamped provenance in media. |
 | **Purple-team** | run-exercise, hunt-ttp, emulate-actor | Run advanced multi-stage Red/Blue/CTI exercises. |
@@ -244,6 +251,7 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 | **Vidint** | analyze | Video intelligence operations (frame extraction, motion/object detection). |
 | **Voc-intel** | run | Analyzes customer reviews for sentiment, topics, and insights. |
 | **Wargaming** | run-supply-chain | Massive scenario & wargaming engine to run 'what-if' scenarios. |
+| **Watch-Tower** | monitor-schedule-add, run-once | Schedules the Watch Tower daemon to periodically scan all monitored pages and allows a one-time run for a specified project. |
 | **Weak-signal-analyzer** | run | Amplifies weak signals from various scans using evidence theory. |
 | **Weathint** | get | Performs weather intelligence tasks. |
 | **Web-analyzer** | run | Analyzes web-specific data (tech stack, traffic, screenshots) for a domain. |

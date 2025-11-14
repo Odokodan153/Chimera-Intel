@@ -136,11 +136,123 @@ def get_logistics_route(origin_address: str, destination_address: str) -> Option
     except Exception as e:
         logger.error(f"Failed to calculate route between '{origin_address}' and '{destination_address}': {e}")
         return None
+    
+def geocode_address(address: str) -> Optional[Dict[str, float]]:
+    """
+    Converts a physical address string into latitude and longitude.
+    """
+    if googlemaps is None:
+        logger.warning("googlemaps library not installed, skipping geocoding.")
+        return None
+        
+    api_key = API_KEYS.google_maps_api_key
+    if not api_key:
+        logger.warning("google_maps_api_key not found in .env, skipping geocoding.")
+        return None
+
+    try:
+        gmaps = googlemaps.Client(key=api_key)
+        geocode_result = gmaps.geocode(address)
+        
+        if not geocode_result:
+            return None
+            
+        location = geocode_result[0]['geometry']['location'] # { 'lat': ..., 'lng': ... }
+        return {"latitude": location['lat'], "longitude": location['lng']}
+        
+    except Exception as e:
+        logger.error(f"Error during geocoding for '{address}': {e}")
+        return None
+# ------------------------------
+
+
+def search_physical_locations(
+    query: str, location_type: str = "corporate headquarters"
+) -> PhysicalSecurityResult:
+    """
+    Searches for physical locations related to a query using Google Maps API.
+    """
+    if googlemaps is None:
+        return PhysicalSecurityResult(
+            query=query, error="googlemaps library not installed."
+        )
+
+    api_key = API_KEYS.google_maps_api_key
+    if not api_key:
+        return PhysicalSecurityResult(
+            query=query, error="google_maps_api_key not found in .env file."
+        )
+
+    gmaps = googlemaps.Client(key=api_key)
+    full_query = f"{query} {location_type}"
+    logger.info(f"Searching Google Maps for: '{full_query}'")
+
+    try:
+        places_result = gmaps.places(query=full_query)
+        results = places_result.get("results", [])
+
+        locations = []
+        for place in results:
+            loc = place.get("geometry", {}).get("location", {})
+            locations.append(
+                PhysicalLocation(
+                    name=place.get("name"),
+                    address=place.get("formatted_address"),
+                    latitude=loc.get("lat"),
+                    longitude=loc.get("lng"),
+                    rating=place.get("rating"),
+                )
+            )
+
+        return PhysicalSecurityResult(query=query, locations_found=locations)
+    except Exception as e:
+        logger.error(f"Failed to get physical locations for {query}: {e}")
+        return PhysicalSecurityResult(
+            query=query, error=f"An API error occurred: {e}"
+        )
 
 # --- Typer CLI Application ---
 
 physical_osint_app = typer.Typer()
 
+@physical_osint_app.command("search")
+def run_physical_search(
+    query: Optional[str] = typer.Option(
+        None,
+        "--query",
+        "-q",
+        help="The entity to search for (e.FS., 'Tesla'). Uses active project if not provided.",
+    ),
+    location_type: str = typer.Option(
+        "headquarters",
+        "--type",
+        "-t",
+        help="The type of location to find (e.g., 'factory', 'data center').",
+    ),
+    output_file: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Save results to a JSON file."
+    ),
+):
+    """
+    Searches for physical locations like headquarters, factories, or data centers.
+    """
+    try:
+        target_name = resolve_target(query, required_assets=["company_name", "domain"])
+
+        results_model = search_physical_locations(target_name, location_type)
+        if results_model.error:
+            typer.echo(f"Error: {results_model.error}", err=True)
+            raise typer.Exit(code=1)
+
+        results_dict = results_model.model_dump(exclude_none=True, by_alias=True)
+        save_or_print_results(results_dict, output_file)
+        save_scan_to_db(
+            target=target_name, module="physical_osint_search", data=results_dict
+        )
+    except Exception as e:
+        typer.echo(f"An unexpected error occurred: {e}", err=True)
+        raise typer.Exit(code=1)
+    
 @physical_osint_app.command("locations")
 def run_location_search(
     target: Optional[str] = typer.Argument(

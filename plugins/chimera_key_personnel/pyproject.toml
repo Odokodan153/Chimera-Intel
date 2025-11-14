@@ -1,0 +1,22 @@
+# plugins/chimera_acint/pyproject.toml
+
+[tool.poetry]
+name = "chimera-acint"
+version = "0.1.0"
+description = "Acoustic Intelligence (ACINT) plugin for Chimera Intel"
+authors = [{ name = "Ignacio Iliev", email = "ignasioi72@gmail.com" }]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# This assumes the main project is installed in a way that plugins can find it
+chimera-intel = {path = "../../", develop = true} 
+typer = {version = "^0.9.0", extras = ["all"]}
+librosa = "^0.10.1"
+numpy = "^1.26.0"
+scipy = "^1.11.0"
+soundfile = "^0.12.1" # Required for testing
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
