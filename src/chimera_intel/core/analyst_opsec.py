@@ -1,4 +1,3 @@
-# Chimera-Intel/src/chimera_intel/core/analyst_opsec.py
 """
 Module for Analyst Operational Security (OPSEC).
 

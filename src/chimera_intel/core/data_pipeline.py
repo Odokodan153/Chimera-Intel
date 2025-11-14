@@ -27,9 +27,8 @@ variables or a central config (like .env). E.g.,
 import typer
 import os
 import logging
-import json
 import hashlib
-import pathlib  # <-- This was the missing import
+import pathlib  
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
 from celery import Celery
@@ -42,7 +41,6 @@ from botocore.exceptions import NoCredentialsError
 from elasticsearch import Elasticsearch
 import psycopg2
 from psycopg2.extras import Json
-
 from rich.console import Console
 from .utils import save_or_print_results
 

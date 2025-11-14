@@ -1,3 +1,11 @@
+"""
+Hacker News CLI Module
+
+This module provides a command-line interface (CLI) and helper class to fetch
+and display the latest top stories from Hacker News using the official
+Firebase Hacker News API.
+"""
+
 import typer
 import requests
 from rich.console import Console

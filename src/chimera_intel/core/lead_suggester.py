@@ -8,18 +8,14 @@ logical steps for an intelligence analyst to take.
 import typer
 import json
 import logging
-
-# import sys  <-- FIX: Removed sys import
-
 from rich.markdown import Markdown
-
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
 from chimera_intel.core.schemas import LeadSuggestionResult
 from chimera_intel.core.ai_core import (
     generate_swot_from_data,
-)  # Re-using for general AI generation
+)  
 from .project_manager import get_active_project
 
 logger = logging.getLogger(__name__)

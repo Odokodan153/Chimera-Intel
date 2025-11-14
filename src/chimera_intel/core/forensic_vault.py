@@ -1,4 +1,3 @@
-# src/chimera_intel/core/forensic_vault.py
 """
 Module for Advanced Image Forensics, Attribution, and Secure Vaulting.
 
@@ -23,12 +22,8 @@ from datetime import datetime
 from typing import Optional, Tuple
 from PIL import Image
 from rich.console import Console
-# Hashing
 import imagehash
-# Reverse Image Search
 from google.cloud import vision
-
-# Signing & Timestamping
 import rfc3161
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -44,18 +39,12 @@ from cryptography.hazmat.primitives.serialization import (
     NoEncryption,
 )
 from cryptography.exceptions import InvalidSignature
-
-# Project Imports
 from .schemas import (
     ImageHashResult,
     ReverseImageMatch,
     ReverseImageSearchResult,
     VaultReceipt,
     VaultExportResult,
-    # Import new schemas for provenance
-    ProvenanceManifest,
-    SignedProvenanceEnvelope,
-    VerificationResult,
 )
 from .utils import save_or_print_results
 from .config_loader import API_KEYS, CONFIG

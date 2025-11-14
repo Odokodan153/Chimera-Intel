@@ -9,7 +9,6 @@ import typer
 import logging
 import asyncio
 import json
-
 from .schemas import AttackSurfaceReport
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
@@ -19,7 +18,7 @@ from .footprint import gather_footprint_data
 from .vulnerability_scanner import run_vulnerability_scan
 from .defensive import analyze_mozilla_observatory
 from .offensive import discover_apis
-from .ai_core import generate_swot_from_data  # Re-using this for AI analysis
+from .ai_core import generate_swot_from_data  
 from .project_manager import get_active_project
 
 

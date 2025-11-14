@@ -1,3 +1,12 @@
+"""
+Autonomous Alert & Automation Engine
+
+Provides AI-driven alert prioritization, cross-module correlation, and
+automation pipeline execution. Integrates with plugins, TTP KB, and
+external notifications (Slack, covert scans). Designed for secure,
+detached, and template-based actions triggered by high-confidence events.
+"""
+
 import logging
 from typing import Dict, Any, List
 import subprocess

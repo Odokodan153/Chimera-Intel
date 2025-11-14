@@ -12,14 +12,9 @@ import typer
 from typing import List, Dict, Any, Set
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
-
-# --- Assumed Core Component Instances ---
-# Following the pattern from core/recon.py, we import module-level instances
-# These are assumed to be initialized by the main application or a service locator
-from .automation import automation_manager  # Assumed instance
-from .aia_framework import aia_framework  # Assumed instance
-from .reporter import reporter  # Assumed instance
-from .user_manager import user_manager  # Assumed instance
+from .aia_framework import aia_framework 
+from .reporter import reporter  
+from .user_manager import user_manager  
 from .config_loader import ConfigLoader
 from .logger_config import setup_logging
 from .automation import Playbook

@@ -1,3 +1,15 @@
+"""
+Source Credibility & Data Verification Module
+
+Provides asynchronous assessment of web sources and collected intelligence using:
+- Google Safe Browsing API
+- Domain age and SSL analysis
+- Content analysis for clickbait and social presence
+- CRAAP-like scoring model for data reliability
+
+Exposes Typer CLI for on-demand credibility assessments.
+"""
+
 import logging
 import asyncio
 from typing import Optional

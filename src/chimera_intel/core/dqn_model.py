@@ -1,14 +1,13 @@
-import torch  # <-- Add this import
+"""
+A simple Deep Q-Network (DQN) for the negotiation agent.
+"""
+
+import torch  
 import torch.nn as nn
 import torch.nn.functional as F
-import random  # <-- Add this import
-
+import random  
 
 class DQN(nn.Module):
-    """
-    A simple Deep Q-Network (DQN) for the negotiation agent.
-    """
-
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
         self.layer1 = nn.Linear(n_observations, 128)

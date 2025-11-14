@@ -1,30 +1,27 @@
-# [REPLACE Chimera-Intel/src/chimera_intel/core/logistics_intel.py with this]
-
+"""
+Logistics Intelligence Module for Chimera Intel.
+Provides shipment tracking, vessel position tracking, trade manifest retrieval
+and supply chain anomaly analysis.
+"""
 import logging
 import asyncio
 import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
-from typing import List, Optional, Dict, Any
-
+from typing import List, Optional
 from .schemas import (
     ShipmentDetails, 
     TrackingUpdate,
-    # --- New PHYSINT Schemas ---
-    BaseResult,
     VesselPosition,
     TradeManifest,
     TradeManifestResult,
     SupplyChainAnomaly,
-    SupplyChainAnalysisResult,
-    TradeCorrelationResult # For MLINT integration
+    SupplyChainAnalysisResult
 )
 from .config_loader import API_KEYS
 from .utils import save_or_print_results, console
 from .project_manager import resolve_target
-
-# Import from MLINT for integration
 try:
     from .mlint import get_jurisdiction_risk, correlate_trade_payment
 except ImportError:

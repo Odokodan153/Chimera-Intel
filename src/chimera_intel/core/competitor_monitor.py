@@ -11,12 +11,9 @@ import logging
 import json
 from typing import List, Dict, Set, Any
 from .database import save_scan_to_db, get_db_connection
-from .config_loader import API_KEYS
 from .project_manager import list_projects, get_project_config_by_name
 from .alert_manager import alert_manager_instance, AlertLevel
 from .scheduler import add_job
-
-# Import the core search functions from other modules
 from .defensive import search_github_leaks
 from .dark_web_monitor import search_pastebins
 from .dark_web_osint import search_dark_web

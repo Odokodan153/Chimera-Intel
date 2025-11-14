@@ -14,7 +14,7 @@ import re
 import json
 import logging
 import asyncio
-from typing import Optional, List, Any, Dict, Tuple
+from typing import Optional, List, Tuple
 from .schemas import (
     DataFusionResult,
     MasterEntityProfile,
@@ -23,7 +23,6 @@ from .schemas import (
     CognitivePrediction,
     PhysicalLocation,
     SocialProfile,
-    # Import result schemas from other modules
     FootprintResult,
     SocialOSINTResult,
     DocketSearchResult,
@@ -32,14 +31,9 @@ from .schemas import (
 )
 from .logger_config import get_logger
 from datetime import datetime
-
-# --- Core Component Imports ---
 from .graph_db import graph_db_instance, GraphDB
 from .gemini_client import GeminiClient
 from .config_loader import API_KEYS
-
-# --- Data Silo Module Imports (for real data collection) ---
-# We import the "real" functions from other modules
 try:
     from .footprint import gather_footprint_data
     from .social_osint import search_profiles as search_social_profiles

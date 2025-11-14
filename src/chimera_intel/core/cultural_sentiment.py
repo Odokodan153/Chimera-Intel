@@ -8,7 +8,7 @@ a more accurate, region-specific interpretation.
 
 import typer
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional
 from textblob import TextBlob
 from .schemas import CulturalSentimentResult
 from .utils import console, save_or_print_results

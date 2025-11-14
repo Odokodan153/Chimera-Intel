@@ -7,30 +7,13 @@ white papers, pre-prints, and official documents, using targeted search engine q
 
 import typer
 import logging
-from typing import Optional, List, Dict, Any
-from .schemas import BaseModel, Field
+from typing import Optional, List
+from .schemas import GreyLitResult, GreyLitOverallResult
 from .http_client import sync_client
 from .utils import save_or_print_results, console
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)
-
-# --- Pydantic Schemas ---
-
-class GreyLitResult(BaseModel):
-    """A single piece of grey literature found."""
-    title: str = Field(..., description="The title of the document.")
-    url: str = Field(..., description="The direct URL to the document.")
-    source_domain: str = Field(..., description="The domain the document was found on.")
-    snippet: str = Field(..., description="A snippet of text from the document.")
-    file_type: str = Field(..., description="The detected file type (e.g., PDF, DOCX).")
-
-class GreyLitOverallResult(BaseModel):
-    """The overall result of a grey literature search."""
-    query: str
-    total_results: int
-    results: List[GreyLitResult]
-    error: Optional[str] = None
 
 # --- Core Function ---
 

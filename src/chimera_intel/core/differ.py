@@ -1,3 +1,18 @@
+"""
+Module for detecting and analyzing differences between consecutive scans.
+
+This module provides utilities to:
+
+- Fetch the two most recent scans for a given target and module.
+- Flatten nested scan data for easier comparison.
+- Compute a simple, human-readable diff between scans.
+- Analyze diffs to identify meaningful micro-signals, such as changes
+  in DNS records or infrastructure.
+- Display differences and signals in a console-friendly format.
+- Optionally send notifications to Slack or Microsoft Teams when changes
+  are detected.
+"""
+
 import typer
 from rich.pretty import pprint
 from rich.table import Table

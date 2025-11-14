@@ -1,3 +1,10 @@
+"""
+Graph CLI Module
+
+This module provides a command-line interface (CLI) to build, visualize, 
+and generate AI-powered narratives from entity relationship graphs.
+"""
+
 import typer
 from typing import Optional
 from .graph_db import build_and_save_graph

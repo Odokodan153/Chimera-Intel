@@ -1,5 +1,9 @@
-# src/chimera_intel/core/google_search.py
+"""
+Google Search Utility Module
 
+This module provides a simple interface to perform Google searches
+for one or more queries and return the URLs of the top search results.
+"""
 from googlesearch import search as google_search_func
 from typing import List
 

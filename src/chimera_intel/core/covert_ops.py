@@ -12,12 +12,10 @@ import asyncio
 import dns.resolver
 import dns.exception
 from typing_extensions import Annotated
-from typing import List, Dict, Set
-from rich.console import Console
+from typing import Set
 from rich.table import Table
-
 from .database import store_data
-from .http_client import get_async_http_client  # <-- Import real client
+from .http_client import get_async_http_client  
 from .utils import console
 
 covert_ops_app = typer.Typer(

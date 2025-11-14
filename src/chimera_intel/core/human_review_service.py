@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 # Simple file-based "database" for the review queue
 REVIEW_QUEUE_PATH = "review_queue.json"
 
-
-
 class HumanReviewService:
     """Manages the queue of actions pending human review."""
 

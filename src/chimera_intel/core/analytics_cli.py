@@ -3,16 +3,14 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from . import analytics
-from .config_loader import API_KEYS  # To get DB params
+from .config_loader import API_KEYS  
 import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing_extensions import Annotated
-from typing import Optional  # FIX: Import Optional
-from unittest.mock import MagicMock  # <-- FIX: Added import
+from typing import Optional 
+from unittest.mock import MagicMock  
 
-# FIX: Removed global console object
-# console = Console()
 analytics_app = typer.Typer(
     help="Tools for negotiation analytics and decision support."
 )

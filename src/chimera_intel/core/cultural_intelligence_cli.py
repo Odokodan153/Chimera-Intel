@@ -1,3 +1,10 @@
+"""
+Cultural Intelligence CLI Module
+
+Provides commands to manage, populate, and list country-specific cultural profiles.
+Uses Rich tables for formatted output and Typer for CLI interaction.
+"""
+
 import typer
 from rich.console import Console
 from rich.table import Table

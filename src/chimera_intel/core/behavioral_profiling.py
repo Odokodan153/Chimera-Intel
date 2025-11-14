@@ -1,9 +1,11 @@
+"""
+Generates a behavioral profile from text samples using AI or rule-based analysis.
+"""
 import logging
 import json
-import re
 from typing import Dict, Any, List
-from textblob import TextBlob  # Import TextBlob for rule-based analysis
-from .ai_core import generate_swot_from_data  # Re-using for general AI generation
+from textblob import TextBlob  
+from .ai_core import generate_swot_from_data  
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)

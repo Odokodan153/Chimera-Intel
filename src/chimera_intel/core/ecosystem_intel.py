@@ -11,7 +11,6 @@ import asyncio
 from typing import List, Optional
 from collections import Counter
 import re
-
 from .schemas import (
     EcosystemResult,
     EcosystemData,
@@ -24,7 +23,7 @@ from .database import save_scan_to_db
 from .config_loader import API_KEYS
 from .business_intel import get_news_gnews
 from .web_analyzer import get_tech_stack_wappalyzer
-from .corporate_intel import get_trade_data  # <-- IMPORT for distributor data
+from .corporate_intel import get_trade_data  
 from .http_client import async_client
 from .project_manager import get_active_project
 

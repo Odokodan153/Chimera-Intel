@@ -39,15 +39,12 @@ from typing import Optional, Dict, Any, Tuple, List
 from pydantic import HttpUrl
 from PIL import Image, ExifTags
 from botocore.exceptions import NoCredentialsError, ClientError
-from playwright.async_api import async_playwright
 from tineye_api import TinEyeAPIRequest
 from google.cloud import vision
 from googleapiclient.discovery import build as google_api_build
 from tweepy import Client as TweepyClient
 from transformers import CLIPProcessor, CLIPModel
-
-# Assuming schemas are in .schemas and other modules are siblings
-from .schemas import IngestedImageRecord, ImageSourceType, ImageFeatures, ImageEnrichment, ExifData, Node, Edge
+from .schemas import IngestedImageRecord, ImageSourceType, ImageFeatures, ImageEnrichment, ExifData
 from .utils import console, get_db_connection, save_or_print_results
 from .graph_db import get_graph_driver
 

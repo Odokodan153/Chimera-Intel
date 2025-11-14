@@ -23,7 +23,7 @@ from urllib.parse import urlparse, urljoin
 import logging
 import re
 import asyncio
-import socket  # 1. Added for Tor daemon check
+import socket  
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.http_client import get_async_http_client
 from chimera_intel.core.scheduler import add_job

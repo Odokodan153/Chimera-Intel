@@ -15,9 +15,7 @@ from rich.table import Table
 from rich.columns import Columns
 from rich.pretty import pprint
 from typing import List, Dict, Any, Optional
-
 import google.generativeai as genai
-
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.google_search import search

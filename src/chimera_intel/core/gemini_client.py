@@ -1,3 +1,11 @@
+"""
+A client for interacting with the Google Gemini generative AI API.
+
+This client provides methods to classify user messages into predefined intents 
+and to generate responses based on a given persona prompt using the Gemini API. 
+It handles API key configuration and gracefully logs errors if the model cannot 
+be initialized or if API calls fail.
+"""
 import google.generativeai as genai
 import logging
 from .config_loader import API_KEYS

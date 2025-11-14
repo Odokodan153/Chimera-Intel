@@ -1,29 +1,34 @@
 """
-This module provides advanced tools for detecting, extracting, and correlating
-financial market signals using NLP, fuzzy matching, and graph analysis.
+Core logic and CLI for Financial & Market Signals.
+(This file holds the implementation imported by main.py)
 """
 import spacy
 import networkx as nx
 import numpy as np
+import json
+import typer
 from spacy.matcher import Matcher
-from .schemas import (
-    FinancialDocument,
-    NlpSignal,
-    ShippingRecord,
-    Invoice,
-    TradeMatch,
-    FundingEvent,
-    FundingAnomaly,
-    Transaction,
-    PaymentFlowCorrelation,
-)
 from typing import List, Dict
+from .schemas import (FinancialDocument, 
+                      NlpSignal,
+                      ShippingRecord,
+                      Invoice,
+                      TradeMatch,
+                      FundingEvent,
+                      FundingAnomaly,
+                      Transaction,
+                      PaymentFlowCorrelation)
+
 from datetime import datetime
 from thefuzz import fuzz
+from rich.console import Console
+from rich.table import Table
+from pathlib import Path
 
 
 class FinancialMarketSignalAnalyzer:
     """
+    (UPDATED from core)
     Analyzes financial documents, trade data, funding platforms, and payment flows
     using NLP, graph analysis, and statistical methods.
     """
@@ -31,20 +36,32 @@ class FinancialMarketSignalAnalyzer:
     def __init__(self):
         try:
             self.nlp = spacy.load("en_core_web_sm")
-            self.nlp.add_pipe("spacytextblob")
         except OSError:
             print(
                 "Error: spaCy model 'en_core_web_sm' not found. "
                 "Please run: python -m spacy download en_core_web_sm"
             )
             self.nlp = None
+            return
+        
+        # Add a sentencizer for textblob sentiment, as it works per-sentence
+        if not self.nlp.has_pipe("sentencizer") and not self.nlp.has_pipe("parser"):
+             self.nlp.add_pipe("sentencizer")
+
+        # Use a more modern/performant sentiment pipe if available
+        # For this example, we'll add spacytextblob for simplicity
+        if not self.nlp.has_pipe("spacytextblob"):
+             self.nlp.add_pipe("spacytextblob")
         
         self.matcher = Matcher(self.nlp.vocab)
         self.setup_matchers()
         print("FinancialMarketSignalAnalyzer initialized with real NLP and analysis tools.")
 
     def setup_matchers(self):
-        """Set up spaCy Matcher patterns for topics and risks."""
+        """
+        (UPDATED from core)
+        Set up spaCy Matcher patterns for topics and risks.
+        """
         if not self.nlp:
             return
             
@@ -54,25 +71,46 @@ class FinancialMarketSignalAnalyzer:
             [{"LOWER": "litigation"}],
             [{"LOWER": "market"}, {"LOWER": "risk"}],
             [{"LOWER": "headwinds"}],
-            [{"LOWER": "fraud"}]
+            [{"LOWER": "fraud"}],
+            [{"LOWER": "investigation"}],
+            [{"LOWER": "sec"}, {"LOWER": "inquiry"}],
+            [{"LOWER": "compliance"}, {"LOWER": "failure"}],
+            [{"LOWER": "material"}, {"LOWER": "weakness"}],
+            [{"LOWER": "supply"}, {"LOWER": "chain"}, {"LOWER": "disruption"}],
+            [{"LOWER": "data"}, {"LOWER": "breach"}],
+            [{"LOWER": "cybersecurity"}, {"LOWER": "incident"}],
+            [{"LOWER": "economic"}, {"LOWER": "downturn"}],
+            [{"LOWER": "geopolitical"}, {"LOWER": "risk"}],
+            [{"LOWER": "unfavorable"}, {"LOWER": "ruling"}]
         ]
         self.matcher.add("RISK_FACTORS", risk_patterns)
 
-        # Topic patterns
+        # Topic patterns (M&A, Expansion, CapEx, Leadership)
         topic_patterns = [
             [{"LOWER": "merger"}],
             [{"LOWER": "acquisition"}],
+            [{"LOWER": "acquiring"}],
+            [{"LOWER": "proposes"}, {"LOWER": "to"}, {"LOWER": "buy"}],
             [{"LOWER": "new"}, {"LOWER": "market"}],
-            [{"LOWER": "launching"}]
+            [{"LOWER": "launching"}],
+            [{"LOWER": "expansion"}, {"LOWER": "into"}],
+            [{"LOWER": "opens"}, {"LOWER": "new"}, {"LOWER": "facility"}],
+            [{"LOWER": "capital"}, {"LOWER": "expenditure"}],
+            [{"LOWER": "investing"}, {"LOWER": "in"}, {"LOWER": "infrastructure"}],
+            [{"LOWER": "new"}, {"LOWER": "ceo"}],
+            [{"LOWER": "cfo"}, {"LOWER": "resigns"}],
+            [{"LOWER": "appoints"}, {"LOWER": "new"}, {"LOWER": "president"}],
+            [{"LOWER": "leadership"}, {"LOWER": "transition"}]
         ]
         self.matcher.add("KEY_TOPICS", topic_patterns)
 
     def extract_signals_from_document(self, doc: FinancialDocument) -> NlpSignal:
         """
+        (UPDATED from core)
         Uses spaCy for robust NLP (Sentiment, NER, Topic/Risk Matching).
         """
         if not self.nlp:
-            return NlpSignal(doc.nlp_id, "neutral", [], [], {})
+            return NlpSignal(doc.doc_id, "neutral", [], [], {})
 
         nlp_doc = self.nlp(doc.content)
         
@@ -96,17 +134,21 @@ class FinancialMarketSignalAnalyzer:
                 risks.add(span)
             elif rule_id == "KEY_TOPICS":
                 # Normalize topics
-                if span in ["merger", "acquisition"]:
+                if span in ["merger", "acquisition", "acquiring", "proposes to buy"]:
                     topics.add("M&A")
-                elif span in ["new market", "launching"]:
+                elif span in ["new market", "launching", "expansion into", "opens new facility"]:
                     topics.add("Expansion")
+                elif span in ["capital expenditure", "investing in infrastructure"]:
+                    topics.add("Capital Expenditure")
+                elif "ceo" in span or "cfo" in span or "president" in span or "leadership" in span:
+                    topics.add("Leadership Change")
                 else:
                     topics.add(span)
 
         # 3. Entity Extraction (NER)
         entities = {}
         for ent in nlp_doc.ents:
-            if ent.label_ in ["ORG", "PERSON", "GPE", "MONEY"]:
+            if ent.label_ in ["ORG", "PERSON", "GPE", "MONEY", "PRODUCT"]:
                 entities.setdefault(ent.label_, []).append(ent.text)
         
         # Deduplicate entity lists
@@ -126,12 +168,11 @@ class FinancialMarketSignalAnalyzer:
                                   name_threshold: int = 85,
                                   item_threshold: int = 70) -> List[TradeMatch]:
         """
+        (UPDATED from core)
         Matches shipping records to invoices using fuzzy string matching for names
         and item descriptions.
         """
         matches = []
-        # This is O(n*m), which is acceptable for moderate lists.
-        # For very large lists, a blocking/indexing strategy would be needed.
         
         for ship_record in shipping_records:
             best_match = None
@@ -187,6 +228,7 @@ class FinancialMarketSignalAnalyzer:
     def detect_unusual_funding_activity(self, funding_data: List[FundingEvent], 
                                       z_score_threshold: float = 3.0) -> List[FundingAnomaly]:
         """
+        (UPDATED from core)
         Identifies funding anomalies using statistical methods (Z-score)
         and velocity checks.
         """
@@ -267,6 +309,7 @@ class FinancialMarketSignalAnalyzer:
     def correlate_payment_flows(self, transactions: List[Transaction], 
                                 entity_mappings: Dict[str, str]) -> List[PaymentFlowCorrelation]:
         """
+        (UPDATED from core)
         Cross-checks corporate accounts, crypto wallets, or shell entities
         using graph analysis with NetworkX.
         """
@@ -290,18 +333,19 @@ class FinancialMarketSignalAnalyzer:
         # Find all simple paths from corporate accounts to crypto wallets
         for start_node in corporate_nodes:
             for end_node in crypto_nodes:
-                paths = nx.all_simple_paths(G, source=start_node, target=end_node, cutoff=10) # Limit path length
+                # Use cutoff to prevent runaway searches in dense graphs
+                paths_generator = nx.all_simple_paths(G, source=start_node, target=end_node, cutoff=10)
                 
-                for path in paths:
+                for path in paths_generator:
                     # Check if the path goes through a shell company
                     path_types = [G.nodes[n]['type'] for n in path]
-                    if "shell" in path_types[1:-1]: # Intermediary is a shell
+                    
+                    # Check if any intermediary (not start/end) is a shell
+                    if "shell" in path_types[1:-1]:
                         
-                        # Calculate total amount (this is simplified)
-                        total_amount = 0
-                        for i in range(len(path) - 1):
-                            edge_data = G.get_edge_data(path[i], path[i+1])
-                            total_amount += edge_data['amount']
+                        # Calculate total amount (this is simplified; just sums first edge)
+                        first_edge_data = G.get_edge_data(path[0], path[1])
+                        total_amount = first_edge_data.get('amount', 0)
 
                         correlations.append(PaymentFlowCorrelation(
                             flow_id=f"flow_{start_node}_{end_node}",
@@ -313,3 +357,181 @@ class FinancialMarketSignalAnalyzer:
                         ))
                             
         return correlations
+
+# --- Typer App & Commands (Plugin-specific CLI) ---
+
+app = typer.Typer(
+    name="financials",
+    help="Analyze financial documents, trade, funding, and payment flows.",
+    no_args_is_help=True
+)
+
+# --- Helper Functions for Commands ---
+
+def load_json_data(path: Path) -> List[dict]:
+    """Loads a list of objects from a JSON file."""
+    if not path.exists():
+        print(f"Error: File not found at {path}")
+        raise typer.Exit(code=1)
+    with open(path, 'r') as f:
+        try:
+            data = json.load(f)
+            if not isinstance(data, list):
+                print(f"Error: JSON file {path} must contain a list of objects.")
+                raise typer.Exit(code=1)
+            return data
+        except json.JSONDecodeError:
+            print(f"Error: Could not decode JSON from {path}")
+            raise typer.Exit(code=1)
+
+def parse_date(date_str: str) -> datetime:
+    """Helper to parse ISO-ish date strings."""
+    return datetime.fromisoformat(date_str)
+
+
+# --- Typer Commands ---
+
+@app.command("analyze-docs")
+def analyze_documents(
+    docs_file: Path = typer.Option(
+        ..., "--file", "-f",
+        help="Path to a JSON file containing a list of financial documents.",
+        exists=True, readable=True,
+    )
+):
+    """Extract NLP signals from unstructured financial documents (SEC filings, etc)."""
+    console = Console()
+    analyzer = FinancialMarketSignalAnalyzer()
+
+    if analyzer.nlp is None:
+        console.print("[bold red]Error: spaCy model not loaded.[/bold red]")
+        console.print("Run: [yellow]python -m spacy download en_core_web_sm[/yellow]")
+        raise typer.Exit(code=1)
+
+    console.print(f"Loading documents from [cyan]{docs_file}[/cyan]...")
+    doc_data = load_json_data(docs_file)
+    documents = [
+        FinancialDocument(
+            doc_id=d.get('doc_id', f'doc_{i}'), 
+            source_url=d.get('source_url', d.get('source', 'Unknown')), # Allow for both keys
+            timestamp=parse_date(d.get('timestamp', d.get('date'))), # Allow for both keys
+            content=d.get('content', '')
+        ) for i, d in enumerate(doc_data) if d.get('content')
+    ]
+
+    console.print(f"Analyzing {len(documents)} documents...")
+    table = Table(title="NLP Signal Analysis")
+    table.add_column("Doc ID", style="cyan")
+    table.add_column("Sentiment", style="magenta")
+    table.add_column("Topics", style="green")
+    table.add_column("Risk Factors", style="red")
+    table.add_column("Entities (ORG)", style="yellow")
+
+    for doc in documents:
+        signal = analyzer.extract_signals_from_document(doc)
+        orgs = ", ".join(signal.entities.get("ORG", []))
+        table.add_row(signal.doc_id, signal.sentiment, ", ".join(signal.key_topics), ", ".join(signal.risk_factors), orgs)
+    
+    console.print(table)
+
+@app.command("match-trades")
+def match_trades(
+    shipping_file: Path = typer.Option(..., "--shipping", help="Path to a JSON file of shipping records.", exists=True, readable=True),
+    invoice_file: Path = typer.Option(..., "--invoices", help="Path to a JSON file of invoices.", exists=True, readable=True)
+):
+    """Match shipping & logistics records against financial invoices."""
+    console = Console()
+    analyzer = FinancialMarketSignalAnalyzer()
+
+    shipping_data = load_json_data(shipping_file)
+    shipping_records = [
+        ShippingRecord(**d, date=parse_date(d.get('date'))) for d in shipping_data
+    ]
+    
+    invoice_data = load_json_data(invoice_file)
+    invoices = [
+        Invoice(**d, date=parse_date(d.get('date'))) for d in invoice_data
+    ]
+
+    console.print(f"Matching {len(shipping_records)} shipping records against {len(invoices)} invoices...")
+    matches = analyzer.match_trade_to_financials(shipping_records, invoices)
+
+    table = Table(title="Trade & Logistics Match Results")
+    table.add_column("Match Type", style="cyan")
+    table.add_column("Shipping ID", style="magenta")
+    table.add_column("Invoice ID", style="green")
+    table.add_column("Value Discrepancy", style="red")
+    table.add_column("Details", style="yellow")
+    
+    for match in matches:
+        color = "green"
+        if match.match_type == "Discrepancy": color = "red"
+        elif match.match_type == "Partial Match": color = "yellow"
+        discrepancy_str = f"${match.value_discrepancy:,.2f}" if match.value_discrepancy else "N/A"
+        table.add_row(f"[{color}]{match.match_type}[/{color}]", match.shipping_id, match.invoice_id, discrepancy_str, match.details)
+    
+    console.print(table)
+
+@app.command("find-funding-anomalies")
+def find_funding_anomalies(
+    funding_file: Path = typer.Option(..., "--file", "-f", help="Path to a JSON file of funding events.", exists=True, readable=True),
+    z_score: float = typer.Option(3.0, "--z-score", help="Z-score threshold for statistical anomalies.")
+):
+    """Identify emerging backers or unusual funding activity."""
+    console = Console()
+    analyzer = FinancialMarketSignalAnalyzer()
+
+    event_data = load_json_data(funding_file)
+    funding_events = [
+        FundingEvent(**d, date=parse_date(d.get('date'))) for d in event_data
+    ]
+
+    console.print(f"Analyzing {len(funding_events)} funding events with Z-Score threshold of {z_score}...")
+    anomalies = analyzer.detect_unusual_funding_activity(funding_events, z_score_threshold=z_score)
+
+    table = Table(title="Funding Anomaly Detection")
+    table.add_column("Timestamp", style="cyan")
+    table.add_column("Project ID", style="magenta")
+    table.add_column("Backer ID", "N/A", style="green")
+    table.add_column("Anomaly Type", style="red")
+    table.add_column("Description", style="yellow")
+    
+    for anomaly in anomalies:
+        table.add_row(str(anomaly.timestamp), anomaly.project_id, anomaly.backer_id, anomaly.anomaly_type, anomaly.description)
+    
+    console.print(table)
+
+@app.command("correlate-flows")
+def correlate_flows(
+    tx_file: Path = typer.Option(..., "--transactions", help="Path to a JSON file of transactions.", exists=True, readable=True),
+    map_file: Path = typer.Option(..., "--entity-map", help="Path to a JSON file mapping account IDs to entity types.", exists=True, readable=True)
+):
+    """Cross-check corporate accounts, crypto wallets, or shell entities."""
+    console = Console()
+    analyzer = FinancialMarketSignalAnalyzer()
+
+    tx_data = load_json_data(tx_file)
+    transactions = [
+        Transaction(**d, date=parse_date(d.get('date'))) for d in tx_data
+    ]
+
+    with open(map_file, 'r') as f:
+        entity_mappings = json.load(f)
+    
+    console.print(f"Analyzing {len(transactions)} transactions with {len(entity_mappings)} entity mappings...")
+    correlations = analyzer.correlate_payment_flows(transactions, entity_mappings)
+    
+    table = Table(title="Payment Flow Correlation")
+    table.add_column("Start Entity", style="cyan")
+    table.add_column("End Entity", style="magenta")
+    table.add_column("Intermediaries (Shells)", style="red")
+    table.add_column("Total Amount", style="green")
+    table.add_column("Full Path", style="yellow")
+
+    for flow in correlations:
+        table.add_row(flow.start_entity, flow.end_entity, ", ".join(flow.intermediaries), f"${flow.total_amount:,.2f}", " -> ".join(flow.path))
+    
+    console.print(table)
+
+if __name__ == "__main__":
+    app()

@@ -1,3 +1,10 @@
+"""
+Knowledge Graph CLI Module
+
+This module provides functionality to generate interactive knowledge graphs
+from JSON scan results and a command-line interface (CLI) to create them.
+"""
+
 import typer
 import json
 from pyvis.network import Network  # type: ignore

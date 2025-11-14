@@ -1,3 +1,10 @@
+"""
+Cryptocurrency Market Intelligence & Forecasting Module
+
+Provides asynchronous retrieval of historical crypto data from Alpha Vantage
+and ARIMA-based forecasting. Exposes a CLI via Typer with rich table output.
+"""
+
 import logging
 import asyncio
 from .schemas import CryptoData, CryptoForecast

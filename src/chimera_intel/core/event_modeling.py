@@ -8,9 +8,8 @@ complete, verifiable sequence of events (e.g., an incident timeline).
 
 import typer
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 import json
-
 from .schemas import (
     EventModelingResult,
     Event,

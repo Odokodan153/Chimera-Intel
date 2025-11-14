@@ -11,12 +11,10 @@ import psycopg2
 import requests
 import pandas as pd
 from scipy.stats import ks_2samp
-import json  # <-- ADDED IMPORT
-
 from .database import get_db_connection
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
-from .http_client import sync_client  # <-- ADDED IMPORT
+from .http_client import sync_client  
 
 console = Console()
 

@@ -1,3 +1,12 @@
+"""
+This module provides AI-powered business intelligence tools
+for industry analysis, monopoly checks, stability forecasts,
+patent/R&D tracking, market intelligence, and ESG monitoring.
+Each async function gathers relevant news and data, generates
+a structured analysis using AI, and returns a Pydantic result
+model. CLI commands allow running these analyses and saving
+results to JSON or a database.
+"""
 import logging
 import asyncio
 from typing import Optional, Dict, Any, List

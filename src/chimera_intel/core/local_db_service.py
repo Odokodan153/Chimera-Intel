@@ -1,5 +1,3 @@
-# src/chimera_intel/core/local_db_service.py
-
 """
 Local, self-contained SQLite database service.
 

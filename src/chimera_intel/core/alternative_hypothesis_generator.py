@@ -8,8 +8,8 @@ the primary findings, mitigating confirmation bias.
 
 import typer
 import logging
-import json  # <-- ADDED IMPORT
-from typing import Optional, List, Dict, Any
+import json  
+from typing import Optional
 from .schemas import AlternativeHypothesisResult, Hypothesis
 from .utils import save_or_print_results, console
 from .database import get_aggregated_data_for_target, save_scan_to_db

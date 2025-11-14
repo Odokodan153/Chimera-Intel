@@ -1,9 +1,9 @@
 import typer
 import logging
 import asyncio
-import os  # +++ NEW IMPORT
-from typing import Optional, List, Dict, Any  # +++ UPDATED IMPORT
-from .schemas import AVINTResult, FlightInfo, DroneActivityInfo, DroneActivityResult # +++ UPDATED IMPORTS
+import os  
+from typing import Optional, List
+from .schemas import AVINTResult, FlightInfo, DroneActivityInfo, DroneActivityResult 
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .http_client import async_client
@@ -12,7 +12,7 @@ from rich.table import Table  # +++ MOVED IMPORT TO TOP
 logger = logging.getLogger(__name__)
 
 OPENSKY_API_URL = "https://opensky-network.org/api"
-# +++ NEW CONSTANT (REAL API) +++
+
 ADSBEXCHANGE_API_URL = "https://api.adsb.exchange/v2"
 
 

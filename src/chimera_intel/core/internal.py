@@ -13,29 +13,24 @@ import os
 import csv
 import sys
 from typing import Optional, List, Dict, Any
-
-# --- ADDED: Imports for real forensic analysis ---
 try:
     import pytsk3
     PYTSK_AVAILABLE = True
 except ImportError:
-    pytsk3 = None  # fallback if unavailable
+    pytsk3 = None  
     PYTSK_AVAILABLE = False
-
 try:
     from Registry import Registry
     REGISTRY_AVAILABLE = True
 except ImportError:
     Registry = None
     REGISTRY_AVAILABLE = False
-
 try:
     import analyzeMFT  # type: ignore
     MFT_AVAILABLE = True
 except ImportError:
     analyzeMFT = None
     MFT_AVAILABLE = False
-
 from .schemas import (
     LogAnalysisResult,
     StaticAnalysisResult,

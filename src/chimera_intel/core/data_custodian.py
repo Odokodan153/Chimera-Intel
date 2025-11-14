@@ -12,19 +12,15 @@ and support updating records.
 import typer
 import logging
 import hashlib
-import json  # <-- ADDED IMPORT
+import json  
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from chimera_intel.core.schemas import ChainOfCustodyEntry, AuditableDataReceipt
 from .utils import save_or_print_results, console
-
-# --- (REAL) Replaced database.py with local_db_service.py ---
 from .local_db_service import ( 
     save_scan_to_db, 
     get_scan_from_db
 )
-# --- End Import Change ---
-
 from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)

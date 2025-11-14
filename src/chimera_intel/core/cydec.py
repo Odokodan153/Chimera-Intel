@@ -1,4 +1,3 @@
-# src/chimera_intel/core/cydec.py
 """
 CYDEC (Cyber Deception) Module for Chimera Intel.
 
@@ -15,18 +14,12 @@ import re
 from typing import List
 from rich.console import Console
 from rich.markdown import Markdown
-
-# --- Core Chimera Imports ---
-# These are assumed to be available in the core package
 try:
     from chimera_intel.core.ai_core import get_llm_client
-    from chimera_intel.core.arg_service import get_arg_service, ARGService
+    from chimera_intel.core.arg_service import get_arg_service
     from chimera_intel.core.synthetic_media_generator import generate_synthetic_profile, SyntheticProfile
-    # Reuse the (real) local tracking server from counter_intelligence
     from chimera_intel.core.counter_intelligence import _start_tracking_server
 except ImportError:
-    # This mock allows the file to be "functional" even if imports
-    # are in different locations, as per the prompt's requirements.
     logging.warning("CYDEC: Core modules not found, using functional mocks.")
     
     # Mock AI Core

@@ -17,17 +17,12 @@ import typer
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
-
-# --- New Imports for Real Clients ---
 import discord
 from telethon import TelegramClient
 from telethon.errors import ChannelInvalidError, ChannelPrivateError
-# --- End New Imports ---
-
 from .utils import console, save_or_print_results
 from .database import save_scan_to_db
 from .config_loader import API_KEYS
-# Removed http_client, as we now use specific clients
 
 logger = logging.getLogger(__name__)
 

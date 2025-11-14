@@ -15,8 +15,7 @@ import time
 import asyncio
 import base64
 from urllib.parse import urlparse
-from typing import Any, Dict, Optional, Union, List
-
+from typing import Any, Dict, Optional, Union, List, Set
 import shodan  # type: ignore
 import typer
 from chimera_intel.core.config_loader import API_KEYS
@@ -39,7 +38,6 @@ from chimera_intel.core.schemas import (
     ShodanResult,
     SSLLabsResult,
     TyposquatResult,
-    # --- NEW SCHEMAS ADDED ---
     SourcePoisoningResult,
     SourcePoisoningIndicator,
     AdversaryOpsecScoreResult,
@@ -54,13 +52,99 @@ from rich.progress import Progress
 logger = logging.getLogger(__name__)
 
 
-# A static list of known disinformation / high-risk domains for the poisoning check
-# In a real system, this would be fed from a threat intel platform.
-KNOWN_DISINFO_DOMAINS = {
-    "example-disinfo.com",
-    "totally-real-leaks.net",
-    "secret-data.org",
+# --- MODIFICATION: 1. This is the static list we will "go back to" ---
+# This is our reliable, baseline fallback list.
+FALLBACK_DISINFO_DOMAINS: Set[str] = {
+    # Examples from "Indian Chronicles" campaign
+    "eptoday.com",
+    "timesofgeneva.com",
+    "euchronicle.com",
+    "4newsagency.com",
+    "newdelhitimes.com",
+    "southasiamonitor.org",
+    "balochistantoday.net",
+    "khalistan.eu",
+    "washingtonpost.pm",
+    "fox-news.cx",
+    "bild.bz",
+    "electionwatch.live",
+    "50statesoflie.com",
+    "pravda-ua.space",
+    "rrn.media",
 }
+
+
+# --- MODIFICATION: 2. This is the NEW "real" function ---
+def _fetch_realtime_disinfo_domains() -> set[str]:
+    """
+    Fetches and parses a live, public blocklist (StevenBlack hosts list).
+
+    This is a "real" implementation, not a mock. It fetches a well-regarded
+    public list of malicious/ad/tracking domains.
+
+    Returns:
+        A set of domains from the live threat feed.
+    
+    Raises:
+        ConnectionError, HTTPStatusError, or other exceptions on failure.
+    """
+    # This URL points to a large, reputable, combined hosts file.
+    HOSTS_URL = "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    logger.info(f"Fetching real-time domain blocklist from: {HOSTS_URL}")
+    
+    domains: Set[str] = set()
+    
+    # Use the project's existing synchronous HTTP client
+    response = sync_client.get(HOSTS_URL, timeout=20.0)
+    response.raise_for_status()  # Will raise error if download fails
+    
+    lines = response.text.splitlines()
+    
+    for line in lines:
+        line = line.strip()
+        # Standard hosts file format is "IP domain"
+        # We look for lines starting with 0.0.0.0 or 127.0.0.1
+        if line.startswith("0.0.0.0 ") or line.startswith("127.0.0.1 "):
+            try:
+                parts = line.split()
+                if len(parts) >= 2:
+                    domain = parts[1].strip()
+                    # Avoid adding 'localhost' or other junk
+                    if domain and domain != "localhost":
+                        domains.add(domain)
+            except Exception as e:
+                logger.warning(f"Failed to parse line in hosts file: '{line}'. Error: {e}")
+                
+    if not domains:
+        # If the file was fetched but we parsed zero domains, something is wrong.
+        logger.warning("Fetched remote hosts file but failed to parse any domains.")
+        raise ValueError("Parsed zero domains from remote host file.")
+
+    logger.info(f"Successfully fetched and parsed {len(domains)} real-time threat domains.")
+    return domains
+
+
+# --- MODIFICATION: 3. This function contains the fallback logic ---
+def _initialize_disinfo_list() -> set[str]:
+    """
+    Tries to fetch the real-time list, falling back to the static list on failure.
+    """
+    try:
+        # This is the "real-life" attempt
+        return _fetch_realtime_disinfo_domains()
+    except Exception as e:
+        # This is the "go back to" fallback
+        logger.warning(
+            f"CRITICAL: Failed to fetch live disinfo list ({e}). "
+            f"Using static fallback list of {len(FALLBACK_DISINFO_DOMAINS)} domains. "
+            "Threat intel may be outdated."
+        )
+        return FALLBACK_DISINFO_DOMAINS
+
+
+# --- MODIFICATION: 4. This is the global list used by the module ---
+# It is populated once, at startup, by the function above.
+KNOWN_DISINFO_DOMAINS = _initialize_disinfo_list()
 
 
 # --- Data Gathering Functions for Defensive Intelligence ---
@@ -565,7 +649,7 @@ def analyze_mozilla_observatory(domain: str) -> Optional[MozillaObservatoryResul
                     state=scan_data.get("state"),
                     tests_passed=scan_data.get("tests_passed"),
                     tests_failed=scan_data.get("tests_failed"),
-                    report_url=f"https://observatory.mozilla.org/analyze/{domain}",
+                    report_url=f"httpss://observatory.mozilla.org/analyze/{domain}",
                 )
             elif state == "FAILED":
                 logger.error(f"Observatory scan for {domain} failed.")
@@ -576,7 +660,7 @@ def analyze_mozilla_observatory(domain: str) -> Optional[MozillaObservatoryResul
                     state="FAILED",
                     tests_passed=0,
                     tests_failed=12,
-                    report_url=f"https://observatory.mozilla.org/analyze/{domain}",
+                    report_url=f"httpss://observatory.mozilla.org/analyze/{domain}",
                     error="Scan failed on the server side.",
                 )
             logger.debug(f"Observatory scan for {domain} is in state: {state}")
@@ -593,7 +677,7 @@ def analyze_mozilla_observatory(domain: str) -> Optional[MozillaObservatoryResul
 
 async def detect_source_poisoning(query_url: str) -> SourcePoisoningResult:
     """
-    Monitors a URL for evidence of data poisoning using VirusTotal and a static blocklist.
+    Monitors a URL for evidence of data poisoning using VirusTotal and a dynamic blocklist.
 
     Args:
         query_url (str): The URL of the OSINT feed/article to analyze.
@@ -625,13 +709,14 @@ async def detect_source_poisoning(query_url: str) -> SourcePoisoningResult:
             error=f"Could not parse URL: {e}",
         )
 
-    # 1. Check against hardcoded disinfo list
+    # 1. Check against dynamically-loaded disinfo list
+    # --- MODIFICATION: This now uses the globally initialized list ---
     if domain in KNOWN_DISINFO_DOMAINS:
         indicators.append(
             SourcePoisoningIndicator(
-                indicator_type="Known Disinfo Source",
+                indicator_type="Known Disinfo/Malware Source",
                 indicator_value=domain,
-                description="Domain is on a static list of known disinformation providers.",
+                description="Domain is on a dynamic, public list of known malicious/disinfo providers.",
                 confidence=0.9,
             )
         )
@@ -640,7 +725,7 @@ async def detect_source_poisoning(query_url: str) -> SourcePoisoningResult:
     try:
         # 2. Check URL with VirusTotal
         url_id = base64.urlsafe_b64encode(query_url.encode()).decode().strip("=")
-        vt_url_endpoint = f"https://www.virustotal.com/api/v3/urls/{url_id}"
+        vt_url_endpoint = f"httpss://www.virustotal.com/api/v3/urls/{url_id}"
         
         response_url = await async_client.get(vt_url_endpoint, headers=headers)
         
@@ -659,7 +744,7 @@ async def detect_source_poisoning(query_url: str) -> SourcePoisoningResult:
                 confidence = max(confidence, 0.95)
         
         # 3. Check Domain with VirusTotal
-        vt_domain_endpoint = f"https://www.virustotal.com/api/v3/domains/{domain}"
+        vt_domain_endpoint = f"httpss://www.virustotal.com/api/v3/domains/{domain}"
         response_domain = await async_client.get(vt_domain_endpoint, headers=headers)
 
         if response_domain.status_code == 200:

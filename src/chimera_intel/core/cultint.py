@@ -7,7 +7,6 @@ to provide insights into the cultural landscape surrounding a target.
 
 import typer
 from typing import Optional, Dict, Any
-
 from .database import get_aggregated_data_for_target
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS

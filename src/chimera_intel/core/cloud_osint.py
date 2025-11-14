@@ -1,3 +1,10 @@
+"""
+Cloud OSINT Module
+
+Asynchronously scans for publicly accessible cloud storage assets (S3, Azure Blob, GCS)
+based on a target keyword or company name, returning structured results.
+"""
+
 import typer
 import asyncio
 import logging

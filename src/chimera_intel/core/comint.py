@@ -1,3 +1,11 @@
+"""
+Communications Intelligence (COMINT) Module
+
+Processes PCAP files to extract text and audio communications, performs entity
+and sentiment analysis, speaker identification, and correlates results in a graph
+for adversary intelligence insights.
+"""
+
 import typer
 from typer import Typer
 import logging
@@ -6,7 +14,6 @@ from typing import Optional, List, Dict, Any, Tuple
 from scapy.all import rdpcap, TCP, UDP, RTP, Raw, IP
 from datetime import datetime
 from collections import defaultdict
-
 from chimera_intel.core.ai_core import AICore
 from chimera_intel.core.advanced_nlp import AdvancedNLP, Entity
 from chimera_intel.core.arg_service import ArgService

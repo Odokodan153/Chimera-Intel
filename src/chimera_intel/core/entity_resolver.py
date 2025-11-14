@@ -12,7 +12,7 @@ from typing import Optional
 import json
 from .schemas import ResolvedEntity, ExtractedRelationship, ResolutionResult
 from .utils import console, save_or_print_results
-from .ai_core import generate_swot_from_data  # Reusing for structured JSON extraction
+from .ai_core import generate_swot_from_data 
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)

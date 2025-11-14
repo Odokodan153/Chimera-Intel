@@ -3,8 +3,6 @@ import json
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 import datetime
-
-# The User schema is imported by user_manager.py, so we import it here.
 from .schemas import User 
 from .config_loader import API_KEYS
 from .utils import console

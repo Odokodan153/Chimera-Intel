@@ -9,10 +9,10 @@ cascading effects (Systemic Risk).
 import typer
 import logging
 import networkx as nx
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from .schemas import ComplexityAnalysisResult, SystemicRiskVector
 from .utils import save_or_print_results, console
-from .database import get_aggregated_data_for_target, save_scan_to_db, get_db_connection
+from .database import get_aggregated_data_for_target, save_scan_to_db
 from .project_manager import resolve_target
 
 logger = logging.getLogger(__name__)

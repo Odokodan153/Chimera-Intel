@@ -6,10 +6,6 @@ import typer
 import httpx
 from rich.table import Table
 import tweepy
-
-# FIX: Removed unused 'sys' import
-# import sys
-
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
 

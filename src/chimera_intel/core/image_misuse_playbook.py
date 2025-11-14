@@ -1,30 +1,29 @@
-# src/chimera_intel/core/image_misuse_playbook.py
+"""
+Playbook Workflow Module
+
+This module defines the end-to-end automated and semi-automated workflows
+for handling image misuse incidents, from initial evidence capture to
+post-approval takedown, monitoring, and reporting. It integrates
+Celery task chains with forensic analysis, vaulting, legal review,
+and internal notification systems.
+"""
 
 import logging
 import json
 import os
 import tempfile
-import pathlib
 import shutil
 import subprocess
-from typing import Dict, Any, List
+from typing import Dict, Any
 from urllib.parse import urlparse
-
-# --- Third-Party Imports ---
 import playwright.sync_api
 from typer.testing import CliRunner
-
-# --- Real Chimera Core Imports ---
-# Assumes a central Celery app is defined in a 'worker.py'
 try:
     from chimera_intel.worker import celery_app
 except ImportError:
-    # Fallback for environments where worker isn't set up, but will fail at runtime
     import celery # type: ignore
     logging.critical("Could not import 'chimera_intel.worker.celery_app'. Playbook tasks will not be registered.")
     celery_app = celery.Celery('chimera_intel_fallback')
-
-# Import real schemas, DB, and other modules
 from chimera_intel.core.schemas import HumanReviewTask
 from chimera_intel.core.database import db
 from chimera_intel.core.graph_db import graph_db

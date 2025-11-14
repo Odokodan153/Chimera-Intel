@@ -32,12 +32,10 @@ from .schemas import (
 )
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
-# --- Core Dependencies ---
 try:
     from PIL import Image
 except ImportError:
     Image = None
-
 try:
     from psd_tools import PSDImage
 except ImportError:
@@ -48,7 +46,6 @@ try:
     import rfc3161
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding
-    # Import reusable helpers from forensic_vault and provenance_service
     from chimera_intel.core.forensic_vault import (
         _load_private_key, 
         _get_timestamp_token
@@ -56,7 +53,6 @@ try:
     from chimera_intel.core.provenance_service import _canonical_json_bytes
     
 except ImportError:
-    # Handle missing crypto dependencies
     rfc3161 = None
     hashes = None
     padding = None
@@ -64,13 +60,10 @@ except ImportError:
     _get_timestamp_token = None # type: ignore
     _canonical_json_bytes = None # type: ignore
 
-# --- Project Imports ---
-from chimera_intel.core.schemas import BaseResult
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.config_loader import CONFIG
-# --- MODIFICATION: Import real storage function ---
 from chimera_intel.core.local_db_service import save_scan_to_db
-# --- END MODIFICATION ---
+
 
 # --- Setup ---
 logger = logging.getLogger(__name__)

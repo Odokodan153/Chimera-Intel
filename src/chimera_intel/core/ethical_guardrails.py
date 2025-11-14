@@ -1,5 +1,3 @@
-# src/chimera_intel/core/ethical_guardrails.py
-
 """
 Ethical Guardrails & Policy Engine for Synthetic Media.
 
@@ -22,7 +20,6 @@ import typer
 import uuid   
 from rich.console import Console  
 from typing import Optional
-# --- Database Imports ---
 from .local_db_service import get_scans_by_target, save_scan_to_db
 
 # --- Constants ---

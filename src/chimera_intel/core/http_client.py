@@ -1,32 +1,21 @@
+"""
+HTTP Client Module
+
+This module centralizes synchronous and asynchronous HTTP client configuration
+used throughout the Chimera-Intel framework. 
+""" 
+
 import httpx
 from httpx import AsyncClient, Client, Timeout
 from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, cast
-
-
 from .config_loader import CONFIG as RAW_CONFIG
 from .schemas import AppConfig
 
-# Cast the raw config to the AppConfig schema for proper type hinting and access.
-
-
 CONFIG: AppConfig = cast(AppConfig, RAW_CONFIG)
-
-# Define a global network timeout loaded from the application's configuration.
-
 
 NETWORK_TIMEOUT = CONFIG.network.timeout
 
-# Define reusable HTTP transports with a built-in retry mechanism for resilience.
-# This helps handle transient network errors automatically.
-
-# --- FIX: Removed global transport variables to prevent test conflicts ---
-# transport = httpx.HTTPTransport(retries=3)
-# async_transport = httpx.AsyncHTTPTransport(retries=3)
-
-
-# Global synchronous client for parts of the application that don't use async.
-# It's configured with the standard transport, timeout, and a custom User-Agent.
 
 sync_client = Client(
     # FIX: Inline transport instantiation

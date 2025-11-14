@@ -8,7 +8,6 @@ import networkx as nx
 import logging
 from typing import List
 from datetime import datetime
-# Reuse the Pydantic models from the original service
 from .arg_service import BaseEntity, Relationship 
 
 logger = logging.getLogger(__name__)

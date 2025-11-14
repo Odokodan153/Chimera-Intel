@@ -6,7 +6,7 @@ Provides tools to perform reverse image searches and transcribe audio files.
 
 import typer
 import logging
-import asyncio  # <-- ADDED
+import asyncio 
 from typing import Optional, List
 import speech_recognition as sr  # type: ignore
 from .schemas import (

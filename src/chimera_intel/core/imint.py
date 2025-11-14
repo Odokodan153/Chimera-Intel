@@ -14,14 +14,10 @@ from PIL import Image
 from PIL.ExifTags import TAGS
 from rich.console import Console
 import google.generativeai as genai
-
-# Import for local OCR
 try:
     import pytesseract
 except ImportError:
     pytesseract = None
-
-# Imports for Satellite Analysis & Change Detection
 try:
     import cv2
     import numpy as np

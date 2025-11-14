@@ -18,9 +18,7 @@ from .local_db_service import (
     save_scan_to_db, 
     get_scan_from_db
 )
-
 from .data_custodian import create_data_receipt
-from .config_loader import CONFIG
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)

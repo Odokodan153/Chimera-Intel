@@ -13,8 +13,6 @@ from .schemas import (
     RiskComponent)
 from .utils import console, save_or_print_results
 from .database import get_aggregated_data_for_target
-
-# --- Import REAL schemas from existing modules ---
 from .schemas import (
     SECFilingAnalysis, 
     LobbyingResult, 

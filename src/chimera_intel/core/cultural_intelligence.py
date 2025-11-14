@@ -1,3 +1,9 @@
+"""
+Manages cultural profiles by providing functions to add, retrieve, and cache profiles
+from a database. Supports initial population and retrieval of all stored profiles,
+with in-memory caching to reduce repeated database queries.
+"""
+
 from typing import Dict, Any, Optional, List
 import logging
 from .database import get_db_connection

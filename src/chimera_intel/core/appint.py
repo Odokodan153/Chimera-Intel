@@ -12,12 +12,9 @@ import os
 import shutil
 import re
 from typing import Optional, List, Dict, Any 
-# --- MODIFIED: Added DeviceIntelResult ---
 from .schemas import StaticAppAnalysisResult, FoundSecret, DeepMetadata, DeviceIntelResult
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-
-# --- ADDED: Imports for real file parsing ---
 try:
     import ezdxf
     EZDXF_AVAILABLE = True
@@ -45,7 +42,6 @@ try:
 except ImportError:
     exifread = None
     EXIFREAD_AVAILABLE = False
-# ---
 
 logger = logging.getLogger(__name__)
 

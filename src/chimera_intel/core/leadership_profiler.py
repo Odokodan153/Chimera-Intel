@@ -7,11 +7,11 @@ undisclosed affiliations, and potential insider threats.
 
 import typer
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from .schemas import LeadershipProfileResult, ExecutiveFinding
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-from .project_manager import resolve_target, get_active_project
+from .project_manager import get_active_project
 from .ai_core import generate_swot_from_data
 from .google_search import run_google_search
 from .config_loader import API_KEYS

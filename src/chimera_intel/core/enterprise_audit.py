@@ -4,7 +4,7 @@ Wraps the core AuditLogger to provide structured, high-level
 audit events for compliance and enterprise logging.
 """
 
-from chimera_intel.core.audit_logger import AuditLogger # Reusing existing
+from chimera_intel.core.audit_logger import AuditLogger 
 from typing import Dict, Any
 
 class EnterpriseAuditor:

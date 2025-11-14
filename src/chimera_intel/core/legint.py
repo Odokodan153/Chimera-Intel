@@ -27,7 +27,7 @@ from .schemas import (
     LobbyingActivity
 )
 from .utils import save_or_print_results
-from .database import ( # <-- MODIFIED
+from .database import ( 
     save_scan_to_db, 
     get_scan_from_db, 
     update_scan_in_db,
@@ -35,10 +35,10 @@ from .database import ( # <-- MODIFIED
 )
 from .config_loader import API_KEYS
 from .http_client import sync_client
-from .project_manager import resolve_target, list_projects, get_project_config_by_name # <-- ADDED
+from .project_manager import resolve_target, list_projects, get_project_config_by_name 
 from .google_search import search_google 
-from .alert_manager import alert_manager_instance, AlertLevel # <-- ADDED
-from .scheduler import add_job # <-- ADDED
+from .alert_manager import alert_manager_instance, AlertLevel 
+from .scheduler import add_job 
 
 logger = logging.getLogger(__name__)
 

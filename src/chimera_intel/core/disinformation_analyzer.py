@@ -11,7 +11,6 @@ import numpy as np
 import re
 from chimera_intel.core.schemas import SyntheticTextAnalysis,SyntheticNarrativeItem,SyntheticNarrativeMapResult
 from typing import Dict, Optional
-
 from chimera_intel.core.narrative_analyzer import track_narrative
 from chimera_intel.core.utils import console, save_or_print_results
 from .database import save_scan_to_db # Added database import

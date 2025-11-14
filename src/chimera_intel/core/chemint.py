@@ -20,7 +20,7 @@ import csv
 import re
 import pubchempy as pcp
 import json
-from urllib.parse import urlsplit, urlunsplit  # <-- ADDED IMPORT
+from urllib.parse import urlsplit, urlunsplit  
 
 chemint_app = typer.Typer()
 

@@ -1,3 +1,10 @@
+"""
+Cyber-Physical System Intelligence (CPINT)
+
+Models and analyzes cyber-physical systems as graphs, identifies critical nodes,
+and predicts potential cascading failure paths using network analysis.
+"""
+
 import logging
 from typing import List, Tuple
 import networkx as nx
@@ -5,9 +12,6 @@ import typer
 from rich.console import Console
 from rich.table import Table
 import json
-
-# Assuming the following data structures from other modules
-
 from .schemas import (
     CPSAnalysisResult,
     CascadingFailurePath,

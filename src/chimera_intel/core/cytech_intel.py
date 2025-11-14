@@ -12,19 +12,14 @@ import asyncio
 import re
 import base64
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime
 import httpx
 from rich.panel import Panel
-
-# Import the google_search tool
 from chimera_intel.core.google_search import search as google_search_func
-
-# --- ADDED IMPORTS for REAL IMPLEMENTATION ---
 from chimera_intel.core.http_client import get_async_http_client
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console, save_or_print_results
-# --- END ADDED IMPORTS ---
 
 logger = logging.getLogger(__name__)
 

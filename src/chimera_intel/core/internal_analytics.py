@@ -13,13 +13,12 @@ It addresses:
 import typer
 import json
 import logging
-from typing import Optional, Dict, Any
-
+from typing import Optional
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.project_manager import resolve_target
 from chimera_intel.core.database import get_aggregated_data_for_target
-from chimera_intel.core.ai_core import generate_swot_from_data  # Re-using
+from chimera_intel.core.ai_core import generate_swot_from_data  
 
 logger = logging.getLogger(__name__)
 app = typer.Typer(

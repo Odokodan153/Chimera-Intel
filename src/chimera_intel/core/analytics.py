@@ -5,12 +5,11 @@ import pandas as pd
 import typer
 import networkx as nx 
 from .utils import console, save_or_print_results  
-from .database import save_scan_to_db, get_db_connection  # Added get_db_connection
+from .database import save_scan_to_db
 from rich.markdown import Markdown  
-from .schemas import InfluenceMapResult, QuickWinMetricsResult  # Added QuickWinMetricsResult
+from .schemas import InfluenceMapResult, QuickWinMetricsResult 
 from .config_loader import API_KEYS  
 import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

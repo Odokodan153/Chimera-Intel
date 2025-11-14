@@ -34,8 +34,6 @@ from sklearn.decomposition import NMF
 import networkx as nx
 from rich.console import Console
 from rich.table import Table
-
-# Imports for Face Recognition
 try:
     import face_recognition
 except ImportError:

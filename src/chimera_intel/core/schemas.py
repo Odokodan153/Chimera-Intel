@@ -6378,3 +6378,37 @@ class KOLAnalysisResult(BaseModel):
         description="List of article URLs used for the analysis."
     )
     error: Optional[str] = None
+
+class GreyLitResult(BaseModel):
+    """A single piece of grey literature found."""
+    title: str = Field(..., description="The title of the document.")
+    url: str = Field(..., description="The direct URL to the document.")
+    source_domain: str = Field(..., description="The domain the document was found on.")
+    snippet: str = Field(..., description="A snippet of text from the document.")
+    file_type: str = Field(..., description="The detected file type (e.g., PDF, DOCX).")
+
+class GreyLitOverallResult(BaseModel):
+    """The overall result of a grey literature search."""
+    query: str
+    total_results: int
+    results: List[GreyLitResult]
+    error: Optional[str] = None
+
+class ExecutedStep(BaseModel):
+    """A single step (link) from a CALDERA operation."""
+    ability_id: str
+    ability_name: str
+    ttp: Optional[str] = None
+    command: str
+    status: str # e.g., "success", "failure", "timeout"
+    output: str
+    timestamp: str
+
+class AdversarySimulationResult(BaseModel):
+    """The final, aggregated report from a CALDERA operation."""
+    operation_id: str
+    operation_name: str
+    target_paw: str
+    status: str # "completed", "failed", "running"
+    executed_steps: List[ExecutedStep] = []
+    error_message: Optional[str] = None

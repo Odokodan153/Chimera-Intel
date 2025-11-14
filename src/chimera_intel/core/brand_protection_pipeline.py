@@ -1,4 +1,10 @@
-# src/chimera_intel/core/brand_protection_pipeline.py
+"""
+Brand Protection Pipeline
+
+Orchestrates monitoring, ingestion, ML detection, triage, and threat scoring
+for brand protection. Continuously detects, ingests, validates, and scores
+potential threats from social, web, and dark web sources.
+"""
 
 import asyncio
 from typing import List, Dict, Any

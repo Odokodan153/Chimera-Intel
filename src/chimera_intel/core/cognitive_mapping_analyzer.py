@@ -11,7 +11,7 @@ import json
 from typing import Optional, List
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
-from .narrative_analyzer import track_narrative_gnews  # <-- REAL FUNCTION
+from .narrative_analyzer import track_narrative_gnews  
 from .config_loader import API_KEYS
 from .gemini_client import GeminiClient
 from .schemas import CognitiveMapResult, MentalModelVector

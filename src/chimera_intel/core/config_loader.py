@@ -12,14 +12,10 @@ It also centralizes the creation of the SQLAlchemy database URL.
 import logging
 import os
 from typing import Any, Dict, Optional
-
 import hvac
 import yaml
-
-# FIX: Removed PostgresDsn import
 from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings
-
 from .schemas import AppConfig
 
 # Get a logger instance for this specific file

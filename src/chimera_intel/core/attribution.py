@@ -9,7 +9,6 @@ import logging
 from typing import Optional, List, Dict, Any
 import json
 import os
-
 import typer
 from chimera_intel.core.schemas import AttributionScoreResult
 from chimera_intel.core.utils import console, save_or_print_results
@@ -17,10 +16,6 @@ from chimera_intel.core.database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
 
-# --- (REMOVED) Hardcoded Threat Actor DB ---
-# The THREAT_ACTOR_DB dictionary has been removed.
-
-# --- (ADDED) Function to load DB from file ---
 DEFAULT_ACTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "threat_actor_db.json")
 
 def load_actor_db_from_file(db_path: str = DEFAULT_ACTOR_DB_PATH) -> Dict[str, Dict[str, Any]]:

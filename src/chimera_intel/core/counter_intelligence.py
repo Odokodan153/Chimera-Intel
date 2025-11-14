@@ -25,8 +25,6 @@ from PIL import Image, ImageDraw, ImageFont
 from bs4 import BeautifulSoup
 import dns.resolver  # type: ignore
 import dns.exception  # type: ignore
-
-# NEW: Added for real media fingerprinting (OCR)
 try:
     import pytesseract  # type: ignore
 except ImportError:

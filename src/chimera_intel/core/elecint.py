@@ -1,3 +1,12 @@
+"""
+ELECINT CLI for Electoral & Political Intelligence.
+
+Provides tools to monitor campaign finance via FEC data, analyze public 
+sentiment on political keywords using Twitter, and trace disinformation
+ sources by building retweet networks. Data is processed and displayed
+in tables or JSON format for quick insights.
+"""
+
 import typer
 import os
 import requests
@@ -5,9 +14,6 @@ from rich.console import Console
 from rich.table import Table
 from textblob import TextBlob
 import networkx as nx
-
-# Conditional import for tweepy
-
 try:
     import tweepy
 except ImportError:

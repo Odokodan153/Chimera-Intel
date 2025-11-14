@@ -6,22 +6,19 @@ multi-step investigations by orchestrating other modules.
 
 import typer
 import json
-import asyncio  # <-- ADDED IMPORT
+import asyncio 
 from typing_extensions import Annotated
 from typing import List, Dict, Any, Callable, Coroutine
 from rich.console import Console
 from rich.panel import Panel
 from rich.json import JSON
-
-# --- (REAL) Core Module Imports ---
 from .config_loader import API_KEYS
-from .ai_core import generate_swot_from_data  # Re-using for AI prompts
-from .gemini_client import GeminiClient  # <-- ADDED for AI calls
-from .personnel_osint import search_emails_hunter  # <-- REAL FUNCTION
-from .business_intel import get_news_gnews  # <-- REAL FUNCTION
-from .footprint import gather_footprint_data  # <-- REAL FUNCTION
-from .narrative_analyzer import track_narrative_gnews  # <-- REAL FUNCTION
-# ---------------------------------
+from .ai_core import generate_swot_from_data  
+from .gemini_client import GeminiClient  
+from .personnel_osint import search_emails_hunter  
+from .business_intel import get_news_gnews  
+from .footprint import gather_footprint_data  
+from .narrative_analyzer import track_narrative_gnews  
 
 console = Console()
 ai_client = GeminiClient()  # Initialize AI client

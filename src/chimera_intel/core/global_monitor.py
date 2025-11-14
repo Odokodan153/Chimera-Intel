@@ -11,7 +11,6 @@ from datetime import datetime
 from hashlib import sha256
 import logging
 import json
-
 from chimera_intel.core.config_loader import CONFIG
 from chimera_intel.core.scheduler import add_job
 from chimera_intel.core.database import save_page_snapshot, get_latest_snapshot_hash

@@ -1,3 +1,6 @@
+"""
+Asynchronous interface for interacting with the Gemini API.
+"""
 import json
 import logging
 from typing import Dict, Any

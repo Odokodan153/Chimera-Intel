@@ -1,3 +1,10 @@
+"""
+Corporate Intelligence & Screening Module
+
+Provides tools to query official corporate registries, screen names against sanctions lists,
+and identify Politically Exposed Persons (PEPs). Supports CLI commands and database logging.
+"""
+
 import typer
 import logging
 import os

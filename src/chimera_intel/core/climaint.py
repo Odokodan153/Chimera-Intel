@@ -7,14 +7,11 @@ supply chain risks, expanding on tactical WEATHINT and ECOINT data.
 
 import typer
 import httpx
-import os
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
-
+from typing import Dict, Any
 from rich.panel import Panel
 from rich.syntax import Syntax
-
 from .utils import console
 from .schemas import AiCoreResult, ClimaintReport
 from .gemini_client import GeminiClient

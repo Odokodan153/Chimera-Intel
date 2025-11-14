@@ -1,20 +1,20 @@
-# src/chimera_intel/core/deep_osint.py
-
+"""
+DarkSocialMonitor tracks content in private platforms like Telegram and Discord given keywords and channel lists, returning a dictionary of found snippets. 
+IoTDeviceScanner searches Shodan for exposed IoT devices using a query string and returns a list of device details. 
+DeepGraphAnalyzer analyzes a graph from GraphDB to find indirect relationships or partnership networks, returning paths or connected entities.
+"""
 import logging
 from typing import List, Dict, Any, Set
 import networkx as nx
-from chimera_intel.core.graph_db import GraphDB  # Assuming this is your graph database interface
+from chimera_intel.core.graph_db import GraphDB  
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-import asyncio  # <-- ADDED
+import asyncio  
+import shodan  
+from .config_loader import API_KEYS  
+from .connect import _scrape_telegram, _scrape_discord  
 
-# --- Real Client Imports ---
-import shodan  # <-- ADDED
-from .config_loader import API_KEYS  # <-- ADDED
-from .connect import _scrape_telegram, _scrape_discord  # <-- ADDED REAL IMPLEMENTATIONS
-# --- End Real Client Imports ---
-
-logging.basicConfig(level=logging.INFO)  # <-- ADDED basic logging config
-logger = logging.getLogger(__name__)  # <-- Use logger
+logging.basicConfig(level=logging.INFO)  
+logger = logging.getLogger(__name__)  
 
 
 class DarkSocialMonitor(ChimeraPlugin):

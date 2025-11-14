@@ -1,3 +1,10 @@
+"""
+Geolocation OSINT Module
+
+This module provides tools to gather, analyze, and visualize geolocation intelligence
+for IP addresses. It supports:
+"""
+
 import typer
 import asyncio
 import logging

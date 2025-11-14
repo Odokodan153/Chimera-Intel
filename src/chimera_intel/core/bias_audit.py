@@ -9,16 +9,14 @@ on a single source.
 
 import typer
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 import json
-
 from .schemas import (
     BiasAuditResult,
     BiasFinding,
 )
 from .gemini_client import GeminiClient
 from .utils import save_or_print_results, console
-from .database import save_scan_to_db
 
 logger = logging.getLogger(__name__)
 gemini_client = GeminiClient()

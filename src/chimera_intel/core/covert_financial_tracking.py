@@ -1,4 +1,15 @@
-# src/chimera_intel/core/covert_financial_tracking.py
+"""
+Covert Financial Tracking (CFT) Module
+
+Provides asynchronous orchestration of:
+- Money laundering and shell company detection
+- Trade-based espionage analysis
+- Dark web / black market monitoring
+
+Integrates MLINT, FinINT, corporate intelligence, AI risk assessment, and a graph database
+for linking entities, crypto addresses, shipments, and dark web listings. Exposes CLI via Typer.
+"""
+
 import logging
 import re
 import asyncio
@@ -6,16 +17,14 @@ from typing import List, Dict, Any
 import typer
 import json
 from .mlint import (
-    screen_entity_for_aml,
     identify_shell_company_indicators,
 )
 from .finint import get_transactions_from_db, analyze_transaction_patterns
 from .corporate_intel import get_trade_data
 from .dark_web_osint import search_dark_web_engine
-from .graph_db import graph_db_instance, GraphDB  # For linking entities
+from .graph_db import graph_db_instance, GraphDB  
 from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
-# --- End (REAL) Imports ---
 
 logger = logging.getLogger(__name__)
 

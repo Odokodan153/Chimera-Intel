@@ -21,7 +21,7 @@ import time
 import httpx
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
-from typing import Optional, Dict, Any, cast
+from typing import Optional, Dict, Any
 from chimera_intel.core.http_client import get_async_http_client, async_client
 from chimera_intel.core.utils import console, save_or_print_results, is_valid_domain
 from chimera_intel.core.config_loader import API_KEYS

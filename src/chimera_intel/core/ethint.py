@@ -1,15 +1,21 @@
+"""
+ETHINT – Ethical Governance & Compliance Engine CLI.
+
+Provides tools to audit operations for compliance with ethical and legal frameworks,
+generate AI-powered Privacy Impact Reports (PIRs), and assess the trustworthiness of
+information sources using a CRAAP-based scoring model. Integrates with generative AI
+for analysis and produces human-readable summaries, tables, and optional JSON outputs.
+"""
+
 import logging
 import json
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import os
 import importlib
-
 import typer
 from rich.console import Console
 from rich.table import Table
-
-# FIX: Changed relative import to absolute import to fix module loading in pytest.
 from chimera_intel.core.schemas import (
     Operation,
     ComplianceResult,
@@ -17,9 +23,7 @@ from chimera_intel.core.schemas import (
     PrivacyImpactReport,
     DataVerificationResult,
     CRAAPScore,
-    BaseResult,
 )
-# Use the project's Gemini client
 from chimera_intel.core.gemini_client import llm_call_text
 from chimera_intel.core.project_manager import resolve_target
 from chimera_intel.core.utils import save_or_print_results

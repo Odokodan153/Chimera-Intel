@@ -1,4 +1,3 @@
-# Chimera-Intel/src/chimera_intel/core/cci.py
 """
 Module for Counter-Counter-Intelligence (CCI) & Attribution Masking.
 
@@ -14,14 +13,10 @@ import asyncio
 from typing import List, Optional, Dict, Any
 import aiohttp
 from aiohttp_socks import ProxyConnector
-
-# Internal Imports
 from .utils import console
 from .config_loader import CONFIG, API_KEYS
 from .alert_manager import AlertManager, AlertLevel
 from .schemas import AlertLevel
-
-# Imports from other modules for self-monitoring
 try:
     from .rt_osint import (
         check_clearnet, 

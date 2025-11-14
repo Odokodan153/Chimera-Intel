@@ -1,5 +1,8 @@
-# src/chimera_intel/core/media_forensics_tools.py
-
+"""
+Advanced Media Forensics Tools Integration
+This module integrates various media forensics tools such as ExifTool,
+FFmpeg, Error Level Analysis (ELA), and deep learning model loaders for
+media analysis."""
 import subprocess
 import json
 import os
@@ -7,18 +10,14 @@ import shutil
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
-
-# Core media analysis libraries
 from PIL import Image, ImageChops, ImageEnhance
 import cv2
 import numpy as np
-
 # --- InVID-related Additions ---
 from scenedetect import open_video, SceneManager, ContentDetector
 from skimage.metrics import structural_similarity as ssim
 from skimage.restoration import estimate_sigma
 import face_recognition
-
 # --- Real DL Model Loader Additions ---
 import torch
 import torch.nn as nn
@@ -26,8 +25,6 @@ from torchvision import transforms
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-
-# --- CLI Additions ---
 import typer
 
 # Configure logging

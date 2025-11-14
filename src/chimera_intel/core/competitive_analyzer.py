@@ -8,18 +8,14 @@ of two targets based on previously saved scan data.
 import typer
 import json
 import logging
-
-# --- FIX: Removed 'import sys' ---
-
 from rich.markdown import Markdown
-
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console
 from chimera_intel.core.schemas import CompetitiveAnalysisResult
 from chimera_intel.core.ai_core import (
     generate_swot_from_data,
-)  # Re-using for general AI generation
+)  
 
 logger = logging.getLogger(__name__)
 

@@ -7,13 +7,11 @@ the flow of funds. Uses the Blockchair API.
 import typer
 import logging
 import httpx
-import os
-import asyncio  # <-- ADDED IMPORT
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from .utils import console, save_or_print_results
 from .config_loader import API_KEYS
-from .http_client import get_async_http_client  # <-- Use async client
-from pyvis.network import Network  # Re-use the existing 2D grapher tech
+from .http_client import get_async_http_client 
+from pyvis.network import Network  
 
 logger = logging.getLogger(__name__)
 tracer_app = typer.Typer()

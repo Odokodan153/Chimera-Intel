@@ -20,23 +20,16 @@ import random
 from datetime import datetime
 from pathlib import Path 
 from .schemas import FieldReportIntake
-# --- (NEW) NLP Entity Extraction Imports ---
 try:
     from textblob import TextBlob
     NLP_AVAILABLE = True
 except ImportError:
     NLP_AVAILABLE = False
-# --- End NLP Imports ---
-
-# --- (NEW) Audio Transcription Imports ---
 try:
     import speech_recognition as sr
     SPEECH_RECOGNITION_AVAILABLE = True
 except ImportError:
     SPEECH_RECOGNITION_AVAILABLE = False
-# --- End Audio Imports ---
-
-# --- Core Imports ---
 from .schemas import HumintScenario
 from .database import get_db_connection
 from .ai_core import generate_swot_from_data

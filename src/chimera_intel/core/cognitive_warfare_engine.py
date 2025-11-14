@@ -8,16 +8,13 @@ import json
 import logging
 from rich.console import Console
 import pandas as pd
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 import re
-
-# --- (REAL) Core Module Imports ---
 from .narrative_analyzer import track_narrative_gnews
 from .social_media_monitor import search_twitter
 from .humint import HumintScenario, run_humint_scenario
 from .config_loader import API_KEYS
 from .ai_core import generate_swot_from_data
-# --- End (REAL) Imports ---
 
 console = Console()
 logger = logging.getLogger(__name__)

@@ -1,11 +1,20 @@
+"""
+ECOINT CLI tools for environmental and sustainability intelligence.  
+
+Provides commands to fetch EPA Clean Water Act violations, asset-level GHG 
+emissions from Climate TRACE, and monitor trade flow anomalies via UN Comtrade. 
+Each command retrieves data from public APIs, processes it, and displays results in a 
+readable table format with optional anomaly detection.
+"""
+
 import typer
 import requests
 import os
 from rich.console import Console
 from rich.table import Table
-from typing import Optional, List, Dict, Any  # +++ UPDATED IMPORT
-import pandas as pd  # +++ NEW IMPORT
-from datetime import datetime, timedelta  # +++ NEW IMPORT
+from typing import Dict, Any  
+import pandas as pd 
+from datetime import datetime, timedelta  
 
 app = typer.Typer(
     no_args_is_help=True,

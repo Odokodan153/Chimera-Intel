@@ -12,11 +12,8 @@ This integrates concepts from:
 
 import typer
 import logging
-from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from .schemas import ActionMetadata, ActionRiskLevel
-
-from .schemas import User
 from .legint import screen_for_sanctions
 from .security_utils import load_consent, check_consent_for_action
 from .utils import console

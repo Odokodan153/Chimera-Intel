@@ -10,11 +10,10 @@ from typing_extensions import Annotated
 from rich.panel import Panel
 import typer
 import logging
-import json  # <-- ADDED IMPORT
+import json  
 from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
-from datetime import datetime
 from .schemas import (
     InsiderTradingResult,
     InsiderTransaction,
@@ -23,7 +22,7 @@ from .schemas import (
     CrowdfundingProject,         
     CrowdfundingAnalysisResult,  
     CrowdfundingCreator,
-    FinancialTransaction,  # <-- This schema is used
+    FinancialTransaction,  
     MoneyFlowGraph,
     AmlSimulationResult,
     ScenarioImpact,      

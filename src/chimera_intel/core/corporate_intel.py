@@ -27,10 +27,7 @@ from .database import save_scan_to_db
 from .http_client import sync_client
 from .config_loader import API_KEYS
 from .project_manager import get_active_project, resolve_target
-# --- NEW IMPORTS ---
 from .leadership_profiler import leadership_profiler_app as profiler_app_instance
-# --- END NEW IMPORTS ---
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,15 @@
-# File: Chimera-Intel/src/chimera_intel/core/eduint.py
+"""
+EDUINT CLI for Educational & Research Intelligence.
+
+Monitors academic publications, university patent filings, tech transfer announcements,
+and curriculum changes to identify emerging skills and innovations. Data is retrieved
+from web sources, analyzed using AI, and stored in a graph database for alerts and tracking.
+"""
 
 import typer
 from rich.console import Console
 from typing import List, Dict, Any, Optional
 import logging
-
 from chimera_intel.core.gemini_client import GeminiClient
 from chimera_intel.core.web_scraper import WebScraper
 from chimera_intel.core.google_search import GoogleSearch

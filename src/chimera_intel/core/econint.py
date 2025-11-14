@@ -1,3 +1,10 @@
+"""
+Economic Intelligence CLI for macro and micro indicators.
+
+Provides commands to fetch and display macroeconomic data (GDP, inflation, unemployment) 
+for countries via the World Bank, and microeconomic stock market data (price, market cap, P/E ratio) 
+for companies via Alpha Vantage. Data is presented in console-friendly tables, with error handling for missing or invalid data.
+"""
 import logging
 import asyncio
 from typing import Optional
