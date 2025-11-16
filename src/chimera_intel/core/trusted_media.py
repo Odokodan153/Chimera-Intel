@@ -1,4 +1,3 @@
-# src/chimera_intel/core/trusted_media.py
 """
 Module for Image Production & Photoshop Best Practices (for CI & trusted media).
 
@@ -41,8 +40,6 @@ except ImportError:
     Image = None
     c2pa = None
     lsb = None  
-
-# --- MODIFICATION: Import crypto helpers ---
 try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding
@@ -51,7 +48,6 @@ except ImportError:
     hashes = None
     padding = None
     InvalidSignature = Exception
-
 from .utils import console
 from .evidence_vault import store_evidence 
 from .in_mem_arg_service import in_mem_arg_service_instance as arg_service_instance

@@ -1,3 +1,10 @@
+"""
+Module for analyzing strategic signals from OSINT data.
+This module provides functionality to scrape job postings from a target's
+website and analyze various OSINT data sources to identify potential strategic
+signals based on predefined keywords.
+"""
+
 import typer
 from bs4 import BeautifulSoup
 from rich.panel import Panel

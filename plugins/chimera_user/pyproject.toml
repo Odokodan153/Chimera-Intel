@@ -7,6 +7,9 @@ name = "chimera-user"
 version = "1.0.0"
 description = "User management and authentication plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "passlib[bcrypt]>=1.7.4,<2.0.0",
     "argon2-cffi>=21.3.0,<22.0.0"

@@ -358,27 +358,200 @@ Chimera Intel is organized into a powerful, hierarchical CLI, making it easy to 
 |               | `synthetic-media-audit` | `media-adv synthetic-media-audit sample_image.png`                  | Run a specialized audit to categorize and score AI-generated content.                         |
 |               | `encode-covert`         | `media-adv encode-covert secret.png -m "Top Secret" -o encoded.png` | Hide a secret message in an image using LSB steganography.                                    |
 |               | `decode-covert`         | `media-adv decode-covert encoded.png`                               | Extract a secret message hidden in an image using LSB steganography.                          |
-| **Media forensic tools** | `exif`            | `media-tools exif /path/to/image.jpg`                                            | Extracts all metadata from a media file using ExifTool.               |
+| **Media forensic Tools** | `exif`            | `media-tools exif /path/to/image.jpg`                                            | Extracts all metadata from a media file using ExifTool.               |
 |                 | `ela`             | `media-tools ela /path/to/image.jpg /path/to/output.png --quality 90 --scale 10` | Performs Error Level Analysis (ELA) on an image.                      |
 |                 | `ffmpeg-metadata` | `media-tools ffmpeg-metadata /path/to/video.mp4`                                 | Extracts video and stream metadata using FFprobe.                     |
 |                 | `ffmpeg-frames`   | `media-tools ffmpeg-frames /path/to/video.mp4 /output/dir --rate 1`              | Extracts frames from a video at a specified rate (frames per second). |
 |                 | `find-faces`      | `media-tools find-faces /path/to/image.jpg`                                      | Detects faces in an image and returns their locations.                |
 |                 | `ssim`            | `media-tools ssim /path/to/image1.jpg /path/to/image2.jpg`                       | Calculates Structural Similarity Index (SSIM) between two images.     |
+| **Media Forensics** | `artifact-scan`    | `forensics artifact-scan media.jpg -o result.json`                                        | Scan an image for manipulation artifacts using ELA and EXIF metadata.                                           |
+|               | `deepfake-scan`    | `forensics deepfake-scan suspect_video.mp4 -o deepfake.json`                              | Detect deepfake indicators by running face crops through a loaded deepfake model.                               |
+|               | `provenance-check` | `forensics provenance-check image_with_c2pa.jpg -o provenance.json`                       | Verify embedded C2PA provenance credentials and extract manifest history.                                       |
+|               | `map-narrative`    | `forensics map-narrative "russian disinfo" -o narrative.json`                             | Generate a topic-based narrative map using real articles, NMF topic modeling, and a synthetic influence graph.  |
+|               | `detect-poisoning` | `forensics detect-poisoning https://suspicious-blog.net -o poisoning.json`                | Detect coordinated disinformation indicators in an OSINT source (WHOIS age, language patterns, vague sourcing). |
+|               | `face-recognize`   | `forensics face-recognize face.jpg --mode find`                                           | Locate faces in an image.                                                                                       |
+|               |                    | `forensics face-recognize face.jpg --mode encode -o enc.json`                             | Generate 128-dimensional face encodings.                                                                        |
+|               |                    | `forensics face-recognize known.jpg --mode compare --compare unknown.jpg -o compare.json` | Compare faces between two images using dlib face recognition.                                                   |
+| **Media Governance**       | `log-consent`      | `gov log-consent --name "Jane Doe" --form consent.pdf --details "Use for training set A" --contact jane@example.com` | Logs a signed consent form, stores it in the Evidence Vault, and creates a ConsentRecord with a generated consent_id. |
+|               | `request-approval` | `gov request-approval ABC123 --by editor@example.com --reason "Review before publication"`                           | Submits a media manifest for review by adding a `PENDING_REVIEW` entry to its chain of custody.                       |
+|               | `approve`          | `gov approve ABC123 --by approver@example.com --notes "Cleared for public release"`                                  | Adds an `APPROVED` entry to the asset’s chain of custody.                                                             |
+|               | `reject`           | `gov reject ABC123 --by reviewer@example.com --reason "Copyright concerns"`                                          | Adds a `REJECTED` entry to the asset’s chain of custody.                                                              |
+| **Media Hardening**    | `vault-add`      | `harden vault-add media/master.jpg --owner "intel" --classification "CUI"`               | Adds a master file to the secure vault and logs the action.                    |
+|               | `release-public` | `harden release-public 9f12abc_master.jpg public_thumbnail.jpg --width 600 --height 600` | Generates and releases a low-resolution, visibly watermarked public thumbnail. |
+|               | `c2pa-embed`     | `harden c2pa-embed input.jpg output_c2pa.jpg --author "Chimera-Intel"`                   | Embeds C2PA Content Credentials into an image using the configured signer.     |
+|               | `c2pa-verify`    | `harden c2pa-verify output_c2pa.jpg`                                                     | Verifies and prints C2PA credentials embedded in an image.                     |
+|               | `opsec-brief`    | `harden opsec-brief`                                                                     | Displays the configured employee OPSEC briefing document.                      |
+| **Medical**    | `trials`        | `medint trials "Pfizer" --max 5`         | Queries ClinicalTrials.gov (API v2) for R&D trials sponsored by the specified company. |
+|               | `outbreaks`     | `medint outbreaks --source cdc_alerts`   | Retrieves outbreak alerts from a selected RSS feed (CDC, WHO, ECDC).                   |
+|               | `supply-chain`  | `medint supply-chain ventilator --max 5` | Searches openFDA for medical device recalls matching the keyword.                      |
+| **Metacognition** | `run-self-analysis` | `metacognition run-self-analysis logs.json requirements.json` | Performs a complete self-analysis on the system: evaluates module performance, generates optimization recommendations, and identifies intelligence gaps based on operational logs and required intelligence topics. |
+| **Money Laundering**     | `refresh-models`               | `mlint refresh-models`                                                      | Reloads ML models from disk into global state.                                                    |
+|               | `analyze-entity`               | `mlint analyze-entity "Alice Corp" --entity-type Company --jurisdiction US` | Run a full intelligence workup on a single entity.                                                |
+|               | `train-models`                 | `mlint train-models features.csv --labeled-file labeled.csv`                | Train and save IsolationForest and optionally supervised XGBoost models.                          |
+|               | `run-backtest`                 | `mlint run-backtest labeled_data.csv`                                       | Execute the backtesting and evaluation suite.                                                     |
+|               | `run-realtime-monitor`         | `mlint run-realtime-monitor --host 0.0.0.0 --port 8000`                     | Start the real-time monitor and API service.                                                      |
+|               | `refresh-models-cli`           | `mlint refresh-models-cli`                                                  | CLI variant to reload models from disk with console output.                                       |
+|               | `analyze-entity-command`       | `mlint analyze-entity-command "Alice Corp" --entity-type Company`           | Internal CLI command for analyzing a single entity (mirrors `analyze-entity`).                    |
+|               | `train-models-command`         | `mlint train-models-command features.csv`                                   | Internal CLI command variant for training models (mirrors `train-models`).                        |
+|               | `run-backtest-command`         | `mlint run-backtest-command labeled_data.csv`                               | Internal CLI command variant for backtesting (mirrors `run-backtest`).                            |
+|               | `run-realtime-monitor-command` | `mlint run-realtime-monitor-command --host 0.0.0.0 --port 8000`             | Internal CLI command variant for starting real-time monitor (mirrors `run-realtime-monitor`).     |
+|               | `verify-message-signature`     | (No direct CLI usage)                                                       | Function used internally to verify HMAC-SHA256 message signatures; not intended as a CLI command. |
+| **Moving Target**    | `track`         | `movint track --icao24 ABC123 --imo 9876543 --username johndoe --output result.json` | Fuses live flight (AVINT), vessel (MARINT), and historical social media (OSINT) data to track a single entity. Results can be saved to a JSON file. |
+| **Multi Domain** | `correlate`     | `multi-domain correlate --project AlphaProject --sigint-module marint_ais_live --sigint-module sigint_sensor1 --humint-keyword strike --finint-entity "TargetCorp" --max-age-hours 48 --output alert.json` | Runs a multi-domain correlation across SIGINT, HUMINT, and FININT data. If all domains show recent relevant events within the specified time window, creates a `MultiDomainCorrelationAlert` for analyst review and optionally saves it to a JSON file. |
+| **Multimodal Reasoning** | `run`           | `multimodal-reasoning run --input multimodal_data.json --output fused_results.json --target "John Doe"` | Processes and reasons across multiple data types (text, image, audio, geolocation) to detect cross-correlations and insights about a target. Persists results to the database and optionally saves to JSON. |
+| **Narrative Tracking / Disinformation** | `track`         | `narrative track --track "climate change"` | Monitors a topic across news and social media, performs sentiment analysis, and summarizes key sources and content. Returns results and prints a table with sentiment.         |
+|                                         | `map`           | `narrative map --track "climate change"`   | Analyzes collected narrative data to detect influence operations, dominant narratives, key influencers, and sentiment skew. Produces an AI-generated influence mapping report. |
+| **Narrative & Competitor Content** | `analyze-themes` | `narint analyze-themes example.com --output results.json` | Discovers public content from a competitor’s domain (blogs, case studies, whitepapers, news), scrapes the text, summarizes each piece using AI, and clusters content into strategic themes. The output is structured and can be saved to a JSON file. |
+| **Negotiation (AI-Assisted)** | `add-counterparty`     | `negotiation add-counterparty --name "Acme Corp" --industry "Tech"`                       | Adds a new counterparty to the intelligence database with optional metadata such as industry and country.                                                                                                                                      |
+|                             | `add-market-indicator` | `negotiation add-market-indicator --name "S&P 500" --value 4500 --source "Yahoo Finance"` | Adds a market indicator to the intelligence database with a numeric value and source reference.                                                                                                                                                |
+|                             | `train-rl`             | `negotiation train-rl --episodes 10000 --output model.pkl`                                | Trains a reinforcement learning agent for negotiation simulations. Uses a simulated negotiation environment with randomized offer amounts and sentiment to update a Q-learning agent. Saves the trained model to a file for later use.         |
+|                             | `simulate-llm`         | `negotiation simulate-llm --persona cooperative --country US --mock`                      | Generates a negotiation message using a specified LLM persona. Supports cultural context, ethical guardrails, and either a real or mock LLM interface. Outputs structured message, tactic, confidence score, and flags any ethical violations. |
+| **Negotiation** | `simulate`      | `python script.py simulate --llm --mode training --country JP --deterministic`       | Starts an interactive negotiation simulation, optionally using the Gemini LLM and specifying mode, country code, and deterministic opponent. |
+|                     | `start`         | `python script.py start "Salary Negotiation"`                                        | Starts a new negotiation session with the given subject.                                                                                     |
+|                     | `join`          | `python script.py join 123e4567-e89b-12d3-a456-426614174000 user_42`                 | Adds a user to an existing negotiation session using session ID and user ID.                                                                 |
+|                     | `leave`         | `python script.py leave 123e4567-e89b-12d3-a456-426614174000 user_42`                | Removes a user from an existing negotiation session using session ID and user ID.                                                            |
+|                     | `offer`         | `python script.py offer 123e4567-e89b-12d3-a456-426614174000 user_42 "Offer: $5000"` | Makes an offer in a negotiation session.                                                                                                     |
+|                     | `accept`        | `python script.py accept 123e4567-e89b-12d3-a456-426614174000 user_42`               | Accepts an offer in a negotiation session.                                                                                                   |
+|                     | `reject`        | `python script.py reject 123e4567-e89b-12d3-a456-426614174000 user_42`               | Rejects an offer in a negotiation session.                                                                                                   |
+|                     | `history`       | `python script.py history 123e4567-e89b-12d3-a456-426614174000`                      | Retrieves and prints the message history of a negotiation session.                                                                           |
+|                     | `status`        | `python script.py status 123e4567-e89b-12d3-a456-426614174000`                       | Retrieves and prints the current status and messages of a negotiation session.                                                               |
+| **Network Scan** | `run`           | `python script.py run example.com --ports 22,80,443 --concurrency 50 --timeout 5 --banner-size 1024 --ipv6 --output scan.json` | Performs a non-intrusive network scan for open ports and service banners on the specified target. Supports IPv4/IPv6, concurrency limits, port selection, and saving results to a file or database. |
+| Command Group     | Feature Command       | Example CLI Usage                                                             | Description                                                                                                    |
+| ----------------- | --------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Offensive** | `api-discover`        | `python script.py api-discover example.com --output apis.json`                | Discovers potential API endpoints and specifications on a target domain.                                       |
+|                   | `enum-content`        | `python script.py enum-content example.com --output content.json`             | Enumerates common directories and files on a target web server, identifying accessible resources.              |
+|                   | `cloud-takeover`      | `python script.py cloud-takeover example.com --output takeovers.json`         | Checks for potential subdomain takeovers by analyzing dangling DNS records and known vulnerable patterns.      |
+|                   | `wifi-attack-surface` | `python script.py wifi-attack-surface Corporate-HQ --live --output wifi.json` | Models potential WiFi attack vectors from stored or live SIGINT data, including rogue APs and weak encryption. |
+| **Opdec**     | `create-profiles` | `opdec create-profiles --count 10`          | Generate and store synthetic honey‑profiles using the synthetic persona generator.                                        |
+|               | `list-profiles`   | `opdec list-profiles`                       | Display all honey‑profiles currently stored in the database.                                                              |
+|               | `test-scrape`     | `opdec test-scrape https://httpbin.org/get` | Run a proxied web scrape using a random proxy and a random honey‑profile, optionally generating background chaff traffic. |
+| **Open Data** | `world-bank`    | `open-data world-bank NY.GDP.MKTP.CD --country USA -o gdp.json` | Query the World Bank Open Data API for a specific economic indicator and optionally save the results to a file. |
+| **Opsec**     | `run`           | `opsec run --target "Acme Corp" -o opsec_report.json`                                 | Correlate historical and real-time scan data to identify OPSEC weaknesses and generate a quantifiable risk report. |
+|               | `footprint`     | `opsec footprint --target "Acme Corp" -o footprint_summary.json --report-dir reports` | Generate a proactive adversary risk exposure report by analyzing code, social media, and external footprint.       |
+| **Osint Fusion** | `fuse-profiles` | `osint-fusion fuse-profiles profiles.json` | Load scraped profile data from a JSON file and fuse it into the HUMINT network map, creating links for current employment, past roles, and education. |
+|                  | `fuse-jobs`     | `osint-fusion fuse-jobs jobs.json`         | Load scraped job posting data from a JSON file and process it to extract recruiting signals.                                                          |
+| **OT-Intel**  | `recon`         | `ot-intel recon --ip-address 192.168.1.100`                | Perform OT reconnaissance on a given IP address, collecting Shodan host data and identifying ICS/SCADA protocols. |
+|               | `iot-scan`      | `ot-intel iot-scan --query "webcam country:US" --limit 10` | Scan for exposed IoT devices using a Shodan search query, returning a limited number of results.                  |
+| **Page Monitor** | `add`           | `page-monitor add --url https://example.com --schedule "0 * * * *"` | Adds a scheduled web page monitoring job. Uses a cron-style schedule to check the page for changes and notifies via Slack/Teams if the content hash changes. |
+| **Persona Profiler** | `profile`       | `persona profile --handle johndoe --platform twitter` | Profiles a user account to detect sock puppet or adversarial behavior using social OSINT, temporal analysis, and image verification. Flags suspicious behavior such as recent account creation, erratic posting, or recycled profile images. |
+| **Personnel** | `emails`        | `personnel_osint emails example.com --output results.json` | Searches for public employee email addresses for a given domain. |
+|                     | `enrich`        | `personnel_osint enrich example.com -o enriched.json`      | Finds emails and enriches them with potential LinkedIn profiles. |
+| **Pestel Analyzer** | `run`           | `pestel_analyzer run --target AcmeCorp` | Generates an AI-powered PESTEL analysis from aggregated OSINT data for a target. |
+| **Physical Monitoring**  | `monitor-schedule-add` | `phys_mon monitor-schedule-add --schedule "0 */4 * * *"`   | Schedules the physical location monitor to run periodically based on a cron schedule.                    |
+|               | `run-once`             | `phys_mon run-once --project FactoryA --location MainGate` | Runs the physical monitor a single time for a specific project and location, analyzing provided imagery. |
+| **Physical Osint** | `search`        | `physical_osint search --query Tesla --type factory -o results.json`                     | Searches for physical locations like headquarters, factories, or data centers for a target entity. |
+|                    | `locations`     | `physical_osint locations Tesla -o locations.json`                                       | Finds physical office locations related to a target.                                               |
+|                    | `map-facility`  | `physical_osint map-facility Tesla --route-from "1600 Amphitheatre Parkway" -o map.json` | Maps facilities, building footprints, and logistics routes for a target company.                   |
 | **Playbook**  | `list`                        | `chimera auto playbook list`                                                                         | Lists all available example playbooks for workflows.                                                      |
 |               | `show`                        | `chimera auto playbook show passive-asset-discovery > discovery.yaml`                                | Shows the YAML content of a specified example playbook.                                                   |
-| **Voice-match** | `adversary-voice-match` | `voice-match adversary-voice-match ./samples/new_audio.wav --threshold 0.85 -o results.json` | Compares a new audio file against a library of known adversary synthetic voices using DTW. Returns similarity scores and flags matches above the threshold. |
-
-
-
-
-
-
-
-
----
-
-
----
+| **Podcast**   | `info`          | `podcast info https://example.com/feed.xml --output info.json`                       | Retrieves podcast information and episode list from an RSS feed.                           |
+|               | `search`        | `podcast search https://example.com/episode.mp3 --keyword "security" -o search.json` | Searches for a keyword within a podcast episode by downloading and transcribing the audio. |
+|               | `analyze`       | `podcast analyze https://example.com/episode.mp3 -o analysis.json`                   | Generates an AI-powered summary and analysis of a podcast episode.                         |
+| **Policy & Regulatory Intelligence** | `track-portal`  | `polint track-portal --base-url "https://www.congress.gov" --feed-path "/search?q=energy" --link-selector "li.result-item a" --keyword "renewable" --keyword "carbon" --target-company "Tesla" --target-industry "Automotive"` | Scans a legislative or regulatory portal for documents matching keywords, performs AI-powered impact analysis on a target company/industry, stores results in GraphDB, and displays a summary table. |
+| **Price**  | `add-monitor`      | `priceint add-monitor --url https://example.com/product -l "span.list-price" -p "span.sale-price" -s "0 */6 * * *"` | Adds a new product page to the price monitoring historian and schedules periodic checks.    |
+|               | `detect-promos`    | `priceint detect-promos --url https://example.com/product`                                                          | Scans a page for promotion signals such as discounts, coupons, bundles, and seasonal sales. |
+|               | `check-elasticity` | `priceint check-elasticity example.com --url https://example.com/product`                                           | Correlates price history with web traffic to analyze price elasticity signals.              |
+| **Privacy Impact Reporter** | `run`           | `privacy-impact-reporter run --input ./data/documents.json --output ./results/report.json` | Generates a Privacy Impact Report by scanning documents for PII, calculating risk levels, and suggesting mitigation steps. |
+| **Product**   | `teardown`          | `prodint teardown https://www.example.com`                                                                                                        | Performs a digital teardown to identify a website's technology stack.                |
+|               | `churn-analysis`    | `prodint churn-analysis facebook --country us --reviews 200`                                                                                      | Analyzes Apple App Store reviews to estimate churn risk and sentiment.               |
+|               | `monitor-dev`       | `prodint monitor-dev "Example Developer" --country us`                                                                                            | Monitors the Google Play Store for apps released by a specific developer.            |
+|               | `scrape-catalog`    | `prodint scrape-catalog https://www.example.com/catalog`                                                                                          | Scrapes product listings from a generic e-commerce or marketplace catalog page.      |
+|               | `monitor-changelog` | `prodint monitor-changelog --url https://www.example.com/changelog --schedule "0 0 * * *"`                                                        | Monitors a product changelog or pricing page for changes on a scheduled basis.       |
+|               | `feature-gaps`      | `prodint feature-gaps --our-url https://ourproduct.com/features --competitor-url https://competitor.com/features --requested "SSO,API,Dark Mode"` | Compares two feature pages against a list of requested features and identifies gaps. |
+| **Profile Analyzer** | `twitter`       | `profile-analyzer twitter elonmusk --count 50` | Analyzes a Twitter user's profile and recent tweets to generate behavioral and psychographic insights. |
+| **Project**   | `init`          | `chimera project init MyProject --domain example.com --company "Example Corp" --ticker EXM --competitor Competitor1 --location "HQ:123 Main St, USA"` | Initializes a new intelligence project with optional company info, ticker, competitors, and key locations.            |
+|               | `use`           | `chimera project use MyProject`                                                                                                                       | Sets the active project context for subsequent commands.                                                              |
+|               | `status`        | `chimera project status`                                                                                                                              | Displays information about the currently active project, including domain, company, competitors, and monitored pages. |
+|               | `share`         | `chimera project share MyProject --user alice --role analyst`                                                                                         | Shares a project with another user and assigns a role (admin, analyst, read-only).                                    |
+|               | `judicial-hold` | `chimera project judicial-hold MyProject --reason "Litigation Case #1234"`                                                                            | Places a project on judicial hold and snapshots all current scan results for legal compliance.                        |
+|               | `add-watch`     | `chimera project add-watch --url "https://example.com/careers" --keyword Snowflake --keyword GCP --project MyProject`                                 | Adds a web page to the OSINT Watch Tower for monitoring with optional keyword alerts.                                 |
+| **Project Report** | `run`           | `chimera project-report run` | Generates a comprehensive PDF report for the active project by running configured scans and aggregating results. |
+| **Provenance** | `generate-keys` | `chimera provenance generate-keys --output my_key`                                                                                              | Generates a new RSA keypair for signing: `my_key.pem` (private) and `my_key.pub.pem` (public).     |
+|                | `embed`         | `chimera provenance embed sample.jpg --key my_key.pem --issuer "Chimera-Intel" --consent-id CONSENT123 --tsa-url http://timestamp.digicert.com` | Signs, timestamps, and embeds a JSON-LD provenance manifest into a media file.                     |
+|                | `verify`        | `chimera provenance verify sample.jpg --key my_key.pub.pem --output verification.json`                                                          | Extracts and verifies the embedded provenance manifest in a media file, optionally saving results. |s
+| **Psychological**    | `plan`          | `chimera psyint plan --goal "Influence opinions on new policy" --narrative "Our product improves lives" --audience "Tech enthusiasts" --platforms "twitter,forums" --out campaign_plan.json` | Generates a campaign plan with A/B test narratives, identifies target audiences, and creates synthetic assets. Saves plan to a JSON file. |
+|               | `execute`       | `chimera psyint execute campaign_plan.json --consent consent.pdf`                                                                                                                            | Executes a PSYINT campaign (simulation). High-risk; gated by governance checks and optional human review. Requires a signed consent file. |
+| **Purple Team** | `run-exercise`  | `chimera purple-team run-exercise example.com --industry "Financial Services" --scan-dir ./iac --skip-slow` | Runs a full 5-phase purple team exercise: Red Team, Defensive Scans, CTI gathering, AI correlation, Risk & Attack Simulation. Saves results to DB. |
+|                 | `hunt-ttp`      | `chimera purple-team hunt-ttp T1566 example.com`                                                            | Hypothesis-driven hunt for a specific MITRE TTP against the target. Includes targeted defensive checks and AI assessment.                          |
+|                 | `emulate-actor` | `chimera purple-team emulate-actor APT29 example.com`                                                       | Emulates all known TTPs of a threat actor against a target, testing defenses and generating coverage reports.                                      |
+| **Radar**    | `analyze-sar`   | `radint analyze-sar --before before_image.tif --after after_image.tif --aoi -118.3,34.0,-118.2,34.1,-118.1,34.0` | Analyze 'before' and 'after' SAR images for ground changes within a specified Area of Interest (AOI). |
+| **Radio Frequency**     | `ble`           | `rfint ble --duration 10 --output ble_results.json`                                               | Scans for nearby Bluetooth Low Energy (BLE) devices for a specified duration and optionally saves results to a JSON file.       |
+|               | `wifi-live`     | `rfint wifi-live wlan0 --duration 15 --output wifi_results.json`                                  | Performs a live Wi-Fi scan on a given wireless interface in monitor mode, detecting APs and clients, optionally saving results. |
+|               | `sdr-scan`      | `rfint sdr-scan --from 433.0 --to 434.0 --threshold -30 --rate 2.4 --gain auto --output sdr.json` | Actively scans a frequency range using an RTL-SDR device, reporting signals above a power threshold, optionally saving results. |
+| **Real Time**  | `monitor`       | `rt-osint monitor --keywords "cocaine,AK-47" --interval 300 --proxy socks5h://127.0.0.1:9050` | Continuously monitors clearnet threat feeds and .onion archives (via Tor) for specified keywords. Alerts on new matches and deduplicates results using a local JSON file. Supports keyword lists from file or CLI, with a configurable check interval. |
+| **Remediation** | `cve`           | `remediation cve CVE-2021-44228 --output plan.json`                                               | Get a structured remediation plan for a specific CVE, including patch steps and mitigations.               |
+|                 | `domain`        | `remediation domain chimera-intol.com "Chimera Intel" --output plan.json`                         | Get a remediation plan for a lookalike domain impersonating a brand, including legal and monitoring steps. |
+|                 | `infra`         | `remediation infra 1.2.3.4 --port 22 --banner "SSH-2.0" --asn 12345 --output plan.json`           | Get a remediation plan for hostile infrastructure, including blocking, monitoring, and incident response.  |
+|                 | `ai-plan`       | `remediation ai-plan "Phishing Email" "User reported email from fake-ceo.com" --output plan.json` | Generate an AI-driven remediation plan for any threat type, providing actionable steps with categories.    |
+| **Reputation** | `reputation-degradation-model` | `reputation reputation-degradation-model "Deepfake CEO Speech" deepfake_video.mp4 --output impact.json` | Predict the potential reputational impact of a deepfake or manipulated media by analyzing its quality and amplification network. |
+| **Response**  | `add-rule`        | `response add-rule --trigger "dark-web:credential-leak" --action "send_slack_alert" --action "legal_notification_snapshot"` | Adds a new automated response rule to the database with one or more actions to execute on that trigger. |
+|               | `simulate-event`  | `response simulate-event "dark-web:credential-leak" '{"media_file": "leak.mp4", "target": "CEO"}'`                          | Simulates an event for testing response rules and executes associated actions.                          |
+|               | `malware-sandbox` | `response malware-sandbox /path/to/suspicious_file.exe`                                                                     | Simulates detonating a file in a secure sandbox to generate IOCs (Indicators of Compromise).            |
+| **Risk Assessment**      | `assess-indicator` | `risk assess-indicator 8.8.8.8 --service apache` | Assesses risk for a given indicator (IP, domain) using threat intelligence, vulnerability data, and threat actor information, and displays a detailed risk assessment report. |
+| **Sales**    | `find-intent-signals` | `salint find-intent-signals example.com --output signals.json` | Finds public intent signals (e.g., job postings, RFPs) and churn signals (e.g., complaints). Requires `google_api_key` and `google_cse_id`.         |
+|               | `mine-win-loss`       | `salint mine-win-loss example.com -o win_loss.json`            | Mines Google for win/loss signals like case studies, testimonials, and partner change announcements. Requires `google_api_key` and `google_cse_id`. |
+| **Sentiment Time Series** | `run`           | `sentiment-time-series run "AcmeCorp" -i input_docs.json -o results.json` | Tracks sentiment over time for a target/topic and flags statistically significant shifts using anomaly detection. Accepts a JSON input file with timestamped documents and optionally outputs results to a JSON file. |
+| **SEO**  | `run`           | `seo-intel run example.com -c competitor1.com -c competitor2.com -k "cloud security" -i content.json -o seo_report.json` | Analyzes a target domain's SEO and content strategy against competitors, including keyword ranking gaps, backlink mentions, content velocity, topic coverage, and traffic/authority data. Supports optional JSON content input and multiple competitor domains. |
+| **Signal Intelligence**    | `monitor-spectrum` | `sigint monitor-spectrum --host 192.168.1.100 --port 1234 --duration 120 --threshold -25 -o results.json` | Monitors a live RF spectrum stream for signals exceeding a specified power threshold.              |
+|               | `live`             | `sigint live --lat 51.5074 --lon -0.1278 --host 127.0.0.1 --port 30005 --duration 60 -o aircraft.json`    | Monitors and decodes a live stream of aircraft signals (Mode-S/ADS-B) from a TCP stream.           |
+|               | `decode-adsb`      | `sigint decode-adsb capture.csv --lat 51.5074 --lon -0.1278 -o adsb_results.json`                         | Decodes aircraft signals from a CSV capture file containing ADS-B messages.                        |
+|               | `decode-ais`       | `sigint decode-ais ais_capture.txt -o ais_results.json`                                                   | Decodes maritime AIS signals from a capture file with one message per line.                        |
+|               | `decode-ham`       | `sigint decode-ham ham_logs.adif -o ham_results.json`                                                     | Decodes amateur radio (HAM) logs from a capture file (e.g., ADIF format).                          |
+|               | `fingerprint`      | `sigint fingerprint example.com -o fingerprint.json`                                                      | Analyzes network metadata (DNS, WHOIS, SSL) for a target domain to generate a digital fingerprint. |
+|               | `model-traffic`    | `sigint model-traffic capture.pcap -o traffic_model.json`                                                 | Models network traffic from a PCAP file to detect common behaviors and deviations.                 |
+| **Signal**    | `run`           | `signal run example.com` | Analyzes a target domain's public footprint for unintentional strategic signals using OSINT data, including technology stack and job postings. |
+| **Simulator** | `start`         | `simulator start cooperative` | Starts an interactive negotiation simulation with a chosen AI persona (cooperative, aggressive, analytical). |
+| **Social Analizer**    | `run`           | `social run example.com -o social_analysis.json` | Finds and analyzes a target domain's RSS feed or blog content for strategic topics using AI-driven classification. |
+| **Social History** | `monitor`       | `social-history monitor https://twitter.com/john_doe -t john_doe_twitter -o changes.json` | Tracks changes to a public social media profile since the last run, showing added/removed text and saving results optionally to a JSON file. |
+| **Social Media Monitor** | `twitter`       | `social_media_app twitter "python" "AI" --limit 5 --output-file results.json` | Monitors Twitter in real-time for specific keywords. Requires a valid Twitter Bearer Token. Results can be saved to a JSON file and logged to the database. |
+|                      | `youtube`       | `social_media_app youtube "OpenAI GPT-5" --limit 3 --output-file videos.json` | Monitors YouTube for new videos matching a query. Requires a valid YouTube API key. Results can be saved to a JSON file and logged to the database.         |
+| **Social Osint** | `run`            | `social_osint_app run johndoe --output results.json`                   | Searches for a username across multiple social media platforms using Sherlock. Results can be saved to a JSON file and logged to the database.          |
+|                      | `tiktok-profile` | `social_osint_app tiktok-profile therock --output profile.json`        | Fetches a public TikTok user's profile by scraping HTML and extracting embedded JSON. Relies on TikTok’s website structure and may break if it changes. |
+|                      | `tiktok-hashtag` | `social_osint_app tiktok-hashtag python --count 5 --output posts.json` | Fetches recent public TikTok posts for a given hashtag. HTML scraping is used and results may vary if TikTok changes its page structure.                |
+| **Software Supply Chain Security**    | `analyze-repo`  | `scaint analyze-repo https://github.com/example/repo.git` | Clones a public Git repository, identifies its dependencies, and scans them for known vulnerabilities and license issues using OSV-Scanner. |
+| **Source Triage** | `run`           | `source-triage run https://example.com --output result.json` | Performs OSINT triage on a URL, including domain parsing, WHOIS age check, and dynamic page analysis using Playwright. Results can be saved to a JSON file. |
+| **Source Trust Model** | `run`           | `source_trust_model_app run example.com --type mainstream_media --output result.json` | Calculates a trust/confidence score for a given information source. Optionally, a source type hint can be provided. Results can be saved to a JSON file and logged to the database. |
+| **Space**       | `track`         | `app track 25544`                                           | Tracks a satellite by its NORAD Catalog Number and displays its current Earth-Centered Inertial (ECI) position.                                    |
+|               | `launches`      | `app launches --limit 3`                                    | Displays a list of upcoming rocket launches, including launch time, rocket, mission, and launch pad.                                               |
+|               | `predict`       | `app predict 25544 --lat 40.7128 --lon -74.0060 --hours 24` | Predicts satellite flyover events for a given observer location and time window, showing rise, culminate, and set times with altitude and azimuth. |
+| **Strategic Analisys**       | `kpi-report`    | `app kpi-report example.com` | Generates a strategic KPI report for a target domain by aggregating data from modules like PRICEINT and PRODINT. Includes coverage (tracked SKUs), data freshness, qualitative KPIs, and governance reminders. |
+| **Strategic Forecaster** | `run`           | `python forecaster.py run "Market Crash Scenario" --ticker AAPL --narrative "Tech sector growth" --keywords "AI,Blockchain"` | Generate a predictive forecast for a specified scenario using FININT data, narrative tracking, and Twitter monitoring. |
+| **Supply Chain** | `analyze`       | `python supply_chain.py analyze requests:2.28.1 numpy:1.23.5 --output results.json` | Analyze a list of software components for known upstream vulnerabilities using the OSV.dev API, and optionally save results to a JSON file. |
+| **Systemic Intelligence**    | `analyze`       | `python sysint.py analyze --project-file system_project.json` | Models a complex systemic environment from a JSON project file and analyzes it for emergent properties, including communities, bridge nodes, and cascading failure points. |
+| **Technical Forensics** | `lighting`      | `python tech_forensics.py lighting example.jpg`      | Analyze lighting and shadow consistency on faces in an image.                                                                 |
+|                    | `perspective`   | `python tech_forensics.py perspective example.jpg`   | Analyze perspective lines for inconsistencies in an image.                                                                    |
+|                    | `aberration`    | `python tech_forensics.py aberration example.jpg`    | Detect chromatic aberration or channel misalignment in an image.                                                              |
+|                    | `eyes`          | `python tech_forensics.py eyes example.jpg`          | Analyze eye reflections for inconsistencies that may indicate manipulation.                                                   |
+|                    | `lipsync`       | `python tech_forensics.py lipsync example_video.mp4` | Correlate audio and video to detect lip sync inconsistencies in a video file.                                                 |
+|                    | `all`           | `python tech_forensics.py all example_media.mp4`     | Run all available forensic analyses (lighting, perspective, aberration, eye reflections, lip sync) on an image or video file. |
+| **Temporal**  | `snapshots`     | `python temporal.py snapshots example.com --output results.json` | Fetch historical web snapshots of a domain to analyze key moments of transformation, rebranding, or strategic shifts, and optionally save the results to a JSON file. |
+| **The Eye**    | `run`           | `python the_eye.py acme.com --tenant default_tenant` | Executes the OSINT investigation for the given target identifier. Performs discovery, analysis, AI synthesis, alerting, reporting, and archiving. Only a single-run orchestrator; not a multi-command CLI. |
+| **Threat Actor** | `profile`       | `python -m threat_actor profile APT28 --output apt28.json` | Gathers and synthesizes an intelligence profile for a known threat actor. Fetches data from AlienVault OTX, including aliases, targeted industries, TTPs, and indicators. Saves results to JSON or the database. |
+| **Threat Hunter** | `run`           | `python -m threat_hunter run --log-file /var/log/syslog --actor APT28 --output results.json` | Hunts for a threat actor's known IOCs in a local log file. Uses the threat actor profile to scan the file and outputs results to JSON or database. |
+| **Topic Clusterer** | `run`           | `python -m topic_clusterer run --input documents.json --output clusters.json MyProjectTarget` | Analyzes a JSON list of documents to detect emerging topic clusters using an LLM. Saves results to JSON and logs the scan in the database. |
+| **Third Party Risk**       | `run`           | `python -m tpr run example.com --output tpr_report.json` | Runs a full Third-Party Risk Management scan for a domain, including vulnerability checks, breach lookups, and an AI-generated summary. Results can be saved to a JSON file and logged in the database. |
+| **Traffic Analyzer**   | `analyze`       | `python -m traffic analyze capture.pcap --carve-files` | Analyzes a network capture file (.pcap or .pcapng) to summarize protocols, map IP conversations, generate an interactive communication graph, and optionally carve files from unencrypted traffic. |
+| **Trusted Media** | `create`        | `trusted-media create master.psd -p PROJECT123 -e editor@example.com -k ./keys/private.pem --deriv deriv1.png --deriv deriv2.jpg --consent consent1 --consent consent2 --tsa-url http://timestamp.digicert.com --embed-c2pa True --watermark-badge "Official / Verified" --ai-models-json '[{"model_name":"GenFill v2"}]'` | Register a new trusted media package: hashes the master file, creates a manifest, applies signed/timestamped watermarking and C2PA to derivatives, stores the manifest in the Evidence Vault, and links it in the ARG. |
+|                   | `verify`        | `trusted-media verify deriv1.png -k ./keys/public.pub.pem --output verification_result.json`                                                                                                                                                                                                                               | Verify the embedded provenance of a trusted media file by checking signature and timestamp; optionally outputs full verification to JSON.                                                                              |
+| **TTP Mapping**   | `map_cve`       | `ttp-app map-cve CVE-2021-44228 CVE-2020-0601 --output results.json` | Maps one or more CVE vulnerabilities to MITRE ATT&CK techniques and optionally saves the results to a JSON file. Records scan results in the local database. |
+| **User Manager**  | `add`           | `user-app add alice alice@example.com --password MySecretPass123` | Adds a new user to the Chimera Intel database with the specified username, email, and password. |
+|               | `login`         | `user-app login alice`                                            | Logs in a user, setting them as the active context and updating their last_login timestamp.     |
+|               | `logout`        | `user-app logout`                                                 | Logs out the current active user by clearing the user context.                                  |
+|               | `status`        | `user-app status`                                                 | Displays the currently logged-in user, if any.                                                  |
+| **Vector Search** | `embed`         | `vector-search embed ./images/cat.png --output cat_embedding.json`    | Generates a CLIP vector embedding for a single image and optionally saves it to a JSON file. |
+|                   | `build-index`   | `vector-search build-index ./images --prefix my_index`                | Builds a FAISS index from all images in a directory and saves the index and mapping file.    |
+|                   | `search`        | `vector-search search ./images/query.png --prefix my_index --top-k 5` | Searches the FAISS index for the Top-K most similar images to the query image.               |
+| **Video**    | `analyze`       | `vidint analyze sample_video.mp4 --extract-frames 10 -d frames_output --detect-motion --analyze-content --sample-rate 5` | Analyze a video file: extract frames every N seconds, detect motion, and perform object detection on sampled frames. |
+| **Voice Match** | `adversary-voice-match` | `voice-match adversary-voice-match ./samples/new_audio.wav --threshold 0.85 -o results.json` | Compares a new audio file against a library of known adversary synthetic voices using DTW. Returns similarity scores and flags matches above the threshold. |
+| **Vulnerability** | `run`           | `vulnerability run example.com --output results.json` | Discover assets for a domain, perform port scanning, and correlate findings with known CVEs via Vulners API. |
+| **Weak Signal Analyzer**       | `run`           | `wsa run AcmeCorp --output results.json` | Amplifies weak signals from historical and aggregated data using evidence theory (Dempster-Shafer) to generate higher-confidence event assessments. |
+| **Weather**  | `get`           | `weathint get "Paris, France"` | Retrieve the current weather for a specified location using OpenWeatherMap API. |
+| **Web Analyzer**       | `run`           | `web run example.com --output results.json` | Performs asynchronous web analysis for a domain: enumerates tech stack (BuiltWith/Wappalyzer), estimates traffic, captures a screenshot, and assesses technology risk. |
+| **Web-scraper** | `parse-article`  | `web-scraper parse-article "https://example.com/news/123" --output parsed_article.json`            | Scrapes a single news article using `newspaper3k` and extracts its content. Saves as JSON if `--output` is provided.                                          |
+|                 | `scrape-dynamic` | `web-scraper scrape-dynamic "https://example.com/profile" --wait-for "#profile-card" -o page.html` | Scrapes a dynamic, JavaScript-rendered page using Playwright. Waits for a specific CSS selector if provided and saves full HTML to the specified output file. |
+| **Visual Difference** | `run`           | `visual-diff run --output diff.png --module page_monitor --target example.com` | Compares the last two web page screenshots for a target and module. Saves the resulting visual diff image to the specified output file. |
+| **Wifi Analyzer** | `analyze`       | `wifi-analyzer analyze capture_file.pcap` | Analyzes a wireless network capture file (PCAP/PCAPNG) to identify Wi-Fi access points, their SSIDs, channels, and security protocols (Open, WEP, WPA, WPA2). Outputs results with rich console formatting. |
+| **Zero Day**   | `monitor`       | `zeroday monitor "Microsoft Exchange" --output exploits.json` | Monitors the NVD for public CVEs matching a product, vendor, or CVE ID. Results can be saved to a JSON file and are also stored in the database. |
 
 ## 📖 Use Cases & Example Workflows
 
@@ -393,7 +566,7 @@ Your goal is to build a complete dossier on a competitor, "megacorp.com".
 4.  **Synthesize with AI**: `chimera analysis strategy megacorp.com`
 5.  **Generate Report**: `chimera report pdf megacorp.json`
 
-### Workflow 2: Continuous Self-Monitoring
+### Worskflow 2: Continuous Self-Monitoring
 You want to monitor your own company, "mycompany.com", for external threats.
 
 1.  **Check for Breaches**: `chimera defensive checks breaches mycompany.com`
@@ -492,6 +665,59 @@ graph TD
         M --> N[Analysis Modules (strategist.py, differ.py)];
         N --> O[AI Models / Historical Comparison];
         O --> P[Final Report/Analysis];
+    end
+
+graph TD
+    subgraph User Input
+        A[User provides high-level objective] --> B{CLI/Web Entrypoint};
+        C[e.g., 'aia execute-objective "Investigate suspicious domain activity" --max-runs 3'] --> B;
+    end
+
+    subgraph AIA Autonomous Core
+        B --> D{Reasoning Engine (aia_framework.py)};
+        D --> E[Task Planner];
+        E --> F[Task Executor];
+        F --> G[Internal Data Store / Context];
+        D --> H[Consolidated Report Generator];
+    end
+
+    subgraph Chimera Toolset
+        F --> I[Scan Modules (footprint, web, etc.)];
+        F --> J[Defensive Modules (breaches, leaks, etc.)];
+        F --> K[Analysis Modules (ai_core, strategist, etc.)];
+        F --> L[Additional Modules [...] ];
+        I --> G;
+        J --> G;
+        K --> G;
+        L --> G;
+        G --> D;
+        H --> M[Final Report (report.json)];
+    end
+
+graph TD
+    subgraph Negotiation Interface
+        N[User via CLI/WebApp] --> O{Negotiation Core (negotiation.py)};
+        O --> P[Session Manager];
+        P --> Q[Intelligence Database (SQLite/Postgres)];
+    end
+
+    subgraph AI Simulation Engine
+        R[Simulation Host (negotiation_simulator.py)] --> S[LLM Interface (Gemini)];
+        R --> T[AI Personas (Cooperative, Aggressive)];
+        R --> U[Cultural Context Module];
+        R --> V[Ethical Guardrails];
+        R --> W[Trained RL Agent (model.pkl)];
+    end
+
+    subgraph RL Training (Offline Process)
+        X[Train RL Command (negotiation train-rl)] --> Y[RL Environment (negotiation_rl_env.py)];
+        Y --> W;
+    end
+
+    subgraph Analytics & Output
+        Q --> Z[Analytics Module (analytics.py)];
+        Z --> AA[KPI Dashboard (analytics show)];
+        Z --> AB[Sentiment Plot (analytics plot-sentiment)];
     end
 
 ## Deployment

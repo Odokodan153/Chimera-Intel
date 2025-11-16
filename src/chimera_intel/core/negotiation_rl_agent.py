@@ -1,3 +1,5 @@
+"""
+QLearning and DQN-based negotiation agents for Chimera Intel."""
 import random
 import json
 import torch

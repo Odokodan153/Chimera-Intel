@@ -1,25 +1,27 @@
+"""
+Network Scanner Module
+Performs non-intrusive network scans to identify open ports and service banners.
+Supports IPv4/IPv6, concurrency limits, and advanced port selection.
+"""
+
 import typer
 import asyncio
 import socket
 import logging
 import re
 from typing import List, Optional, Set, Dict, Any
-
-# --- Optional High-Performance DNS ---
 try:
     import aiodns
     AIODNS_AVAILABLE = True
-    logging.getLogger("aiodns").setLevel(logging.WARNING) # Silence noisy lib
+    logging.getLogger("aiodns").setLevel(logging.WARNING)
 except ImportError:
     aiodns = None # type: ignore
     AIODNS_AVAILABLE = False
-# ---
-
 from .schemas import (
     PortScanResult,
     ServiceBanner,
     NetworkScanReport,
-)  # Assumes these are updated in schemas.py
+) 
 from .utils import console, save_or_print_results, is_valid_domain, is_valid_ip
 from .database import save_scan_to_db
 from .project_manager import resolve_target

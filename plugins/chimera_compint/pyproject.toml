@@ -3,6 +3,9 @@ name = "chimera_compint"
 version = "0.1.0"
 description = "A Chimera plugin for high-value competitive image intelligence."
 readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.9"
 
 # These dependencies are required by the 'competitive_imint.py' module

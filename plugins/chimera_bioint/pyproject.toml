@@ -7,6 +7,9 @@ name = "chimera-bioint"
 version = "1.0.0"
 description = "Biological Intelligence (BIOINT) plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 
 # This section registers the package as a Chimera Intel plugin
 [project.entry-points."chimera_intel.plugins"]

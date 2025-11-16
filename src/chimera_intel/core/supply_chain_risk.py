@@ -3,13 +3,15 @@ Module for Supply Chain Risk AI.
 
 Analyzes software dependencies and hardware providers to detect
 upstream vulnerabilities and assess supply chain risk.
+
+This version queries the public OSV.dev API.
 """
 
 import logging
-from typing import Optional, Dict, Any, List
-
+from typing import Optional, List, Dict, Any
 import typer
-from .config_loader import API_KEYS
+# config_loader is no longer needed for API_KEYS
+# from .config_loader import API_KEYS
 from .database import save_scan_to_db
 from .http_client import sync_client
 from .schemas import (
@@ -21,47 +23,88 @@ from .utils import console, save_or_print_results
 
 logger = logging.getLogger(__name__)
 
-# --- Mock Vulnerability Database API ---
-# In a real implementation, this would point to OSV, Snyk, NIST NVD, etc.
-MOCK_VULN_DB_URL = "https://api.mock-vuln-db.com/v1/check"
+# --- Real Vulnerability Database API ---
+# This is the real batch query endpoint for OSV.dev
+OSV_BATCH_QUERY_URL = "https://api.osv.dev/v1/querybatch"
+
+
+def _get_severity_from_osv(vuln: Dict[str, Any]) -> str:
+    """
+    Parses the OSV vulnerability record to find the highest CVSS score
+    and map it to a qualitative severity rating.
+    """
+    highest_score = 0.0
+    
+    # OSV severity is an array of scoring systems (e.g., CVSS_V3)
+    for severity_entry in vuln.get("severity", []):
+        if severity_entry.get("type") == "CVSS_V3":
+            try:
+                # The 'score' can be a vector string or a number.
+                # We look for a simple numerical score.
+                # In a more robust parser, you'd parse the vector.
+                score = float(severity_entry.get("score"))
+                if score > highest_score:
+                    highest_score = score
+            except (ValueError, TypeError):
+                # Could be a vector string like "CVSS:3.1/AV:N/AC:L/..."
+                # For this example, we'll ignore it if it's not a simple number.
+                pass
+
+    # If we found a CVSS score, map it.
+    if highest_score > 0.0:
+        if highest_score >= 9.0:
+            return "CRITICAL"
+        if highest_score >= 7.0:
+            return "HIGH"
+        if highest_score >= 4.0:
+            return "MEDIUM"
+        if highest_score >= 0.1:
+            return "LOW"
+            
+    # Fallback if no CVSS_V3 score was found
+    return "UNKNOWN"
 
 
 def analyze_supply_chain_risk(
     components: List[SoftwareComponent],
 ) -> SupplyChainRiskResult:
     """
-    Analyzes a list of software components for upstream vulnerabilities.
-    
-    Simulates checking a vulnerability database API.
+    Analyzes a list of software components for upstream vulnerabilities
+    by querying the public OSV.dev API.
     """
-    api_key = API_KEYS.vuln_db_api_key  # Assumes a VULN_DB_API_KEY in config
-    if not api_key:
-        return SupplyChainRiskResult(
-            target_components=components,
-            error="Vulnerability Database API key (VULN_DB_API_KEY) is not configured.",
-        )
+    logger.info(f"Analyzing {len(components)} components for supply chain risk via OSV.dev...")
 
-    logger.info(f"Analyzing {len(components)} components for supply chain risk...")
+    # Build the batch query for OSV.dev
+    # We assume 'PyPI' ecosystem as this is a Python project.
+    # This could be made more flexible if needed.
+    queries = []
+    for component in components:
+        queries.append({
+            "package": {"name": component.name, "ecosystem": "PyPI"},
+            "version": component.version,
+        })
     
-    headers = {"X-API-KEY": api_key}
-    # In a real API, you'd likely batch-post the components.
-    # Here, we'll simulate checking them one by one.
+    batch_request_body = {"queries": queries}
     
     found_vulnerabilities: List[SupplyChainVulnerability] = []
     total_risk_score = 0.0
 
     try:
-        for component in components:
-            params = {"name": component.name, "version": component.version}
-            
-            # Simulate a request to the vulnerability database
-            response = sync_client.get(MOCK_VULN_DB_URL, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+        # Send a single POST request with all component queries
+        response = sync_client.post(OSV_BATCH_QUERY_URL, json=batch_request_body)
+        response.raise_for_status()
+        data = response.json()
 
-            if data.get("vulnerabilities"):
-                for vuln in data["vulnerabilities"]:
-                    sev = vuln.get("severity", "UNKNOWN").upper()
+        # The response contains a 'results' list in the same order as our queries
+        results = data.get("results", [])
+        
+        for i, component_result in enumerate(results):
+            component = components[i] # Get the component we queried for
+            
+            # 'vulns' is the list of vulnerabilities for that component
+            if component_result and component_result.get("vulns"):
+                for vuln in component_result["vulns"]:
+                    sev = _get_severity_from_osv(vuln)
                     
                     if sev == "CRITICAL":
                         total_risk_score += 10
@@ -69,12 +112,14 @@ def analyze_supply_chain_risk(
                         total_risk_score += 7
                     elif sev == "MEDIUM":
                         total_risk_score += 4
+                    elif sev == "LOW":
+                        total_risk_score += 1
 
                     found_vulnerabilities.append(
                         SupplyChainVulnerability(
-                            cve_id=vuln.get("cve_id", "N/A"),
+                            cve_id=vuln.get("id", "N/A"),
                             severity=sev,
-                            description=vuln.get("description", "No description."),
+                            description=vuln.get("summary", vuln.get("details", "No description.")),
                             component_name=component.name,
                             component_version=component.version,
                         )
@@ -99,13 +144,14 @@ def analyze_supply_chain_risk(
         )
 
     except Exception as e:
-        logger.error(f"An error occurred while querying vuln database: {e}")
+        logger.error(f"An error occurred while querying OSV.dev API: {e}")
         return SupplyChainRiskResult(
             target_components=components, error=f"An API error occurred: {e}"
         )
 
 
 # --- Typer CLI Application ---
+# (This part is identical to your original file)
 
 supply_chain_app = typer.Typer()
 
@@ -126,7 +172,14 @@ def run_supply_chain_analysis(
     parsed_components: List[SoftwareComponent] = []
     for item in components:
         try:
-            name, version = item.split(":")
+            # Assume PyPI ecosystem if not specified
+            if ":" in item:
+                name, version = item.split(":")
+            else:
+                console.print(f"[bold red]Invalid component format:[/bold red] '{item}'. Skipping. "
+                          "Please use 'name:version' format.")
+                continue
+                
             parsed_components.append(SoftwareComponent(name=name, version=version))
         except ValueError:
             console.print(f"[bold red]Invalid component format:[/bold red] '{item}'. Skipping. "

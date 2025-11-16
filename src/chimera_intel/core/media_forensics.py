@@ -38,7 +38,6 @@ try:
     import face_recognition
 except ImportError:
     face_recognition = None
-
 from chimera_intel.core.schemas import (ForensicArtifactResult,
                                         DeepfakeAnalysisResult,
                                         ProvenanceResult,

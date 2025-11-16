@@ -1,3 +1,9 @@
+"""
+Social Media Content Analyzer Module for Chimera Intel
+This module discovers and analyzes RSS feeds or blogs associated with a target domain
+to extract strategic insights using AI-driven content classification.  
+It is designed to be integrated into the Chimera Intel framework as a Typer CLI application."""
+
 import typer
 import feedparser  # type: ignore
 from bs4 import BeautifulSoup, Tag
@@ -16,7 +22,7 @@ from chimera_intel.core.schemas import (
 )
 from chimera_intel.core.ai_core import (
     classify_text_zero_shot,
-)  # Import the centralized classifier function
+)  
 from .project_manager import resolve_target
 
 # Get a logger instance for this specific file

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera_project"
+version = "0.0.1"
+description = "A plugin for project management in Chimera-Intel"
+readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# Add any dependencies your plugin has, e.g.:
+# dependencies = [
+#     "fastapi",
+#     "pydantic",
+# ]
+
+[tool.setuptools.packages.find]
+where = ["src"]

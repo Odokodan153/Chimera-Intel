@@ -10,7 +10,6 @@ import logging
 import hashlib
 from datetime import datetime, timezone
 from typing import Optional
-
 from .schemas import ChainOfCustodyEntry, ConsentRecord, MediaAssetStatus
 from .utils import console
 from .local_db_service import (

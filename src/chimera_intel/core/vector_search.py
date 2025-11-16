@@ -16,22 +16,16 @@ import pathlib
 import json
 import numpy as np
 from PIL import Image
-from typing import Optional, List, Dict
+from typing import Optional
 from rich.console import Console
 from rich.table import Table
 from .schemas import EmbeddingResult, SearchResult, SearchMatch
-# Imports for FAISS and CLIP
 try:
     import faiss
     from sentence_transformers import SentenceTransformer
 except ImportError:
     faiss = None
-    # [FIX 2] Don't set SentenceTransformer = None.
-    # Let it be undefined if the import fails.
-    # The _check_imports() function will handle this.
     pass
-
-from .schemas import BaseAnalysisResult
 from .utils import save_or_print_results
 
 console = Console()

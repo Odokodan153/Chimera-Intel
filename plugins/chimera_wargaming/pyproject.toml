@@ -2,7 +2,9 @@
 name = "chimera_wargaming"
 version = "0.1.0"
 description = "Chimera-Intel plugin for running massive scenario and wargaming simulations."
-authors = ["Your Name <you@example.com>"]
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]

@@ -12,7 +12,6 @@ from typing import List, Optional, Dict, Any
 import json
 import statistics
 import pandas as pd
-
 from .schemas import (
     SentimentTimeSeriesResult,
     SentimentDataPoint,

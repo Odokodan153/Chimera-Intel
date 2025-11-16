@@ -1,3 +1,10 @@
+"""
+Metacognition & Self-Improving AI Core.
+This module analyzes the system's performance logs to identify strengths,
+weaknesses, and intelligence gaps, generating recommendations for optimization
+and new intelligence collection requirements.
+"""
+
 import logging
 import json
 from typing import List, Dict, Any

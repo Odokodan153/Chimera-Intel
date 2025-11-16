@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-tpr"
 version = "1.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Third-Party Risk Management (TPRM) plugin for Chimera Intel."
 requires-python = ">=3.9"
 

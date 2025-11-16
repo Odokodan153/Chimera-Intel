@@ -12,17 +12,13 @@ import typer
 import logging
 import asyncio
 import random
-from typing import List, Optional, Dict, Any
+from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.ext.declarative import declarative_base
 from .schemas import HoneyProfile
-
 from .utils import console
-from .schemas import WebScrapeResult, FootprintResult # Result schemas
+from .schemas import WebScrapeResult, FootprintResult 
 from .logger_config import get_logger
-
-# --- Assumed Imports from other Core Modules ---
-# We import the "real" functions to wrap them.
 try:
     from .database import Base, engine, SessionLocal
     from .http_client import get_http_client
@@ -34,7 +30,6 @@ try:
 except ImportError as e:
     MODULES_LOADED = False
     logging.error(f"OPDEC failed to load core dependencies: {e}")
-    # Define stubs if modules fail, so the file can be imported
     Base = declarative_base()
     def get_proxy_pool(): return ["http://localhost:8080"]
     def generate_synthetic_persona(): return {"name": "FailedToLoad", "bio": "", "user_agent": ""}

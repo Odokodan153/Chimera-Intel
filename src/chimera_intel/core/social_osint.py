@@ -1,8 +1,10 @@
-# --- Sherlock Integration ---
-# Sherlock is a powerful library, but it's designed for command-line use.
-# We need to import its core components and adapt them for our library.
-
-
+"""
+Social OSINT module for Chimera Intel.
+This module includes functionality to search for social media profiles
+using the Sherlock library and to gather TikTok intelligence via HTML scraping. 
+It provides a Typer CLI application with commands for both Sherlock username searches
+and TikTok data retrieval.
+"""
 from sherlock import sherlock, SitesInformation  # type: ignore
 from .schemas import (
     SocialProfile, 

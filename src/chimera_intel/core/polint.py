@@ -1,21 +1,21 @@
-# Chimera-Intel/src/chimera_intel/core/polint.py
+"""
+POLINT (Policy & Regulatory Intelligence) Module for Chimera Intel
+This module provides tools to proactively monitor and analyze changes in
+legislation and regulation, assessing their potential impact on specified companies or industries.
+"""
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from urllib.parse import urljoin
-
 from bs4 import BeautifulSoup
 import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
-
 from chimera_intel.core.ai_core import AICore
 from chimera_intel.core.http_client import AsyncHTTPClient
 from chimera_intel.core.graph_db import GraphDB, Node, Edge
-# Assuming config_loader and service initialization is handled by the main app
-# from chimera_intel.core.config_loader import Config
 
 # Configure logger
 logger = logging.getLogger(__name__)

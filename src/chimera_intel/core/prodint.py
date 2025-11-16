@@ -1,22 +1,26 @@
+"""
+Product Intelligence (PRODINT) Module
+Handles tasks such as digital teardowns, adoption/churn analysis,
+and identifying feature gaps using live data.
+"""
+
 import typer
 import httpx
 import asyncio
 import logging
 from bs4 import BeautifulSoup
-from rich.console import Console
 from collections import Counter
 from Wappalyzer import Wappalyzer, WebPage
 from app_store_scraper import AppStore
 from google_play_scraper import search, app
 from textblob import TextBlob
-from typing import List, Dict, Set, Any
+from typing import List, Dict, Set
 from hashlib import sha256
 import re
 from datetime import datetime
-# Imports for new functionality
 from chimera_intel.core.http_client import get_async_http_client
 from chimera_intel.core.scheduler import add_job
-from chimera_intel.core.page_monitor import check_for_changes  # Re-use monitor logic
+from chimera_intel.core.page_monitor import check_for_changes  
 from chimera_intel.core.utils import console
 
 # --- ARG INTEGRATION IMPORTS ---

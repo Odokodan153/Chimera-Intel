@@ -11,14 +11,13 @@ for more accurate scraping of social media sites.
 import typer
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional
 from urllib.parse import urlparse
 import whois
 from bs4 import BeautifulSoup
 import re
 from rich.console import Console
 from playwright.sync_api import sync_playwright, Error as PlaywrightError
-
 from .utils import save_or_print_results
 from .schemas import SourceTriageResult
 

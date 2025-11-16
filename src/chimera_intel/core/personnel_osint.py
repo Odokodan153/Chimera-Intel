@@ -1,3 +1,7 @@
+"""
+Personnel OSINT Module - Finds employee emails and enriches with LinkedIn profiles.
+"""
+
 import typer
 import logging
 from typing import Dict, Union, Optional, List

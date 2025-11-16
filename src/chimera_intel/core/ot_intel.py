@@ -5,9 +5,7 @@ Operational Technology (OT) & ICS/SCADA Intelligence Module for Chimera Intel.
 import typer
 import shodan
 from typing import Optional, List
-
 from chimera_intel.core.config_loader import API_KEYS
-from chimera_intel.core.google_search import search as google_search
 
 # Create a new Typer application for OT Intelligence commands
 ot_intel_app = typer.Typer(

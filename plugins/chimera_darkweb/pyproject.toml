@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-darkweb"
 version = "1.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Dark Web OSINT plugin for Chimera Intel."
 requires-python = ">=3.9"
 dependencies = [

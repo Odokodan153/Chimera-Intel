@@ -1,3 +1,8 @@
+"""
+Active Radio Frequency Intelligence (RFINT) tools.
+Requires specialized hardware (SDR, Wi-Fi/BLE adapters).
+"""
+
 import typer
 import asyncio
 import json
@@ -12,10 +17,6 @@ from .schemas import (
     RFSignal,
     RFScanReport,
 )
-# --- Hardware-Specific Imports ---
-# These will be wrapped in try/except blocks to allow the module
-# to load even if the drivers/libraries are not installed.
-
 try:
     from bleak import BleakScanner
     from bleak.backends.device import BLEDevice as BleakDeviceImpl
@@ -26,7 +27,6 @@ except ImportError:
         "Please run: pip install bleak"
     )
     BleakScanner = None  # type: ignore
-
 try:
     from scapy.all import sniff, Dot11, Dot11Beacon, Dot11ProbeReq, Dot11Elt
 except ImportError:
@@ -35,7 +35,6 @@ except ImportError:
         "Please run: pip install scapy"
     )
     sniff = None  # type: ignore
-
 try:
     from rtlsdr import RtlSdr
 except ImportError:
@@ -44,7 +43,6 @@ except ImportError:
         "Please run: pip install pyrtlsdr"
     )
     RtlSdr = None  # type: ignore
-
 try:
     import numpy as np
 except ImportError:

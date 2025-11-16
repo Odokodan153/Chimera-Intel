@@ -7,8 +7,6 @@ to simulate an adversary's OSINT process and generate a risk report.
 
 import logging
 from typing import Dict, Any
-
-# Import existing modules to be orchestrated
 from chimera_intel.core.footprint import Footprint
 from chimera_intel.core.personnel_osint import PersonnelOsint
 from chimera_intel.core.social_osint import SocialOsint

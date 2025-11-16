@@ -1,3 +1,9 @@
+"""
+Utility functions for TPRM and negotiation workflows, including domain validation, 
+formatted output of scan results, sending notifications to Slack and Teams, 
+and calculating negotiation ranges (ZOPA) from historical offers.
+"""
+
 import json
 import re
 from rich.console import Console

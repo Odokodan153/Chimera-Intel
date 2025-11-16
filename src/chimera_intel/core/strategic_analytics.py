@@ -9,17 +9,13 @@ It addresses the "Metrics & KPIs to track" section of the notes.
 """
 
 import typer
-import json
 import logging
-import os
 import statistics
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Optional
 from urllib.parse import urlparse
-
 from chimera_intel.core.utils import console
-# Reuse data loading functions/variables from existing modules
-from chimera_intel.core.pricing_intel import _load_price_history, PRICE_HISTORY_FILE
+from chimera_intel.core.pricing_intel import _load_price_history
 from chimera_intel.core.database import get_aggregated_data_for_target
 
 app = typer.Typer(

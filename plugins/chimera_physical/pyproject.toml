@@ -7,6 +7,9 @@ name = "chimera-physical"
 version = "1.0.0"
 description = "Physical OSINT plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "googlemaps>=4.10.0,<5.0.0",
 ]

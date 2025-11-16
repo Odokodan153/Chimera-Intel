@@ -1,3 +1,5 @@
+"""
+CLI tools for AI-assisted negotiation using RL and LLMs."""
 import typer
 from rich.console import Console
 import numpy as np

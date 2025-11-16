@@ -7,6 +7,9 @@ name = "chimera-analysis"
 version = "1.0.0"
 description = "Advanced Analysis & AI plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "google-generativeai>=0.2.2,<0.3.0",
     "scikit-learn>=1.5.0,<2.0.0",

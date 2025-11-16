@@ -8,7 +8,7 @@ and fuse it with the HUMINT network map.
 import typer
 from typing import List
 import json
-from pathlib import Path  # <--- (FIX) Import Path
+from pathlib import Path 
 from .utils import console
 from .humint import map_network_link
 from .schemas import ScrapedJobPosting, ScrapedProfile

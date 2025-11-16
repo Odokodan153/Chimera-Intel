@@ -8,10 +8,8 @@ import logging
 from typing import List, Dict, Any
 from datetime import datetime, timedelta
 from newsapi import NewsApiClient 
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError # <-- For Retries
-
-from mlint_schemas import Entity, AdverseMediaHit, EntityType, PepHit
-# <-- Import new client and AI function
+from tenacity import retry, stop_after_attempt, wait_exponential
+from mlint_schemas import Entity, AdverseMediaHit, EntityType
 from mlint_clients import AbstractSanctionsClient, AbstractUboClient, AbstractChainAnalysisClient, AbstractPepClient
 from mlint_ai import classify_adverse_media_ai
 from mlint_config import settings

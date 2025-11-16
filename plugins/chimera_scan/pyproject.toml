@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-scan"
 version = "1.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Plugin for active scanning and deep analysis of specific targets in Chimera Intel."
 requires-python = ">=3.9"
 

@@ -9,9 +9,6 @@ import tempfile
 import subprocess
 import json
 
-# import sys  # <-- FIX: Removed sys import
-
-# Create a new Typer application for SCAINT commands
 scaint_app = typer.Typer(
     name="scaint",
     help="Software Supply Chain Security (SCAINT)",

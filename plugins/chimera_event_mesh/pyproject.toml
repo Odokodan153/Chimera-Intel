@@ -7,6 +7,9 @@ name = "chimera_event_mesh"
 version = "0.1.0"
 description = "Chimera Intel plugin for the Real-Time Event Mesh."
 requires-python = ">=3.8"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     # "chimera-intel", 
     "feedparser"

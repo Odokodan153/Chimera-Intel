@@ -7,6 +7,9 @@ name = "chimera_persona_profiler"
 version = "0.1.0"
 description = "A Chimera Intel plugin to profile personas for sock puppets."
 readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",

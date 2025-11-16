@@ -10,7 +10,6 @@ from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
 from collections import Counter
-
 from .config_loader import API_KEYS
 from .ai_core import generate_swot_from_data
 

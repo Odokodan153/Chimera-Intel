@@ -9,10 +9,9 @@ import typer
 import asyncio
 import logging
 import dns.resolver
-import socket  # Import socket to handle gaierror
+import socket 
 import subprocess
-import json
-import shlex # NEW: Import for safe subprocess handling
+import shlex 
 from typing import Optional, List, Set, Dict, Any
 from .schemas import (
     APIDiscoveryResult,

@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from rich.console import Console
 from rich.panel import Panel
-
 from .schemas import MultiDomainCorrelationAlert
 from .database import get_db_connection, save_scan_to_db
 from .utils import save_or_print_results

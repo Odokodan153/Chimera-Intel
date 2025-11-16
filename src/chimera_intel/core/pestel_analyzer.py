@@ -10,7 +10,6 @@ import json
 from rich.markdown import Markdown
 import logging
 from typing import Optional
-
 from chimera_intel.core.database import get_aggregated_data_for_target
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.utils import console

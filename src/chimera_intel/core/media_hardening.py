@@ -1,4 +1,9 @@
-import os
+"""
+Provides functionality for securely managing and hardening media assets.
+Includes vault storage, visible and invisible watermarking, C2PA credential
+embedding, provenance verification, and OPSEC briefing retrieval.
+"""
+
 import json
 import logging
 import hashlib
@@ -8,7 +13,6 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from PIL import Image, ImageDraw, ImageFont
-import numpy as np
 import cv2
 from imwatermark import WatermarkEncoder, WatermarkDecoder
 import c2pa

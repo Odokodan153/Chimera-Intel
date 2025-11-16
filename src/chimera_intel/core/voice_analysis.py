@@ -1,3 +1,9 @@
+"""
+Analyzes vocal tone and sentiment from audio files using pre-trained emotion classification models 
+or fallback heuristics. Provides metrics such as pace, pitch variation, and a mapped sentiment 
+to support voice-based insights in negotiations or user interactions.
+"""
+
 import os
 import numpy as np
 import logging

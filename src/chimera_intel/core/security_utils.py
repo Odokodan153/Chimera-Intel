@@ -23,11 +23,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
-
-# Import user management and config
 from chimera_intel.core.user_manager import UserManager
 from chimera_intel.core.config_loader import ConfigLoader
-# --- Audit Logging ---
 
 # Load audit log path from environment, default to a local file
 AUDIT_LOG_PATH = os.getenv("CHIMERA_AUDIT_LOG", "chimeraintel_audit.log")

@@ -1,6 +1,9 @@
 [project]
 name = "chimera_deep_osint"
 version = "0.1.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Plugin for deep OSINT, dark social monitoring, IoT scanning, and graph analysis."
 dependencies = [
     # For Deep Graph Analysis

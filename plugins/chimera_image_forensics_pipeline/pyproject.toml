@@ -6,6 +6,9 @@ description = "A Chimera-Intel plugin for the full image/video forensics pipelin
 [tool.poetry.dependencies]
 python = "^3.10"
 chimera_intel = {path = "../../", develop = true} 
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 # This assumes the plugin is in a directory parallel to the main src
 # Adjust as needed for your project structure
 

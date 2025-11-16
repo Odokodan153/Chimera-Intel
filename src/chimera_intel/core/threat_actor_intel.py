@@ -8,7 +8,6 @@ threat actor library within the Chimera Intel database.
 
 import logging
 from typing import Optional, Dict, Any, List
-
 import typer
 import asyncio
 from .config_loader import API_KEYS

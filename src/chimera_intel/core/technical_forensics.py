@@ -27,14 +27,10 @@ from pathlib import Path
 from PIL import Image
 from rich.console import Console
 from rich.table import Table
-from typing import Optional, Dict, Any, List, Tuple
-
-# Try to import face_recognition, which is an optional dependency
 try:
     import face_recognition
 except ImportError:
     face_recognition = None
-
 from .schemas import (
     LightingAnalysisResult,
     PerspectiveAnalysisResult,

@@ -7,6 +7,9 @@ name = "chimera-social-media-monitor"
 version = "1.0.0"
 description = "Social Media Monitoring plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "tweepy>=4.14.0,<5.0.0",
     "google-api-python-client>=2.52.0,<3.0.0"

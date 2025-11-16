@@ -1,3 +1,10 @@
+"""
+Threat intelligence integration with AlienVault OTX.
+This module provides functionality to query the OTX API for threat intelligence
+based on indicators such as IP addresses and domains.   
+It uses asynchronous HTTP requests and Pydantic models for structured data handling.
+"""
+
 import logging
 from typing import Optional
 from .schemas import ThreatIntelResult, PulseInfo

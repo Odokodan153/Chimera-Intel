@@ -7,6 +7,9 @@ name = "chimera_covert_agent"
 version = "0.1.0"
 description = "An AI-driven autonomous agent for multi-step investigations."
 readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.8"
 license = { text = "MIT" }
 classifiers = [

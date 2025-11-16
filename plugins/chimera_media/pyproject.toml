@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chimera-media"
+version = "1.0.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
+description = "Audio-Visual Intelligence (IMINT/VIDINT) plugin for Chimera Intel."
+requires-python = ">=3.9"
+dependencies = [
+    "SpeechRecognition>=3.10.0,<4.0.0",
+    "openai-whisper>=20231117"
+]
+
+[project.entry-points."chimera_intel.plugins"]
+media = "chimera_media.main:MediaPlugin"

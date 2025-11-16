@@ -1,3 +1,8 @@
+"""
+Risk assessment module for Chimera Intel.
+Calculates risk scores based on threat intelligence, vulnerabilities, and threat actor data.
+"""
+
 import logging
 import asyncio
 from typing import Optional, List

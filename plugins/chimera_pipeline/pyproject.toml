@@ -7,6 +7,9 @@ name = "chimera-pipeline"
 version = "0.1.0"
 description = "Chimera plugin for the data ingestion, storage, and indexing pipeline."
 readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",

@@ -8,7 +8,7 @@ Implements the data collection part of the "OSINT + HUMINT Fusion Hub".
 """
 
 import typer
-from typing import Optional, List
+from typing import Optional
 from pathlib import Path
 import json
 from newspaper import Article

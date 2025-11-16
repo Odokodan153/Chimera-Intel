@@ -9,7 +9,6 @@ import typer
 import logging
 from typing import Optional
 import hashlib
-
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .schemas import GRCSourceTrustResult

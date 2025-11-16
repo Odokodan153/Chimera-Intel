@@ -9,18 +9,16 @@ import typer
 import os
 import json
 import hashlib
-import httpx
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
 import psycopg2
 from dotenv import load_dotenv
-from pathlib import Path # New import
-
+from pathlib import Path 
 from .utils import console
 from .database import get_db_connection
-from .config_loader import API_KEYS # Used for takedown checks
-from .http_client import sync_client # Use the shared client
+from .config_loader import API_KEYS 
+from .http_client import sync_client 
 
 # Load environment variables from .env file
 load_dotenv()

@@ -1,3 +1,6 @@
+"""
+Enhanced negotiation environment for RL agent with improved state representation and reward structure.
+"""
 import numpy as np
 from typing import List, Dict, Any, Tuple, Optional
 

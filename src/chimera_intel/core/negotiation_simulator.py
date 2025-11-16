@@ -1,9 +1,14 @@
+"""
+Negotiation Simulator Module
+This module provides functionalities to simulate negotiation scenarios
+using predefined personas and a reinforcement learning agent.
+"""
+
 import json
 import logging
 from collections import namedtuple
 from typing import Any, Dict, List
 import numpy as np
-
 from .negotiation_rl_agent import QLearningAgent
 from .negotiation_rl_env import NegotiationEnv
 

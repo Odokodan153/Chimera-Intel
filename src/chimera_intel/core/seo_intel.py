@@ -13,7 +13,6 @@ from typing import List, Optional, Dict
 from collections import Counter
 from datetime import datetime
 from urllib.parse import urlparse
-
 from .schemas import (
     SeoKeywordAnalysis,
     SeoKeywordPosition,
@@ -26,7 +25,6 @@ from .utils import save_or_print_results, console, is_valid_domain
 from .database import save_scan_to_db
 from .project_manager import resolve_target
 from .config_loader import API_KEYS
-# Re-usable components
 from .google_search import search as simple_google_search
 from .web_analyzer import get_traffic_similarweb
 from .topic_clusterer import run_topic_clustering

@@ -32,23 +32,19 @@ from .schemas import (
     SignedProvenanceEnvelope,
     VerificationResult,
 )
-# --- Core Dependencies ---
 try:
     from PIL import Image
 except ImportError:
     Image = None
-
 try:
     from stegano import lsb
 except ImportError:
     lsb = None
-
 try:
     import rfc3161
     from rfc3161 import Timestamper, get_tst_info, HASH_ALGORITHMS_BY_OID
 except ImportError:
     rfc3161 = None
-
 try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -61,12 +57,8 @@ try:
     )
     from cryptography.exceptions import InvalidSignature
 except ImportError:
-    # Handle missing crypto dependencies
     rsa = None
     InvalidSignature = Exception
-
-# --- Project Imports ---
-from chimera_intel.core.schemas import BaseResult
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.config_loader import CONFIG
 

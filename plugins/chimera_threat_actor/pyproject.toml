@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera_threat_actor"
 version = "0.1.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Plugin for Threat Actor Profiling (OTX)."
 dependencies = [
     "chimera_intel",

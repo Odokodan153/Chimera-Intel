@@ -1,3 +1,10 @@
+"""
+Performs asynchronous web analysis for a given domain, including technology stack enumeration, 
+traffic estimation, website screenshot capture, and risk assessment of detected technologies. 
+Supports data aggregation from multiple sources (BuiltWith, Wappalyzer, Similarweb) and provides 
+a Typer CLI command to run analyses and save results.
+"""
+
 import typer
 import asyncio
 import time

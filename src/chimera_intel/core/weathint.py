@@ -10,7 +10,6 @@ from typing import Optional, Dict, Any
 from geopy.geocoders import Nominatim
 from rich.panel import Panel
 import httpx
-
 from .config_loader import API_KEYS
 from .utils import console
 

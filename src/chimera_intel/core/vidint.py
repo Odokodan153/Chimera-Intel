@@ -10,16 +10,12 @@ import os
 from rich.console import Console
 import cv2
 import numpy as np
-from typing import Dict, Set
-
-# +++ NEW IMPORT (POINT 2) +++
-# Import object detection from the IMINT module
+from typing import Dict
 try:
     from .imint import perform_object_detection
     IMINT_AVAILABLE = True
 except ImportError:
     IMINT_AVAILABLE = False
-    # This allows the module to run, but content analysis will fail.
     def perform_object_detection(image_path: str) -> dict:
         raise ImportError("IMINT module or its dependencies are not available.")
 

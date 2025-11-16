@@ -15,19 +15,16 @@ import logging
 import typer
 import json
 from typing import Dict, Any, Optional, List
-
-# Import all required core modules
 from . import red_team
 from . import defensive
 from . import ai_core
-from . import threat_actor_intel  # New integration
-from . import ttp_mapper           # New integration
-from . import risk_assessment      # New integration
-from . import attack_path_simulator # New integration
-from .database import save_scan_to_db   # New integration
+from . import threat_actor_intel  
+from . import ttp_mapper           
+from . import risk_assessment      
+from . import attack_path_simulator 
+from .database import save_scan_to_db   
 from .config_loader import API_KEYS
 from .utils import console
-from .schemas import HIBPResult, TyposquatResult, ShodanResult, CTMentorResult, MozillaObservatoryResult, SSLLabsResult, IaCScanResult, SecretsScanResult, MobSFResult, GitHubLeaksResult, PasteResult
 
 # Configure logger
 logger = logging.getLogger(__name__)

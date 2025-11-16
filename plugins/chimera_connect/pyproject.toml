@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "chimera-connect"
 version = "1.0.0"
 description = "Messaging Platform Monitoring plugin for Chimera Intel."
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.9"
 dependencies = [
     # Add real dependencies for Telegram and Discord

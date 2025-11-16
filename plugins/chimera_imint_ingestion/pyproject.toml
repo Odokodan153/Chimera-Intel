@@ -7,6 +7,9 @@ name = "chimera_imint_ingestion"
 version = "0.2.0"
 description = "A Chimera Intel plugin for production-grade IMINT ingestion and processing."
 readme = "README.md"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",

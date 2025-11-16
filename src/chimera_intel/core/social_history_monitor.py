@@ -17,7 +17,6 @@ import logging
 from typing import Optional
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.schemas import ProfileChangeResult
-
 try:
     from bs4 import BeautifulSoup
     BS4_AVAILABLE = True

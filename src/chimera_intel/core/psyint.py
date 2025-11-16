@@ -1,5 +1,3 @@
-# src/chimera_intel/core/psyint.py
-
 """
 Active Psychological Intelligence (PSYINT) Orchestrator.
 
@@ -21,8 +19,6 @@ from .schemas import (
     CampaignExecutionResult,
 )
 import asyncio
-
-# --- (REAL) Core Module Imports ---
 from .action_governance import (
     run_pre_flight_checks,
     ACTION_REGISTRY,
@@ -34,12 +30,9 @@ from .ai_core import generate_swot_from_data
 from .config_loader import API_KEYS
 from .utils import console
 from .schemas import SyntheticImageResult
-
-# (REAL) Orchestration Imports - replacing placeholders
 from .synthetic_media_generator import generate_synthetic_image_with_ai
 from .social_osint import find_target_audiences_by_description
 from .narrative_analyzer import track_narrative_gnews
-# --- End (REAL) Imports ---
 
 logger = logging.getLogger(__name__)
 

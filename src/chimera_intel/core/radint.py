@@ -25,8 +25,6 @@ from pathlib import Path
 from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import List, Optional
-
-# Imports from other project modules
 from chimera_intel.core.schemas import Coordinates
 
 # Configure logger

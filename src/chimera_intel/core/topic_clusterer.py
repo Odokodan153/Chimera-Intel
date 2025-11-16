@@ -10,7 +10,6 @@ import logging
 import json
 from typing import List, Optional, Dict
 from chimera_intel.core.schemas import TopicClusteringResult, TopicCluster
-
 from .gemini_client import GeminiClient
 from .utils import save_or_print_results, console
 from .database import save_scan_to_db

@@ -16,17 +16,14 @@ from datetime import datetime
 import uuid
 import signal
 import hashlib
-import time # <-- Task 6: For latency timing
+import time 
 from typing import List
-import hmac # <-- Task 8: For signature verification
-import uvicorn # <-- Task 1 & 7: For running FastAPI
-from fastapi import FastAPI, HTTPException, Request, Depends # <-- Task 8
-from fastapi.security import APIKeyHeader # <-- Task 8
-from cryptography.fernet import Fernet # <-- Task 8: For encryption
-
-from prometheus_client import start_http_server, Counter, Gauge, Histogram # <-- Task 6: Added Histogram
-
-# Import schemas and modules
+import hmac 
+import uvicorn 
+from fastapi import FastAPI, HTTPException, Request, Depends 
+from fastapi.security import APIKeyHeader 
+from cryptography.fernet import Fernet 
+from prometheus_client import start_http_server, Counter, Gauge, Histogram 
 from .schemas import Entity, EntityType, Transaction, SwiftMessage, Alert, RiskLevel, AnalystStatus, TransactionAnalysisResult, SwiftAnalysisResult
 from .mlint_clients import RefinitivSanctionsClient, OpenCorporatesClient, ChainalysisClient, OpenSanctionsPepClient
 from .mlint_intel import IntelligenceAggregator
@@ -38,12 +35,10 @@ from .mlint_ai import (
 )
 from .mlint_analysis import (
     analyze_transaction_risk, 
-    analyze_swift_message, # Now async
+    analyze_swift_message, 
     run_backtest
 )
 from .mlint_config import settings
-
-# --- KAFKA and SWIFT (AMQP) Dependencies ---
 try:
     from kafka import KafkaConsumer, KafkaProducer
     from kafka.errors import NoBrokersAvailable

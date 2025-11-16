@@ -13,8 +13,6 @@ from chimera_intel.core.utils import console
 from chimera_intel.core.database import get_db_connection
 from chimera_intel.core.project_manager import resolve_target
 from chimera_intel.core.schemas import VisualDiffResult
-
-# This module requires the 'pillow' library
 try:
     from PIL import Image, ImageChops, ImageEnhance
 except ImportError:

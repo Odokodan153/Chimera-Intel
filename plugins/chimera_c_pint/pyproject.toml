@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera_c_pint"
 version = "0.1.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "chimera-intel",
     "networkx"

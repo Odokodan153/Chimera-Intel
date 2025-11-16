@@ -1,3 +1,9 @@
+"""
+Provides a comprehensive Third-Party Risk Management (TPRM) scan workflow, 
+including vulnerability scanning, breach checks, and AI-generated summaries. 
+Includes a Typer CLI command to run scans and optionally save results to a file or database.
+"""
+
 import typer
 import asyncio
 import logging

@@ -11,24 +11,17 @@ pip install pillow numpy
 
 import logging
 import io
-import uuid
-from datetime import datetime, timezone
 from typing import Optional, Dict, Any
-# Re-using PIL from forensic_vault.py's dependencies
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter
 except ImportError:
     logging.critical("Pillow library (PIL) not found. Watermarking/Detection will be non-functional.")
     Image, ImageDraw, ImageFont, ImageFilter = None, None, None, None
-
-# Add numpy for statistical analysis
 try:
     import numpy as np
 except ImportError:
     logging.critical("Numpy library not found. Statistical detection will be non-functional.")
     np = None
-
-# Re-using DB and utility concepts from media_governance.py
 from .schemas import SyntheticAbuseRecord
 from .local_db_service import save_scan_to_db, get_scan_from_db
 from .utils import console

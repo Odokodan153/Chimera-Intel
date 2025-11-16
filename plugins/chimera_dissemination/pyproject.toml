@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera_dissemination"
 version = "0.1.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Automatically generates and delivers tailored intelligence products for different stakeholders."
 dependencies = [
     "chimera-intel",

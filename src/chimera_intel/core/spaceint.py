@@ -1,4 +1,4 @@
-# src/chimera_intel/core/spaceint.py
+"""Space Intelligence (SPACEINT) tools for tracking satellites, monitoring launches, and predicting flyovers."""
 
 import typer
 import requests

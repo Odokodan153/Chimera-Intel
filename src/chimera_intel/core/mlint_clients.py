@@ -5,13 +5,12 @@ MLint Data Clients & Interfaces
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-import httpx  # Modern async HTTP client
+import httpx  
 import logging
 import asyncio
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError # <-- For Retries
-
-from mlint_schemas import SanctionHit, UboInfo, PepHit # <-- Import PepHit
-from mlint_config import settings # <-- PHASE 1: Use central config
+from tenacity import retry, stop_after_attempt, wait_exponential, RetryError 
+from mlint_schemas import SanctionHit, UboInfo, PepHit 
+from mlint_config import settings 
 
 # Configure logging
 log = logging.getLogger(__name__)

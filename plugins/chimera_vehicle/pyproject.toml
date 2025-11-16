@@ -7,6 +7,9 @@ name = "chimera-vehicle"
 version = "1.0.0"
 description = "Vehicle (VIN) OSINT plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "httpx>=0.25.0,<0.28.0"
 ]

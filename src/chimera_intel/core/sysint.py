@@ -1,3 +1,9 @@
+"""
+Systemic Intelligence (SYSINT) & Cascade Analyzer.
+This module models complex systems as multi-layered graphs and analyzes them for emergent properties
+that may indicate systemic risks or vulnerabilities.
+"""
+
 import logging
 import json
 from typing import List, Dict, Any

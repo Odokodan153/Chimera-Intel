@@ -1,15 +1,15 @@
-import typer
+"""
+Analyzes wireless network capture files (PCAP/PCAPNG) to identify Wi-Fi access points, 
+their SSIDs, channels, and security protocols (Open, WEP, WPA, WPA2). 
+Provides a Typer CLI app for interactive analysis and visualizes results with rich formatting.
+"""
 
-# from typing_extensions import Annotated # <-- REVERTED
+import typer
 from scapy.all import rdpcap
 from scapy.layers.dot11 import Dot11, Dot11Beacon, Dot11Elt
 import os
-
-# import sys  <-- FIX: Removed sys import
 from rich.console import Console
 
-# Create a console object
-# --- FIX: Reverted force_terminal=True to allow plain-text output in capsys ---
 console = Console()
 
 # --- Logic Function ---

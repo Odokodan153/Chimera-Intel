@@ -19,7 +19,7 @@ from .schemas import (
     PhysicalSecurityResult, 
     PhysicalLocation, 
     BuildingFootprint, 
-    FacilityMapResult  # New schemas
+    FacilityMapResult  
 )
 from .config_loader import API_KEYS
 from .utils import save_or_print_results

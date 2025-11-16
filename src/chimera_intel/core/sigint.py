@@ -1,3 +1,10 @@
+"""
+SIGINT (Signals Intelligence) module for Chimera Intelligence Platform.
+Provides functionalities for intercepting, decoding, and analyzing various
+signal types including Mode-S/ADS-B, AIS, amateur radio logs,
+digital fingerprinting, and network traffic modeling.
+"""
+
 import time
 import typer
 import socket
@@ -8,20 +15,14 @@ import logging
 import asyncio
 from chimera_intel.core.schemas import CellTowerInfo, RFSpectrumAnomaly, RFSpectrumReport
 # ADS-B and Mode-S decoding
-
 import pyModeS as pms
 from pyModeS.decoder import adsb, commb
-
 # AIS decoding
-
 import pyais
-
-# --- New Imports for SIGINT Expansion ---
 import httpx
 import whois
 import dns.resolver
 import ssl
-
 try:
     from scapy.all import rdpcap
 except ImportError:
@@ -32,22 +33,12 @@ except ImportError:
     # Define a placeholder if scapy is not present
     def rdpcap(filename):
         raise ImportError("Please install scapy to use network traffic modeling.")
-
-
-# --- End New Imports ---
-
-
-# --- FIX: Import Console locally and remove from utils import ---
 from rich.console import Console
 from chimera_intel.core.utils import save_or_print_results
 
-# --- End Fix ---
 from chimera_intel.core.database import save_scan_to_db
 
-# --- FIX: Create local console instance for proper capsys capture ---
-# --- FIX 2: Set a large width to prevent text-wrapping in test assertions ---
 console = Console(width=200)
-# --- End Fix ---
 
 
 class SignalIntercept:

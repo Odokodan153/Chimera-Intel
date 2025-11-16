@@ -7,8 +7,6 @@ risk thresholds, and approval workflows.
 """
 
 import logging
-from typing import Optional
-
 from .schemas import GenerationRequest, PolicyCheckResult
 
 logger = logging.getLogger(__name__)

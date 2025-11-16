@@ -13,9 +13,6 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Set, Dict, Any
-from typing_extensions import Annotated # Import Annotated
-
-# --- Schema Imports ---
 from .schemas import (
     OpsecReport, 
     CompromisedCommitter, 
@@ -27,15 +24,12 @@ from .schemas import (
 from .utils import save_or_print_results, calculate_risk_level
 from .database import get_aggregated_data_for_target, save_scan_to_db
 from .project_manager import resolve_target, get_project_assets
-
-# --- Real Data-Gathering Imports ---
 try:
     from .code_intel import search_repositories
     from .social_osint import search_profiles
     from .footprint import gather_footprint_data
 except ImportError as e:
     logging.critical(f"OpsecAnalyzer failed to import core modules: {e}")
-    # This will allow the 'run' command to work, but 'footprint' will fail.
     search_repositories = None
     search_profiles = None
     gather_footprint_data = None

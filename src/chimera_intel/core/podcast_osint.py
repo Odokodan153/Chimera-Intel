@@ -1,5 +1,7 @@
-# src/chimera_intel/core/podcast_osint.py
-
+"""
+Podcast OSINT Module - Provides functionalities to gather information from podcast RSS feeds,
+search within podcast episodes, and perform AI-powered analysis of podcast content.
+"""
 
 import typer
 import logging
@@ -7,7 +9,6 @@ import feedparser  # type: ignore
 import os
 from typing import Optional
 from rich.markdown import Markdown
-
 from .schemas import (
     PodcastInfoResult,
     PodcastEpisode,
@@ -18,7 +19,7 @@ from .utils import save_or_print_results, console
 from .database import save_scan_to_db
 from .http_client import sync_client
 from .media_analyzer import transcribe_audio_file
-from .ai_core import generate_swot_from_data  # Re-using for general AI generation
+from .ai_core import generate_swot_from_data  
 from .config_loader import API_KEYS
 
 logger = logging.getLogger(__name__)

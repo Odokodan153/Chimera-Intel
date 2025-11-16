@@ -3,11 +3,12 @@ Module for Zero-Day Tracking.
 
 Monitors security communities, forums, and vulnerability databases
 for emerging exploits and potential zero-day threats.
+
+This module has been updated to use the NVD API 2.0.
 """
 
 import logging
-from typing import Optional, Dict, Any, List
-
+from typing import Optional, List
 import typer
 from .config_loader import API_KEYS
 from .database import save_scan_to_db
@@ -17,57 +18,80 @@ from .utils import console, save_or_print_results
 
 logger = logging.getLogger(__name__)
 
-# In a real implementation, this would point to a specialized
-# exploit feed API (e.g., Exploit-DB, internal feeds)
-EXPLOIT_FEED_API_URL = "https://api.mock-exploit-feed.com/v1/search"
+# Updated to NVD API 2.0 endpoint for CVEs
+NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
 
 def monitor_emerging_exploits(query: str) -> ZeroDayTrackingResult:
     """
-    Searches exploit intelligence feeds for emerging threats related to a query.
+    Searches the NVD for CVEs related to a query.
     
     The query can be a product name (e.g., "Microsoft Exchange"),
     a vendor ("Adobe"), or a CVE ID.
     """
-    api_key = API_KEYS.exploit_feed_api_key  # Assumes EXPLOIT_FEED_API_KEY
+    # This key is now used for the NVD API.
+    # Request one here: https://nvd.nist.gov/developers/request-an-api-key
+    api_key = API_KEYS.exploit_feed_api_key
     if not api_key:
         return ZeroDayTrackingResult(
             query=query,
-            error="Exploit Feed API key (EXPLOIT_FEED_API_KEY) is not configured.",
+            error="NVD API key (set as EXPLOIT_FEED_API_KEY) is not configured.",
         )
     
-    logger.info(f"Monitoring for emerging exploits related to: {query}")
+    logger.info(f"Monitoring NVD for CVEs related to: {query}")
     
-    headers = {"X-API-KEY": api_key}
-    # Search for recent exploits matching the query
-    params = {"q": query, "sort": "discovered_desc", "limit": 20}
+    # NVD API 2.0 requires the key in the header
+    headers = {"apiKey": api_key}
+    # NVD API 2.0 uses 'keywordSearch' for text search
+    params = {"keywordSearch": query, "resultsPerPage": 20}
 
     try:
-        response = sync_client.get(EXPLOIT_FEED_API_URL, headers=headers, params=params)
+        response = sync_client.get(NVD_API_URL, headers=headers, params=params)
         response.raise_for_status()
         data = response.json()
 
-        if not data.get("exploits"):
+        if not data.get("vulnerabilities"):
             return ZeroDayTrackingResult(
                 query=query,
-                summary=f"No emerging exploits found matching '{query}'.",
+                summary=f"No CVEs found matching '{query}'.",
             )
             
         emerging_exploits: List[EmergingExploit] = []
-        for ex in data.get("exploits", []):
+        # The main list is under the 'vulnerabilities' key
+        for item in data.get("vulnerabilities", []):
+            cve_data = item.get("cve", {})
+            
+            exploit_id = cve_data.get("id", "N/A")
+            
+            # Get English description
+            description = "No description."
+            for desc in cve_data.get("descriptions", []):
+                if desc.get("lang") == "en":
+                    description = desc.get("value", "No description.")
+                    break
+            
+            # Get a reference URL
+            source_url = f"https://nvd.nist.gov/vuln/detail/{exploit_id}"
+            if cve_data.get("references"):
+                source_url = cve_data["references"][0].get("url", source_url)
+
+            # Use CISA KEV presence to flag if it's "known exploited"
+            # The 'exploitAdd' field is present if it's in CISA's KEV catalog
+            is_known_exploited = cve_data.get("exploitAdd") is not None
+
             emerging_exploits.append(
                 EmergingExploit(
-                    exploit_id=ex.get("id", "N/A"),
-                    product=ex.get("product", "Unknown"),
-                    vendor=ex.get("vendor", "Unknown"),
-                    description=ex.get("description", "No description."),
-                    source_url=ex.get("source_url", "#"),
-                    discovered_on=ex.get("discovered_on", "N/A"),
-                    is_zero_day=ex.get("is_zero_day", False),
+                    exploit_id=exploit_id,
+                    product="N/A", # NVD product data is in CPE format, requires complex parsing
+                    vendor="N/A",  # This would require more complex CPE parsing
+                    description=description,
+                    source_url=source_url,
+                    discovered_on=cve_data.get("published", "N/A"),
+                    is_zero_day=is_known_exploited, # Flag if CISA lists it as exploited
                 )
             )
 
-        summary = f"Found {len(emerging_exploits)} emerging exploits matching '{query}'."
+        summary = f"Found {len(emerging_exploits)} CVEs matching '{query}'."
         
         return ZeroDayTrackingResult(
             query=query,
@@ -76,7 +100,7 @@ def monitor_emerging_exploits(query: str) -> ZeroDayTrackingResult:
         )
 
     except Exception as e:
-        logger.error(f"An error occurred while querying exploit feed: {e}")
+        logger.error(f"An error occurred while querying NVD API: {e}")
         return ZeroDayTrackingResult(
             query=query, error=f"An API error occurred: {e}"
         )
@@ -96,10 +120,10 @@ def run_zero_day_monitoring(
     ),
 ):
     """
-    Monitors security feeds for emerging exploits and zero-days.
+    Monitors NVD for public CVEs matching a query.
     """
     with console.status(
-        f"[bold cyan]Monitoring for exploits matching '{query}'...[/bold cyan]"
+        f"[bold cyan]Querying NVD for CVEs matching '{query}'...[/bold cyan]"
     ):
         results_model = monitor_emerging_exploits(query)
     

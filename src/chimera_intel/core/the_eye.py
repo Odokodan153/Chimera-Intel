@@ -7,10 +7,9 @@ Role: Central AI intelligence, orchestrator, and data analyzer.
 import asyncio
 import uuid
 import logging
-import redis  # For real cache health check
+import redis  
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Set
-# --- Core Chimera Imports ---
 from chimera_intel.core.config_loader import ConfigLoader
 from chimera_intel.core.logger_config import setup_logging
 from chimera_intel.core.plugin_manager import PluginManager
@@ -18,8 +17,6 @@ from chimera_intel.core.graph_db import GraphDB
 from chimera_intel.core.gemini_client import GeminiClient
 from chimera_intel.core.reporter import Reporter
 from chimera_intel.core.plugin_interface import ChimeraPlugin
-
-# --- Logical Extension Imports (from your project) ---
 from chimera_intel.core.entity_resolver import EntityResolver
 from chimera_intel.core.counter_intelligence import CounterIntelligence
 from chimera_intel.core.honeypot_detector import HoneypotDetector
@@ -44,12 +41,10 @@ from chimera_intel.core.strategic_forecaster import StrategicForecaster
 from chimera_intel.core.metacognition import Metacognition
 from chimera_intel.core.grapher_3d import Grapher3D
 from chimera_intel.core.schemas import (
-    BaseModel,
     DiscoveryRecord,
     SystemHealthReport,
     FullAnalysisReport,
 )
-# --- Phase 3 & 4 Imports ---
 from chimera_intel.core.enterprise_audit import EnterpriseAuditor
 from chimera_intel.core.alert_manager import AlertManager
 

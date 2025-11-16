@@ -1,3 +1,7 @@
+"""
+CLI for the negotiation simulator.
+"""
+
 import typer
 from rich.console import Console
 from rich.panel import Panel

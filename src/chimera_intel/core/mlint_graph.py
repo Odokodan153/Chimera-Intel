@@ -5,8 +5,6 @@ MLint Graph Analyzer
 import logging
 from typing import List, Dict, Any
 from neo4j import AsyncGraphDatabase, AsyncDriver
-
-# These modules are assumed to be in the same directory
 from .mlint_config import settings
 from .schemas import Transaction, GnnAnomalyResult
 

@@ -1,5 +1,3 @@
-# src/chimera_intel/core/remediation_advisor.py
-
 """
 Remediation Advisor Module.
 
@@ -15,20 +13,16 @@ import re
 import asyncio
 from typing import Optional, Dict, Any, List
 import typer
-# --- Internal Chimera Intel Imports ---
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.http_client import sync_client
 from chimera_intel.core.utils import console, save_or_print_results
 from chimera_intel.core.database import save_scan_to_db
 from chimera_intel.core.schemas import LegalTemplateResult
-from chimera_intel.core.gemini_client import get_gemini_client # NEW: Added AI client
+from chimera_intel.core.gemini_client import get_gemini_client 
 from .schemas import (
     RemediationPlanResult,
     RemediationStep,
 )
-# We can't import this directly without circular dependencies,
-# so we'll call it as a separate module.
-# For this implementation, we will import the specific function we need.
 try:
     from chimera_intel.core.counter_intelligence import (
         get_legal_escalation_template

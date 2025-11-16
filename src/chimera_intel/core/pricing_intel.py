@@ -19,12 +19,11 @@ import httpx
 import json
 import os
 from bs4 import BeautifulSoup
-from typing import List, Optional, Dict, Any, cast
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-
 from chimera_intel.core.http_client import get_async_http_client
 from chimera_intel.core.scheduler import add_job
-from chimera_intel.core.utils import console, save_or_print_results
+from chimera_intel.core.utils import console
 from chimera_intel.core.config_loader import API_KEYS
 from chimera_intel.core.web_analyzer import get_traffic_similarweb
 from chimera_intel.core.project_manager import resolve_target

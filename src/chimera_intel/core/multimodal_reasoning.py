@@ -7,12 +7,10 @@ Processes and reasons across different data types simultaneously
 
 import typer
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 import json
-
 from .schemas import (
-    MultimodalReasoningResult,
-    AnalysisResult,
+    MultimodalReasoningResult
 )
 from .gemini_client import GeminiClient
 from .utils import save_or_print_results, console

@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chimera-intel"
 version = "0.1.0"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 description = "Chimera Intel: A multi-modal intelligence and analysis platform."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -8,6 +8,9 @@ name = "chimera-podcast"
 version = "1.0.0"
 description = "Podcast OSINT plugin for Chimera Intel."
 requires-python = ">=3.9"
+authors = [
+    { name = "Ignacio Iliev", email = "ignasioi72@gmail.com" },
+]
 dependencies = [
     "feedparser>=6.0.10,<7.0.0",
 ]

@@ -1,3 +1,7 @@
+"""
+Simulator router for handling negotiation simulations with AI personas.
+Provides endpoints to list available personas and a WebSocket for real-time interaction.
+"""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from chimera_intel.core.negotiation_simulator import get_personas
 

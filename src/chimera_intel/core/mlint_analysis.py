@@ -4,23 +4,21 @@ MLint Analysis
 """
 
 import pandas as pd
-import numpy as np
 import logging
-import re # <-- Task 5: For SWIFT Parsing
+import re 
 from typing import List, Dict, Any, Optional
-import redis # <-- Task 2: Import redis
+import redis
 import json
-
 from .schemas import Transaction, SwiftMessage, TransactionAnalysisResult, SwiftAnalysisResult, RiskLevel
 from .mlint_ai import (
     score_with_isolation_forest, 
     predict_supervised_risk, 
     get_model_explanation,
-    analyze_swift_text_ai # <-- Task 5: Import new AI function
+    analyze_swift_text_ai 
 )
 from sklearn.ensemble import IsolationForest
 from xgboost import XGBClassifier
-from .mlint_config import settings # <-- Task 2: Import settings
+from .mlint_config import settings 
 
 # Configure logging
 log = logging.getLogger(__name__)

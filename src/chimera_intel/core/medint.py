@@ -1,3 +1,8 @@
+"""
+Provides methods for gathering intelligence on public health,
+medical R&D activity, and medical device supply chain vulnerabilities.
+"""
+
 import typer
 import logging
 import requests

@@ -10,10 +10,9 @@ activity (e.g., construction, changes in vehicle/container volume).
 import typer
 import logging
 import json
-import os
 import shutil
 from pathlib import Path
-from typing import Optional, List, Dict, Set, Any
+from typing import Dict, Any
 from .schemas import (
     ProjectConfig,
     KeyLocation
@@ -23,8 +22,6 @@ from .database import save_scan_to_db, get_db_connection
 from .project_manager import list_projects, get_project_config_by_name
 from .alert_manager import alert_manager_instance, AlertLevel
 from .scheduler import add_job
-
-# Import the core analysis functions from imint
 from .imint import compare_image_changes, perform_object_detection
 
 logger = logging.getLogger(__name__)
